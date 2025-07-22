@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Змейка</title>
+    <!-- 
+        Техническое задание:
+        1. Игровое поле:
+           - Размер canvas: 800x800 пикселей
+           - Поле разделено на клетки 20x20 пикселей
+           - Зацикленное поле (змейка проходит через границы)
+           - Тёмный фон (#1a1a1a) с неоновой сеткой
+        
+        2. Змейка:
+           - Начальная длина: 3 клетки
+           - Неоновый зелёный цвет (#39ff14)
+           - Скорость: 8 клеток в секунду
+           - Увеличение длины при поедании еды
+        
+        3. Еда:
+           - Случайное появление на поле
+           - Неоновый розовый цвет (#ff1493)
+           - Размер: одна клетка
+           - Даёт 10 очков и увеличивает длину на 1
+        
+        4. Супер-еда:
+           - Редкое появление на поле (шанс 20% при генерации новой еды)
+           - Неоновый голубой цвет (#00ffff)
+           - Размер: одна клетка
+           - Даёт 30 очков и увеличивает длину на 2
+           - Исчезает через 10 секунд, если не съедена
+        
+        5. Мины:
+           - Случайное появление на поле (шанс 15% при генерации новой еды)
+           - Неоновый красный цвет (#ff0000)
+           - Размер: одна клетка
+           - При наезде на мину - проигрыш
+           - На поле может быть до 5 мин одновременно
+        
+        6. Управление:
+           - Клавиши WASD или стрелки
+           - Пауза на пробел
+           - Переключение автоматического режима на клавишу A
+        
+        7. Игровая механика:
+           - Змейка может проходить через границы поля
+           - Столкновение с собой или миной = проигрыш
+           - Счёт увеличивается при поедании еды
+           - Постепенное увеличение скорости
+           - Автоматический режим, в котором змейка сама ищет еду и избегает мины
+        
+        8. Интерфейс:
+           - Счёт в правом верхнем углу
+           - Индикатор текущего режима в левом верхнем углу
+           - Сообщение о проигрыше
+           - Инструкции по управлению
+    -->
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', monospace;
+            color: #39ff14;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100vh;
+            gap: 20px;
+        }
+
+        .canvas-container {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            border: 2px solid #39ff14;
+            box-shadow: 0 0 20px #39ff14;
+            background-color: #1a1a1a;
+            height: 98vh;
+        }
+
+        .game-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+            min-width: 200px;
+        }
+
+        .controls {
+            text-align: left;
+            text-shadow: 0 0 5px #39ff14;
+            padding: 0 10px;
+        }
+        
+        .game-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .music-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .music-control .game-button {
+            flex: 1;
+        }
+        
+        .radio-link {
+            color: #39ff14;
+            text-decoration: none;
+            font-size: 18px;
+            padding: 8px;
+            border: 2px solid #39ff14;
+            border-radius: 4px;
+            background-color: #1a1a1a;
+            transition: all 0.3s;
+            text-shadow: 0 0 5px #39ff14;
+            box-shadow: 0 0 10px #39ff14;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+        }
+        
+        .radio-link:hover {
+            background-color: #39ff14;
+            color: #000;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #39ff14;
+        }
+        
+        .game-button {
+            background-color: #1a1a1a;
+            color: #39ff14;
+            border: 2px solid #39ff14;
+            padding: 12px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #39ff14;
+            transition: all 0.3s;
+        }
+        
+        .game-button:hover {
+            background-color: #39ff14;
+            color: #000;
+        }
+        
+        .game-button.active {
+            background-color: #39ff14;
+            color: #000;
+        }
+        
+        .game-stats {
+            font-size: 18px;
+            text-shadow: 0 0 5px #39ff14;
+            margin-bottom: 20px;
+        }
+        
+        .game-stats div {
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 800px) {
+            body {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            
+            .game-container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .canvas-container {
+                height: auto;
+                width: 100%;
+                margin-top: 10px;
+            }
+            
+            canvas {
+                height: auto;
+                width: 95vw;
+                max-height: 70vh;
+            }
+            
+            .game-controls {
+                width: 100%;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+            
+            .game-buttons {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .radio-link {
+                font-size: 16px;
+                min-width: 32px;
+                height: 32px;
+            }
+        }
+    </style>
+    <audio id="backgroundMusic" src="http://stream.srg-ssr.ch/m/rsj/aacp_96" preload="none" loop></audio>
+</head>
+<body>
+    <div class="game-container">
+        <div class="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        <div class="game-controls">
+            <div class="game-stats">
+                <div id="scoreDisplay">Счёт: 0</div>
+                <div id="modeDisplay">Режим: Ручной</div>
+                <div id="speedDisplay">Скорость: 8</div>
+            </div>
+            <div class="game-buttons">
+                <button id="autoModeBtn" class="game-button">Авторежим: ВЫКЛ</button>
+                <button id="resetBtn" class="game-button">Новая игра</button>
+                <button id="pauseBtn" class="game-button">Пауза</button>
+                <div class="music-control">
+                    <button id="musicBtn" class="game-button">Музыка: ВЫКЛ</button>
+                    <a href="https://www.radioswissjazz.ch/en" target="_blank" class="radio-link" title="Radio Swiss Jazz">🎵</a>
+                </div>
+            </div>
+            <div class="controls">
+                <p>Управление:</p>
+                <p>WSD или стрелки - движение</p>
+                <p>Пробел - пауза</p>
+                <p>A - авторежим</p>
+                <p>B - вкл/выкл музыка</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Настройки игры
+        const GRID_SIZE = 20;
+        const GRID_COUNT = 40; // Увеличиваем количество клеток
+        
+        // Адаптивный размер canvas и размер клеток
+        function resizeCanvas() {
+            const container = document.querySelector('.canvas-container');
+            
+            // Определяем доступное пространство
+            let maxHeight, maxWidth;
+            
+            if (window.innerWidth > 800) {
+                // Десктоп - высота 98% от высоты окна
+                maxHeight = window.innerHeight * 0.98;
+                // Ширина с учетом панели управления
+                maxWidth = (window.innerWidth - 250) * 0.95;
+            } else {
+                // Мобильные устройства
+                maxHeight = window.innerHeight * 0.7;
+                maxWidth = window.innerWidth * 0.95;
+            }
+            
+            // Вычисляем оптимальный размер клетки
+            const cellSize = Math.min(
+                Math.floor(maxWidth / GRID_COUNT),
+                Math.floor(maxHeight / GRID_COUNT)
+            );
+            
+            // Устанавливаем размер canvas
+            canvas.width = cellSize * GRID_COUNT;
+            canvas.height = cellSize * GRID_COUNT;
+            
+            // Обновляем размер клетки для отрисовки
+            CELL_SIZE = cellSize;
+        }
+        
+        // Переменная для хранения текущего размера клетки
+        let CELL_SIZE = GRID_SIZE;
+        
+        // Вызываем функцию изначально
+        resizeCanvas();
+        
+        // И при изменении размера окна
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (!isPaused) {
+                drawGrid();
+                drawSnake();
+                drawFood();
+                drawSuperFood();
+                drawMines();
+                drawScore();
+                drawModeIndicator();
+            }
+        });
+
+        // Начальные параметры
+        let snake = [
+            {x: 10, y: 10},
+            {x: 9, y: 10},
+            {x: 8, y: 10}
+        ];
+        let direction = 'right';
+        let nextDirection = 'right';
+        let superFood = null;
+        let superFoodTimer = null;
+        let mines = [];
+        let food = generateFood();
+        let score = 0;
+        let speed = 150;
+        let gameLoop;
+        let isPaused = false;
+        let isAutoMode = false;
+        let isMusicEnabled = false;
+
+        // Генерация еды в случайной позиции
+        function generateFood() {
+            let newFood;
+            do {
+                newFood = {
+                    x: Math.floor(Math.random() * GRID_COUNT),
+                    y: Math.floor(Math.random() * GRID_COUNT)
+                };
+            } while (
+                snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
+                (superFood && superFood.x === newFood.x && superFood.y === newFood.y) ||
+                mines.some(mine => mine.x === newFood.x && mine.y === newFood.y)
+            );
+            
+            // Шанс создания супер-еды (20%)
+            if (superFood === null && Math.random() < 0.2) {
+                superFood = {
+                    x: Math.floor(Math.random() * GRID_COUNT),
+                    y: Math.floor(Math.random() * GRID_COUNT)
+                };
+                
+                // Супер-еда исчезает через 10 секунд
+                clearTimeout(superFoodTimer);
+                superFoodTimer = setTimeout(() => {
+                    superFood = null;
+                }, 10000);
+            }
+            
+            // Шанс создания мины (15%), но не более 5 на поле
+            if (mines.length < 5 && Math.random() < 0.15) {
+                let newMine;
+                do {
+                    newMine = {
+                        x: Math.floor(Math.random() * GRID_COUNT),
+                        y: Math.floor(Math.random() * GRID_COUNT)
+                    };
+                } while (
+                    snake.some(segment => segment.x === newMine.x && segment.y === newMine.y) ||
+                    (superFood && superFood.x === newMine.x && superFood.y === newMine.y) ||
+                    mines.some(mine => mine.x === newMine.x && mine.y === newMine.y) ||
+                    (newFood.x === newMine.x && newFood.y === newMine.y)
+                );
+                mines.push(newMine);
+            }
+            
+            return newFood;
+        }
+
+        // Отрисовка сетки
+        function drawGrid() {
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 0.5;
+            
+            for (let i = 0; i <= GRID_COUNT; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL_SIZE, 0);
+                ctx.lineTo(i * CELL_SIZE, canvas.height);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i * CELL_SIZE);
+                ctx.lineTo(canvas.width, i * CELL_SIZE);
+                ctx.stroke();
+            }
+        }
+
+        // Отрисовка змейки
+        function drawSnake() {
+            snake.forEach((segment, index) => {
+                ctx.fillStyle = '#39ff14';
+                ctx.shadowColor = '#39ff14';
+                ctx.shadowBlur = 10;
+                ctx.fillRect(
+                    segment.x * CELL_SIZE,
+                    segment.y * CELL_SIZE,
+                    CELL_SIZE - 1,
+                    CELL_SIZE - 1
+                );
+                
+                // Рисуем глаза на голове змейки
+                if (index === 0) {
+                    ctx.fillStyle = '#000';
+                    const eyeSize = Math.max(2, CELL_SIZE * 0.2);
+                    const eyeOffset = Math.max(2, CELL_SIZE * 0.25);
+                    
+                    if (direction === 'right' || direction === 'left') {
+                        ctx.fillRect(
+                            segment.x * CELL_SIZE + (direction === 'right' ? CELL_SIZE * 0.6 : CELL_SIZE * 0.2),
+                            segment.y * CELL_SIZE + CELL_SIZE * 0.2,
+                            eyeSize,
+                            eyeSize
+                        );
+                        ctx.fillRect(
+                            segment.x * CELL_SIZE + (direction === 'right' ? CELL_SIZE * 0.6 : CELL_SIZE * 0.2),
+                            segment.y * CELL_SIZE + CELL_SIZE * 0.6,
+                            eyeSize,
+                            eyeSize
+                        );
+                    } else {
+                        ctx.fillRect(
+                            segment.x * CELL_SIZE + CELL_SIZE * 0.2,
+                            segment.y * CELL_SIZE + (direction === 'down' ? CELL_SIZE * 0.6 : CELL_SIZE * 0.2),
+                            eyeSize,
+                            eyeSize
+                        );
+                        ctx.fillRect(
+                            segment.x * CELL_SIZE + CELL_SIZE * 0.6,
+                            segment.y * CELL_SIZE + (direction === 'down' ? CELL_SIZE * 0.6 : CELL_SIZE * 0.2),
+                            eyeSize,
+                            eyeSize
+                        );
+                    }
+                }
+            });
+            ctx.shadowBlur = 0;
+        }
+
+        // Отрисовка еды
+        function drawFood() {
+            ctx.fillStyle = '#ff1493';
+            ctx.shadowColor = '#ff1493';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(
+                food.x * CELL_SIZE + CELL_SIZE/2,
+                food.y * CELL_SIZE + CELL_SIZE/2,
+                CELL_SIZE/2 - 1,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        
+        // Отрисовка супер-еды
+        function drawSuperFood() {
+            if (superFood) {
+                ctx.fillStyle = '#00ffff';
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(
+                    superFood.x * CELL_SIZE + CELL_SIZE/2,
+                    superFood.y * CELL_SIZE + CELL_SIZE/2,
+                    CELL_SIZE/2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Добавляем сияние вокруг супер-еды
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(
+                    superFood.x * CELL_SIZE + CELL_SIZE/2,
+                    superFood.y * CELL_SIZE + CELL_SIZE/2,
+                    CELL_SIZE/2 + 3,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        // Отрисовка мин
+        function drawMines() {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff0000';
+            ctx.fillStyle = '#ff0000';
+            
+            mines.forEach(mine => {
+                // Рисуем основу мины
+                ctx.beginPath();
+                ctx.arc(
+                    mine.x * CELL_SIZE + CELL_SIZE/2,
+                    mine.y * CELL_SIZE + CELL_SIZE/2,
+                    CELL_SIZE/2 - 2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Рисуем "шипы" мины
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 2;
+                
+                // Горизонтальная линия
+                ctx.beginPath();
+                ctx.moveTo(mine.x * CELL_SIZE + 2, mine.y * CELL_SIZE + CELL_SIZE/2);
+                ctx.lineTo(mine.x * CELL_SIZE + CELL_SIZE - 2, mine.y * CELL_SIZE + CELL_SIZE/2);
+                ctx.stroke();
+                
+                // Вертикальная линия
+                ctx.beginPath();
+                ctx.moveTo(mine.x * CELL_SIZE + CELL_SIZE/2, mine.y * CELL_SIZE + 2);
+                ctx.lineTo(mine.x * CELL_SIZE + CELL_SIZE/2, mine.y * CELL_SIZE + CELL_SIZE - 2);
+                ctx.stroke();
+                
+                // Диагональные линии
+                ctx.beginPath();
+                ctx.moveTo(mine.x * CELL_SIZE + CELL_SIZE/4, mine.y * CELL_SIZE + CELL_SIZE/4);
+                ctx.lineTo(mine.x * CELL_SIZE + CELL_SIZE*3/4, mine.y * CELL_SIZE + CELL_SIZE*3/4);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(mine.x * CELL_SIZE + CELL_SIZE*3/4, mine.y * CELL_SIZE + CELL_SIZE/4);
+                ctx.lineTo(mine.x * CELL_SIZE + CELL_SIZE/4, mine.y * CELL_SIZE + CELL_SIZE*3/4);
+                ctx.stroke();
+            });
+            
+            ctx.shadowBlur = 0;
+        }
+
+        // Отрисовка счёта
+        function drawScore() {
+            document.getElementById('scoreDisplay').textContent = `Счёт: ${score}`;
+        }
+
+        // Отображение индикатора режима
+        function drawModeIndicator() {
+            document.getElementById('modeDisplay').textContent = `Режим: ${isAutoMode ? 'Авто' : 'Ручной'}`;
+        }
+        
+        // Отображение скорости
+        function drawSpeed() {
+            const speedValue = Math.round(1000 / speed);
+            document.getElementById('speedDisplay').textContent = `Скорость: ${speedValue}`;
+        }
+
+        // Обновление состояния игры
+        function update() {
+            const head = {x: snake[0].x, y: snake[0].y};
+            direction = nextDirection;
+
+            switch(direction) {
+                case 'up': head.y--; break;
+                case 'down': head.y++; break;
+                case 'left': head.x--; break;
+                case 'right': head.x++; break;
+            }
+
+            // Зацикливание поля
+            head.x = (head.x + GRID_COUNT) % GRID_COUNT;
+            head.y = (head.y + GRID_COUNT) % GRID_COUNT;
+
+            // Проверка столкновения с собой
+            if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                gameOver();
+                return;
+            }
+            
+            // Проверка столкновения с миной
+            if (mines.some(mine => mine.x === head.x && mine.y === head.y)) {
+                gameOver();
+                return;
+            }
+
+            snake.unshift(head);
+
+            // Проверка поедания еды
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                food = generateFood();
+                speed = Math.max(50, speed - 2); // Увеличение скорости
+                clearInterval(gameLoop);
+                gameLoop = setInterval(gameStep, speed);
+            } 
+            // Проверка поедания супер-еды
+            else if (superFood && head.x === superFood.x && head.y === superFood.y) {
+                score += 30;
+                // Супер-еда добавляет 2 сегмента, поэтому не удаляем хвост в этом ходу и следующем
+                clearTimeout(superFoodTimer);
+                superFood = null;
+                // Увеличиваем скорость чуть больше
+                speed = Math.max(50, speed - 4);
+                clearInterval(gameLoop);
+                gameLoop = setInterval(gameStep, speed);
+                
+                // Добавляем второй сегмент в следующем обновлении
+                setTimeout(() => {
+                    if (gameLoop) { // Проверяем, что игра все еще идет
+                        // Не удаляем хвост в следующем обновлении
+                        snake.push({...snake[snake.length-1]});
+                    }
+                }, speed);
+            } else {
+                snake.pop();
+            }
+        }
+
+        // Один шаг игры
+        function gameStep() {
+            if (!isPaused) {
+                if (isAutoMode) {
+                    autoControl();
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawGrid();
+                update();
+                drawFood();
+                drawSuperFood();
+                drawMines();
+                drawSnake();
+                drawScore();
+                drawModeIndicator();
+                drawSpeed();
+            }
+        }
+
+        // Обработка окончания игры
+        function gameOver() {
+            clearInterval(gameLoop);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#39ff14';
+            const fontSize = Math.max(24, canvas.width / 20);
+            ctx.font = `${fontSize * 2}px "Courier New"`;
+            ctx.textAlign = 'center';
+            ctx.fillText('Игра окончена!', canvas.width/2, canvas.height/2 - fontSize);
+            
+            ctx.font = `${fontSize}px "Courier New"`;
+            ctx.fillText(`Финальный счёт: ${score}`, canvas.width/2, canvas.height/2 + fontSize);
+            ctx.fillText('Нажмите пробел для новой игры', canvas.width/2, canvas.height/2 + fontSize * 2.5);
+            
+            // Сбрасываем автоматический режим
+            isAutoMode = false;
+            autoModeBtn.textContent = 'Авторежим: ВЫКЛ';
+            autoModeBtn.classList.remove('active');
+            
+            // Сбрасываем паузу
+            isPaused = false;
+            pauseBtn.textContent = 'Пауза';
+            pauseBtn.classList.remove('active');
+            
+            gameLoop = null;
+            
+            // Обновляем информацию в DOM
+            drawScore();
+            drawModeIndicator();
+            drawSpeed();
+        }
+
+        // Обработка нажатий клавиш
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (gameLoop) {
+                    isPaused = !isPaused;
+                    // Обновляем кнопку паузы
+                    pauseBtn.textContent = isPaused ? 'Продолжить' : 'Пауза';
+                    pauseBtn.classList.toggle('active', isPaused);
+                } else {
+                    // Перезапуск игры
+                    snake = [{x: 10, y: 10}, {x: 9, y: 10}, {x: 8, y: 10}];
+                    direction = 'right';
+                    nextDirection = 'right';
+                    score = 0;
+                    speed = 150;
+                    food = generateFood();
+                    superFood = null;
+                    mines = [];
+                    isPaused = false;
+                    gameLoop = setInterval(gameStep, speed);
+                    // Обновляем кнопку паузы при перезапуске
+                    pauseBtn.textContent = 'Пауза';
+                    pauseBtn.classList.remove('active');
+                }
+            }
+            
+            // Переключение автоматического режима по клавише A
+            if (e.code === 'KeyA' && gameLoop) {
+                isAutoMode = !isAutoMode;
+                // Обновляем состояние кнопки
+                autoModeBtn.textContent = `Авторежим: ${isAutoMode ? 'ВКЛ' : 'ВЫКЛ'}`;
+                autoModeBtn.classList.toggle('active', isAutoMode);
+            }
+            
+            // Переключение музыки по клавише B
+            if (e.code === 'KeyB') {
+                toggleBackgroundMusic();
+            }
+
+            if (!isPaused && !isAutoMode) { // Ручное управление только если не в автоматическом режиме
+                switch(e.code) {
+                    case 'ArrowUp':
+                    case 'KeyW':
+                        if (direction !== 'down') nextDirection = 'up';
+                        break;
+                    case 'ArrowDown':
+                    case 'KeyS':
+                        if (direction !== 'up') nextDirection = 'down';
+                        break;
+                    case 'ArrowLeft':
+                        if (direction !== 'right') nextDirection = 'left';
+                        break;
+                    case 'ArrowRight':
+                    case 'KeyD':
+                        if (direction !== 'left') nextDirection = 'right';
+                        break;
+                }
+            }
+        });
+
+        // Функция для автоматического управления змейкой
+        function autoControl() {
+            if (!isAutoMode) return;
+            
+            const head = snake[0];
+            
+            // Определяем направление к еде
+            let newDirection = direction;
+            
+            // Для автономного движения сначала определяем ближайшую еду (обычную или супер-еду)
+            let targetFood = food;
+            let targetX = food.x;
+            let targetY = food.y;
+            
+            // Если есть супер-еда, проверяем, что она ближе обычной
+            if (superFood) {
+                const distToFood = getDistance(head, food);
+                const distToSuperFood = getDistance(head, superFood);
+                
+                if (distToSuperFood < distToFood) {
+                    targetFood = superFood;
+                    targetX = superFood.x;
+                    targetY = superFood.y;
+                }
+            }
+            
+            // Вычисляем разницу по X и Y с учетом зацикленного поля
+            let dx = targetX - head.x;
+            let dy = targetY - head.y;
+            
+            // Учитываем зацикленное поле
+            if (Math.abs(dx) > GRID_COUNT / 2) {
+                dx = dx > 0 ? dx - GRID_COUNT : dx + GRID_COUNT;
+            }
+            if (Math.abs(dy) > GRID_COUNT / 2) {
+                dy = dy > 0 ? dy - GRID_COUNT : dy + GRID_COUNT;
+            }
+            
+            // Проверяем наличие мин по пути и избегаем их
+            let dangerousMine = null;
+            
+            // Функция для проверки, есть ли мина в данном направлении
+            function hasMineInDirection(dir) {
+                let checkX = head.x;
+                let checkY = head.y;
+                
+                switch(dir) {
+                    case 'up': checkY = ((head.y - 1) + GRID_COUNT) % GRID_COUNT; break;
+                    case 'down': checkY = ((head.y + 1) + GRID_COUNT) % GRID_COUNT; break;
+                    case 'left': checkX = ((head.x - 1) + GRID_COUNT) % GRID_COUNT; break;
+                    case 'right': checkX = ((head.x + 1) + GRID_COUNT) % GRID_COUNT; break;
+                }
+                
+                return mines.some(mine => mine.x === checkX && mine.y === checkY);
+            }
+            
+            // Приоритет движения по X или Y с учетом мин
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Движение по X
+                newDirection = dx < 0 ? 'left' : 'right';
+                
+                // Проверяем наличие мины в этом направлении
+                if (hasMineInDirection(newDirection)) {
+                    // Если есть мина, пробуем двигаться по Y
+                    newDirection = dy < 0 ? 'up' : 'down';
+                    
+                    // Если и там мина, ищем безопасное направление
+                    if (hasMineInDirection(newDirection)) {
+                        newDirection = findSafePath(head);
+                    }
+                }
+            } else {
+                // Движение по Y
+                newDirection = dy < 0 ? 'up' : 'down';
+                
+                // Проверяем наличие мины в этом направлении
+                if (hasMineInDirection(newDirection)) {
+                    // Если есть мина, пробуем двигаться по X
+                    newDirection = dx < 0 ? 'left' : 'right';
+                    
+                    // Если и там мина, ищем безопасное направление
+                    if (hasMineInDirection(newDirection)) {
+                        newDirection = findSafePath(head);
+                    }
+                }
+            }
+            
+            // Проверяем, не приведет ли новое направление к столкновению
+            let nextHeadX, nextHeadY;
+            switch(newDirection) {
+                case 'up': 
+                    nextHeadX = head.x;
+                    nextHeadY = ((head.y - 1) + GRID_COUNT) % GRID_COUNT;
+                    break;
+                case 'down': 
+                    nextHeadX = head.x;
+                    nextHeadY = ((head.y + 1) + GRID_COUNT) % GRID_COUNT;
+                    break;
+                case 'left': 
+                    nextHeadX = ((head.x - 1) + GRID_COUNT) % GRID_COUNT;
+                    nextHeadY = head.y;
+                    break;
+                case 'right': 
+                    nextHeadX = ((head.x + 1) + GRID_COUNT) % GRID_COUNT;
+                    nextHeadY = head.y;
+                    break;
+            }
+            
+            // Если столкновение или мина, ищем безопасное направление
+            if (willCollideWithSelf(nextHeadX, nextHeadY) || mines.some(mine => mine.x === nextHeadX && mine.y === nextHeadY)) {
+                newDirection = findSafePath(head);
+            }
+            
+            // Проверяем, что новое направление не противоположно текущему
+            if ((direction === 'up' && newDirection === 'down') ||
+                (direction === 'down' && newDirection === 'up') ||
+                (direction === 'left' && newDirection === 'right') ||
+                (direction === 'right' && newDirection === 'left')) {
+                return;
+            }
+            
+            nextDirection = newDirection;
+        }
+        
+        // Функция для нахождения безопасного пути
+        function findSafePath(head) {
+            const safeDirections = [];
+            
+            // Проверяем все возможные направления
+            if (direction !== 'down') {
+                const upY = ((head.y - 1) + GRID_COUNT) % GRID_COUNT;
+                if (!willCollideWithSelf(head.x, upY) && !mines.some(mine => mine.x === head.x && mine.y === upY)) {
+                    safeDirections.push('up');
+                }
+            }
+            
+            if (direction !== 'up') {
+                const downY = ((head.y + 1) + GRID_COUNT) % GRID_COUNT;
+                if (!willCollideWithSelf(head.x, downY) && !mines.some(mine => mine.x === head.x && mine.y === downY)) {
+                    safeDirections.push('down');
+                }
+            }
+            
+            if (direction !== 'right') {
+                const leftX = ((head.x - 1) + GRID_COUNT) % GRID_COUNT;
+                if (!willCollideWithSelf(leftX, head.y) && !mines.some(mine => mine.x === leftX && mine.y === head.y)) {
+                    safeDirections.push('left');
+                }
+            }
+            
+            if (direction !== 'left') {
+                const rightX = ((head.x + 1) + GRID_COUNT) % GRID_COUNT;
+                if (!willCollideWithSelf(rightX, head.y) && !mines.some(mine => mine.x === rightX && mine.y === head.y)) {
+                    safeDirections.push('right');
+                }
+            }
+            
+            // Если есть безопасные направления, выбираем случайное
+            if (safeDirections.length > 0) {
+                return safeDirections[Math.floor(Math.random() * safeDirections.length)];
+            }
+            
+            // Если безопасных направлений нет, остаемся в текущем
+            return direction;
+        }
+        
+        // Функция для вычисления расстояния между двумя точками с учетом зацикленного поля
+        function getDistance(point1, point2) {
+            let dx = Math.abs(point1.x - point2.x);
+            let dy = Math.abs(point1.y - point2.y);
+            
+            // Учитываем зацикленное поле
+            dx = Math.min(dx, GRID_COUNT - dx);
+            dy = Math.min(dy, GRID_COUNT - dy);
+            
+            return dx + dy; // Манхэттенское расстояние
+        }
+        
+        // Функция для проверки столкновения с собой
+        function willCollideWithSelf(x, y) {
+            return snake.some((segment, index) => {
+                // Пропускаем последний сегмент, так как он исчезнет при движении
+                if (index === snake.length - 1) return false;
+                return segment.x === x && segment.y === y;
+            });
+        }
+
+        // Запуск игры
+        gameLoop = setInterval(gameStep, speed);
+        
+        // Обработчики для кнопок
+        const autoModeBtn = document.getElementById('autoModeBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const musicBtn = document.getElementById('musicBtn');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        
+        autoModeBtn.addEventListener('click', () => {
+            isAutoMode = !isAutoMode;
+            autoModeBtn.textContent = `Авторежим: ${isAutoMode ? 'ВКЛ' : 'ВЫКЛ'}`;
+            autoModeBtn.classList.toggle('active', isAutoMode);
+            drawModeIndicator();
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            // Перезапуск игры
+            clearInterval(gameLoop);
+            clearTimeout(superFoodTimer);
+            snake = [{x: 10, y: 10}, {x: 9, y: 10}, {x: 8, y: 10}];
+            direction = 'right';
+            nextDirection = 'right';
+            score = 0;
+            speed = 150;
+            food = generateFood();
+            superFood = null;
+            mines = [];
+            isPaused = false;
+            pauseBtn.textContent = 'Пауза';
+            pauseBtn.classList.remove('active');
+            gameLoop = setInterval(gameStep, speed);
+            drawScore();
+            drawSpeed();
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Продолжить' : 'Пауза';
+            pauseBtn.classList.toggle('active', isPaused);
+        });
+        
+        // Функция для переключения фоновой музыки
+        function toggleBackgroundMusic() {
+            isMusicEnabled = !isMusicEnabled;
+            
+            if (isMusicEnabled) {
+                backgroundMusic.volume = 0.3; // Устанавливаем тихую громкость
+                backgroundMusic.play().catch(e => {
+                    console.log("Ошибка воспроизведения музыки:", e);
+                    isMusicEnabled = false;
+                });
+            } else {
+                backgroundMusic.pause();
+            }
+            
+            musicBtn.textContent = `Музыка: ${isMusicEnabled ? 'ВКЛ' : 'ВЫКЛ'}`;
+            musicBtn.classList.toggle('active', isMusicEnabled);
+        }
+        
+        musicBtn.addEventListener('click', toggleBackgroundMusic);
+    </script>
+</body>
+</html> 

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<!--
+RULES:
+1. В тексте сохраняются только точки "." и запятые "," как знаки препинания.
+2. Все числа записываются арабскими цифрами.
+3. Кавычки, тире и прочие спецсимволы в тексте аудиогида не используются.
+4. При изменении требований этот блок правил обновляется в первую очередь.
+
+ФУНКЦИОНАЛЬНЫЕ ТРЕБОВАНИЯ:
+1. Выбор города из списка: Суботица, Палич, Белград, Сомбор, Нови-Сад
+2. Для каждого города отдельный конфиг с достопримечательностями
+3. Переключатель светлой/темной темы в иконке шестеренки вверху
+4. Выбор города размещен в боковой панели над списком объектов
+5. Сохранение всех настроек в localStorage (выбранный город, тема, голос)
+6. Восстановление настроек при загрузке страницы
+7. Кроссбраузерная совместимость (Safari, Chrome, Firefox, Edge)
+8. Адаптивный дизайн для всех устройств (desktop, tablet, mobile)
+9. Поддержка accessibility (фокус, контрастность, уменьшенная анимация)
+10. Поддержка русского TTS для всех городов
+11. Responsive меню с гамбургер-кнопкой на мобильных устройствах
+12. Аудио воспроизводится только по нажатию кнопки "Рассказать"
+13. Все кнопки управления размещены на одной линии: "Назад", "Рассказать", "Стоп", "Дальше"
+14. Все изображения проверены на доступность и используют надежные CDN
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Аудиогид по городам Сербии</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* CSS Variables for theming */
+    :root {
+      --bg-color: #f9fafb;
+      --text-color: #111827;
+      --card-bg: #ffffff;
+      --border-color: #e5e7eb;
+      --primary-color: #4f46e5;
+      --secondary-color: #f3f4f6;
+      --secondary-text: #374151;
+      --shadow-light: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #111827;
+      --text-color: #f9fafb;
+      --card-bg: #1f2937;
+      --border-color: #374151;
+      --primary-color: #6366f1;
+      --secondary-color: #374151;
+      --secondary-text: #d1d5db;
+      --shadow-light: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+      --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Reset and base styles */
+    * {
+      -webkit-box-sizing: border-box;
+      -moz-box-sizing: border-box;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Card component */
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      box-shadow: var(--shadow-light);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    /* Button styles */
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+    }
+
+    .btn:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn:focus {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    .btn-secondary {
+      background-color: var(--secondary-color);
+      color: var(--secondary-text);
+    }
+
+    /* Select styles */
+    .select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      background-color: var(--secondary-color);
+      color: var(--secondary-text);
+      border: 1px solid var(--border-color);
+      font-size: 0.875rem;
+      cursor: pointer;
+      outline: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 1rem;
+      padding-right: 2.5rem;
+    }
+
+    .select:focus {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    /* Layout components */
+    .sidebar {
+      background-color: var(--card-bg);
+      border-right: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .settings-modal {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .settings-button {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 50;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-light);
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .settings-button:hover {
+      transform: rotate(90deg) scale(1.05);
+    }
+
+    .settings-button:focus {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    /* Image styles */
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 85%;
+        max-width: 320px;
+        height: 100vh;
+        z-index: 40;
+        transition: left 0.3s ease;
+        box-shadow: var(--shadow-hover);
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .menu-toggle {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 50;
+        width: 3rem;
+        height: 3rem;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        box-shadow: var(--shadow-light);
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .menu-toggle:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+      }
+
+      .card {
+        margin-left: 0;
+        margin-right: 0;
+        padding: 1rem;
+      }
+
+      .btn {
+        padding: 0.625rem 1rem;
+        font-size: 0.8125rem;
+      }
+
+      .settings-button {
+        top: 0.75rem;
+        right: 0.75rem;
+        width: 2.75rem;
+        height: 2.75rem;
+        font-size: 1.1rem;
+      }
+    }
+
+         /* Button groups */
+     .button-group {
+       display: flex;
+       gap: 0.5rem;
+       flex-wrap: wrap;
+       align-items: center;
+     }
+
+     .button-group .btn {
+       min-width: auto;
+       padding: 0.5rem 1rem;
+     }
+
+     /* Medium screens */
+     @media (max-width: 768px) and (min-width: 481px) {
+       .button-group {
+         justify-content: center;
+         gap: 0.75rem;
+       }
+
+       .button-group .btn {
+         flex: 0 1 auto;
+         min-width: 110px;
+       }
+     }
+
+     /* Small screens */
+     @media (max-width: 480px) {
+       .flex-wrap {
+         flex-direction: column;
+       }
+
+       .flex-wrap .btn {
+         width: 100%;
+         margin-bottom: 0.5rem;
+       }
+
+       .button-group {
+         flex-direction: column;
+         gap: 0.75rem;
+       }
+
+       .button-group .btn {
+         width: 100%;
+         min-width: auto;
+       }
+
+       .sidebar {
+         width: 90%;
+         max-width: none;
+       }
+     }
+
+    /* Print styles */
+    @media print {
+      .settings-button,
+      .menu-toggle,
+      .btn,
+      #settings-modal {
+        display: none;
+      }
+
+      .sidebar {
+        position: static;
+        width: 100%;
+        border: none;
+      }
+
+      .card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+      }
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+      .card {
+        border-width: 2px;
+      }
+
+      .btn:focus,
+      .select:focus,
+      .settings-button:focus {
+        outline-width: 3px;
+      }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Кнопка настроек -->
+  <button id="settings-btn" class="settings-button">⚙️</button>
+  
+  <!-- Кнопка меню для мобильных -->
+  <button id="menu-toggle" class="menu-toggle md:hidden">☰</button>
+
+  <!-- Модальное окно настроек -->
+  <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="settings-modal rounded-2xl p-6 max-w-md w-full">
+        <h3 class="text-xl font-bold mb-4">Настройки</h3>
+        
+        <div class="mb-4">
+          <label class="block font-semibold mb-2">Город:</label>
+          <select id="city-select" class="select w-full">
+            <option value="subotica">Суботица</option>
+            <option value="palic">Палич</option>
+            <option value="belgrade">Белград</option>
+            <option value="sombor">Сомбор</option>
+            <option value="novi-sad">Нови-Сад</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="block font-semibold mb-2">Тема:</label>
+          <select id="theme-select" class="select w-full">
+            <option value="light">Светлая</option>
+            <option value="dark">Темная</option>
+          </select>
+        </div>
+
+        <div class="mb-6">
+          <label class="block font-semibold mb-2">Голос:</label>
+          <select id="voice-select" class="select w-full"></select>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="save-settings" class="btn flex-1">Сохранить</button>
+          <button id="close-settings" class="btn-secondary flex-1">Закрыть</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex min-h-screen">
+    <!-- Боковая панель -->
+    <aside id="sidebar" class="sidebar w-full md:w-1/4 p-4 overflow-y-auto">
+      <h1 id="city-title" class="text-2xl font-bold mb-4">Маршрут по городу</h1>
+      
+      <!-- Выбор города -->
+      <div class="mb-6">
+        <label class="block font-semibold mb-2 text-sm">Выберите город:</label>
+        <select id="city-select-sidebar" class="select w-full">
+          <option value="subotica">Суботица</option>
+          <option value="palic">Палич</option>
+          <option value="belgrade">Белград</option>
+          <option value="sombor">Сомбор</option>
+          <option value="novi-sad">Нови-Сад</option>
+        </select>
+      </div>
+      
+      <nav id="poi-nav" class="space-y-2"></nav>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="flex-1 p-6 overflow-y-auto">
+      <div id="poi-card" class="card hidden">
+        <img id="poi-img" class="w-full h-64 object-cover rounded-xl mb-4" />
+        <h2 id="poi-title" class="text-xl font-bold mb-2"></h2>
+        <p id="poi-desc" class="mb-2 whitespace-pre-line leading-relaxed"></p>
+        <p id="poi-addr" class="mb-4 text-sm font-semibold"></p>
+        <div class="button-group justify-center">
+          <button id="prev-btn" class="btn">← Назад</button>
+          <button id="tell-btn" class="btn">▶️ Рассказать</button>
+          <button id="stop-btn" class="btn">⏹ Стоп</button>
+          <button id="next-btn" class="btn">Дальше →</button>
+        </div>
+      </div>
+
+      <!-- Приветственное сообщение -->
+      <div id="welcome-message" class="card text-center">
+        <h2 class="text-2xl font-bold mb-4">Добро пожаловать в аудиогид!</h2>
+        <p class="mb-4">Выберите город в настройках (⚙️) и начните путешествие по достопримечательностям.</p>
+        <p class="text-sm opacity-75">Поддерживаются города: Суботица, Палич, Белград, Сомбор, Нови-Сад</p>
+      </div>
+    </main>
+  </div>
+
+<script>
+// Конфигурации городов
+const cityConfigs = {
+  subotica: {
+    name: 'Суботице',
+    pois: [
+      {
+        name:'Ратуша City Hall',
+        img:'https://via.placeholder.com/800x600/4a90e2/ffffff?text=Ратуша',
+        text:`Символ города построен в стиле венгерской сецессии в 1908 1912 годах архитекторами Марцелем Комором и Дьёрдьем Якабом. Башня высотой 76 м открывает вид на Паннонию. Фасад украшен глазурованной керамикой Zsolnay, а внутри сверкают витражи мастеров парламента Будапешта. Площадь всех коридоров 16000 м2, и говорят, что в них легко заблудиться даже чиновникам.`,
+        addr:'Адрес Трг Слободе 1',
+        map:'https://maps.google.com/?q=46.0995648,19.6647683'
+      },
+      {
+        name:'Голубой фонтан',
+        img:'https://via.placeholder.com/800x600/2196f3/ffffff?text=Фонтан',
+        text:`Фонтан установлен на площади Республики в 2001 году. Синяя плитка изготовлена на заводе Zsolnay, как кровли многих зданий модерна вокруг. Вечером струи подсвечиваются, и фонтан виден за несколько кварталов. Местные назначают встречи фразой встречаемся у голубого.`,
+        addr:'Адрес Трг Републике',
+        map:'https://maps.google.com/?q=46.100257,19.664095'
+      },
+      {
+        name:'Синагога',
+        img:'https://via.placeholder.com/800x600/9c27b0/ffffff?text=Синагога',
+        text:`Синагога построена в 1902 году теми же архитекторами, что и ратушу. Это вторая по величине синагога Европы после будапештской Dohany. Купол переливается глазурью разных оттенков, а внутри сохранилась деревянная галерея на 1500 мест. После 40 лет запустения здание реставрировали и вновь открыли в 2018 году.`,
+        addr:'Адрес Трг Якаба и Комора 6',
+        map:'https://maps.google.com/?q=46.101467,19.661328'
+      },
+      {
+        name:'Дворец Райхля',
+        img:'https://via.placeholder.com/800x600/e91e63/ffffff?text=Дворец',
+        text:`Архитектор Ференц Райхле возвёл дворец в 1904 году как собственную визитную карточку. Фасад украшен мозаикой, коваными лилиями и керамикой цвета малины. Проект оказался настолько дорогостоящим, что архитектор продал дом, чтобы погасить долги. Сейчас здесь галерея современного искусства, а весной проходит фестиваль вина.`,
+        addr:'Адрес Парк Ференца Райхла 5',
+        map:'https://maps.google.com/?q=46.10215,19.65905'
+      },
+      {
+        name:'Национальный театр',
+        img:'https://via.placeholder.com/800x600/ff9800/ffffff?text=Театр',
+        text:`Первый театр Воеводины открылся в 1854 году. Здание несколько раз горело и перестраивалось. В 2007 году фасад разобрали и начали реконструкцию, которая длилась 17 лет. В 2022 году театр открылся премьерой сербской комедии.`,
+        addr:'Адрес Корзо 1',
+        map:'https://maps.google.com/?q=46.1003,19.6660'
+      },
+      {
+        name:'Кафедральный собор святой Терезы',
+        img:'https://via.placeholder.com/800x600/795548/ffffff?text=Собор',
+        text:`Собор построен в 1779 году по проекту архитектора Франца Кауфмана. Разные грунты под башнями вызвали наклон одной из них на 40 см. Алтари украшают картины венских мастеров. По воскресеньям здесь звучат органные концерты.`,
+        addr:'Адрес Трг Свете Терезије 1',
+        map:'https://maps.google.com/?q=46.1006,19.6679'
+      },
+      {
+        name:'Францисканская церковь святого Михаила',
+        img:'https://via.placeholder.com/800x600/607d8b/ffffff?text=Церковь',
+        text:`Самый старый храм города вырос из часовни 1695 года. Барочный облик церковь получила в 1730 году. Во дворе сохранился колодец с кованым воротом. Местные называют храм старой церковью и приходят сюда на праздник святого Михаила.`,
+        addr:'Адрес Трг Франјеваца 13',
+        map:'https://maps.google.com/?q=46.1010,19.6630'
+      }
+    ]
+  },
+
+  palic: {
+    name: 'Паличу',
+    pois: [
+      {
+        name:'Палич Озеро',
+        img:'https://via.placeholder.com/800x600/03a9f4/ffffff?text=Озеро',
+        text:`Озеро Палич расположено в 8 км от Суботицы. Глубина достигает 3 м, а площадь 5.8 км2. Озеро образовалось в период последнего ледникового периода. Летом температура воды достигает 26 градусов. Здесь гнездятся более 140 видов птиц.`,
+        addr:'Адрес Палички пут',
+        map:'https://maps.google.com/?q=46.0953,19.7589'
+      },
+      {
+        name:'Большая терраса',
+        img:'https://via.placeholder.com/800x600/00bcd4/ffffff?text=Терраса',
+        text:`Большая терраса построена в 1912 году в стиле сецессии. Длина террасы 217 м. Здесь проводились балы и концерты аристократии Австро Венгрии. В центре террасы находится музыкальный павильон. Сейчас здесь ресторан и кафе с видом на озеро.`,
+        addr:'Адрес Обала доктора Младена Стојановића',
+        map:'https://maps.google.com/?q=46.0958,19.7594'
+      },
+      {
+        name:'Водонапорная башня',
+        img:'https://via.placeholder.com/800x600/009688/ffffff?text=Башня',
+        text:`Башня высотой 32 м построена в 1912 году архитектором Титушом Мачковичем. Служила для водоснабжения курорта. Фасад украшен керамикой фабрики Zsolnay. Сейчас в башне смотровая площадка и галерея. С верхнего этажа открывается вид на озеро и Венгрию.`,
+        addr:'Адрес Парк Палић',
+        map:'https://maps.google.com/?q=46.0945,19.7580'
+      },
+      {
+        name:'Женская лечебница',
+        img:'https://via.placeholder.com/800x600/4caf50/ffffff?text=Женская+лечебница',
+        text:`Лечебница построена в 1908 году для женщин высшего общества. Здание украшено башенками и эркерами. Здесь принимали грязевые ванны и пили минеральную воду. Вода озера содержит натрий, магний и кальций. Сейчас в здании спа центр.`,
+        addr:'Адрес Обала доктора Младена Стојановића',
+        map:'https://maps.google.com/?q=46.0960,19.7600'
+      },
+      {
+        name:'Мужская лечебница',
+        img:'https://via.placeholder.com/800x600/8bc34a/ffffff?text=Мужская+лечебница',
+        text:`Мужская лечебница возведена в 1909 году в неороманском стиле. Фасад украшен арками и декоративными элементами. Мужчины принимали солнечные ванны и занимались греблей. Рядом был причал для лодок и яхт. Сейчас здесь отель и ресторан.`,
+        addr:'Адрес Обала доктора Младена Стојановића',
+        map:'https://maps.google.com/?q=46.0955,19.7585'
+      }
+    ]
+  },
+
+  belgrade: {
+    name: 'Белграду',
+    pois: [
+      {
+        name:'Калемегдан крепость',
+        img:'https://via.placeholder.com/800x600/f44336/ffffff?text=Крепость',
+        text:`Крепость на слиянии Савы и Дуная существует более 2000 лет. Римляне называли поселение Сингидунум. Сербы построили здесь столицу в 1284 году. Крепость осаждали турки, австрийцы и немцы. Сейчас это парк с музеями и памятниками. С крепостных стен открывается вид на два речных потока.`,
+        addr:'Адрес Калемегдан 1',
+        map:'https://maps.google.com/?q=44.8225,20.4487'
+      },
+      {
+        name:'Храм святого Савы',
+        img:'https://via.placeholder.com/800x600/e91e63/ffffff?text=Храм',
+        text:`Самый большой православный храм в мире строился с 1935 по 2004 год. Высота купола 65 м, а площадь 3500 м2. Храм вмещает 10000 верующих. Построен на месте сожжения мощей святого Савы в 1594 году. Внутри сверкают мозаики из золота и мрамора. Колокола весят до 4 тонн.`,
+        addr:'Адрес Крушедолска 2',
+        map:'https://maps.google.com/?q=44.7985,20.4687'
+      },
+      {
+        name:'Скадарлия',
+        img:'https://via.placeholder.com/800x600/9c27b0/ffffff?text=Скадарлия',
+        text:`Богемный квартал 19 века называют белградским Монмартром. Мощеные улочки помнят поэтов, художников и музыкантов. Здесь творили Джура Якшич и Милан Ракич. В кафанах звучат народные песни под гитару и тамбуру. Стены украшены портретами знаменитостей. Вечером улицы оживают музыкой и смехом.`,
+        addr:'Адрес Скадарска улица',
+        map:'https://maps.google.com/?q=44.8180,20.4605'
+      },
+      {
+        name:'Резиденция княгини Любицы',
+        img:'https://via.placeholder.com/800x600/673ab7/ffffff?text=Резиденция',
+        text:`Дворец построен в 1831 году для жены князя Милоша Обреновича. Здание в стиле балканского барокко украшено турецкими и европейskimi элементами. Любица жила здесь с детьми Милошем и Михаилом. Во дворце проходили приемы и балы. Сейчас это музей с экспозицией о жизни сербской аристократии.`,
+        addr:'Адрес Кнез Михаилова 8',
+        map:'https://maps.google.com/?q=44.8167,20.4563'
+      },
+      {
+        name:'Кнез Михаилова улица',
+        img:'https://via.placeholder.com/800x600/3f51b5/ffffff?text=Улица',
+        text:`Главная пешеходная улица Белграда протянулась на 1 км от площади Республики до Калемегдана. Названа в честь князя Михаила Обреновича. Здания построены в 19 веке в стилях класицизма и академизма. Здесь магазины, кафе и уличные музыканты. Вечером улица превращается в променад горожан и туристов.`,
+        addr:'Адрес Кнез Михаилова улица',
+        map:'https://maps.google.com/?q=44.8175,20.4580'
+      }
+    ]
+  },
+
+  sombor: {
+    name: 'Сомбору',
+    pois: [
+      {
+        name:'Ратуша Сомбора',
+        img:'https://via.placeholder.com/800x600/ff5722/ffffff?text=Ратуша',
+        text:`Ратуша построена в 1842 году в стиле класицизма. Здание украшают колонны и фронтон с гербом города. Башня с часами добавлена в 1883 году. Часы изготовлены в Вене и до сих пор работают. В ратуше заседает городской совет и мэрия. Площадь перед зданием вымощена камнем.`,
+        addr:'Адрес Трг цара Уроша 1',
+        map:'https://maps.google.com/?q=45.7747,19.1123'
+      },
+      {
+        name:'Сербский театр',
+        img:'https://via.placeholder.com/800x600/ff9800/ffffff?text=Театр',
+        text:`Театр открылся в 1882 году как первый профессиональный сербский театр в Воеводине. Здание построено в стиле неоренессанса. Зал вмещает 350 зрителей. Здесь начинали карьеру многие актеры. Театр носит имя Милоша Цицовачки. На сцене идут драмы, комедии и оперетты.`,
+        addr:'Адрес Позоришни трг 1',
+        map:'https://maps.google.com/?q=45.7740,19.1130'
+      },
+      {
+        name:'Церковь святого Георгия',
+        img:'https://via.placeholder.com/800x600/ffc107/ffffff?text=Церковь',
+        text:`Православный храм построен в 1763 году в стиле барокко. Иконостас резал мастер Арсеније Маркович. Церковь освящена в честь святого Георгия Победоносца. Колокольня высотой 45 м видна со всех концов города. Во дворе похоронены епископы и благотворители. По праздникам звонят 6 колоколов.`,
+        addr:'Адрес Епископска 2',
+        map:'https://maps.google.com/?q=45.7745,19.1115'
+      },
+      {
+        name:'Дворец Карачони',
+        img:'https://via.placeholder.com/800x600/ffeb3b/ffffff?text=Дворец',
+        text:`Дворец построен в 1749 году венгерским графом Карачони в стиле барокко. Фасад украшен лепниной и гербами. В залах сохранились фрески и паркет 18 века. Граф содержал здесь библиотеку и картинную галерею. Сейчас во дворце музей и концертный зал. В парке растут 200 летние дубы.`,
+        addr:'Адрес Музејска 3',
+        map:'https://maps.google.com/?q=45.7750,19.1140'
+      },
+      {
+        name:'Пивоварня',
+        img:'https://via.placeholder.com/800x600/cddc39/ffffff?text=Пивоварня',
+        text:`Пивоварня основана в 1896 году немецким пивоваром Паулем Хофбауэром. Завод варит пиво по баварским технологиям. Здания построены из красного кирпича в промышленном стиле. Производят лагер, пльзен и темное пиво. При заводе работает музей пивоварения и дегустационный зал. Пиво экспортируют в 6 стран.`,
+        addr:'Адрес Слободна зона',
+        map:'https://maps.google.com/?q=45.7720,19.1180'
+      }
+    ]
+  },
+
+  "novi-sad": {
+    name: 'Нови-Саду',
+    pois: [
+      {
+        name:'Петроварадинская крепость',
+        img:'https://via.placeholder.com/800x600/795548/ffffff?text=Крепость',
+        text:`Крепость на Дунае строили австрийцы с 1692 по 1780 год. Подземные галереи тянутся на 16 км. Крепость называют Гибралтаром на Дунае. Здесь проходит фестиваль EXIT. Башня с часами показывает время наоборот, длинная стрелка указывает часы, короткая минуты. С крепости видны Дунай и центр города.`,
+        addr:'Адрес Петроварадин',
+        map:'https://maps.google.com/?q=45.2515,19.8667'
+      },
+      {
+        name:'Площадь Слободы',
+        img:'https://via.placeholder.com/800x600/607d8b/ffffff?text=Площадь',
+        text:`Главная площадь города заложена в 1748 году. Размер 200 на 150 м делает её одной из крупнейших в Европе. В центре памятник Светозару Милетичу работы Ивана Мештровича. Площадь окружают здания 18 19 веков. Здесь проходят концерты, ярмарки и народные гуляния. Зимой работает каток.`,
+        addr:'Адрес Трг Слободе',
+        map:'https://maps.google.com/?q=45.2547,19.8447'
+      },
+      {
+        name:'Римо католический собор',
+        img:'https://via.placeholder.com/800x600/9e9e9e/ffffff?text=Собор',
+        text:`Собор Девы Марии построен в 1895 году в неоготическом стиле. Башни высотой 76 м видны из любой точки города. Витражи изготовлены в мастерских Будапешта. Орган имеет 3000 труб и звучит на концертах. Собор вмещает 5000 верующих. Колокола отлиты в Германии и весят 3 тонны.`,
+        addr:'Адрес Кирилова 1',
+        map:'https://maps.google.com/?q=45.2540,19.8435'
+      },
+      {
+        name:'Дунайский парк',
+        img:'https://via.placeholder.com/800x600/4caf50/ffffff?text=Парк',
+        text:`Парк заложен в 1895 году по проекту венского ландшафтного архитектора. Площадь 3.5 га в центре города. Здесь растут липы, каштаны и платаны возрастом более 100 лет. В парке памятники поэтам и писателям. Летом работают кафе и детские площадки. Осенью парк превращается в золотой ковер листвы.`,
+        addr:'Адрес Дунавски парк',
+        map:'https://maps.google.com/?q=45.2560,19.8420'
+      },
+      {
+        name:'Сербский национальный театр',
+        img:'https://via.placeholder.com/800x600/2196f3/ffffff?text=Театр',
+        text:`Театр основан в 1861 году как первый профессиональный сербский театр. Здание построено в 1981 году в современном стиле. В театре три сцены и 900 мест. Здесь ставят драмы, комедии, оперы и балеты. Театр носит имя Йована Дорошенского. Труппа гастролирует по Европе и получает международные награды.`,
+        addr:'Адрес Позоришни трг 1',
+        map:'https://maps.google.com/?q=45.2535,19.8445'
+      }
+    ]
+  }
+};
+
+// Элементы интерфейса
+const nav = document.getElementById('poi-nav');
+const card = document.getElementById('poi-card');
+const welcomeMessage = document.getElementById('welcome-message');
+const img = document.getElementById('poi-img');
+const title = document.getElementById('poi-title');
+const desc = document.getElementById('poi-desc');
+const addrEl = document.getElementById('poi-addr');
+const prev = document.getElementById('prev-btn');
+const next = document.getElementById('next-btn');
+const tell = document.getElementById('tell-btn');
+const stop = document.getElementById('stop-btn');
+const cityTitle = document.getElementById('city-title');
+
+// Настройки
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const citySelect = document.getElementById('city-select');
+const citySelectSidebar = document.getElementById('city-select-sidebar');
+const themeSelect = document.getElementById('theme-select');
+const voiceSelect = document.getElementById('voice-select');
+const saveSettings = document.getElementById('save-settings');
+const closeSettings = document.getElementById('close-settings');
+
+// Мобильное меню
+const menuToggle = document.getElementById('menu-toggle');
+const sidebar = document.getElementById('sidebar');
+
+// Состояние приложения
+let voices = [];
+let voiceIndex = -1;
+let current = 0;
+let currentCity = 'subotica';
+let currentTheme = 'light';
+
+// Функции управления настройками
+function loadSettings() {
+  const savedCity = localStorage.getItem('audioguide-city') || 'subotica';
+  const savedTheme = localStorage.getItem('audioguide-theme') || 'light';
+  const savedVoice = localStorage.getItem('audioguide-voice') || '-1';
+  
+  currentCity = savedCity;
+  currentTheme = savedTheme;
+  voiceIndex = parseInt(savedVoice);
+  
+  citySelect.value = currentCity;
+  citySelectSidebar.value = currentCity;
+  themeSelect.value = currentTheme;
+  applyTheme(currentTheme);
+}
+
+function saveSettingsToStorage() {
+  localStorage.setItem('audioguide-city', currentCity);
+  localStorage.setItem('audioguide-theme', currentTheme);
+  localStorage.setItem('audioguide-voice', voiceIndex.toString());
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  currentTheme = theme;
+}
+
+function populateVoices() {
+  voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ru'));
+  voiceSelect.innerHTML = '';
+  
+  if (voices.length === 0) {
+    const option = document.createElement('option');
+    option.value = '-1';
+    option.textContent = 'Системный голос';
+    voiceSelect.appendChild(option);
+    voiceIndex = -1;
+  } else {
+    voices.forEach((voice, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = voice.name;
+      voiceSelect.appendChild(option);
+    });
+    if (voiceIndex === -1 || voiceIndex >= voices.length) voiceIndex = 0;
+  }
+  
+  voiceSelect.value = voiceIndex;
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'ru-RU';
+  
+  if (voiceIndex >= 0 && voices[voiceIndex]) {
+    utterance.voice = voices[voiceIndex];
+  }
+  
+  speechSynthesis.speak(utterance);
+}
+
+function loadCity(cityKey) {
+  const config = cityConfigs[cityKey];
+  if (!config) return;
+  
+  currentCity = cityKey;
+  cityTitle.textContent = `Маршрут по ${config.name}`;
+  
+  // Очищаем навигацию
+  nav.innerHTML = '';
+  
+  // Создаем кнопки для достопримечательностей
+  config.pois.forEach((poi, index) => {
+    const button = document.createElement('button');
+    button.textContent = poi.name;
+    button.className = 'block w-full text-left btn-secondary mb-2 p-3 rounded-xl transition-all hover:scale-105';
+    button.onclick = () => showPOI(index);
+    nav.appendChild(button);
+  });
+  
+  // Скрываем приветственное сообщение и показываем первую достопримечательность
+  welcomeMessage.classList.add('hidden');
+  showPOI(0);
+}
+
+function showPOI(index) {
+  const config = cityConfigs[currentCity];
+  if (!config || !config.pois[index]) return;
+  
+  current = index;
+  const poi = config.pois[index];
+  
+  img.src = poi.img;
+  title.textContent = poi.name;
+  desc.textContent = poi.text;
+  addrEl.innerHTML = `${poi.addr} • <a class='underline' style='color: var(--primary-color)' href='${poi.map}' target='_blank'>Показать на карте</a>`;
+  
+  card.classList.remove('hidden');
+  
+  prev.disabled = index === 0;
+  next.disabled = index === config.pois.length - 1;
+  
+  // Закрываем мобильное меню
+  sidebar.classList.remove('open');
+}
+
+// Обработчики событий
+speechSynthesis.onvoiceschanged = populateVoices;
+
+settingsBtn.onclick = () => settingsModal.classList.remove('hidden');
+closeSettings.onclick = () => settingsModal.classList.add('hidden');
+
+settingsModal.onclick = (e) => {
+  if (e.target === settingsModal) settingsModal.classList.add('hidden');
+};
+
+saveSettings.onclick = () => {
+  currentCity = citySelect.value;
+  currentTheme = themeSelect.value;
+  voiceIndex = parseInt(voiceSelect.value);
+  
+  applyTheme(currentTheme);
+  loadCity(currentCity);
+  citySelectSidebar.value = currentCity;
+  saveSettingsToStorage();
+  settingsModal.classList.add('hidden');
+};
+
+// Обработчик выбора города в боковой панели
+citySelectSidebar.onchange = () => {
+  currentCity = citySelectSidebar.value;
+  citySelect.value = currentCity;
+  loadCity(currentCity);
+  saveSettingsToStorage();
+};
+
+themeSelect.onchange = () => {
+  applyTheme(themeSelect.value);
+};
+
+voiceSelect.onchange = () => {
+  voiceIndex = parseInt(voiceSelect.value);
+};
+
+prev.onclick = () => {
+  if (current > 0) showPOI(current - 1);
+};
+
+next.onclick = () => {
+  const config = cityConfigs[currentCity];
+  if (current < config.pois.length - 1) showPOI(current + 1);
+};
+
+tell.onclick = () => {
+  const config = cityConfigs[currentCity];
+  speak(config.pois[current].text);
+};
+
+stop.onclick = () => speechSynthesis.cancel();
+
+// Мобильное меню
+menuToggle.onclick = () => {
+  sidebar.classList.toggle('open');
+};
+
+// Закрытие мобильного меню при клике вне его
+document.onclick = (e) => {
+  if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+    sidebar.classList.remove('open');
+  }
+};
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+  populateVoices();
+  loadSettings();
+  loadCity(currentCity);
+});
+</script>
+</body>
+</html>

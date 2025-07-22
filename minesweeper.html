@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сапёр</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #c0c0c0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 32px;
+        }
+        
+        .difficulty {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .difficulty button {
+            background-color: #c0c0c0;
+            color: #000;
+            border: 3px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            padding: 5px 10px;
+            font-weight: bold;
+            width: 100px;
+            box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf;
+        }
+        
+        .difficulty button:hover {
+            background-color: #d1d1d1;
+        }
+        
+        .difficulty button.active {
+            background-color: #bdbdbd;
+            border-color: #808080 #ffffff #ffffff #808080;
+            box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #dfdfdf;
+        }
+        
+        .game-container {
+            position: relative;
+            margin-bottom: 20px;
+            border: 3px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            background-color: #c0c0c0;
+            padding: 6px;
+            box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf;
+            box-sizing: border-box;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            border: 2px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            padding: 4px 6px;
+            background-color: #c0c0c0;
+        }
+        
+        .counter {
+            background-color: #000;
+            color: #f00;
+            font-family: 'LCD', 'Digital', monospace;
+            font-size: 24px;
+            padding: 0;
+            width: 48px;
+            height: 28px;
+            text-align: right;
+            font-weight: bold;
+            border: 1px solid #808080;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 1px 1px 1px rgba(0,0,0,0.5);
+        }
+        
+        .smiley {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            background-color: #c0c0c0;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .smiley:active {
+            border-color: #808080 #ffffff #ffffff #808080;
+            box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #dfdfdf;
+        }
+        
+        .game-board {
+            display: grid;
+            gap: 0;
+            border: 3px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            background-color: #c0c0c0;
+        }
+        
+        .cell {
+            width: 16px;
+            height: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            background-color: #c0c0c0;
+            box-sizing: border-box;
+        }
+        
+        .cell:active:not(.revealed):not(.flag) {
+            border-color: #808080 #ffffff #ffffff #808080;
+        }
+        
+        .cell.revealed {
+            border: 1px solid #808080;
+            border-style: solid none none solid;
+            background-color: #c0c0c0;
+        }
+        
+        .cell.mine {
+            background-color: #ff0000;
+        }
+        
+        .cell.flag {
+            background-color: #c0c0c0;
+            position: relative;
+        }
+        
+        .num-1 { color: blue; }
+        .num-2 { color: green; }
+        .num-3 { color: red; }
+        .num-4 { color: darkblue; }
+        .num-5 { color: #7b0000; }
+        .num-6 { color: teal; }
+        .num-7 { color: black; }
+        .num-8 { color: #808080; }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 6px 12px;
+            font-size: 14px;
+            background-color: #c0c0c0;
+            color: black;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #d1d1d1;
+        }
+        
+        button:active {
+            border-color: #808080 #ffffff #ffffff #808080;
+            box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #dfdfdf;
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            font-size: 24px;
+            display: none;
+        }
+        
+        .game-over button {
+            margin-top: 20px;
+            background-color: #c0c0c0;
+            color: black;
+        }
+        
+        .autoplay.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        @font-face {
+            font-family: 'LCD';
+            src: url('https://cdn.jsdelivr.net/npm/digital-7-mono@1.0.0/index.ttf');
+        }
+        
+        /* Windows 98 стиль для мин и флагов */
+        .cell.mine::after {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background-color: black;
+            border-radius: 50%;
+            position: absolute;
+        }
+        
+        .cell.flag::after {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 2px solid transparent;
+            border-right: 2px solid transparent;
+            border-bottom: 8px solid red;
+            position: absolute;
+            top: 2px;
+        }
+        
+        .cell.flag::before {
+            content: "";
+            width: 2px;
+            height: 9px;
+            background-color: black;
+            position: absolute;
+            left: 8px;
+            top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Сапёр</h1>
+    
+    <!-- 
+    ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+    Цель: Создать классическую игру "Сапёр" с аутентичным интерфейсом в стиле Windows 95/98
+    и дополнительными функциями для повышения удобства игры.
+
+    Функциональные требования:
+    1. Игровой процесс:
+       - Три уровня сложности: легкий (9x9, 10 мин), средний (16x16, 40 мин), сложный (16x30, 99 мин)
+       - Открытие клеток левым кликом, установка флагов правым кликом
+       - Защита от проигрыша на первом ходу (мины размещаются после первого клика)
+       - Автоматическое открытие соседних пустых клеток
+       - Индикация количества мин вокруг открытой клетки
+       - Возможность перезапуска игры в любой момент
+
+    2. Интерфейс:
+       - Точное воспроизведение стиля классического "Сапёра" из Windows 95/98
+       - Счетчик оставшихся мин с LED-дисплеем
+       - Таймер с LED-дисплеем для отслеживания времени игры
+       - Интерактивный смайлик, отражающий состояние игры
+       - Цветовая кодировка чисел для удобства восприятия
+
+    3. Дополнительные функции:
+       - Режим автоматической игры с алгоритмическим решением
+       - Индикация победы/поражения
+       - Возможность настройки уровня сложности через интерфейс
+       - Визуальная обратная связь при взаимодействии с элементами
+
+    Технические требования:
+    1. Использование только нативного JavaScript (без фреймворков и библиотек)
+    2. Адаптивный дизайн с сохранением стилистики оригинальной игры
+    3. Оптимизированный алгоритм для поиска соседних клеток
+    4. Оптимизация работы автоматического режима игры
+    5. Поддержка современных браузеров
+    6. Отзывчивый интерфейс с корректной обратной связью
+    7. Точное соответствие визуального стиля Windows 95/98
+    -->
+
+    <div class="difficulty">
+        <button id="easy" class="active">Легкий</button>
+        <button id="medium">Средний</button>
+        <button id="hard">Сложный</button>
+    </div>
+    
+    <div class="game-container">
+        <div class="header">
+            <div id="flags" class="counter">010</div>
+            <div id="smiley" class="smiley">😊</div>
+            <div id="timer" class="counter">000</div>
+        </div>
+        <div class="game-board" id="board"></div>
+        <div class="game-over" id="gameOver">
+            <div id="gameOverText">Игра окончена!</div>
+            <button id="restartBtn">Начать заново</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button id="newGameBtn">Новая игра</button>
+        <button id="autoplayBtn" class="autoplay">Автоигра</button>
+    </div>
+    
+    <script>
+        // Настройки игры для разных уровней сложности
+        const DIFFICULTY = {
+            easy: { rows: 9, cols: 9, mines: 10 },
+            medium: { rows: 16, cols: 16, mines: 40 },
+            hard: { rows: 16, cols: 30, mines: 99 }
+        };
+        
+        // Основной класс игры
+        class Minesweeper {
+            constructor(rows, cols, mineCount) {
+                this.rows = rows;
+                this.cols = cols;
+                this.mineCount = mineCount;
+                this.board = [];
+                this.gameOver = false;
+                this.revealed = 0;
+                this.flagsPlaced = 0;
+                this.timer = 0;
+                this.timerInterval = null;
+                this.firstClick = true;
+                this.isWin = null;
+                this.autoplayMode = false;
+                this.autoplayInterval = null;
+                this.autoplaySpeed = 300; // Скорость автоигры в ms
+                
+                this.createBoard();
+                this.renderBoard();
+                this.updateFlagsCount();
+                this.resetTimer();
+                this.updateSmiley('😊');
+            }
+            
+            // Создание игрового поля
+            createBoard() {
+                // Инициализация пустого поля
+                this.board = [];
+                for (let i = 0; i < this.rows; i++) {
+                    const row = [];
+                    for (let j = 0; j < this.cols; j++) {
+                        row.push({
+                            row: i,
+                            col: j,
+                            isMine: false,
+                            isRevealed: false,
+                            isFlagged: false,
+                            neighborMines: 0
+                        });
+                    }
+                    this.board.push(row);
+                }
+            }
+            
+            // Размещение мин после первого клика
+            placeMines(clickedRow, clickedCol) {
+                let minesPlaced = 0;
+                
+                while (minesPlaced < this.mineCount) {
+                    const row = Math.floor(Math.random() * this.rows);
+                    const col = Math.floor(Math.random() * this.cols);
+                    
+                    // Не размещаем мину в месте первого клика и вокруг него
+                    if (!this.board[row][col].isMine && 
+                        !(Math.abs(row - clickedRow) <= 1 && Math.abs(col - clickedCol) <= 1)) {
+                        this.board[row][col].isMine = true;
+                        minesPlaced++;
+                    }
+                }
+                
+                // Подсчет соседних мин для каждой клетки
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        if (!this.board[i][j].isMine) {
+                            this.board[i][j].neighborMines = this.countNeighborMines(i, j);
+                        }
+                    }
+                }
+            }
+            
+            // Подсчет количества мин вокруг клетки
+            countNeighborMines(row, col) {
+                let count = 0;
+                
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        const newRow = row + i;
+                        const newCol = col + j;
+                        
+                        if (newRow >= 0 && newRow < this.rows && 
+                            newCol >= 0 && newCol < this.cols && 
+                            this.board[newRow][newCol].isMine) {
+                            count++;
+                        }
+                    }
+                }
+                
+                return count;
+            }
+            
+            // Получение соседей клетки
+            getNeighbors(row, col) {
+                const neighbors = [];
+                
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if (i === 0 && j === 0) continue; // Пропускаем саму клетку
+                        
+                        const newRow = row + i;
+                        const newCol = col + j;
+                        
+                        if (newRow >= 0 && newRow < this.rows && 
+                            newCol >= 0 && newCol < this.cols) {
+                            neighbors.push(this.board[newRow][newCol]);
+                        }
+                    }
+                }
+                
+                return neighbors;
+            }
+            
+            // Отрисовка игрового поля
+            renderBoard() {
+                const boardElement = document.getElementById('board');
+                boardElement.innerHTML = '';
+                
+                // Устанавливаем размер сетки
+                boardElement.style.gridTemplateColumns = `repeat(${this.cols}, 16px)`;
+                boardElement.style.gridTemplateRows = `repeat(${this.rows}, 16px)`;
+                
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        
+                        if (this.board[i][j].isRevealed) {
+                            cell.classList.add('revealed');
+                            
+                            if (this.board[i][j].isMine) {
+                                cell.classList.add('mine');
+                                cell.textContent = '💣';
+                            } else if (this.board[i][j].neighborMines > 0) {
+                                cell.textContent = this.board[i][j].neighborMines;
+                                cell.classList.add(`num-${this.board[i][j].neighborMines}`);
+                            }
+                        } else if (this.board[i][j].isFlagged) {
+                            cell.classList.add('flag');
+                            cell.textContent = '🚩';
+                        }
+                        
+                        // События мыши
+                        cell.addEventListener('mousedown', () => {
+                            if (!this.gameOver && !this.board[i][j].isRevealed) {
+                                this.updateSmiley('😮');
+                            }
+                        });
+                        
+                        cell.addEventListener('mouseup', () => {
+                            if (!this.gameOver) {
+                                this.updateSmiley('😊');
+                            }
+                        });
+                        
+                        cell.addEventListener('click', () => this.handleCellClick(i, j));
+                        cell.addEventListener('contextmenu', (e) => {
+                            e.preventDefault();
+                            this.toggleFlag(i, j);
+                        });
+                        
+                        boardElement.appendChild(cell);
+                    }
+                }
+            }
+            
+            // Обработка клика по клетке
+            handleCellClick(row, col) {
+                if (this.gameOver || this.board[row][col].isRevealed || this.board[row][col].isFlagged) {
+                    return;
+                }
+                
+                // Первый клик
+                if (this.firstClick) {
+                    this.firstClick = false;
+                    this.placeMines(row, col);
+                    this.startTimer();
+                }
+                
+                if (this.board[row][col].isMine) {
+                    this.revealMines();
+                    this.endGame(false);
+                    return;
+                }
+                
+                this.revealCell(row, col);
+                this.renderBoard();
+                
+                // Проверка на победу
+                if (this.revealed === (this.rows * this.cols - this.mineCount)) {
+                    this.endGame(true);
+                }
+            }
+            
+            // Открытие клетки
+            revealCell(row, col) {
+                if (row < 0 || row >= this.rows || col < 0 || col >= this.cols || 
+                    this.board[row][col].isRevealed || this.board[row][col].isFlagged) {
+                    return;
+                }
+                
+                this.board[row][col].isRevealed = true;
+                this.revealed++;
+                
+                // Если клетка пустая - открываем соседние
+                if (this.board[row][col].neighborMines === 0) {
+                    for (let i = -1; i <= 1; i++) {
+                        for (let j = -1; j <= 1; j++) {
+                            this.revealCell(row + i, col + j);
+                        }
+                    }
+                }
+            }
+            
+            // Установка/снятие флага
+            toggleFlag(row, col) {
+                if (this.gameOver || this.board[row][col].isRevealed) {
+                    return;
+                }
+                
+                if (this.firstClick) {
+                    this.firstClick = false;
+                    this.placeMines(row, col);
+                    this.startTimer();
+                }
+                
+                if (this.board[row][col].isFlagged) {
+                    this.board[row][col].isFlagged = false;
+                    this.flagsPlaced--;
+                } else {
+                    // Не позволяем ставить больше флагов, чем мин
+                    if (this.flagsPlaced < this.mineCount) {
+                        this.board[row][col].isFlagged = true;
+                        this.flagsPlaced++;
+                    }
+                }
+                
+                this.updateFlagsCount();
+                this.renderBoard();
+            }
+            
+            // Открытие всех мин
+            revealMines() {
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        if (this.board[i][j].isMine) {
+                            this.board[i][j].isRevealed = true;
+                        }
+                    }
+                }
+                this.renderBoard();
+            }
+            
+            // Завершение игры
+            endGame(isWin) {
+                this.gameOver = true;
+                this.isWin = isWin;
+                clearInterval(this.timerInterval);
+                
+                // Останавливаем автоигру
+                this.stopAutoplay();
+                
+                // Обновляем смайлик
+                this.updateSmiley(isWin ? '😎' : '😵');
+                
+                // Если победа, помечаем все мины флажками
+                if (isWin) {
+                    for (let i = 0; i < this.rows; i++) {
+                        for (let j = 0; j < this.cols; j++) {
+                            if (this.board[i][j].isMine && !this.board[i][j].isFlagged) {
+                                this.board[i][j].isFlagged = true;
+                                this.flagsPlaced++;
+                            }
+                        }
+                    }
+                    this.updateFlagsCount();
+                    this.renderBoard();
+                }
+                
+                const gameOverElement = document.getElementById('gameOver');
+                const gameOverTextElement = document.getElementById('gameOverText');
+                
+                gameOverElement.style.display = 'flex';
+                if (isWin) {
+                    gameOverTextElement.textContent = "Победа! Все мины найдены!";
+                } else {
+                    gameOverTextElement.textContent = "Игра окончена! Вы подорвались на мине!";
+                }
+            }
+            
+            // Обновление счетчика флагов
+            updateFlagsCount() {
+                const remainingFlags = this.mineCount - this.flagsPlaced;
+                document.getElementById('flags').textContent = remainingFlags.toString().padStart(3, '0');
+            }
+            
+            // Запуск таймера
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    this.timer++;
+                    if (this.timer > 999) this.timer = 999;
+                    document.getElementById('timer').textContent = this.timer.toString().padStart(3, '0');
+                }, 1000);
+            }
+            
+            // Сброс таймера
+            resetTimer() {
+                clearInterval(this.timerInterval);
+                this.timer = 0;
+                document.getElementById('timer').textContent = this.timer.toString().padStart(3, '0');
+            }
+            
+            // Обновление смайлика
+            updateSmiley(emoji) {
+                document.getElementById('smiley').textContent = emoji;
+            }
+            
+            // Включение/выключение режима автоигры
+            toggleAutoplay() {
+                if (this.autoplayMode) {
+                    this.stopAutoplay();
+                } else {
+                    this.startAutoplay();
+                }
+            }
+            
+            // Запуск автоигры
+            startAutoplay() {
+                if (this.gameOver) return;
+                
+                this.autoplayMode = true;
+                document.getElementById('autoplayBtn').classList.add('active');
+                
+                // Если первый ход, начинаем с центра
+                if (this.firstClick) {
+                    const centerRow = Math.floor(this.rows / 2);
+                    const centerCol = Math.floor(this.cols / 2);
+                    this.handleCellClick(centerRow, centerCol);
+                }
+                
+                // Запускаем интервал автоигры
+                this.autoplayInterval = setInterval(() => {
+                    if (this.gameOver) {
+                        this.stopAutoplay();
+                        return;
+                    }
+                    
+                    const madeMove = this.makeAutoMove();
+                    
+                    // Если ходов больше нет, останавливаем автоигру
+                    if (!madeMove) {
+                        this.stopAutoplay();
+                    }
+                }, this.autoplaySpeed);
+            }
+            
+            // Остановка автоигры
+            stopAutoplay() {
+                this.autoplayMode = false;
+                document.getElementById('autoplayBtn').classList.remove('active');
+                clearInterval(this.autoplayInterval);
+            }
+            
+            // Сделать автоматический ход
+            makeAutoMove() {
+                // 1. Ищем открытые клетки с цифрами, где можем определить все мины
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        if (this.board[i][j].isRevealed && !this.board[i][j].isMine && this.board[i][j].neighborMines > 0) {
+                            const neighbors = this.getNeighbors(i, j);
+                            const unopenedNeighbors = neighbors.filter(n => !n.isRevealed);
+                            const flaggedNeighbors = neighbors.filter(n => n.isFlagged);
+                            
+                            // Если число мин равно числу закрытых соседей, все они - мины
+                            if (unopenedNeighbors.length > 0 && this.board[i][j].neighborMines === unopenedNeighbors.length && 
+                                flaggedNeighbors.length < unopenedNeighbors.length) {
+                                for (const neighbor of unopenedNeighbors) {
+                                    if (!neighbor.isFlagged) {
+                                        this.toggleFlag(neighbor.row, neighbor.col);
+                                        return true;
+                                    }
+                                }
+                            }
+                            
+                            // Если число мин равно числу отмеченных флагами, остальные безопасны
+                            if (unopenedNeighbors.length > 0 && flaggedNeighbors.length === this.board[i][j].neighborMines &&
+                                unopenedNeighbors.length > flaggedNeighbors.length) {
+                                for (const neighbor of unopenedNeighbors) {
+                                    if (!neighbor.isFlagged) {
+                                        this.handleCellClick(neighbor.row, neighbor.col);
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 2. Если нет логичного хода, пробуем угадать самую безопасную клетку
+                const lowestProbabilityCell = this.findLowestProbabilityCell();
+                if (lowestProbabilityCell) {
+                    this.handleCellClick(lowestProbabilityCell.row, lowestProbabilityCell.col);
+                    return true;
+                }
+                
+                // 3. Если все перепробовали, открываем случайную клетку
+                const unopenedCells = [];
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        if (!this.board[i][j].isRevealed && !this.board[i][j].isFlagged) {
+                            unopenedCells.push({row: i, col: j});
+                        }
+                    }
+                }
+                
+                if (unopenedCells.length > 0) {
+                    const randomCell = unopenedCells[Math.floor(Math.random() * unopenedCells.length)];
+                    this.handleCellClick(randomCell.row, randomCell.col);
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            // Поиск клетки с наименьшей вероятностью содержания мины
+            findLowestProbabilityCell() {
+                let bestCell = null;
+                let lowestProbability = 1.1; // Начинаем с вероятности больше 1
+                
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        if (!this.board[i][j].isRevealed && !this.board[i][j].isFlagged) {
+                            // Клетка рядом с открытой имеет преимущество
+                            let hasRevealedNeighbor = false;
+                            let totalProbability = 0;
+                            let neighborCount = 0;
+                            
+                            const neighbors = this.getNeighbors(i, j);
+                            for (const neighbor of neighbors) {
+                                if (neighbor.isRevealed) {
+                                    hasRevealedNeighbor = true;
+                                    if (neighbor.neighborMines > 0) {
+                                        const localNeighbors = this.getNeighbors(neighbor.row, neighbor.col);
+                                        const unopenedLocalNeighbors = localNeighbors.filter(n => !n.isRevealed && !n.isFlagged);
+                                        const flaggedLocalNeighbors = localNeighbors.filter(n => n.isFlagged);
+                                        
+                                        // Вероятность = (число мин - число флагов) / число неоткрытых соседей
+                                        if (unopenedLocalNeighbors.length > 0) {
+                                            const probability = (neighbor.neighborMines - flaggedLocalNeighbors.length) / unopenedLocalNeighbors.length;
+                                            totalProbability += probability;
+                                            neighborCount++;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Если есть соседи с информацией, считаем среднюю вероятность
+                            if (neighborCount > 0) {
+                                const avgProbability = totalProbability / neighborCount;
+                                if (avgProbability < lowestProbability) {
+                                    lowestProbability = avgProbability;
+                                    bestCell = {row: i, col: j};
+                                }
+                            } else if (!hasRevealedNeighbor && !bestCell) {
+                                // Если нет соседей с информацией, это запасной вариант
+                                bestCell = {row: i, col: j};
+                            }
+                        }
+                    }
+                }
+                
+                return bestCell;
+            }
+        }
+        
+        // Текущие настройки игры
+        let currentDifficulty = 'easy';
+        let game = new Minesweeper(
+            DIFFICULTY[currentDifficulty].rows,
+            DIFFICULTY[currentDifficulty].cols,
+            DIFFICULTY[currentDifficulty].mines
+        );
+        
+        // Функция для создания новой игры
+        function startNewGame() {
+            // Если автоигра запущена - останавливаем
+            if (game.autoplayMode) {
+                game.stopAutoplay();
+            }
+            
+            game = new Minesweeper(
+                DIFFICULTY[currentDifficulty].rows,
+                DIFFICULTY[currentDifficulty].cols,
+                DIFFICULTY[currentDifficulty].mines
+            );
+            document.getElementById('gameOver').style.display = 'none';
+        }
+        
+        // Обработчики событий для кнопок
+        document.getElementById('newGameBtn').addEventListener('click', startNewGame);
+        document.getElementById('restartBtn').addEventListener('click', startNewGame);
+        document.getElementById('smiley').addEventListener('click', startNewGame);
+        document.getElementById('autoplayBtn').addEventListener('click', () => {
+            game.toggleAutoplay();
+        });
+        
+        // Обработчики для выбора уровня сложности
+        document.getElementById('easy').addEventListener('click', () => {
+            setDifficulty('easy');
+        });
+        
+        document.getElementById('medium').addEventListener('click', () => {
+            setDifficulty('medium');
+        });
+        
+        document.getElementById('hard').addEventListener('click', () => {
+            setDifficulty('hard');
+        });
+        
+        // Установка уровня сложности
+        function setDifficulty(difficulty) {
+            currentDifficulty = difficulty;
+            
+            // Обновление активной кнопки
+            document.querySelectorAll('.difficulty button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.getElementById(difficulty).classList.add('active');
+            
+            // Обновляем ширину контейнера
+            const gameContainer = document.querySelector('.game-container');
+            if (difficulty === 'easy') {
+                gameContainer.style.width = '240px';
+            } else if (difficulty === 'medium') {
+                gameContainer.style.width = '380px';
+            } else {
+                gameContainer.style.width = '600px';
+            }
+            
+            startNewGame();
+        }
+        
+        // Устанавливаем начальную ширину контейнера
+        document.querySelector('.game-container').style.width = '240px';
+        
+        // Обработка событий наведения на поле
+        document.addEventListener('mouseup', () => {
+            if (game && !game.gameOver) {
+                game.updateSmiley('😊');
+            }
+        });
+    </script>
+</body>
+</html> 

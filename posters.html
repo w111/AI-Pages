@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор Постеров</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #F3F4F6; /* gray-100 */
+            margin: 0;
+            padding: 0;
+            color: #1F2937; /* gray-800 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem 1rem; /* py-8 px-4 */
+            box-sizing: border-box;
+        }
+
+        .page-header {
+            margin-bottom: 2rem; /* mb-8 */
+            text-align: center;
+        }
+
+        .page-header h1 {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 700; /* font-bold */
+            color: #1F2937; /* gray-800 */
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            font-size: 1.125rem; /* text-lg */
+            color: #4B5563; /* gray-600 */
+            margin-top: 0.5rem; /* mt-2 */
+        }
+
+        .main-content {
+            width: 100%;
+            max-width: 64rem; /* max-w-5xl (approx) */
+            display: flex;
+            flex-direction: column;
+            gap: 2rem; /* gap-8 */
+        }
+
+        .controls-panel {
+            background-color: #FFFFFF; /* bg-white */
+            padding: 1.5rem; /* p-6 */
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
+        }
+        
+        .controls-panel h2 {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 600; /* font-semibold */
+            color: #1F2937; /* gray-800 */
+            margin-top: 0;
+            margin-bottom: 1.5rem; /* mb-6 */
+            padding-bottom: 0.75rem; /* pb-3 */
+            border-bottom: 1px solid #E5E7EB; /* border-b */
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem; /* mb-5 */
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem; /* text-md (approx) */
+            font-weight: 500; /* font-medium */
+            color: #374151; /* gray-700 */
+            margin-bottom: 0.375rem; /* mb-1.5 */
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.625rem; /* p-2.5 */
+            border: 1px solid #D1D5DB; /* border-gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+            box-sizing: border-box;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #6366F1; /* focus:border-indigo-500 */
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5); /* focus:ring-2 focus:ring-indigo-500 */
+        }
+
+        .btn-download {
+            width: 100%;
+            background-color: #16A34A; /* bg-green-600 */
+            color: #FFFFFF; /* text-white */
+            font-weight: 700; /* font-bold */
+            padding: 0.75rem 1rem; /* py-3 px-4 */
+            border: none;
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .btn-download:hover {
+            background-color: #15803D; /* hover:bg-green-700 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* hover:shadow-lg */
+        }
+        
+        .btn-download:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.75); /* focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 */
+        }
+
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin-top: 2rem; /* mt-8 on small screens */
+        }
+
+        #posterCanvas {
+            border: 2px solid #D1D5DB; /* border-2 border-gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+            background-color: #FFFFFF; /* bg-white */
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .page-footer {
+            margin-top: 3rem; /* mt-12 */
+            text-align: center;
+            font-size: 0.875rem; /* text-sm */
+            color: #6B7280; /* gray-500 */
+        }
+
+        @media (min-width: 1024px) { /* lg breakpoint */
+            .main-content {
+                flex-direction: row;
+            }
+            .controls-panel {
+                width: 33.333333%;
+            }
+            .canvas-container {
+                width: 66.666667%;
+                margin-top: 0; /* lg:mt-0 */
+            }
+        }
+    </style>
+<script data-cfasync="false" nonce="14f96b8b-d329-460f-81bc-178f60c4ba9b">try{(function(w,d){!function(bj,bk,bl,bm){if(bj.zaraz)console.error("zaraz is loaded twice");else{bj[bl]=bj[bl]||{};bj[bl].executed=[];bj.zaraz={deferred:[],listeners:[]};bj.zaraz._v="5852";bj.zaraz._n="14f96b8b-d329-460f-81bc-178f60c4ba9b";bj.zaraz.q=[];bj.zaraz._f=function(bn){return async function(){var bo=Array.prototype.slice.call(arguments);bj.zaraz.q.push({m:bn,a:bo})}};for(const bp of["track","set","debug"])bj.zaraz[bp]=bj.zaraz._f(bp);bj.zaraz.init=()=>{var bq=bk.getElementsByTagName(bm)[0],br=bk.createElement(bm),bs=bk.getElementsByTagName("title")[0];bs&&(bj[bl].t=bk.getElementsByTagName("title")[0].text);bj[bl].x=Math.random();bj[bl].w=bj.screen.width;bj[bl].h=bj.screen.height;bj[bl].j=bj.innerHeight;bj[bl].e=bj.innerWidth;bj[bl].l=bj.location.href;bj[bl].r=bk.referrer;bj[bl].k=bj.screen.colorDepth;bj[bl].n=bk.characterSet;bj[bl].o=(new Date).getTimezoneOffset();if(bj.dataLayer)for(const bt of Object.entries(Object.entries(dataLayer).reduce(((bu,bv)=>({...bu[1],...bv[1]})),{})))zaraz.set(bt[0],bt[1],{scope:"page"});bj[bl].q=[];for(;bj.zaraz.q.length;){const bw=bj.zaraz.q.shift();bj[bl].q.push(bw)}br.defer=!0;for(const bx of[localStorage,sessionStorage])Object.keys(bx||{}).filter((bz=>bz.startsWith("_zaraz_"))).forEach((by=>{try{bj[bl]["z_"+by.slice(7)]=JSON.parse(bx.getItem(by))}catch{bj[bl]["z_"+by.slice(7)]=bx.getItem(by)}}));br.referrerPolicy="origin";br.src="/cdn-cgi/zaraz/s.js?z="+btoa(encodeURIComponent(JSON.stringify(bj[bl])));bq.parentNode.insertBefore(br,bq)};["complete","interactive"].includes(bk.readyState)?zaraz.init():bj.addEventListener("DOMContentLoaded",zaraz.init)}}(w,d,"zarazData","script");window.zaraz._p=async bb=>new Promise((bc=>{if(bb){bb.e&&bb.e.forEach((bd=>{try{const be=d.querySelector("script[nonce]"),bf=be?.nonce||be?.getAttribute("nonce"),bg=d.createElement("script");bf&&(bg.nonce=bf);bg.innerHTML=bd;bg.onload=()=>{d.head.removeChild(bg)};d.head.appendChild(bg)}catch(bh){console.error(`Error executing script: ${bd}\n`,bh)}}));Promise.allSettled((bb.f||[]).map((bi=>fetch(bi[0],bi[1]))))}bc()}));zaraz._p({"e":["(function(w,d){})(window,document)"]});})(window,document)}catch(e){throw fetch("/cdn-cgi/zaraz/t"),e;};</script></head>
+<body>
+    <header class="page-header">
+        <h1>Генератор Постеров</h1>
+        <p>Создайте свой уникальный постер в стиле ретро!</p>
+    </header>
+
+    <main class="main-content">
+        <section class="controls-panel">
+            <h2>Настройки Текста</h2>
+            <div class="form-group">
+                <label for="text1Input">Текст 1 (верхний)</label>
+                <input type="text" id="text1Input" class="form-input" placeholder="ЭТО">
+            </div>
+            <div class="form-group">
+                <label for="text2Input">Текст 2 (средний-верхний)</label>
+                <input type="text" id="text2Input" class="form-input" placeholder="МЫ">
+            </div>
+            <div class="form-group">
+                <label for="text3Input">Текст 3 (средний-нижний)</label>
+                <input type="text" id="text3Input" class="form-input" placeholder="ЕЩЁ">
+            </div>
+            <div class="form-group">
+                <label for="text4Input">Текст 4 (нижний)</label>
+                <input type="text" id="text4Input" class="form-input" placeholder="ПОСМОТРИМ">
+            </div>
+            <button id="downloadButton" class="btn-download" aria-label="Скачать сгенерированный постер">
+                Скачать Постер
+            </button>
+        </section>
+
+        <section class="canvas-container">
+            <canvas id="posterCanvas" aria-label="Сгенерированный постер"></canvas>
+        </section>
+    </main>
+
+    <footer class="page-footer">
+        <p>© <span id="currentYear"></span> L5 Poster Generator. Все права защищены.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('posterCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const canvasWidth = 600;
+            const canvasHeight = 800;
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            let text1 = "ЭТО";
+            let text2 = "МЫ";
+            let text3 = "ЕЩЁ";
+            let text4 = "ПОСМОТРИМ";
+
+            const text1Input = document.getElementById('text1Input');
+            const text2Input = document.getElementById('text2Input');
+            const text3Input = document.getElementById('text3Input');
+            const text4Input = document.getElementById('text4Input');
+            const downloadButton = document.getElementById('downloadButton');
+            
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+            text1Input.value = text1;
+            text2Input.value = text2;
+            text3Input.value = text3;
+            text4Input.value = text4;
+
+            function drawScrollBackground(context, width, height) {
+                const rollThickness = 25;
+                const paperWidth = width * 0.85;
+                const paperX = (width - paperWidth) / 2;
+                const paperY = rollThickness;
+                const paperHeight = height - 2 * rollThickness;
+
+                context.save();
+                context.shadowColor = 'rgba(0,0,0,0.15)';
+                context.shadowBlur = 15;
+                context.shadowOffsetX = 0;
+                context.shadowOffsetY = 8;
+                
+                context.fillStyle = '#FDFDFD';
+                context.fillRect(paperX, paperY, paperWidth, paperHeight);
+                context.restore();
+
+                const drawRollEnd = (cx, cy, r) => {
+                    context.beginPath();
+                    context.arc(cx, cy, r, 0, Math.PI * 2);
+                    context.fillStyle = '#D1D5DB';
+                    context.fill();
+                    context.beginPath();
+                    context.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
+                    context.fillStyle = '#E5E7EB';
+                    context.fill();
+                };
+
+                context.fillStyle = '#E5E7EB';
+                context.fillRect(paperX - rollThickness / 2, 0, paperWidth + rollThickness, rollThickness);
+                drawRollEnd(paperX - rollThickness / 2, rollThickness / 2, rollThickness / 2);
+                drawRollEnd(paperX + paperWidth + rollThickness / 2, rollThickness / 2, rollThickness / 2);
+
+                context.fillRect(paperX - rollThickness / 2, height - rollThickness, paperWidth + rollThickness, rollThickness);
+                drawRollEnd(paperX - rollThickness / 2, height - rollThickness / 2, rollThickness / 2);
+                drawRollEnd(paperX + paperWidth + rollThickness / 2, height - rollThickness / 2, rollThickness / 2);
+                
+                context.strokeStyle = '#D1D5DB';
+                context.lineWidth = 1;
+                context.beginPath();
+                context.moveTo(paperX, paperY); context.lineTo(paperX, paperY + paperHeight);
+                context.moveTo(paperX + paperWidth, paperY); context.lineTo(paperX + paperWidth, paperY + paperHeight);
+                context.stroke();
+            }
+
+            function drawStar(context, cx, cy, spikes, outerR, innerR, color, isCross = false) {
+                let rot = (Math.PI / 2) * 3;
+                const step = Math.PI / spikes;
+                innerR = isCross && spikes === 4 ? outerR * 0.4 : innerR;
+
+                context.save();
+                context.beginPath();
+                context.moveTo(cx, cy - outerR);
+                for (let i = 0; i < spikes; i++) {
+                    context.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
+                    rot += step;
+                    context.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR);
+                    rot += step;
+                }
+                context.closePath();
+                
+                context.fillStyle = color;
+                context.shadowColor = 'rgba(0,0,0,0.3)';
+                context.shadowBlur = 8;
+                context.shadowOffsetX = 3;
+                context.shadowOffsetY = 3;
+                context.fill();
+                context.restore();
+            }
+
+            function drawLightning(context, x, y, w, h, color) {
+                context.save();
+                context.beginPath();
+                context.moveTo(x - w / 2, y - h / 2);
+                context.lineTo(x + w / 6, y - h / 4);
+                context.lineTo(x - w / 5, y);
+                context.lineTo(x + w / 2, y + h / 2);
+                context.lineTo(x - w / 6, y + h / 4);
+                context.lineTo(x + w / 5, y);
+                context.closePath();
+                
+                context.fillStyle = color;
+                context.shadowColor = 'rgba(0,0,0,0.3)';
+                context.shadowBlur = 8;
+                context.shadowOffsetX = 3;
+                context.shadowOffsetY = 3;
+                context.fill();
+                context.restore();
+            }
+
+            function drawTextETO(context, txt, cx, yPos) {
+                const fontSize = 75;
+                context.font = `bold ${fontSize}px 'Arial Black', Gadget, sans-serif`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                const metrics = context.measureText(txt);
+
+                const gradient = context.createLinearGradient(cx - metrics.width / 2, yPos - fontSize / 2, cx + metrics.width / 2, yPos + fontSize / 2);
+                gradient.addColorStop(0, '#8A2BE2');
+                gradient.addColorStop(0.5, '#BA55D3');
+                gradient.addColorStop(1, '#4B0082');
+
+                context.save();
+                context.fillStyle = '#404040';
+                context.fillText(txt, cx + 4, yPos + 4);
+                context.fillStyle = gradient;
+                context.fillText(txt, cx, yPos);
+                context.strokeStyle = 'rgba(255,255,255,0.3)';
+                context.lineWidth = 0.5;
+                context.strokeText(txt, cx, yPos);
+                context.restore();
+            }
+
+            function drawTextMY(context, txt, cx, yPos) {
+                const fontSize = 120;
+                context.font = `bold ${fontSize}px 'Impact', Haettenschweiler, 'Arial Narrow Bold', sans-serif`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+
+                context.save();
+                const depth = 5;
+                const offsetX = 1.5;
+                const offsetY = 1.5;
+
+                for (let i = depth; i >= 0; i--) {
+                    const currentOffsetX = offsetX * i;
+                    const currentOffsetY = offsetY * i;
+                    if (i === 0) {
+                        context.fillStyle = '#1976D2';
+                    } else {
+                        const R = Math.max(0, 25 - i * 4);
+                        const G = Math.max(0, 80 - i * 10);
+                        const B = Math.max(0, 150 - i * 15);
+                        context.fillStyle = `rgb(${R}, ${G}, ${B})`;
+                    }
+                    context.fillText(txt, cx + currentOffsetX, yPos + currentOffsetY);
+                }
+                context.restore();
+            }
+
+            function drawTextESCHE(context, txt, cx, yPos) {
+                const fontSize = 65;
+                context.font = `italic 900 ${fontSize}px 'Comic Sans MS', 'Chalkboard SE', cursive`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                const metrics = context.measureText(txt);
+
+                const gradient = context.createLinearGradient(cx - metrics.width / 2, yPos - fontSize / 2, cx + metrics.width / 2, yPos + fontSize / 2);
+                gradient.addColorStop(0, '#FFEE58');
+                gradient.addColorStop(0.6, '#9CCC65');
+                gradient.addColorStop(1, '#7CB342');
+
+                context.save();
+                context.fillStyle = '#555';
+                context.fillText(txt, cx + 3, yPos + 3);
+                context.fillStyle = gradient;
+                context.fillText(txt, cx, yPos);
+                context.strokeStyle = 'rgba(0,0,0,0.2)';
+                context.lineWidth = 1;
+                context.strokeText(txt, cx, yPos);
+                context.restore();
+            }
+
+            function drawTextPOSMOTRIM(context, txt, cx, yPos) {
+                const fontSize = 85;
+                context.font = `900 ${fontSize}px 'Impact', Haettenschweiler, 'Arial Narrow Bold', sans-serif`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+
+                context.save();
+                const depth = 5;
+                const offsetX = 1;
+                const offsetY = 1;
+                const shadowColor = '#616161';
+                const mainColor = '#1C1C1C';
+                const accentColor = '#C62828';
+
+                for (let i = depth; i >= 1; i--) {
+                    context.fillStyle = shadowColor;
+                    context.fillText(txt, cx + offsetX * i, yPos + offsetY * i);
+                }
+                
+                context.strokeStyle = accentColor;
+                context.lineWidth = 7;
+                context.lineJoin = 'round';
+                context.strokeText(txt, cx, yPos);
+                
+                context.fillStyle = mainColor;
+                context.fillText(txt, cx, yPos);
+                context.restore();
+            }
+
+            function renderCanvas() {
+                if (!ctx) return;
+
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                drawScrollBackground(ctx, canvasWidth, canvasHeight);
+
+                drawStar(ctx, canvasWidth * 0.18, canvasHeight * 0.46, 5, 45, 22, '#D32F2F');
+                drawStar(ctx, canvasWidth * 0.82, canvasHeight * 0.36, 4, 38, 15, '#388E3C', true);
+                drawLightning(ctx, canvasWidth * 0.5, canvasHeight * 0.82, 70, 110, '#FBC02D');
+
+                drawTextETO(ctx, text1.toUpperCase() || "ЭТО", canvasWidth / 2, canvasHeight * 0.25);
+                drawTextMY(ctx, text2.toUpperCase() || "МЫ", canvasWidth / 2, canvasHeight * 0.42);
+                drawTextESCHE(ctx, text3.toUpperCase() || "ЕЩЁ", canvasWidth / 2, canvasHeight * 0.56);
+                drawTextPOSMOTRIM(ctx, text4.toUpperCase() || "ПОСМОТРИМ", canvasWidth / 2, canvasHeight * 0.72);
+            }
+
+            text1Input.addEventListener('input', (e) => {
+                text1 = e.target.value;
+                renderCanvas();
+            });
+            text2Input.addEventListener('input', (e) => {
+                text2 = e.target.value;
+                renderCanvas();
+            });
+            text3Input.addEventListener('input', (e) => {
+                text3 = e.target.value;
+                renderCanvas();
+            });
+            text4Input.addEventListener('input', (e) => {
+                text4 = e.target.value;
+                renderCanvas();
+            });
+
+            downloadButton.addEventListener('click', () => {
+                const imageURL = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = imageURL;
+                link.download = 'poster.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            renderCanvas(); // Initial render
+        });
+    </script>
+</body>
+</html>
