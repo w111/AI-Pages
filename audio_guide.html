@@ -22,6 +22,7 @@ RULES:
 13. Все кнопки управления размещены на одной линии: "Назад", "Рассказать", "Стоп", "Дальше"
 14. Все изображения заменены на реальные фотографии достопримечательностей из Wikimedia Commons
 15. Изображения используют надежный CDN Wikipedia для быстрой загрузки
+16. Исправлено сохранение и восстановление настроек голоса TTS при перезагрузке
 -->
 <html lang="ru">
 <head>
@@ -735,6 +736,12 @@ function loadSettings() {
   citySelect.value = currentCity;
   citySelectSidebar.value = currentCity;
   themeSelect.value = currentTheme;
+  
+  // Устанавливаем голос после заполнения списка
+  if (voiceSelect.children.length > 0) {
+    voiceSelect.value = voiceIndex.toString();
+  }
+  
   applyTheme(currentTheme);
 }
 
@@ -758,18 +765,22 @@ function populateVoices() {
     option.value = '-1';
     option.textContent = 'Системный голос';
     voiceSelect.appendChild(option);
-    voiceIndex = -1;
+    if (voiceIndex === -1) voiceIndex = -1;
   } else {
     voices.forEach((voice, index) => {
       const option = document.createElement('option');
-      option.value = index;
+      option.value = index.toString();
       option.textContent = voice.name;
       voiceSelect.appendChild(option);
     });
-    if (voiceIndex === -1 || voiceIndex >= voices.length) voiceIndex = 0;
+    // Проверяем корректность сохраненного индекса голоса
+    if (voiceIndex < 0 || voiceIndex >= voices.length) {
+      voiceIndex = 0;
+    }
   }
   
-  voiceSelect.value = voiceIndex;
+  // Устанавливаем значение после создания опций
+  voiceSelect.value = voiceIndex.toString();
 }
 
 function speak(text) {
@@ -832,7 +843,13 @@ function showPOI(index) {
 }
 
 // Обработчики событий
-speechSynthesis.onvoiceschanged = populateVoices;
+speechSynthesis.onvoiceschanged = () => {
+  populateVoices();
+  // Устанавливаем сохраненный голос после загрузки списка
+  if (voiceSelect.children.length > 0) {
+    voiceSelect.value = voiceIndex.toString();
+  }
+};
 
 settingsBtn.onclick = () => settingsModal.classList.remove('hidden');
 closeSettings.onclick = () => settingsModal.classList.add('hidden');
@@ -867,6 +884,8 @@ themeSelect.onchange = () => {
 
 voiceSelect.onchange = () => {
   voiceIndex = parseInt(voiceSelect.value);
+  // Сохраняем настройки сразу при изменении голоса
+  saveSettingsToStorage();
 };
 
 prev.onclick = () => {
@@ -899,9 +918,20 @@ document.onclick = (e) => {
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
-  populateVoices();
   loadSettings();
+  populateVoices();
   loadCity(currentCity);
+  
+  // Дополнительная проверка голосов через таймаут
+  setTimeout(() => {
+    if (voices.length === 0) {
+      populateVoices();
+    }
+    // Устанавливаем сохраненный голос после загрузки
+    if (voiceSelect.children.length > 0) {
+      voiceSelect.value = voiceIndex.toString();
+    }
+  }, 100);
 });
 </script>
 </body>
