@@ -7,7 +7,7 @@ RULES:
 4. При изменении требований этот блок правил обновляется в первую очередь.
 
 ФУНКЦИОНАЛЬНЫЕ ТРЕБОВАНИЯ:
-1. Выбор города из списка: Суботица, Палич, Белград, Сомбор, Нови-Сад, Токио, Чикаго, Санкт-Петербург, Буенос-Айрес, Стамбул, Париж, Будапешт, Вена
+1. Выбор города из списка: Белград, Будапешт, Буэнос-Айрес, Вена, Стамбул, Нови-Сад, Палич, Париж, Санкт-Петербург, Сомбор, Суботица, Токио, Чикаго
 2. Для каждого города отдельный конфиг с достопримечательностями
 3. Переключатель светлой/темной темы в иконке шестеренки вверху
 4. Выбор города размещен в боковой панели над списком объектов
@@ -26,6 +26,8 @@ RULES:
 17. Интерактивная карта города с маркерами достопримечательностей на базе OpenLayers
 18. Изменение цвета маркера при выборе достопримечательности
 19. Автоматическое центрирование карты на выбранный город
+20. Подписи к маркерам с названиями достопримечательностей
+21. Адаптация цвета подписей к текущей теме (темная/светлая)
 -->
 <html lang="ru">
 <head>
@@ -412,6 +414,11 @@ RULES:
       line-height: 1.4;
     }
 
+    /* Map labels styling */
+    .ol-layer canvas {
+      pointer-events: auto;
+    }
+
     @media (max-width: 768px) {
       #city-map {
         height: 300px;
@@ -440,19 +447,19 @@ RULES:
         <div class="mb-4">
           <label class="block font-semibold mb-2">Город:</label>
           <select id="city-select" class="select w-full">
-            <option value="subotica">Суботица</option>
-            <option value="palic">Палич</option>
             <option value="belgrade">Белград</option>
-            <option value="sombor">Сомбор</option>
+            <option value="budapest">Будапешт</option>
+            <option value="buenos-aires">Буэнос-Айрес</option>
+            <option value="vienna">Вена</option>
+            <option value="istanbul">Стамбул</option>
             <option value="novi-sad">Нови-Сад</option>
+            <option value="palic">Палич</option>
+            <option value="paris">Париж</option>
+            <option value="saint-petersburg">Санкт-Петербург</option>
+            <option value="sombor">Сомбор</option>
+            <option value="subotica">Суботица</option>
             <option value="tokyo">Токио</option>
             <option value="chicago">Чикаго</option>
-            <option value="saint-petersburg">Санкт-Петербург</option>
-            <option value="buenos-aires">Буенос-Айрес</option>
-            <option value="istanbul">Стамбул</option>
-            <option value="paris">Париж</option>
-            <option value="budapest">Будапешт</option>
-            <option value="vienna">Вена</option>
           </select>
         </div>
 
@@ -486,19 +493,19 @@ RULES:
       <div class="mb-6">
         <label class="block font-semibold mb-2 text-sm">Выберите город:</label>
         <select id="city-select-sidebar" class="select w-full">
-          <option value="subotica">Суботица</option>
-          <option value="palic">Палич</option>
           <option value="belgrade">Белград</option>
-          <option value="sombor">Сомбор</option>
+          <option value="budapest">Будапешт</option>
+          <option value="buenos-aires">Буэнос-Айрес</option>
+          <option value="vienna">Вена</option>
+          <option value="istanbul">Стамбул</option>
           <option value="novi-sad">Нови-Сад</option>
+          <option value="palic">Палич</option>
+          <option value="paris">Париж</option>
+          <option value="saint-petersburg">Санкт-Петербург</option>
+          <option value="sombor">Сомбор</option>
+          <option value="subotica">Суботица</option>
           <option value="tokyo">Токио</option>
           <option value="chicago">Чикаго</option>
-          <option value="saint-petersburg">Санкт-Петербург</option>
-          <option value="buenos-aires">Буенос-Айрес</option>
-          <option value="istanbul">Стамбул</option>
-          <option value="paris">Париж</option>
-          <option value="budapest">Будапешт</option>
-          <option value="vienna">Вена</option>
         </select>
       </div>
       
@@ -527,7 +534,7 @@ RULES:
       <div id="welcome-message" class="card text-center">
         <h2 class="text-2xl font-bold mb-4">Добро пожаловать в аудиогид!</h2>
         <p class="mb-4">Выберите город в настройках (⚙️) и начните путешествие по достопримечательностям.</p>
-        <p class="text-sm opacity-75">Поддерживаются города: Суботица, Палич, Белград, Сомбор, Нови-Сад, Токио, Чикаго, Санкт-Петербург, Буенос-Айрес, Стамбул, Париж, Будапешт, Вена</p>
+        <p class="text-sm opacity-75">Поддерживаются города: Белград, Будапешт, Буэнос-Айрес, Вена, Стамбул, Нови-Сад, Палич, Париж, Санкт-Петербург, Сомбор, Суботица, Токио, Чикаго</p>
       </div>
     </main>
   </div>
@@ -1169,6 +1176,11 @@ function saveSettingsToStorage() {
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   currentTheme = theme;
+  
+  // Обновляем подписи маркеров при смене темы
+  if (currentMarkers && currentMarkers.length > 0) {
+    updateMarkerColors();
+  }
 }
 
 function populateVoices() {
@@ -1220,6 +1232,21 @@ function initMap(cityKey) {
   const mapElement = document.getElementById('city-map');
   mapElement.classList.remove('hidden');
 
+  // Очищаем существующую карту если есть
+  if (map) {
+    // Очищаем overlays
+    if (popupOverlay) {
+      map.removeOverlay(popupOverlay);
+      popupOverlay = null;
+    }
+    // Очищаем карту
+    map.setTarget(null);
+    map = null;
+  }
+  
+  // Очищаем маркеры
+  currentMarkers = [];
+
   // Создаем слой для маркеров
   markerLayer = new ol.layer.Vector({
     source: new ol.source.Vector()
@@ -1254,6 +1281,13 @@ function initMap(cityKey) {
   // Добавляем маркеры для всех достопримечательностей
   addMarkersToMap(config.pois);
 
+  // Обновляем размер карты
+  setTimeout(() => {
+    if (map) {
+      map.updateSize();
+    }
+  }, 100);
+
   // Обработчик клика на карту для закрытия popup
   map.on('click', function(evt) {
     const feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
@@ -1284,13 +1318,14 @@ function addMarkersToMap(pois) {
     const coords = extractCoordsFromMapUrl(poi.map);
     if (!coords) return;
 
-    // Создаем стиль маркера
-    const style = createMarkerStyle(index === current ? '#ff4444' : '#4f46e5');
+    // Создаем стиль маркера с подписью
+    const style = createMarkerStyle(index === current ? '#ff4444' : '#4f46e5', poi.name);
     
     // Создаем feature
     const marker = new ol.Feature({
       geometry: new ol.geom.Point(ol.proj.fromLonLat([coords.lng, coords.lat])),
-      poiIndex: index
+      poiIndex: index,
+      name: poi.name
     });
     marker.setStyle(style);
     
@@ -1308,8 +1343,8 @@ function extractCoordsFromMapUrl(url) {
   return null;
 }
 
-function createMarkerStyle(color) {
-  return new ol.style.Style({
+function createMarkerStyle(color, text) {
+  const style = new ol.style.Style({
     image: new ol.style.Circle({
       radius: 8,
       fill: new ol.style.Fill({ color: color }),
@@ -1319,6 +1354,29 @@ function createMarkerStyle(color) {
       })
     })
   });
+
+  // Добавляем текстовую подпись если передан текст
+  if (text) {
+    style.setText(new ol.style.Text({
+      text: text,
+      font: '12px Arial, sans-serif',
+      fill: new ol.style.Fill({ 
+        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#f9fafb' : '#111827' 
+      }),
+      stroke: new ol.style.Stroke({
+        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#111827' : '#ffffff',
+        width: 3
+      }),
+      offsetY: 20,
+      textAlign: 'center',
+      textBaseline: 'top',
+      maxAngle: 0,
+      overflow: true,
+      placement: 'point'
+    }));
+  }
+
+  return style;
 }
 
 function showPopup(coordinate, poi) {
@@ -1336,7 +1394,8 @@ function updateMarkerColors() {
   if (!currentMarkers || currentMarkers.length === 0) return;
   
   currentMarkers.forEach((marker, index) => {
-    const style = createMarkerStyle(index === current ? '#ff4444' : '#4f46e5');
+    const markerName = marker.get('name');
+    const style = createMarkerStyle(index === current ? '#ff4444' : '#4f46e5', markerName);
     marker.setStyle(style);
   });
 }
@@ -1434,11 +1493,24 @@ settingsModal.onclick = (e) => {
 };
 
 saveSettings.onclick = () => {
-  currentCity = citySelect.value;
-  currentTheme = themeSelect.value;
-  voiceIndex = parseInt(voiceSelect.value);
+  const newCity = citySelect.value;
+  const newTheme = themeSelect.value;
+  const newVoiceIndex = parseInt(voiceSelect.value);
+  
+  // Проверяем изменился ли город
+  const cityChanged = currentCity !== newCity;
+  
+  currentCity = newCity;
+  currentTheme = newTheme;
+  voiceIndex = newVoiceIndex;
   
   applyTheme(currentTheme);
+  
+  // Если город изменился, сбрасываем индекс
+  if (cityChanged) {
+    current = 0;
+  }
+  
   loadCity(currentCity);
   citySelectSidebar.value = currentCity;
   saveSettingsToStorage();
@@ -1449,6 +1521,10 @@ saveSettings.onclick = () => {
 citySelectSidebar.onchange = () => {
   currentCity = citySelectSidebar.value;
   citySelect.value = currentCity;
+  
+  // Сбрасываем текущий индекс при смене города
+  current = 0;
+  
   loadCity(currentCity);
   saveSettingsToStorage();
 };
