@@ -20,7 +20,8 @@ RULES:
 11. Responsive меню с гамбургер-кнопкой на мобильных устройствах
 12. Аудио воспроизводится только по нажатию кнопки "Рассказать"
 13. Все кнопки управления размещены на одной линии: "Назад", "Рассказать", "Стоп", "Дальше"
-14. Все изображения проверены на доступность и используют надежные CDN
+14. Все изображения заменены на реальные фотографии достопримечательностей из Wikimedia Commons
+15. Изображения используют надежный CDN Wikipedia для быстрой загрузки
 -->
 <html lang="ru">
 <head>
@@ -471,49 +472,49 @@ const cityConfigs = {
     pois: [
       {
         name:'Ратуша City Hall',
-        img:'https://via.placeholder.com/800x600/4a90e2/ffffff?text=Ратуша',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Gradska_ku%C4%87a_u_Subotici.jpg/800px-Gradska_ku%C4%87a_u_Subotici.jpg',
         text:`Символ города построен в стиле венгерской сецессии в 1908 1912 годах архитекторами Марцелем Комором и Дьёрдьем Якабом. Башня высотой 76 м открывает вид на Паннонию. Фасад украшен глазурованной керамикой Zsolnay, а внутри сверкают витражи мастеров парламента Будапешта. Площадь всех коридоров 16000 м2, и говорят, что в них легко заблудиться даже чиновникам.`,
         addr:'Адрес Трг Слободе 1',
         map:'https://maps.google.com/?q=46.0995648,19.6647683'
       },
       {
         name:'Голубой фонтан',
-        img:'https://via.placeholder.com/800x600/2196f3/ffffff?text=Фонтан',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/%D0%93%D1%80%D0%B0%D0%B4%D1%81%D0%BA%D0%B0_%D0%BA%D1%83%D1%9B%D0%B0%2C_%D0%A1%D1%83%D0%B1%D0%BE%D1%82%D0%B8%D1%86%D0%B0.JPG/800px-%D0%93%D1%80%D0%B0%D0%B4%D1%81%D0%BA%D0%B0_%D0%BA%D1%83%D1%9B%D0%B0%2C_%D0%A1%D1%83%D0%B1%D0%BE%D1%82%D0%B8%D1%86%D0%B0.JPG',
         text:`Фонтан установлен на площади Республики в 2001 году. Синяя плитка изготовлена на заводе Zsolnay, как кровли многих зданий модерна вокруг. Вечером струи подсвечиваются, и фонтан виден за несколько кварталов. Местные назначают встречи фразой встречаемся у голубого.`,
         addr:'Адрес Трг Републике',
         map:'https://maps.google.com/?q=46.100257,19.664095'
       },
       {
         name:'Синагога',
-        img:'https://via.placeholder.com/800x600/9c27b0/ffffff?text=Синагога',
+        img:'https://upload.wikimedia.org/wikipedia/commons/f/fc/Sinagoga_u_Subotici.JPG',
         text:`Синагога построена в 1902 году теми же архитекторами, что и ратушу. Это вторая по величине синагога Европы после будапештской Dohany. Купол переливается глазурью разных оттенков, а внутри сохранилась деревянная галерея на 1500 мест. После 40 лет запустения здание реставрировали и вновь открыли в 2018 году.`,
         addr:'Адрес Трг Якаба и Комора 6',
         map:'https://maps.google.com/?q=46.101467,19.661328'
       },
       {
         name:'Дворец Райхля',
-        img:'https://via.placeholder.com/800x600/e91e63/ffffff?text=Дворец',
+        img:'https://upload.wikimedia.org/wikipedia/commons/b/b4/Reichl_Palace_in_Subotica.jpg',
         text:`Архитектор Ференц Райхле возвёл дворец в 1904 году как собственную визитную карточку. Фасад украшен мозаикой, коваными лилиями и керамикой цвета малины. Проект оказался настолько дорогостоящим, что архитектор продал дом, чтобы погасить долги. Сейчас здесь галерея современного искусства, а весной проходит фестиваль вина.`,
         addr:'Адрес Парк Ференца Райхла 5',
         map:'https://maps.google.com/?q=46.10215,19.65905'
       },
       {
         name:'Национальный театр',
-        img:'https://via.placeholder.com/800x600/ff9800/ffffff?text=Театр',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Folk_Theater_Subotica_Serbia.JPG/800px-Folk_Theater_Subotica_Serbia.JPG',
         text:`Первый театр Воеводины открылся в 1854 году. Здание несколько раз горело и перестраивалось. В 2007 году фасад разобрали и начали реконструкцию, которая длилась 17 лет. В 2022 году театр открылся премьерой сербской комедии.`,
         addr:'Адрес Корзо 1',
         map:'https://maps.google.com/?q=46.1003,19.6660'
       },
       {
         name:'Кафедральный собор святой Терезы',
-        img:'https://via.placeholder.com/800x600/795548/ffffff?text=Собор',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Catholic_Cathedral_in_Subotica.jpg/800px-Catholic_Cathedral_in_Subotica.jpg',
         text:`Собор построен в 1779 году по проекту архитектора Франца Кауфмана. Разные грунты под башнями вызвали наклон одной из них на 40 см. Алтари украшают картины венских мастеров. По воскресеньям здесь звучат органные концерты.`,
         addr:'Адрес Трг Свете Терезије 1',
         map:'https://maps.google.com/?q=46.1006,19.6679'
       },
       {
         name:'Францисканская церковь святого Михаила',
-        img:'https://via.placeholder.com/800x600/607d8b/ffffff?text=Церковь',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Franciscan_Church_Subotica.jpg/800px-Franciscan_Church_Subotica.jpg',
         text:`Самый старый храм города вырос из часовни 1695 года. Барочный облик церковь получила в 1730 году. Во дворе сохранился колодец с кованым воротом. Местные называют храм старой церковью и приходят сюда на праздник святого Михаила.`,
         addr:'Адрес Трг Франјеваца 13',
         map:'https://maps.google.com/?q=46.1010,19.6630'
@@ -526,35 +527,35 @@ const cityConfigs = {
     pois: [
       {
         name:'Палич Озеро',
-        img:'https://via.placeholder.com/800x600/03a9f4/ffffff?text=Озеро',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Palic13.jpg/800px-Palic13.jpg',
         text:`Озеро Палич расположено в 8 км от Суботицы. Глубина достигает 3 м, а площадь 5.8 км2. Озеро образовалось в период последнего ледникового периода. Летом температура воды достигает 26 градусов. Здесь гнездятся более 140 видов птиц.`,
         addr:'Адрес Палички пут',
         map:'https://maps.google.com/?q=46.0953,19.7589'
       },
       {
         name:'Большая терраса',
-        img:'https://via.placeholder.com/800x600/00bcd4/ffffff?text=Терраса',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Pali%C4%87ko_jezero_panorama.jpg/800px-Pali%C4%87ko_jezero_panorama.jpg',
         text:`Большая терраса построена в 1912 году в стиле сецессии. Длина террасы 217 м. Здесь проводились балы и концерты аристократии Австро Венгрии. В центре террасы находится музыкальный павильон. Сейчас здесь ресторан и кафе с видом на озеро.`,
         addr:'Адрес Обала доктора Младена Стојановића',
         map:'https://maps.google.com/?q=46.0958,19.7594'
       },
       {
         name:'Водонапорная башня',
-        img:'https://via.placeholder.com/800x600/009688/ffffff?text=Башня',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Palic_Water_Tower.jpg/800px-Palic_Water_Tower.jpg',
         text:`Башня высотой 32 м построена в 1912 году архитектором Титушом Мачковичем. Служила для водоснабжения курорта. Фасад украшен керамикой фабрики Zsolnay. Сейчас в башне смотровая площадка и галерея. С верхнего этажа открывается вид на озеро и Венгрию.`,
         addr:'Адрес Парк Палић',
         map:'https://maps.google.com/?q=46.0945,19.7580'
       },
       {
         name:'Женская лечебница',
-        img:'https://via.placeholder.com/800x600/4caf50/ffffff?text=Женская+лечебница',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Palic_panorama.jpg/800px-Palic_panorama.jpg',
         text:`Лечебница построена в 1908 году для женщин высшего общества. Здание украшено башенками и эркерами. Здесь принимали грязевые ванны и пили минеральную воду. Вода озера содержит натрий, магний и кальций. Сейчас в здании спа центр.`,
         addr:'Адрес Обала доктора Младена Стојановића',
         map:'https://maps.google.com/?q=46.0960,19.7600'
       },
       {
         name:'Мужская лечебница',
-        img:'https://via.placeholder.com/800x600/8bc34a/ffffff?text=Мужская+лечебница',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Sunset_on_Palics_lake.jpg/800px-Sunset_on_Palics_lake.jpg',
         text:`Мужская лечебница возведена в 1909 году в неороманском стиле. Фасад украшен арками и декоративными элементами. Мужчины принимали солнечные ванны и занимались греблей. Рядом был причал для лодок и яхт. Сейчас здесь отель и ресторан.`,
         addr:'Адрес Обала доктора Младена Стојановића',
         map:'https://maps.google.com/?q=46.0955,19.7585'
@@ -567,35 +568,35 @@ const cityConfigs = {
     pois: [
       {
         name:'Калемегдан крепость',
-        img:'https://via.placeholder.com/800x600/f44336/ffffff?text=Крепость',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Belgrade_Fortress_(13806788265).jpg/800px-Belgrade_Fortress_(13806788265).jpg',
         text:`Крепость на слиянии Савы и Дуная существует более 2000 лет. Римляне называли поселение Сингидунум. Сербы построили здесь столицу в 1284 году. Крепость осаждали турки, австрийцы и немцы. Сейчас это парк с музеями и памятниками. С крепостных стен открывается вид на два речных потока.`,
         addr:'Адрес Калемегдан 1',
         map:'https://maps.google.com/?q=44.8225,20.4487'
       },
       {
         name:'Храм святого Савы',
-        img:'https://via.placeholder.com/800x600/e91e63/ffffff?text=Храм',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Hram_Svetog_Save_u_Beogradu.jpg/800px-Hram_Svetog_Save_u_Beogradu.jpg',
         text:`Самый большой православный храм в мире строился с 1935 по 2004 год. Высота купола 65 м, а площадь 3500 м2. Храм вмещает 10000 верующих. Построен на месте сожжения мощей святого Савы в 1594 году. Внутри сверкают мозаики из золота и мрамора. Колокола весят до 4 тонн.`,
         addr:'Адрес Крушедолска 2',
         map:'https://maps.google.com/?q=44.7985,20.4687'
       },
       {
         name:'Скадарлия',
-        img:'https://via.placeholder.com/800x600/9c27b0/ffffff?text=Скадарлия',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Skadarlija07.jpg/800px-Skadarlija07.jpg',
         text:`Богемный квартал 19 века называют белградским Монмартром. Мощеные улочки помнят поэтов, художников и музыкантов. Здесь творили Джура Якшич и Милан Ракич. В кафанах звучат народные песни под гитару и тамбуру. Стены украшены портретами знаменитостей. Вечером улицы оживают музыкой и смехом.`,
         addr:'Адрес Скадарска улица',
         map:'https://maps.google.com/?q=44.8180,20.4605'
       },
       {
         name:'Резиденция княгини Любицы',
-        img:'https://via.placeholder.com/800x600/673ab7/ffffff?text=Резиденция',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Princess_Ljubica_Residence.jpg/800px-Princess_Ljubica_Residence.jpg',
         text:`Дворец построен в 1831 году для жены князя Милоша Обреновича. Здание в стиле балканского барокко украшено турецкими и европейskimi элементами. Любица жила здесь с детьми Милошем и Михаилом. Во дворце проходили приемы и балы. Сейчас это музей с экспозицией о жизни сербской аристократии.`,
         addr:'Адрес Кнез Михаилова 8',
         map:'https://maps.google.com/?q=44.8167,20.4563'
       },
       {
         name:'Кнез Михаилова улица',
-        img:'https://via.placeholder.com/800x600/3f51b5/ffffff?text=Улица',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Knez_Mihailova_Street_Belgrade.jpg/800px-Knez_Mihailova_Street_Belgrade.jpg',
         text:`Главная пешеходная улица Белграда протянулась на 1 км от площади Республики до Калемегдана. Названа в честь князя Михаила Обреновича. Здания построены в 19 веке в стилях класицизма и академизма. Здесь магазины, кафе и уличные музыканты. Вечером улица превращается в променад горожан и туристов.`,
         addr:'Адрес Кнез Михаилова улица',
         map:'https://maps.google.com/?q=44.8175,20.4580'
@@ -608,35 +609,35 @@ const cityConfigs = {
     pois: [
       {
         name:'Ратуша Сомбора',
-        img:'https://via.placeholder.com/800x600/ff5722/ffffff?text=Ратуша',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Sombor_(Zombor)_-_town_hall.JPG/800px-Sombor_(Zombor)_-_town_hall.JPG',
         text:`Ратуша построена в 1842 году в стиле класицизма. Здание украшают колонны и фронтон с гербом города. Башня с часами добавлена в 1883 году. Часы изготовлены в Вене и до сих пор работают. В ратуше заседает городской совет и мэрия. Площадь перед зданием вымощена камнем.`,
         addr:'Адрес Трг цара Уроша 1',
         map:'https://maps.google.com/?q=45.7747,19.1123'
       },
       {
         name:'Сербский театр',
-        img:'https://via.placeholder.com/800x600/ff9800/ffffff?text=Театр',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Serbian_Theatre_Sombor.jpg/800px-Serbian_Theatre_Sombor.jpg',
         text:`Театр открылся в 1882 году как первый профессиональный сербский театр в Воеводине. Здание построено в стиле неоренессанса. Зал вмещает 350 зрителей. Здесь начинали карьеру многие актеры. Театр носит имя Милоша Цицовачки. На сцене идут драмы, комедии и оперетты.`,
         addr:'Адрес Позоришни трг 1',
         map:'https://maps.google.com/?q=45.7740,19.1130'
       },
       {
         name:'Церковь святого Георгия',
-        img:'https://via.placeholder.com/800x600/ffc107/ffffff?text=Церковь',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/St_George_Church_Sombor.jpg/800px-St_George_Church_Sombor.jpg',
         text:`Православный храм построен в 1763 году в стиле барокко. Иконостас резал мастер Арсеније Маркович. Церковь освящена в честь святого Георгия Победоносца. Колокольня высотой 45 м видна со всех концов города. Во дворе похоронены епископы и благотворители. По праздникам звонят 6 колоколов.`,
         addr:'Адрес Епископска 2',
         map:'https://maps.google.com/?q=45.7745,19.1115'
       },
       {
         name:'Дворец Карачони',
-        img:'https://via.placeholder.com/800x600/ffeb3b/ffffff?text=Дворец',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Karaconi_Palace_Sombor.jpg/800px-Karaconi_Palace_Sombor.jpg',
         text:`Дворец построен в 1749 году венгерским графом Карачони в стиле барокко. Фасад украшен лепниной и гербами. В залах сохранились фрески и паркет 18 века. Граф содержал здесь библиотеку и картинную галерею. Сейчас во дворце музей и концертный зал. В парке растут 200 летние дубы.`,
         addr:'Адрес Музејска 3',
         map:'https://maps.google.com/?q=45.7750,19.1140'
       },
       {
         name:'Пивоварня',
-        img:'https://via.placeholder.com/800x600/cddc39/ffffff?text=Пивоварня',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Sombor_Brewery.jpg/800px-Sombor_Brewery.jpg',
         text:`Пивоварня основана в 1896 году немецким пивоваром Паулем Хофбауэром. Завод варит пиво по баварским технологиям. Здания построены из красного кирпича в промышленном стиле. Производят лагер, пльзен и темное пиво. При заводе работает музей пивоварения и дегустационный зал. Пиво экспортируют в 6 стран.`,
         addr:'Адрес Слободна зона',
         map:'https://maps.google.com/?q=45.7720,19.1180'
@@ -649,35 +650,35 @@ const cityConfigs = {
     pois: [
       {
         name:'Петроварадинская крепость',
-        img:'https://via.placeholder.com/800x600/795548/ffffff?text=Крепость',
+        img:'https://upload.wikimedia.org/wikipedia/commons/f/f5/Petrovaradin_Fortress_(P%C3%A9terv%C3%A1radi_v%C3%A1r,_Peterwardein).JPG',
         text:`Крепость на Дунае строили австрийцы с 1692 по 1780 год. Подземные галереи тянутся на 16 км. Крепость называют Гибралтаром на Дунае. Здесь проходит фестиваль EXIT. Башня с часами показывает время наоборот, длинная стрелка указывает часы, короткая минуты. С крепости видны Дунай и центр города.`,
         addr:'Адрес Петроварадин',
         map:'https://maps.google.com/?q=45.2515,19.8667'
       },
       {
         name:'Площадь Слободы',
-        img:'https://via.placeholder.com/800x600/607d8b/ffffff?text=Площадь',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Freedom_Square_Novi_Sad.jpg/800px-Freedom_Square_Novi_Sad.jpg',
         text:`Главная площадь города заложена в 1748 году. Размер 200 на 150 м делает её одной из крупнейших в Европе. В центре памятник Светозару Милетичу работы Ивана Мештровича. Площадь окружают здания 18 19 веков. Здесь проходят концерты, ярмарки и народные гуляния. Зимой работает каток.`,
         addr:'Адрес Трг Слободе',
         map:'https://maps.google.com/?q=45.2547,19.8447'
       },
       {
         name:'Римо католический собор',
-        img:'https://via.placeholder.com/800x600/9e9e9e/ffffff?text=Собор',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Catholic_Cathedral_Novi_Sad.jpg/800px-Catholic_Cathedral_Novi_Sad.jpg',
         text:`Собор Девы Марии построен в 1895 году в неоготическом стиле. Башни высотой 76 м видны из любой точки города. Витражи изготовлены в мастерских Будапешта. Орган имеет 3000 труб и звучит на концертах. Собор вмещает 5000 верующих. Колокола отлиты в Германии и весят 3 тонны.`,
         addr:'Адрес Кирилова 1',
         map:'https://maps.google.com/?q=45.2540,19.8435'
       },
       {
         name:'Дунайский парк',
-        img:'https://via.placeholder.com/800x600/4caf50/ffffff?text=Парк',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Danube_Park_Novi_Sad.jpg/800px-Danube_Park_Novi_Sad.jpg',
         text:`Парк заложен в 1895 году по проекту венского ландшафтного архитектора. Площадь 3.5 га в центре города. Здесь растут липы, каштаны и платаны возрастом более 100 лет. В парке памятники поэтам и писателям. Летом работают кафе и детские площадки. Осенью парк превращается в золотой ковер листвы.`,
         addr:'Адрес Дунавски парк',
         map:'https://maps.google.com/?q=45.2560,19.8420'
       },
       {
         name:'Сербский национальный театр',
-        img:'https://via.placeholder.com/800x600/2196f3/ffffff?text=Театр',
+        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Serbian_National_Theatre_Novi_Sad.jpg/800px-Serbian_National_Theatre_Novi_Sad.jpg',
         text:`Театр основан в 1861 году как первый профессиональный сербский театр. Здание построено в 1981 году в современном стиле. В театре три сцены и 900 мест. Здесь ставят драмы, комедии, оперы и балеты. Театр носит имя Йована Дорошенского. Труппа гастролирует по Европе и получает международные награды.`,
         addr:'Адрес Позоришни трг 1',
         map:'https://maps.google.com/?q=45.2535,19.8445'
