@@ -546,7 +546,7 @@ RULES:
   <div class="flex min-h-screen">
     <!-- Боковая панель -->
     <aside id="sidebar" class="sidebar w-full md:w-1/4 p-4 overflow-y-auto">
-      <h1 id="city-title" class="text-2xl font-bold mb-4">Маршрут по городу</h1>
+      <h1 id="city-title" class="text-2xl font-bold mb-4">Город</h1>
       
       <!-- Выбор города -->
       <div class="mb-6">
@@ -1024,7 +1024,7 @@ function loadCity(cityKey) {
   if (!config) return;
   
   currentCity = cityKey;
-  cityTitle.textContent = `Маршрут по ${config.name}`;
+  cityTitle.textContent = config.name;
   
   // Очищаем поиск
   poiSearch.value = '';
