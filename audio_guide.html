@@ -7,7 +7,7 @@ RULES:
 4. При изменении требований этот блок правил обновляется в первую очередь.
 
 ФУНКЦИОНАЛЬНЫЕ ТРЕБОВАНИЯ:
-1. Выбор города из списка: Белград, Берлин, Будапешт, Буэнос-Айрес, Варна, Вена, Киото, Москва, Нови-Сад, Палич, Париж, Самара, Санкт-Петербург, Сомбор, Стамбул, Суботица, Токио, Чикаго
+1. Выбор города из списка  в файле cities.json
 2. Для каждого города отдельный конфиг с достопримечательностями
 3. Переключатель светлой/темной темы в иконке шестеренки вверху
 4. Выбор города размещен в боковой панели над списком объектов
@@ -28,6 +28,10 @@ RULES:
 19. Автоматическое центрирование карты на выбранный город
 20. Подписи к маркерам с названиями достопримечательностей
 21. Адаптация цвета подписей к текущей теме (темная/светлая)
+22. Поиск по достопримечательностям с фильтрацией по названию, описанию и адресу
+23. Счетчик общего количества достопримечательностей
+24. Выделение активной достопримечательности в навигации
+25. Добавлены новые города: Лондон, Нью-Йорк, Рим с полным набором достопримечательностей
 -->
 <html lang="ru">
 <head>
@@ -170,6 +174,13 @@ RULES:
       outline-offset: 2px;
     }
 
+    /* Input styles for search */
+    input[type="text"].select {
+      background-image: none;
+      padding-right: 1rem;
+      cursor: text;
+    }
+
     /* Layout components */
     .sidebar {
       background-color: var(--card-bg);
@@ -283,6 +294,21 @@ RULES:
         height: 2.75rem;
         font-size: 1.1rem;
       }
+
+      /* На мобильных устройствах фото отображается сверху */
+      .poi-content-container {
+        flex-direction: column-reverse !important;
+      }
+
+      .poi-text-container,
+      .poi-image-container {
+        width: 100% !important;
+      }
+
+      .poi-image-container img {
+        height: 200px !important;
+        margin-bottom: 1rem;
+      }
     }
 
          /* Button groups */
@@ -391,6 +417,51 @@ RULES:
       margin-top: 1.5rem;
     }
 
+    /* Additional responsive styles for POI content */
+    .poi-image-container {
+      max-width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .poi-image-container img {
+      transition: all 0.3s ease;
+    }
+
+    /* Индикатор загрузки изображения */
+    .poi-image-container.loading::before {
+      content: "Загрузка изображения...";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--card-bg);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      color: var(--text-color);
+      font-size: 0.875rem;
+      z-index: 1;
+    }
+
+    .poi-image-container.loading::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--secondary-color);
+      border-radius: 1rem;
+      opacity: 0.8;
+    }
+
+    @media (min-width: 1024px) {
+      .poi-image-container img {
+        min-height: 300px;
+        max-height: 400px;
+      }
+    }
+
     .ol-popup {
       background: var(--card-bg);
       border-radius: 0.75rem;
@@ -447,24 +518,7 @@ RULES:
         <div class="mb-4">
           <label class="block font-semibold mb-2">Город:</label>
           <select id="city-select" class="select w-full">
-            <option value="belgrade">Белград</option>
-            <option value="berlin">Берлин</option>
-            <option value="budapest">Будапешт</option>
-            <option value="buenos-aires">Буэнос-Айрес</option>
-            <option value="varna">Варна</option>
-            <option value="vienna">Вена</option>
-            <option value="kyoto">Киото</option>
-            <option value="moscow">Москва</option>
-            <option value="novi-sad">Нови-Сад</option>
-            <option value="palic">Палич</option>
-            <option value="paris">Париж</option>
-            <option value="samara">Самара</option>
-            <option value="saint-petersburg">Санкт-Петербург</option>
-            <option value="sombor">Сомбор</option>
-            <option value="istanbul">Стамбул</option>
-            <option value="subotica">Суботица</option>
-            <option value="tokyo">Токио</option>
-            <option value="chicago">Чикаго</option>
+            <!-- Опции заполняются динамически из cities.json -->
           </select>
         </div>
 
@@ -498,26 +552,18 @@ RULES:
       <div class="mb-6">
         <label class="block font-semibold mb-2 text-sm">Выберите город:</label>
         <select id="city-select-sidebar" class="select w-full">
-          <option value="belgrade">Белград</option>
-          <option value="berlin">Берлин</option>
-          <option value="budapest">Будапешт</option>
-          <option value="buenos-aires">Буэнос-Айрес</option>
-          <option value="varna">Варна</option>
-          <option value="vienna">Вена</option>
-          <option value="kyoto">Киото</option>
-          <option value="moscow">Москва</option>
-          <option value="novi-sad">Нови-Сад</option>
-          <option value="palic">Палич</option>
-          <option value="paris">Париж</option>
-          <option value="samara">Самара</option>
-          <option value="saint-petersburg">Санкт-Петербург</option>
-          <option value="sombor">Сомбор</option>
-          <option value="istanbul">Стамбул</option>
-          <option value="subotica">Суботица</option>
-          <option value="tokyo">Токио</option>
-          <option value="chicago">Чикаго</option>
+          <!-- Опции заполняются динамически из cities.json -->
         </select>
       </div>
+      
+      <!-- Поиск по достопримечательностям -->
+      <div class="mb-6">
+        <label class="block font-semibold mb-2 text-sm">Поиск:</label>
+        <input type="text" id="poi-search" class="select w-full" placeholder="Найти достопримечательность...">
+      </div>
+      
+      <!-- Счетчик достопримечательностей -->
+      <div id="poi-counter" class="mb-4 text-sm opacity-75 text-center"></div>
       
       <nav id="poi-nav" class="space-y-2"></nav>
     </aside>
@@ -525,18 +571,28 @@ RULES:
     <!-- Основной контент -->
     <main class="flex-1 p-6 overflow-y-auto">
       <div id="poi-card" class="card hidden">
-        <img id="poi-img" class="w-full h-64 object-cover rounded-xl mb-4" />
-        <h2 id="poi-title" class="text-xl font-bold mb-2"></h2>
-        <p id="poi-desc" class="mb-2 whitespace-pre-line leading-relaxed"></p>
-        <p id="poi-addr" class="mb-4 text-sm font-semibold"></p>
-        <div class="button-group justify-center">
-          <button id="prev-btn" class="btn">← Назад</button>
-          <button id="tell-btn" class="btn">▶️ Рассказать</button>
-          <button id="stop-btn" class="btn">⏹ Стоп</button>
-          <button id="next-btn" class="btn">Дальше →</button>
+        <!-- Контейнер с текстом слева и фото справа -->
+        <div class="poi-content-container flex flex-col lg:flex-row gap-6 mb-4">
+          <!-- Левая часть: текст и кнопки -->
+          <div class="poi-text-container flex-1 lg:w-2/3">
+            <h2 id="poi-title" class="text-xl font-bold mb-2"></h2>
+            <p id="poi-desc" class="mb-2 whitespace-pre-line leading-relaxed"></p>
+            <p id="poi-addr" class="mb-4 text-sm font-semibold"></p>
+            <div class="button-group justify-center lg:justify-start">
+              <button id="prev-btn" class="btn">← Назад</button>
+              <button id="tell-btn" class="btn">▶️ Рассказать</button>
+              <button id="stop-btn" class="btn">⏹ Стоп</button>
+              <button id="next-btn" class="btn">Дальше →</button>
+            </div>
+          </div>
+          
+          <!-- Правая часть: фото -->
+          <div class="poi-image-container lg:w-1/3">
+            <img id="poi-img" class="w-full h-64 lg:h-auto object-cover rounded-xl" onerror="this.parentElement.style.display='none'" />
+          </div>
         </div>
         
-        <!-- Карта города -->
+        <!-- Карта города под контентом -->
         <div id="city-map" class="hidden"></div>
       </div>
 
@@ -544,849 +600,110 @@ RULES:
       <div id="welcome-message" class="card text-center">
         <h2 class="text-2xl font-bold mb-4">Добро пожаловать в аудиогид!</h2>
         <p class="mb-4">Выберите город в настройках (⚙️) и начните путешествие по достопримечательностям.</p>
-        <p class="text-sm opacity-75">Поддерживаются города: Белград, Берлин, Будапешт, Буэнос-Айрес, Варна, Вена, Киото, Москва, Нови-Сад, Палич, Париж, Самара, Санкт-Петербург, Сомбор, Стамбул, Суботица, Токио, Чикаго</p>
+        <p id="supported-cities" class="text-sm opacity-75">Загрузка списка городов...</p>
       </div>
     </main>
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
 <script>
-// Конфигурации городов
-const cityConfigs = {
-  subotica: {
-    name: 'Суботице',
-    center: [19.6647, 46.0996],
-    pois: [
-      {
-        name:'Ратуша City Hall',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Gradska_ku%C4%87a_u_Subotici.jpg/800px-Gradska_ku%C4%87a_u_Subotici.jpg',
-        text:`Символ города построен в стиле венгерской сецессии в 1908 1912 годах архитекторами Марцелем Комором и Дьёрдьем Якабом. Башня высотой 76 м открывает вид на Паннонию. Фасад украшен глазурованной керамикой Zsolnay, а внутри сверкают витражи мастеров парламента Будапешта. Площадь всех коридоров 16000 м2, и говорят, что в них легко заблудиться даже чиновникам.`,
-        addr:'Адрес Трг Слободе 1',
-        map:'https://maps.google.com/?q=46.0995648,19.6647683',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Суботица',
-        website: 'https://www.subotica.rs'
-      },
-      {
-        name:'Голубой фонтан',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/%D0%93%D1%80%D0%B0%D0%B4%D1%81%D0%BA%D0%B0_%D0%BA%D1%83%D1%9B%D0%B0%2C_%D0%A1%D1%83%D0%B1%D0%BE%D1%82%D0%B8%D1%86%D0%B0.JPG/800px-%D0%93%D1%80%D0%B0%D0%B4%D1%81%D0%BA%D0%B0_%D0%BA%D1%83%D1%9B%D0%B0%2C_%D0%A1%D1%83%D0%B1%D0%BE%D1%82%D0%B8%D1%86%D0%B0.JPG',
-        text:`Фонтан установлен на площади Республики в 2001 году. Синяя плитка изготовлена на заводе Zsolnay, как кровли многих зданий модерна вокруг. Вечером струи подсвечиваются, и фонтан виден за несколько кварталов. Местные назначают встречи фразой встречаемся у голубого.`,
-        addr:'Адрес Трг Републике',
-        map:'https://maps.google.com/?q=46.100257,19.664095'
-      },
-      {
-        name:'Синагога',
-        img:'https://upload.wikimedia.org/wikipedia/commons/f/fc/Sinagoga_u_Subotici.JPG',
-        text:`Синагога построена в 1902 году теми же архитекторами, что и ратушу. Это вторая по величине синагога Европы после будапештской Dohany. Купол переливается глазурью разных оттенков, а внутри сохранилась деревянная галерея на 1500 мест. После 40 лет запустения здание реставрировали и вновь открыли в 2018 году.`,
-        addr:'Адрес Трг Якаба и Комора 6',
-        map:'https://maps.google.com/?q=46.101467,19.661328'
-      },
-      {
-        name:'Дворец Райхля',
-        img:'https://upload.wikimedia.org/wikipedia/commons/b/b4/Reichl_Palace_in_Subotica.jpg',
-        text:`Архитектор Ференц Райхле возвёл дворец в 1904 году как собственную визитную карточку. Фасад украшен мозаикой, коваными лилиями и керамикой цвета малины. Проект оказался настолько дорогостоящим, что архитектор продал дом, чтобы погасить долги. Сейчас здесь галерея современного искусства, а весной проходит фестиваль вина.`,
-        addr:'Адрес Парк Ференца Райхла 5',
-        map:'https://maps.google.com/?q=46.10215,19.65905'
-      },
-      {
-        name:'Национальный театр',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Wiki.Vojvodina_VII_Subotica_4899_02.jpg/800px-Wiki.Vojvodina_VII_Subotica_4899_02.jpg',
-        text:`Первый театр Воеводины открылся в 1854 году. Здание несколько раз горело и перестраивалось. В 2007 году фасад разобрали и начали реконструкцию, которая длилась 17 лет. В 2022 году театр открылся премьерой сербской комедии.`,
-        addr:'Адрес Корзо 1',
-        map:'https://maps.google.com/?q=46.1003,19.6660'
-      },
-      {
-        name:'Кафедральный собор святой Терезы',
-        img:'https://upload.wikimedia.org/wikipedia/commons/1/10/Subotica_(Szabadka,_%D0%A1%D1%83%D0%B1%D0%BE%D1%82%D0%B8%D1%86%D0%B0)_-_catholic_cathedral.JPG',
-        text:`Собор построен в 1779 году по проекту архитектора Франца Кауфмана. Разные грунты под башнями вызвали наклон одной из них на 40 см. Алтари украшают картины венских мастеров. По воскресеньям здесь звучат органные концерты.`,
-        addr:'Адрес Трг Свете Терезије 1',
-        map:'https://maps.google.com/?q=46.1006,19.6679'
-      },
-      {
-        name:'Францисканская церковь святого Михаила',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Franciscan_Church_Subotica.jpg/800px-Franciscan_Church_Subotica.jpg',
-        text:`Самый старый храм города вырос из часовни 1695 года. Барочный облик церковь получила в 1730 году. Во дворе сохранился колодец с кованым воротом. Местные называют храм старой церковью и приходят сюда на праздник святого Михаила.`,
-        addr:'Адрес Трг Франјеваца 13',
-        map:'https://maps.google.com/?q=46.1010,19.6630'
-      }
-    ]
-  },
+// Конфигурации городов (загружаются из JSON файла)
+let cityConfigs = {};
 
-  palic: {
-    name: 'Паличу',
-    center: [19.7589, 46.0953],
-    pois: [
-      {
-        name:'Палич Озеро',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Palic13.jpg/800px-Palic13.jpg',
-        text:`Озеро Палич расположено в 8 км от Суботицы. Глубина достигает 3 м, а площадь 5.8 км2. Озеро образовалось в период последнего ледникового периода. Летом температура воды достигает 26 градусов. Здесь гнездятся более 140 видов птиц.`,
-        addr:'Адрес Палички пут',
-        map:'https://maps.google.com/?q=46.0953,19.7589'
-      },
-      {
-        name:'Большая терраса',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Pali%C4%87ko_jezero_panorama.jpg/800px-Pali%C4%87ko_jezero_panorama.jpg',
-        text:`Большая терраса построена в 1912 году в стиле сецессии. Длина террасы 217 м. Здесь проводились балы и концерты аристократии Австро Венгрии. В центре террасы находится музыкальный павильон. Сейчас здесь ресторан и кафе с видом на озеро.`,
-        addr:'Адрес Обала доктора Младена Стојановића',
-        map:'https://maps.google.com/?q=46.0958,19.7594'
-      },
-      {
-        name:'Водонапорная башня',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Palic_Water_Tower.jpg/800px-Palic_Water_Tower.jpg',
-        text:`Башня высотой 32 м построена в 1912 году архитектором Титушом Мачковичем. Служила для водоснабжения курорта. Фасад украшен керамикой фабрики Zsolnay. Сейчас в башне смотровая площадка и галерея. С верхнего этажа открывается вид на озеро и Венгрию.`,
-        addr:'Адрес Парк Палић',
-        map:'https://maps.google.com/?q=46.0945,19.7580'
-      },
-      {
-        name:'Женская лечебница',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Palic_panorama.jpg/800px-Palic_panorama.jpg',
-        text:`Лечебница построена в 1908 году для женщин высшего общества. Здание украшено башенками и эркерами. Здесь принимали грязевые ванны и пили минеральную воду. Вода озера содержит натрий, магний и кальций. Сейчас в здании спа центр.`,
-        addr:'Адрес Обала доктора Младена Стојановића',
-        map:'https://maps.google.com/?q=46.0960,19.7600'
-      },
-      {
-        name:'Мужская лечебница',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Sunset_on_Palics_lake.jpg/800px-Sunset_on_Palics_lake.jpg',
-        text:`Мужская лечебница возведена в 1909 году в неороманском стиле. Фасад украшен арками и декоративными элементами. Мужчины принимали солнечные ванны и занимались греблей. Рядом был причал для лодок и яхт. Сейчас здесь отель и ресторан.`,
-        addr:'Адрес Обала доктора Младена Стојановића',
-        map:'https://maps.google.com/?q=46.0955,19.7585'
-      }
-    ]
-  },
-
-  belgrade: {
-    name: 'Белграду',
-    center: [20.4489, 44.8176],
-    pois: [
-      {
-        name:'Калемегдан крепость',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Kalemegdan%2C_Belgrade_Fortress.jpg/800px-Kalemegdan%2C_Belgrade_Fortress.jpg',
-        text:`Крепость на слиянии Савы и Дуная существует более 2000 лет. Римляне называли поселение Сингидунум. Сербы построили здесь столицу в 1284 году. Крепость осаждали турки, австрийцы и немцы. Сейчас это парк с музеями и памятниками. С крепостных стен открывается вид на два речных потока.`,
-        addr:'Адрес Калемегдан 1',
-        map:'https://maps.google.com/?q=44.8225,20.4487',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Калемегдан'
-      },
-      {
-        name:'Храм святого Савы',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Temple_Saint_Sava.jpg/800px-Temple_Saint_Sava.jpg',
-        text:`Самый большой православный храм в мире строился с 1935 по 2004 год. Высота купола 65 м, а площадь 3500 м2. Храм вмещает 10000 верующих. Построен на месте сожжения мощей святого Савы в 1594 году. Внутри сверкают мозаики из золота и мрамора. Колокола весят до 4 тонн.`,
-        addr:'Адрес Крушедолска 2',
-        map:'https://maps.google.com/?q=44.7985,20.4687',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Храм_Святого_Саввы',
-        website: 'https://hramsvetogsave.com'
-      },
-      {
-        name:'Скадарлия',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Skadarlija07.jpg/800px-Skadarlija07.jpg',
-        text:`Богемный квартал 19 века называют белградским Монмартром. Мощеные улочки помнят поэтов, художников и музыкантов. Здесь творили Джура Якшич и Милан Ракич. В кафанах звучат народные песни под гитару и тамбуру. Стены украшены портретами знаменитостей. Вечером улицы оживают музыкой и смехом.`,
-        addr:'Адрес Скадарска улица',
-        map:'https://maps.google.com/?q=44.8180,20.4605'
-      },
-      {
-        name:'Резиденция княгини Любицы',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Princess_Ljubica_Residence.jpg/800px-Princess_Ljubica_Residence.jpg',
-        text:`Дворец построен в 1831 году для жены князя Милоша Обреновича. Здание в стиле балканского барокко украшено турецкими и европейskimi элементами. Любица жила здесь с детьми Милошем и Михаилом. Во дворце проходили приемы и балы. Сейчас это музей с экспозицией о жизни сербской аристократии.`,
-        addr:'Адрес Кнез Михаилова 8',
-        map:'https://maps.google.com/?q=44.8167,20.4563'
-      },
-      {
-        name:'Кнез Михаилова улица',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Knez_Mihailova_Street_Belgrade.jpg/800px-Knez_Mihailova_Street_Belgrade.jpg',
-        text:`Главная пешеходная улица Белграда протянулась на 1 км от площади Республики до Калемегдана. Названа в честь князя Михаила Обреновича. Здания построены в 19 веке в стилях класицизма и академизма. Здесь магазины, кафе и уличные музыканты. Вечером улица превращается в променад горожан и туристов.`,
-        addr:'Адрес Кнез Михаилова улица',
-        map:'https://maps.google.com/?q=44.8175,20.4580'
-      }
-    ]
-  },
-
-  sombor: {
-    name: 'Сомбору',
-    center: [19.1123, 45.7747],
-    pois: [
-      {
-        name:'Ратуша Сомбора',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Sombor_(Zombor)_-_town_hall.JPG/800px-Sombor_(Zombor)_-_town_hall.JPG',
-        text:`Ратуша построена в 1842 году в стиле класицизма. Здание украшают колонны и фронтон с гербом города. Башня с часами добавлена в 1883 году. Часы изготовлены в Вене и до сих пор работают. В ратуше заседает городской совет и мэрия. Площадь перед зданием вымощена камнем.`,
-        addr:'Адрес Трг цара Уроша 1',
-        map:'https://maps.google.com/?q=45.7747,19.1123',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Сомбор',
-        website: 'https://www.sombor.rs'
-      },
-      {
-        name:'Сербский театр',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Serbian_Theatre_Sombor.jpg/800px-Serbian_Theatre_Sombor.jpg',
-        text:`Театр открылся в 1882 году как первый профессиональный сербский театр в Воеводине. Здание построено в стиле неоренессанса. Зал вмещает 350 зрителей. Здесь начинали карьеру многие актеры. Театр носит имя Милоша Цицовачки. На сцене идут драмы, комедии и оперетты.`,
-        addr:'Адрес Позоришни трг 1',
-        map:'https://maps.google.com/?q=45.7740,19.1130',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Сербский_национальный_театр_(Сомбор)',
-        website: 'https://www.snp-sombor.rs'
-      },
-      {
-        name:'Церковь святого Георгия',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/St_George_Church_Sombor.jpg/800px-St_George_Church_Sombor.jpg',
-        text:`Православный храм построен в 1763 году в стиле барокко. Иконостас резал мастер Арсеније Маркович. Церковь освящена в честь святого Георгия Победоносца. Колокольня высотой 45 м видна со всех концов города. Во дворе похоронены епископы и благотворители. По праздникам звонят 6 колоколов.`,
-        addr:'Адрес Епископска 2',
-        map:'https://maps.google.com/?q=45.7745,19.1115',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Собор_Святого_Георгия_(Сомбор)'
-      },
-      {
-        name:'Дворец Карачони',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Karaconi_Palace_Sombor.jpg/800px-Karaconi_Palace_Sombor.jpg',
-        text:`Дворец построен в 1749 году венгерским графом Карачони в стиле барокко. Фасад украшен лепниной и гербами. В залах сохранились фрески и паркет 18 века. Граф содержал здесь библиотеку и картинную галерею. Сейчас во дворце музей и концертный зал. В парке растут 200 летние дубы.`,
-        addr:'Адрес Музејска 3',
-        map:'https://maps.google.com/?q=45.7750,19.1140',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Дворец_Карачони'
-      },
-      {
-        name:'Пивоварня',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Sombor_Brewery.jpg/800px-Sombor_Brewery.jpg',
-        text:`Пивоварня основана в 1896 году немецким пивоваром Паулем Хофбауэром. Завод варит пиво по баварским технологиям. Здания построены из красного кирпича в промышленном стиле. Производят лагер, пльзен и темное пиво. При заводе работает музей пивоварения и дегустационный зал. Пиво экспортируют в 6 стран.`,
-        addr:'Адрес Слободна зона',
-        map:'https://maps.google.com/?q=45.7720,19.1180'
-      }
-    ]
-  },
-
-  "novi-sad": {
-    name: 'Нови-Саду',
-    center: [19.8335, 45.2671],
-    pois: [
-      {
-        name:'Петроварадинская крепость',
-        img:'https://upload.wikimedia.org/wikipedia/commons/f/f5/Petrovaradin_Fortress_(P%C3%A9terv%C3%A1radi_v%C3%A1r,_Peterwardein).JPG',
-        text:`Крепость на Дунае строили австрийцы с 1692 по 1780 год. Подземные галереи тянутся на 16 км. Крепость называют Гибралтаром на Дунае. Здесь проходит фестиваль EXIT. Башня с часами показывает время наоборот, длинная стрелка указывает часы, короткая минуты. С крепости видны Дунай и центр города.`,
-        addr:'Адрес Петроварадин',
-        map:'https://maps.google.com/?q=45.2515,19.8667',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Петроварадинская_крепость'
-      },
-      {
-        name:'Площадь Слободы',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Freedom_Square_Novi_Sad.jpg/800px-Freedom_Square_Novi_Sad.jpg',
-        text:`Главная площадь города заложена в 1748 году. Размер 200 на 150 м делает её одной из крупнейших в Европе. В центре памятник Светозару Милетичу работы Ивана Мештровича. Площадь окружают здания 18 19 веков. Здесь проходят концерты, ярмарки и народные гуляния. Зимой работает каток.`,
-        addr:'Адрес Трг Слободе',
-        map:'https://maps.google.com/?q=45.2547,19.8447',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Нови-Сад'
-      },
-      {
-        name:'Римо католический собор',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Catholic_Cathedral_Novi_Sad.jpg/800px-Catholic_Cathedral_Novi_Sad.jpg',
-        text:`Собор Девы Марии построен в 1895 году в неоготическом стиле. Башни высотой 76 м видны из любой точки города. Витражи изготовлены в мастерских Будапешта. Орган имеет 3000 труб и звучит на концертах. Собор вмещает 5000 верующих. Колокола отлиты в Германии и весят 3 тонны.`,
-        addr:'Адрес Кирилова 1',
-        map:'https://maps.google.com/?q=45.2540,19.8435'
-      },
-      {
-        name:'Дунайский парк',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Danube_Park_Novi_Sad.jpg/800px-Danube_Park_Novi_Sad.jpg',
-        text:`Парк заложен в 1895 году по проекту венского ландшафтного архитектора. Площадь 3.5 га в центре города. Здесь растут липы, каштаны и платаны возрастом более 100 лет. В парке памятники поэтам и писателям. Летом работают кафе и детские площадки. Осенью парк превращается в золотой ковер листвы.`,
-        addr:'Адрес Дунавски парк',
-        map:'https://maps.google.com/?q=45.2560,19.8420'
-      },
-      {
-        name:'Сербский национальный театр',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Serbian_National_Theatre_Novi_Sad.jpg/800px-Serbian_National_Theatre_Novi_Sad.jpg',
-        text:`Театр основан в 1861 году как первый профессиональный сербский театр. Здание построено в 1981 году в современном стиле. В театре три сцены и 900 мест. Здесь ставят драмы, комедии, оперы и балеты. Театр носит имя Йована Дорошенского. Труппа гастролирует по Европе и получает международные награды.`,
-        addr:'Адрес Позоришни трг 1',
-        map:'https://maps.google.com/?q=45.2535,19.8445'
-      }
-    ]
-  },
-
-  tokyo: {
-    name: 'Токио',
-    center: [139.6917, 35.6895],
-    pois: [
-      {
-        name:'Храм Сенсодзи',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Asakusa_temple_Sensoji.jpg/800px-Asakusa_temple_Sensoji.jpg',
-        text:`Древнейший буддийский храм Токио основан в 628 году на месте статуи богини Каннон, найденной рыбаками в реке Сумида. Главные ворота Каминаримон украшает гигантский красный фонарь весом 700 кг. Торговая улица Накамисе ведет к храму уже 1400 лет. Ежегодно храм посещают 30 миллионов человек, что делает его самым популярным в Японии.`,
-        addr:'Адрес 2-3-1 Асакуса, Тайто, Токио',
-        map:'https://maps.google.com/?q=35.7148,139.7967',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Сэнсо-дзи',
-        website: 'https://www.senso-ji.jp'
-      },
-      {
-        name:'Императорский дворец',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Tokyo_Imperial_Palace_with_Nijubashi.jpg/800px-Tokyo_Imperial_Palace_with_Nijubashi.jpg',
-        text:`Резиденция императора Японии расположена на месте замка Эдо сегуна Токугава. Дворец окружен рвами и стенами на территории 115 га в центре Токио. Мост Нидзюбаси стал символом столицы. Восточные сады открыты для посещения и славятся цветением сакуры весной. Внутренние покои дворца закрыты, кроме двух дней в году на Новый год и день рождения императора.`,
-        addr:'Адрес 1-1 Тиёда, Тиёда, Токио',
-        map:'https://maps.google.com/?q=35.6852,139.7528'
-      },
-      {
-        name:'Рыбный рынок Цукидзи',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Tsukiji_Fish_Market.jpg/800px-Tsukiji_Fish_Market.jpg',
-        text:`Крупнейший рыбный рынок мира переехал в район Тоёсу в 2018 году, но внешний рынок Цукидзи продолжает работать. Здесь продают свежайшие морепродукты с 5 утра. Знаменитые тунцовые аукционы собирают торговцев со всей Японии. Рестораны вокруг рынка подают суси из только что выловленной рыбы. Рынок обслуживает 12 миллионов жителей Токио каждый день.`,
-        addr:'Адрес 5-2-1 Цукидзи, Тюо, Токио',
-        map:'https://maps.google.com/?q=35.6650,139.7700'
-      },
-      {
-        name:'Храм Мэйдзи',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Meiji_Shrine_torii.jpg/800px-Meiji_Shrine_torii.jpg',
-        text:`Синтоистский храм посвящен душам императора Мэйдзи и императрицы Сёкэн. Построен в 1920 году в центре 70 гектарного леса из 120000 деревьев, подаренных префектурами всей Японии. Главные ворота тории высотой 12 м сделаны из 1500 летнего кипариса. Храм популярен для традиционных японских свадеб. В новогодние дни сюда приходят 3 миллиона человек помолиться о счастье.`,
-        addr:'Адрес 1-1 Камидзоно-тё, Сибуя, Токио',
-        map:'https://maps.google.com/?q=35.6763,139.6993'
-      },
-      {
-        name:'Радужный мост',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Rainbow_Bridge_Tokyo.jpg/800px-Rainbow_Bridge_Tokyo.jpg',
-        text:`Подвесной мост длиной 798 м соединяет центр Токио с искусственным островом Одайба в Токийском заливе. Открыт в 1993 году и назван в честь разноцветной подсветки в ночное время. Мост имеет два яруса: верхний для автомобилей, нижний для поездов и пешеходов. С моста открывается вид на небоскребы Токио и статую Свободы в миниатюре. Вечером мост превращается в световое шоу из красных, белых и зеленых огней.`,
-        addr:'Адрес Одайба, Минато, Токио',
-        map:'https://maps.google.com/?q=35.6333,139.7667'
-      }
-    ]
-  },
-
-  chicago: {
-    name: 'Чикаго',
-    center: [-87.6298, 41.8781],
-    pois: [
-      {
-        name:'Миллениум парк',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Cloud_Gate_%28The_Bean%29_in_the_morning.jpg/800px-Cloud_Gate_%28The_Bean%29_in_the_morning.jpg',
-        text:`Парк площадью 99000 м2 открылся в 2004 году и стал символом современного Чикаго. Скульптура Cloud Gate, которую горожане называют Бин за сходство с бобом, весит 110 тонн и отражает небоскребы города. Павильон Притцкера вмещает 11000 зрителей на концерты под открытым небом. Корона фонтана проецирует лица чикагцев на 15 метровые башни. Зимой в парке заливают каток, летом проходят фестивали джаза.`,
-        addr:'Адрес 201 E Randolph St, Chicago, IL',
-        map:'https://maps.google.com/?q=41.8826,-87.6233',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Миллениум-парк',
-        website: 'https://www.chicago.gov/city/en/depts/dca/supp_info/millennium_park.html'
-      },
-      {
-        name:'Уиллис Тауэр',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Sears_Tower_ss.jpg/800px-Sears_Tower_ss.jpg',
-        text:`Небоскреб высотой 442 м был самым высоким зданием мира с 1973 по 1998 год. 103 этажа вмещают офисы 16000 сотрудников. Смотровая площадка Skydeck на 103 этаже оборудована стеклянными выступами над пропастью. В ясную погоду видны 4 штата: Иллинойс, Индиана, Мичиган и Висконсин. Лифты поднимаются со скоростью 10 м в секунду. Здание потребляет электричества как город с населением 150000 человек.`,
-        addr:'Адрес 233 S Wacker Dr, Chicago, IL',
-        map:'https://maps.google.com/?q=41.8789,-87.6358'
-      },
-      {
-        name:'Военно морской пирс',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Navy_Pier_Fireworks.jpg/800px-Navy_Pier_Fireworks.jpg',
-        text:`Пирс длиной 1010 м построен в 1916 году для военных нужд, а сейчас это главная туристическая достопримечательность Среднего Запада. Колесо обозрения высотой 65 м открывает вид на озеро Мичиган и горизонт Чикаго. В театрах IMAX показывают фильмы на экранах высотой 6 этажей. Летом каждую среду и субботу запускают фейерверки над озером. Ежегодно пирс посещают 9 миллионов туристов.`,
-        addr:'Адрес 600 E Grand Ave, Chicago, IL',
-        map:'https://maps.google.com/?q=41.8917,-87.6058'
-      },
-      {
-        name:'Институт искусств',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Art_Institute_of_Chicago.jpg/800px-Art_Institute_of_Chicago.jpg',
-        text:`Музей основан в 1879 году и содержит одну из лучших коллекций импрессионистов в мире. Здесь хранятся шедевры Моне, Ренуара, Пикассо и Ван Гога. Бронзовые львы работы Эдварда Кемиса охраняют вход с 1894 года. Коллекция американского искусства включает картину Грант Вуд Американская готика. Музей занимает здание 1893 года Всемирной выставки в неоклассическом стиле.`,
-        addr:'Адрес 111 S Michigan Ave, Chicago, IL',
-        map:'https://maps.google.com/?q=41.8796,-87.6237'
-      },
-      {
-        name:'Линкольн парк зоопарк',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Lincoln_Park_Zoo_entrance.jpg/800px-Lincoln_Park_Zoo_entrance.jpg',
-        text:`Один из последних бесплатных зоопарков Америки открылся в 1868 году. На территории 14 га живут 1000 животных 200 видов со всех континентов. Большие кошки содержатся в вольерах площадью 2800 м2 со стеклянными туннелями для посетителей. Дом приматов Great Ape House воссоздает африканские джунгли. Ферма в центре города знакомит детей с домашними животными. Зоопарк ежегодно посещают 3 миллиона человек.`,
-        addr:'Адрес 2001 N Clark St, Chicago, IL',
-        map:'https://maps.google.com/?q=41.9212,-87.6339'
-      }
-    ]
-  },
-
-  "saint-petersburg": {
-    name: 'Санкт-Петербургу',
-    center: [30.3351, 59.9311],
-    pois: [
-      {
-        name:'Эрмитаж',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Spb_06-2012_Palace_Embankment_various_28.jpg/800px-Spb_06-2012_Palace_Embankment_various_28.jpg',
-        text:`Зимний дворец построен для императрицы Елизаветы архитектором Растрелли в 1762 году. Музей основала Екатерина 2 в 1764 году, купив коллекцию из 225 картин. Сегодня в 400 залах хранится 3 миллиона экспонатов. Чтобы посмотреть каждый предмет по минуте, потребуется 11 лет. Коллекция импрессионистов считается лучшей в мире после парижской. В подвалах живут 50 котов, охраняющих шедевры от грызунов.`,
-        addr:'Адрес Дворцовая площадь 2',
-        map:'https://maps.google.com/?q=59.9398,30.3146',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Эрмитаж',
-        website: 'https://www.hermitagemuseum.org'
-      },
-      {
-        name:'Петропавловская крепость',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Peter_and_Paul_Fortress_in_SPB_03.jpg/800px-Peter_and_Paul_Fortress_in_SPB_03.jpg',
-        text:`Крепость заложена Петром 1 в 1703 году в день святых Петра и Павла, давшая начало городу. Шпиль Петропавловского собора высотой 123 м был самой высокой точкой России до 20 века. В соборе похоронены все российские императоры от Петра 1 до Николая 2. Трубецкой бастион служил политической тюрьмой для декабристов, народовольцев и революционеров. Ежедневно в полдень с крепости стреляет пушка, сохраняя 300 летнюю традицию.`,
-        addr:'Адрес Петропавловская крепость 3',
-        map:'https://maps.google.com/?q=59.9504,30.3170'
-      },
-      {
-        name:'Исаакиевский собор',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Spb_06-2012_Isaac%27s_Cathedral.jpg/800px-Spb_06-2012_Isaac%27s_Cathedral.jpg',
-        text:`Собор строился 40 лет с 1818 по 1858 год архитектором Монферраном. Золотой купол диаметром 26 м покрыт 100 кг червонного золота и виден за 25 км. Внутри 14000 м2 мозаик и росписей работы Брюллова, Басина и других мастеров. 112 колонн из розового гранита весят по 114 тонн каждая. Собор вмещает 14000 человек, но службы проходят только по большим праздникам. Смотровая площадка на колоннаде открывает вид на весь исторический центр.`,
-        addr:'Адрес Исаакиевская площадь 4',
-        map:'https://maps.google.com/?q=59.9342,30.3062'
-      },
-      {
-        name:'Храм Спаса на Крови',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Spas_na_Krovi_in_the_morning.jpg/800px-Spas_na_Krovi_in_the_morning.jpg',
-        text:`Храм построен на месте смертельного ранения императора Александра 2 в 1881 году. Строительство длилось 24 года до 1907 года. Архитектор Парланд создал собор в русском стиле с 5 куполами разной высоты. Фасады украшают 7000 м2 мозаик по эскизам Васнецова и Нестерова. Внутри нет ни одной росписи, только мозаичные композиции из 20 видов минералов. Высота главного купола 81 м делает храм одним из самых высоких в России.`,
-        addr:'Адрес Набережная канала Грибоедова 2',
-        map:'https://maps.google.com/?q=59.9402,30.3285'
-      },
-      {
-        name:'Дворцово парковый ансамбль Петергоф',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Peterhof_Palace.jpg/800px-Peterhof_Palace.jpg',
-        text:`Резиденция создана Петром 1 в 1714 году как ответ французскому Версалю. Большой каскад объединяет 64 фонтана и 255 скульптур в единую водную феерию. Фонтан Самсон высотой 20 м символизирует победу России над Швецией в Северной войне. Парки занимают 1000 га с 4 каскадами и 176 фонтанами. Во время войны немцы разрушили дворец, но реставрация длилась 50 лет и восстановила первоначальный облик. Фонтаны работают без насосов за счет перепада высот.`,
-        addr:'Адрес Разводная улица 2, Петергоф',
-        map:'https://maps.google.com/?q=59.8846,29.9085'
-      }
-    ]
-  },
-
-  "buenos-aires": {
-    name: 'Буэнос-Айресу',
-    center: [-58.3816, -34.6037],
-    pois: [
-      {
-        name:'Район Ла Бока',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Caminito%2C_Buenos_Aires.jpg/800px-Caminito%2C_Buenos_Aires.jpg',
-        text:`Цветной квартал в устье реки Ла Плата основан генуэзскими иммигрантами в 19 веке. Дома окрашены в яркие цвета остатками корабельной краски из порта. Улица Каминито длиной 150 м стала музеем под открытым небом с танго шоу. Здесь родилось танго в конце 19 века в барах и борделях портовых рабочих. Стадион Ла Бомбонера вмещает 49000 болельщиков команды Бока Хуниорс. Аргентинский художник Бенито Кинкела Мартин превратил район в туристическую достопримечательность.`,
-        addr:'Адрес Caminito, La Boca, Buenos Aires',
-        map:'https://maps.google.com/?q=-34.6399,-58.3619'
-      },
-      {
-        name:'Площадь Мая',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Plaza_de_Mayo_Buenos_Aires_Argentina.jpg/800px-Plaza_de_Mayo_Buenos_Aires_Argentina.jpg',
-        text:`Главная площадь страны основана в 1580 году конкистадором Хуаном де Гараем. Названа в честь Майской революции 1810 года, начавшей борьбу за независимость Аргентины. Розовый дом Каса Росада служит президентским дворцом с 1873 года. Кафедральный собор хранит мощи генерала Сан Мартина, освободителя Южной Америки. Пирамида Мая 1811 года стала первым патриотическим памятником континента. Каждый четверг здесь собираются Матери площади Мая, требующие правды о пропавших детях.`,
-        addr:'Адрес Plaza de Mayo, Buenos Aires',
-        map:'https://maps.google.com/?q=-34.6083,-58.3712'
-      },
-      {
-        name:'Район Сан Тельмо',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/San_Telmo_Market_Buenos_Aires.jpg/800px-San_Telmo_Market_Buenos_Aires.jpg',
-        text:`Старейший район города сохранил колониальную архитектуру 17 18 веков. Узкие мощеные улочки окружают особняки с внутренними двориками патио. По воскресеньям на площади Доррего работает антикварный рынок и выступают уличные танцоры танго. Рынок Сан Тельмо 1897 года объединяет 30 антикварных лавок под чугунной крышей. В кафе Тортони 1858 года собирались писатели Борхес и Кортасар. Район стал центром танго музеев, милонг и танго шоу для туристов.`,
-        addr:'Адрес Plaza Dorrego, San Telmo, Buenos Aires',
-        map:'https://maps.google.com/?q=-34.6214,-58.3731'
-      },
-      {
-        name:'Кладбище Реколета',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Buenos_Aires_-_Recoleta_Cemetery.jpg/800px-Buenos_Aires_-_Recoleta_Cemetery.jpg',
-        text:`Некрополь аргентинской элиты открыт в 1822 году на месте монастыря ордена реколетов. 4800 склепов образуют город мертвых с улицами и площадями. Мавзолеи построены в стилях неоготики, ар нуво и неоклассицизма из мрамора и бронзы. Здесь покоятся президенты, писатели, военные и аристократы Аргентины. Могила Эвиты Перон остается самой посещаемой, несмотря на скромную табличку Familia Duarte. Кладбище занимает 5.5 га в самом дорогом районе столицы.`,
-        addr:'Адрес Junín 1790, Recoleta, Buenos Aires',
-        map:'https://maps.google.com/?q=-34.5880,-58.3936'
-      },
-      {
-        name:'Театр Колон',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Teatro_Col%C3%B3n.jpg/800px-Teatro_Col%C3%B3n.jpg',
-        text:`Оперный театр открыт в 1908 году и считается одним из 5 лучших в мире по акустике. Зал в форме подковы вмещает 2487 зрителей на 7 ярусах. Купол расписал художник Раул Соляно сценами из аргентинской истории. Люстра весом 1000 кг освещает партер из 632 мест. На сцене выступали Карузо, Паваротти, Каллас и другие звезды мировой оперы. Театр имеет собственные мастерские декораций, костюмов и даже парикмахерскую для артистов.`,
-        addr:'Адрес Cerrito 628, Buenos Aires',
-        map:'https://maps.google.com/?q=-34.6012,-58.3830'
-      }
-    ]
-  },
-
-  istanbul: {
-    name: 'Стамбулу',
-    center: [28.9784, 41.0082],
-    pois: [
-      {
-        name:'Айя София',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Hagia_Sophia_Mars_2013.jpg/800px-Hagia_Sophia_Mars_2013.jpg',
-        text:`Собор святой Софии построен императором Юстинианом в 537 году как главный храм Византии. Купол диаметром 31 м и высотой 55 м оставался крупнейшим в мире 1000 лет. После завоевания Константинополя в 1453 году султан Мехмед 2 превратил собор в мечеть. Христианские мозаики закрыли штукатуркой, добавили минареты и михраб. С 1935 по 2020 год здание было музеем, а сейчас снова мечеть. Уникальность Айя Софии в сочетании византийского и исламского искусства под одним куполом.`,
-        addr:'Адрес Sultan Ahmet, Ayasofya Meydanı No:1, Fatih/İstanbul',
-        map:'https://maps.google.com/?q=41.0086,28.9802',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Айя-София',
-        website: 'https://ayasofyamuzesi.gov.tr'
-      },
-      {
-        name:'Голубая мечеть',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Blue_Mosque_at_dawn.jpg/800px-Blue_Mosque_at_dawn.jpg',
-        text:`Мечеть султана Ахмеда построена архитектором Седефкар Мехмед ага с 1609 по 1616 год. Единственная мечеть мира с 6 минаретами вызвала скандал, так как столько же было в Мекке. Название получила от 20000 голубых изразцов Изника, украшающих интерьер. Центральный купол высотой 43 м окружают 4 полукупола и 260 окон. Мечеть вмещает 10000 верующих на коврах ручной работы. Во время намаза туристов не пускают, можно только любоваться внешним видом.`,
-        addr:'Адрес Sultan Ahmet, Atmeydanı Cd. No:7, Fatih/İstanbul',
-        map:'https://maps.google.com/?q=41.0054,28.9768',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Мечеть_Ахмедие'
-      },
-      {
-        name:'Дворец Топкапы',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Topkapi_Palace_Istanbul_2007.jpg/800px-Topkapi_Palace_Istanbul_2007.jpg',
-        text:`Резиденция османских султанов с 1465 по 1856 год занимает 69 га на мысе между Золотым Рогом и Босфором. Дворец состоит из 4 дворов с павильонами, мечетями и садами. В гареме жили до 1000 наложниц султана под охраной евнухов. Сокровищница хранит трон из 25000 бриллиантов и изумруд 86 каратов. Кухни дворца могли накормить 10000 человек в день. Сейчас в 300 комнатах музей с коллекцией османского искусства, оружия и драгоценностей.`,
-        addr:'Адрес Cankurtaran, 34122 Fatih/İstanbul',
-        map:'https://maps.google.com/?q=41.0115,28.9833',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Топкапы',
-        website: 'https://topkapisarayi.gov.tr'
-      },
-      {
-        name:'Гранд базар',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Grand_Bazaar%2C_Istanbul.jpg/800px-Grand_Bazaar%2C_Istanbul.jpg',
-        text:`Крытый рынок построен в 1461 году Мехмедом Завоевателем как торговый центр империи. 4000 магазинов под сводами 61 улицы создают лабиринт площадью 31000 м2. Здесь торгуют коврами, золотом, керамикой, специями и сувенирами. 18 ворот ведут в базар, который ежедневно посещают 400000 человек. Мечеть внутри рынка окружают кафе и рестораны османской кухни. Базар пережил 6 землетрясений и остается одним из старейших торговых центров мира.`,
-        addr:'Адрес Beyazıt, 34126 Fatih/İstanbul',
-        map:'https://maps.google.com/?q=41.0106,28.9681'
-      },
-      {
-        name:'Цистерна Базилика',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Basilica_Cistern_Istanbul_2020.jpg/800px-Basilica_Cistern_Istanbul_2020.jpg',
-        text:`Подземное водохранилище построено в 532 году для снабжения Большого дворца водой. 336 колонн высотой 9 м поддерживают кирпичные своды над водой глубиной 4 м. Цистерна вмещала 80000 тонн воды из лесов Белграда по 20 км акведуку. Две колонны стоят на головах Медузы Горгоны, перевернутых вверх ногами неизвестно зачем. Освещение создает мистическую атмосферу среди водной глади и древних колонн. Цистерну открыли для туристов в 1987 году после реставрации.`,
-        addr:'Адрес Alemdar, Yerebatan Cd. 1/3, Fatih/İstanbul',
-        map:'https://maps.google.com/?q=41.0084,28.9778'
-      }
-    ]
-  },
-
-  paris: {
-    name: 'Парижу',
-    center: [2.3522, 48.8566],
-    pois: [
-      {
-        name:'Эйфелева башня',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/800px-Tour_Eiffel_Wikimedia_Commons.jpg',
-        text:`Железная башня построена инженером Гюставом Эйфелем к Всемирной выставке 1889 года. Высота 330 м делала её самым высоким сооружением мира на 40 лет. 18000 металлических деталей скреплены 2.5 миллионами заклепок без единого сварного шва. Башня весит 10000 тонн, но давление на грунт равно давлению сидящего человека. Ежегодно сюда поднимаются 7 миллионов туристов на лифтах и по 1665 ступеням. Летом башня вырастает на 15 см от теплового расширения металла.`,
-        addr:'Адрес Champ de Mars, 5 Avenue Anatole France',
-        map:'https://maps.google.com/?q=48.8584,2.2945',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Эйфелева_башня',
-        website: 'https://www.toureiffel.paris'
-      },
-      {
-        name:'Лувр',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Louvre_Museum_Wikimedia_Commons.jpg/800px-Louvre_Museum_Wikimedia_Commons.jpg',
-        text:`Королевский дворец превратили в музей в 1793 году во время Французской революции. Коллекция насчитывает 380000 экспонатов от античности до 1848 года. Мона Лиза Леонардо да Винчи за пуленепробиваемым стеклом остается самой знаменитой картиной мира. Венера Милосская и Ника Самофракийская представляют античную скульптуру. Стеклянная пирамида архитектора Пея 1989 года стала современным символом музея. Чтобы осмотреть все залы, потребуется 200 дней по 8 часов.`,
-        addr:'Адрес Rue de Rivoli, 75001 Paris',
-        map:'https://maps.google.com/?q=48.8606,2.3376'
-      },
-      {
-        name:'Собор Парижской Богоматери',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Notre_Dame_de_Paris_2013-07-24.jpg/800px-Notre_Dame_de_Paris_2013-07-24.jpg',
-        text:`Готический собор строился 180 лет с 1163 по 1345 год на острове Сите. Башни высотой 69 м украшены химерами и горгульями, отводящими дождевую воду. Роза западного фасада диаметром 10 м сияет разноцветными витражами 13 века. Колокол Эммануэль весом 13 тонн звонит только по большим праздникам. Пожар 2019 года уничтожил шпиль и кровлю, но алтарь и реликвии спасли. Реставрация собора продлится до 2028 года с воссозданием средневековых технологий.`,
-        addr:'Адрес 6 Parvis Notre-Dame, Place Jean-Paul II',
-        map:'https://maps.google.com/?q=48.8530,2.3499'
-      },
-      {
-        name:'Монмартр и Сакре Кер',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Sacre_Coeur_Basilica%2C_Paris_6_May_2014.jpg/800px-Sacre_Coeur_Basilica%2C_Paris_6_May_2014.jpg',
-        text:`Базилика Святого Сердца построена на холме Монмартр в 1914 году в память о жертвах франко прусской войны. Белоснежные купола видны из любой точки Парижа с высоты 130 м над рекой Сеной. Мозаика в апсиде площадью 475 м2 считается одной из крупнейших в мире. Район Монмартр остается богемным кварталом художников, кабаре и кафе. Площадь Тертр сохраняет атмосферу конца 19 века, когда здесь творили Пикассо, Ренуар и Тулуз Лотрек. Фуникулер поднимает туристов на холм с 1900 года.`,
-        addr:'Адрес 35 Rue du Chevalier de la Barre, 75018 Paris',
-        map:'https://maps.google.com/?q=48.8867,2.3431'
-      },
-      {
-        name:'Елисейские поля',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Avenue_des_Champs-%C3%89lys%C3%A9es%2C_Paris_2014.jpg/800px-Avenue_des_Champs-%C3%89lys%C3%A9es%2C_Paris_2014.jpg',
-        text:`Самая знаменитая улица мира протянулась на 1.9 км от площади Согласия до Триумфальной арки. Людовик 14 приказал проложить аллею в 1667 году для прогулок аристократии. Название означает Елисейские поля из греческой мифологии, где обитают души героев. Магазины Louis Vuitton, Cartier и Chanel соседствуют с кафе и кинотеатрами. 14 июля здесь проходит военный парад в честь взятия Бастилии. Каждый декабрь улицу украшают праздничной иллюминацией с миллионами огней.`,
-        addr:'Адрес Avenue des Champs-Élysées, 75008 Paris',
-        map:'https://maps.google.com/?q=48.8698,2.3078'
-      }
-    ]
-  },
-
-  budapest: {
-    name: 'Будапешту',
-    center: [19.0402, 47.4979],
-    pois: [
-      {
-        name:'Здание парламента',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Budapest_Parliament.jpg/800px-Budapest_Parliament.jpg',
-        text:`Парламент построен по проекту Имре Штейндла с 1885 по 1904 год в неоготическом стиле. Здание длиной 268 м и высотой 96 м стало символом Венгрии на берегу Дуная. 691 комната соединена 29 лестницами и 13 лифтами. Центральный купол украшен короной святого Иштвана, первого короля Венгрии. 40 кг золота покрывают шпили и декоративные элементы фасада. Парламент освещают 365000 лампочек, превращая его в сказочный замок по вечерам.`,
-        addr:'Адрес Kossuth Lajos tér 1-3, Budapest',
-        map:'https://maps.google.com/?q=47.5077,19.0458',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Здание_венгерского_парламента',
-        website: 'https://www.parlament.hu'
-      },
-      {
-        name:'Рыбацкий бастион',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Fishermans_Bastion_Budapest.jpg/800px-Fishermans_Bastion_Budapest.jpg',
-        text:`Неороманская терраса построена в 1905 году архитектором Фридешом Шулеком на месте средневековых укреплений. 7 башен символизируют 7 мадьярских племен, основавших Венгрию в 9 веке. Название происходит от рыбацкой гильдии, защищавшей этот участок крепостной стены. С террасы открывается лучший вид на Дунай, парламент и Пешт. Памятник святому Иштвану работы Алайоша Штроба установлен в 1906 году. Вечерняя подсветка превращает бастион в романтическое место встреч.`,
-        addr:'Адрес Szentháromság tér, Budapest',
-        map:'https://maps.google.com/?q=47.5023,19.0344',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Рыбацкий_бастион'
-      },
-      {
-        name:'Церковь Матяша',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Matthias_Church_Budapest.jpg/800px-Matthias_Church_Budapest.jpg',
-        text:`Церковь Богоматери построена в 13 веке, но название получила от короля Матяша Корвина, венчавшегося здесь дважды. Неоготический облик церковь приобрела при реконструкции 1873 1896 годов. Крыша покрыта цветной черепицей Zsolnay в национальных цветах Венгрии. Внутри сохранились фрески 15 века и усыпальница короля Белы 3 и королевы Анны де Шатийон. Орган 1909 года имеет 3000 труб и считается одним из лучших в Европе. В церкви короновались австро венгерские императоры Франц Иосиф и Карл 4.`,
-        addr:'Адрес Szentháromság tér 2, Budapest',
-        map:'https://maps.google.com/?q=47.5018,19.0345'
-      },
-      {
-        name:'Купальни Сечени',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Szechenyi_thermal_bath_Budapest.jpg/800px-Szechenyi_thermal_bath_Budapest.jpg',
-        text:`Крупнейший лечебный комплекс Европы открыт в 1913 году архитектором Дьёрдьем Цигером в стиле необарокко. 21 бассейн наполнен термальной водой температурой от 27 до 40 градусов из скважин глубиной 1200 м. Вода содержит кальций, магний и сульфаты, помогающие при болезнях суставов. Открытые бассейны работают круглый год, даже когда выпадает снег. Местные жители играют в шахматы, стоя по шею в горячей воде. Комплекс вмещает 5000 посетителей одновременно в 15 залах и садах.`,
-        addr:'Адрес Állatkerti krt. 9-11, Budapest',
-        map:'https://maps.google.com/?q=47.5184,19.0818',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Купальни_Сечени',
-        website: 'https://www.szechenyibath.hu'
-      },
-      {
-        name:'Центральный рынок',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Budapest_Central_Market_Hall.jpg/800px-Budapest_Central_Market_Hall.jpg',
-        text:`Центральный крытый рынок построен в 1897 году архитектором Шамом Печем к празднованию 1000 летия Венгрии. Чугунная конструкция покрыта черепицей Zsolnay в национальных цветах. Первый этаж занимают мясные, рыбные и овощные лавки местных фермеров. На втором этаже продают сувениры, вышивку и керамику ручной работы. Подвал отдан под винные погреба с дегустацией токайских вин. Рынок сохранил аутентичную атмосферу конца 19 века и считается обязательным для посещения местом.`,
-        addr:'Адрес Vámház krt. 1-3, Budapest',
-        map:'https://maps.google.com/?q=47.4871,19.0585'
-      }
-    ]
-  },
-
-  vienna: {
-    name: 'Вене',
-    center: [16.3738, 48.2082],
-    pois: [
-      {
-        name:'Дворец Шёнбрунн',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Sch%C3%B6nbrunn_Palace_%28_584008%29_%2825783138141%29.jpg/800px-Sch%C3%B6nbrunn_Palace_%28_584008%29_%2825783138141%29.jpg',
-        text:`Летняя резиденция Габсбургов построена в 1696 1712 годах архитектором Иоганном Фишером фон Эрлахом. 1441 комната в стиле рококо служила домом императорской семье 300 лет. Здесь жила императрица Мария Терезия, а Моцарт давал концерты в 6 летнем возрасте. Парки занимают 160 га с лабиринтом, глориеттой и зоопарком 1752 года. Большая галерея длиной 43 м украшена хрустальными люстрами и зеркалами. Дворец внесен в список ЮНЕСКО как выдающийся памятник барокко.`,
-        addr:'Адрес Schönbrunner Schloßstraße 47, Vienna',
-        map:'https://maps.google.com/?q=48.1847,16.3122',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Шёнбрунн',
-        website: 'https://www.schoenbrunn.at'
-      },
-      {
-        name:'Собор святого Стефана',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Wien_Stefansdom_DSC02656.JPG/800px-Wien_Stefansdom_DSC02656.JPG',
-        text:`Готический собор строился с 1137 по 1511 год на месте двух романских церквей. Южная башня высотой 136 м украшена гербом Австрии из цветной черепицы. 343 ступени ведут на смотровую площадку с видом на Альпы в ясную погоду. Северная башня осталась недостроенной и увенчана куполом эпохи Возрождения. В соборе похоронены 72 члена династии Габсбургов в императорском склепе. Колокол Пуммерин весом 20 тонн отлит из турецких пушек после осады 1683 года.`,
-        addr:'Адрес Stephansplatz 3, Vienna',
-        map:'https://maps.google.com/?q=48.2085,16.3721',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Собор_Святого_Стефана_(Вена)',
-        website: 'https://www.stephanskirche.at'
-      },
-      {
-        name:'Дворец Бельведер',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Wien_Belvedere_Oberes_DSC02190.JPG/800px-Wien_Belvedere_Oberes_DSC02190.JPG',
-        text:`Барочный дворцовый комплекс построен принцем Евгением Савойским в 1714 1723 годах архитектором Лукасом фон Гильдебрандтом. Верхний и нижний дворцы соединяет французский сад с фонтанами и скульптурами. В Верхнем Бельведере находится крупнейшая коллекция Климта, включая знаменитый Поцелуй. Мраморный зал украшен фресками Мартино Альтомонте и статуями Георга Донера. В 1955 году здесь подписали Государственный договор о независимости Австрии. Сады открыты круглосуточно и бесплатно для прогулок венцев и туристов.`,
-        addr:'Адрес Prinz Eugen-Straße 27, Vienna',
-        map:'https://maps.google.com/?q=48.1916,16.3806',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Бельведер_(Вена)',
-        website: 'https://www.belvedere.at'
-      },
-      {
-        name:'Венская государственная опера',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Vienna_State_Opera_house.jpg/800px-Vienna_State_Opera_house.jpg',
-        text:`Оперный театр открыт в 1869 году премьерой Дон Жуана Моцарта в присутствии императора Франца Иосифа. Здание в стиле неоренессанса рассчитано на 2280 зрителей в 6 ярусах. Во время войны театр разбомбили, но восстановили к 1955 году с улучшенной акустикой. 300 спектаклей в год делают Венскую оперу самой загруженной в мире. Новогодний концерт Венского филармонического оркестра транслируют в 90 стран мира. Билеты на галерку за 4 евро остаются доступными для студентов и пенсионеров.`,
-        addr:'Адрес Opernring 2, Vienna',
-        map:'https://maps.google.com/?q=48.2035,16.3690',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Венская_государственная_опера',
-        website: 'https://www.wiener-staatsoper.at'
-      },
-      {
-        name:'Пратер',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Wiener_Riesenrad_2.jpg/800px-Wiener_Riesenrad_2.jpg',
-        text:`Парк развлечений открыт императором Иосифом 2 в 1766 году для всех сословий вместо охотничьих угодий. Колесо обозрения 1897 года высотой 65 м стало символом Вены после фильма Третий человек. 15 вагончиков вмещают по 24 пассажира на 20 минутный оборот с видом на Дунай. Пратер сочетает современные аттракционы с ретро каруселями и музеем восковых фигур мадам Тюссо. Главная аллея длиной 4.4 км ведет к стадиону и ипподрому. Вход в парк бесплатный, платить нужно только за аттракционы.`,
-        addr:'Адрес Prater 9, Vienna',
-        map:'https://maps.google.com/?q=48.2164,16.3947',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Пратер',
-        website: 'https://www.prater.at'
-      }
-    ]
-  },
-
-  kyoto: {
-    name: 'Киото',
-    center: [135.7681, 35.0116],
-    pois: [
-      {
-        name:'Кинкаку-дзи Золотой павильон',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Kinkaku-ji_2008.jpg/800px-Kinkaku-ji_2008.jpg',
-        text:`Золотой павильон построен в 1397 году как вилла сёгуна Асикага Ёсимицу. После смерти хозяина здание превратили в дзэн храм. Верхние этажи покрыты настоящим золотом толщиной 5 микронов. Павильон отражается в пруду Кёко-чи как в зеркале. В 1950 году здание сгорело от поджога монаха, но восстановлено точной копией. Сад вокруг храма создан в 14 веке и считается национальным достоянием.`,
-        addr:'Адрес 1 Kinkakuji-cho, Kita Ward, Kyoto',
-        map:'https://maps.google.com/?q=35.0394,135.7292',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Кинкаку-дзи',
-        website: 'https://www.shokoku-ji.jp/kinkakuji'
-      },
-      {
-        name:'Храм Фушими Инари',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Fushimi_Inari_Taisha%2C_Kyoto%2C_November_2016_-02.jpg/800px-Fushimi_Inari_Taisha%2C_Kyoto%2C_November_2016_-02.jpg',
-        text:`Главное святилище бога риса Инари основано в 711 году. 10000 красных ворот тории ведут на гору Инари высотой 233 м. Путь к вершине занимает 2 часа через бамбуковые рощи и святилища. Каждые ворота пожертвованы компанией или семьей за благополучие в бизнесе. Лисы считаются посланниками Инари и их статуи расставлены по всему пути. Святилище открыто круглосуточно и красиво подсвечивается ночью.`,
-        addr:'Адрес 68 Fukakusa Yabunouchicho, Fushimi Ward, Kyoto',
-        map:'https://maps.google.com/?q=34.9671,135.7727',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Фусими_Инари',
-        website: 'http://inari.jp'
-      },
-      {
-        name:'Бамбуковая роща Арасияма',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Bamboo_Forest.jpg/800px-Bamboo_Forest.jpg',
-        text:`Бамбуковая роща в районе Арасияма тянется на несколько километров вдоль реки Кацура. Высота бамбука достигает 20 м, создавая зеленый тоннель над дорожками. Шум ветра в бамбуке внесен в список 100 звуков Японии. Роща особенно красива весной во время цветения сакуры и осенью в красных кленах. Рядом расположен храм Тэнрю-дзи с садом камней 14 века. Прогулка займет 30 минут от станции до храма через рощу.`,
-        addr:'Адрес Arashiyama Bamboo Grove, Ukyo Ward, Kyoto',
-        map:'https://maps.google.com/?q=35.0170,135.6691'
-      },
-      {
-        name:'Храм Киёмидзу-дэра',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Kyoto_Kiyomizu-dera_Temples_UNESCO_World_Heritage_Site_Kansai_Japan-2018.jpg/800px-Kyoto_Kiyomizu-dera_Temples_UNESCO_World_Heritage_Site_Kansai_Japan-2018.jpg',
-        text:`Храм чистой воды основан в 778 году на склоне горы Отова. Главный зал построен без единого гвоздя на деревянных столбах высотой 13 м. Терраса выступает над обрывом и открывает панораму на Киото. Водопад Отова дал название храму, его воду считают священной. Паломники пьют из 3 струй воды для здоровья, любви и успеха в учебе. Храм окружен 1000 вишневых деревьев и красив в любое время года.`,
-        addr:'Адрес 1-294 Kiyomizu, Higashiyama Ward, Kyoto',
-        map:'https://maps.google.com/?q=34.9949,135.7851'
-      },
-      {
-        name:'Гион квартал гейш',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Gion_Kyoto_Yasaka_jinja_02.jpg/800px-Gion_Kyoto_Yasaka_jinja_02.jpg',
-        text:`Квартал Гион сохранил атмосферу старого Киото с деревянными домами 17 века. Здесь живут гейши майко и проходят их выступления в чайных домах оча-я. Улица Ханами-кодзи вымощена камнем и освещается бумажными фонарями. Вечером можно увидеть гейш в кимоно, спешащих на работу. В квартале работают эксклюзивные рестораны кайсэки с меню за 300 долларов. Храм Ясака находится в центре района и красиво подсвечивается ночью.`,
-        addr:'Адрес Gion, Higashiyama Ward, Kyoto',
-        map:'https://maps.google.com/?q=35.0036,135.7756'
-      }
-    ]
-  },
-
-  berlin: {
-    name: 'Берлину',
-    center: [13.4050, 52.5200],
-    pois: [
-      {
-        name:'Бранденбургские ворота',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Brandenburger_Tor_abends.jpg/800px-Brandenburger_Tor_abends.jpg',
-        text:`Триумфальные ворота построены в 1791 году архитектором Карлом Готтгардом Лангхансом по образцу афинских Пропилеи. Высота сооружения 26 м с 12 дорическими колоннами. Квадрига богини Виктории венчает ворота с 1794 года. Наполеон увез статую в Париж, но она вернулась в 1814 году. Берлинская стена разделяла ворота на 28 лет, и их открытие в 1989 году стало символом объединения Германии. Сегодня через ворота проходит Парижская площадь с посольствами и отелями.`,
-        addr:'Адрес Pariser Platz, 10117 Berlin',
-        map:'https://maps.google.com/?q=52.5163,13.3777',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Бранденбургские_ворота',
-        website: 'https://www.berlin.de/sehenswuerdigkeiten/3560266-3104052-brandenburger-tor.html'
-      },
-      {
-        name:'Рейхстаг',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Berlin_reichstag_west_panorama_2.jpg/800px-Berlin_reichstag_west_panorama_2.jpg',
-        text:`Здание парламента построено в 1894 году архитектором Паулем Валлотом в стиле неоренессанса. Купол разрушили в 1954 году, но восстановили в 1999 году по проекту Нормана Фостера. Стеклянный купол высотой 23 м открыт для посетителей со спиральными дорожками. Зеркала в центре купола направляют свет в зал заседаний внизу. В 1933 году поджог Рейхстага стал поводом для расправы нацистов с оппозицией. В 1945 году советские солдаты водрузили знамя победы над куполом здания.`,
-        addr:'Адрес Platz der Republik 1, 11011 Berlin',
-        map:'https://maps.google.com/?q=52.5186,13.3761',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Рейхстаг',
-        website: 'https://www.bundestag.de'
-      },
-      {
-        name:'Берлинская стена и Чекпойнт Чарли',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Checkpoint_Charlie_2007.jpg/800px-Checkpoint_Charlie_2007.jpg',
-        text:`Контрольно пропускной пункт Чарли был главным переходом между Восточным и Западным Берлином с 1961 по 1989 год. Стена протяженностью 155 км разделила город на 28 лет и стала символом холодной войны. В октябре 1961 года здесь стояли танки СССР и США в 16 часовом противостоянии. Сегодня на месте КПП музей с документами о попытках побега через стену. Сохранился участок стены длиной 1.3 км с граффити художников со всего мира в галерее Ист Сайд.`,
-        addr:'Адрес Friedrichstraße 43-45, 10117 Berlin',
-        map:'https://maps.google.com/?q=52.5075,13.3903',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Берлинская_стена',
-        website: 'https://www.mauermuseum.de'
-      },
-      {
-        name:'Музейный остров',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Museumsinsel_Berlin_Juli_2021_1_%28cropped%29.jpg/800px-Museumsinsel_Berlin_Juli_2021_1_%28cropped%29.jpg',
-        text:`Комплекс из 5 музеев на острове Шпрееинзель внесен в список ЮНЕСКО в 1999 году. Строительство началось в 1830 году с Старого музея архитектора Карла Шинкеля. Пергамский музей хранит античные сокровища включая Пергамский алтарь и ворота Иштар из Вавилона. Новый музей восстановлен после войны и содержит бюст Нефертити. Старая национальная галерея специализируется на живописи 19 века. Музей Боде собрал скульптуры от средневековья до 18 века.`,
-        addr:'Адрес Museum Island, 10178 Berlin',
-        map:'https://maps.google.com/?q=52.5194,13.3956',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Музейный_остров_(Берлин)',
-        website: 'https://www.smb.museum/en/museums-institutions/museumsinsel/'
-      },
-      {
-        name:'Александерплац и телебашня',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Berlin_TV_Tower_Close.jpg/800px-Berlin_TV_Tower_Close.jpg',
-        text:`Телебашня высотой 368 м построена в ГДР в 1969 году как символ социалистических достижений. Смотровая площадка на высоте 203 м открывает панораму на 40 км в ясную погоду. Вращающийся ресторан делает полный оборот за час. Александерплац названа в честь русского царя Александра 1 и была центром Восточного Берлина. Часы мирового времени 1969 года показывают время в 148 городах мира. Площадь окружают торговые центры и отель Парк Инн высотой 150 м.`,
-        addr:'Адрес Panoramastraße 1A, 10178 Berlin',
-        map:'https://maps.google.com/?q=52.5208,13.4094',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Берлинская_телебашня',
-        website: 'https://tv-turm.de'
-      }
-    ]
-  },
-
-  varna: {
-    name: 'Варне',
-    center: [27.9147, 43.2141],
-    pois: [
-      {
-        name:'Варненские римские термы',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Roman_Baths_Varna_01.jpg/800px-Roman_Baths_Varna_01.jpg',
-        text:`Крупнейшие римские бани на Балканах построены во 2 3 веках нашей эры занимая площадь 7000 м2. Комплекс включал горячие, теплые и холодные залы с мраморными полами и стенами. Система гипокауст обогревала помещения горячим воздухом под полом. Бани служили не только для мытья, но и как социальный центр с библиотекой и гимнасием. Сохранились стены высотой до 20 м и фрагменты мозаичных полов. Археологи обнаружили здесь монеты, украшения и медицинские инструменты.`,
-        addr:'Адрес ul. San Stefano 1, 9000 Varna',
-        map:'https://maps.google.com/?q=43.2047,27.9158'
-      },
-      {
-        name:'Варненский археологический музей',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Varna_Archaeological_Museum.jpg/800px-Varna_Archaeological_Museum.jpg',
-        text:`Музей основан в 1888 году и хранит древнейшее обработанное золото в мире возрастом 6000 лет из Варненского некрополя. Коллекция включает 294 золотых предмета общим весом 6.5 кг из захоронения вождя медного века. Экспозиция охватывает историю от каменного века до средневековья. Представлены фракийские сокровища, античные статуи и средневековые иконы. Здание построено в 1892 году как девичья гимназия, а музеем стало в 1906 году. Ежегодно экспонаты посещают 100000 туристов.`,
-        addr:'Адрес bul. Maria Luiza 41, 9000 Varna',
-        map:'https://maps.google.com/?q=43.2067,27.9108'
-      },
-      {
-        name:'Приморский парк и дельфинарий',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Varna_Sea_Garden.jpg/800px-Varna_Sea_Garden.jpg',
-        text:`Приморский парк заложен в 1862 году чешским садовником Антоном Новаком на площади 850 га вдоль побережья. Аллеи протянулись на 8 км от центра до курорта Золотые пески. В парке растут 215 видов деревьев включая экзотические магнолии и секвойи. Дельфинарий открыт в 1984 году и содержит черноморских дельфинов афалин в бассейнах объемом 1200 м3. Планетарий с куполом диаметром 10 м показывает звездное небо и научные фильмы. Зоопарк специализируется на балканской фауне включая медведей и волков.`,
-        addr:'Адрес Primorski Park, 9000 Varna',
-        map:'https://maps.google.com/?q=43.2072,27.9272'
-      },
-      {
-        name:'Успенский собор',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Dormition_of_the_Mother_of_God_Cathedral%2C_Varna_2.jpg/800px-Dormition_of_the_Mother_of_God_Cathedral%2C_Varna_2.jpg',
-        text:`Кафедральный собор построен в 1886 году в честь освобождения Болгарии от османского ига. Архитектор Маас спроектировал здание в неовизантийском стиле с 5 куполами. Высота центрального купола 42 м, а колокольни 30 м. Иконостас выполнен из резного дерева мастерами из Дебыра. Фрески расписаны в 1950 х годах художниками Васил Захариев и Александр Божинов. Собор вмещает 2000 верующих и служит резиденцией Варненского митрополита.`,
-        addr:'Адрес ul. Prezviter Kozma 3, 9000 Varna',
-        map:'https://maps.google.com/?q=43.2076,27.9123'
-      },
-      {
-        name:'Каменный лес Побити камни',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Stone_Forest_near_Varna_Bulgaria_3.jpg/800px-Stone_Forest_near_Varna_Bulgaria_3.jpg',
-        text:`Уникальное природное явление расположено в 15 км от Варны на площади 13 км2. Каменные колонны высотой до 7 м и толщиной до 3 м выступают из земли как лес окаменелых деревьев. Геологи объясняют их образование деятельностью древнего моря 50 млн лет назад. Местные легенды рассказывают о превращенных в камень воинах или лесе. Первые научные исследования провел австрийский геолог Феликс Каниц в 1829 году. Заповедник охраняется государством с 1937 года как памятник природы.`,
-        addr:'Адрес Pobiti Kamani, 9000 Aksakovo',
-        map:'https://maps.google.com/?q=43.2500,27.7000'
-      }
-    ]
-  },
-
-  samara: {
-    name: 'Самаре',
-    center: [50.1155, 53.2001],
-    pois: [
-      {
-        name:'Площадь Куйбышева',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Samara_Kuibyshev_Square.jpg/800px-Samara_Kuibyshev_Square.jpg',
-        text:`Крупнейшая площадь Европы размером 174000 м2 создана в 1894 году и названа в честь революционера Валериана Куйбышева. В центре стоит Дом культуры имени Кирова 1930 года с залом на 1200 мест. Во время войны здесь размещалось правительство СССР и Большой театр. На площади проходят парады, концерты и городские праздники. Зимой заливают каток площадью 15000 м2. В 2018 году площадь реконструировали к чемпионату мира по футболу.`,
-        addr:'Адрес пл. Куйбышева, Самара',
-        map:'https://maps.google.com/?q=53.1959,50.1006',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Площадь_Куйбышева_(Самара)'
-      },
-      {
-        name:'Музей космонавтики имени Королева',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Samara_Space_Museum.jpg/800px-Samara_Space_Museum.jpg',
-        text:`Единственный в России музей истории космонавтики в виде ракеты носителя Союз высотой 68 м открыт в 2001 году. Экспозиция рассказывает о создании ракет в Самаре на заводе Прогресс с 1958 года. Представлены двигатели РД 107, спускаемые аппараты и скафандры космонавтов. В музее работает планетарий с куполом диаметром 12 м. Ракета весит 20 тонн и является точной копией корабля Юрия Гагарина. Экскурсии ведут инженеры ракетно космической отрасли.`,
-        addr:'Адрес просп. Ленина 21, Самара',
-        map:'https://maps.google.com/?q=53.2016,50.1413',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Музей_космонавтики_(Самара)',
-        website: 'https://www.space-museum.ru'
-      },
-      {
-        name:'Самарская набережная',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Samara_Embankment_Volga.jpg/800px-Samara_Embankment_Volga.jpg',
-        text:`Волжская набережная протянулась на 5 км от Ладьи до пляжа Загородный парк по правому берегу Волги. Строительство началось в 1950 году, а окончательный вид набережная получила к 1957 году. Ширина променада 20 м с 4 террасами спускающимися к воде. Центральная часть украшена ротондой и памятником Чапаеву 1932 года. Летом работают кафе, прокат велосипедов и речные трамвайчики. Пляжи набережной награждены голубым флагом за чистоту воды и экологию.`,
-        addr:'Адрес Волжская набережная, Самара',
-        map:'https://maps.google.com/?q=53.1892,50.1263',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Самарская_набережная'
-      },
-      {
-        name:'Иверский женский монастырь',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Iversky_Monastery_Samara.jpg/800px-Iversky_Monastery_Samara.jpg',
-        text:`Монастырь основан в 1850 году купцом Иваном Крылажиным на берегу Волги. Главный Иверский собор освящен в 1860 году в византийском стиле с 5 куполами. Колокольня высотой 73 м видна с Волги за 15 км. В советское время монастырь закрыли, а здания использовали как хлебозавод и склады. Возрождение началось в 1992 году с восстановления храмов и корпусов. Сейчас в монастыре живут 15 монахинь, работают иконописная и швейная мастерские.`,
-        addr:'Адрес Волжский просп. 1, Самара',
-        map:'https://maps.google.com/?q=53.1744,50.1075',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Иверский_женский_монастырь_(Самара)'
-      },
-      {
-        name:'Бункер Сталина',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Stalin_Bunker_Samara.jpg/800px-Stalin_Bunker_Samara.jpg',
-        text:`Секретный бункер построен в 1942 году на глубине 37 м под зданием Академии культуры для руководства СССР в случае сдачи Москвы. Объект рассекречен только в 1990 году и открыт как музей в 1999 году. Железобетонные стены толщиной 3 м выдерживают прямое попадание авиабомбы. Бункер включает кабинет Сталина, зал заседаний на 115 человек и комнаты охраны. Вентиляция обеспечивала автономность 5 суток. Лифт спускается за 40 секунд, а аварийный выход ведет к Волге через 120 метровый тоннель.`,
-        addr:'Адрес ул. Фрунзе 167, Самара',
-        map:'https://maps.google.com/?q=53.1976,50.1279',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Бункер_Сталина_(Самара)',
-        website: 'https://bunker42.ru'
-      }
-    ]
-  },
-
-  moscow: {
-    name: 'Москве',
-    center: [37.6173, 55.7558],
-    pois: [
-      {
-        name:'Красная площадь и Кремль',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Red_Square%2C_Moscow%2C_Russia.jpg/800px-Red_Square%2C_Moscow%2C_Russia.jpg',
-        text:`Главная площадь России размером 330 на 70 м существует с 15 века как торговое место у кремлевских стен. Название Красная означает красивая на древнерусском языке. Кремль основан в 1147 году князем Юрием Долгоруким как деревянная крепость. Современные краснокирпичные стены построены в 1485 1495 годах итальянскими архитекторами. 20 башен высотой до 80 м окружают территорию 27.5 га. В Кремле работают Президент России, Патриарх и 5 музеев. Спасская башня с курантами стала символом Москвы.`,
-        addr:'Адрес Красная пл., Москва',
-        map:'https://maps.google.com/?q=55.7539,37.6208',
-        wikipedia: 'https://ru.wikipedia.org/wiki/Красная_площадь',
-        website: 'https://www.kreml.ru'
-      },
-      {
-        name:'Храм Василия Блаженного',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Saint_Basil%27s_Cathedral_in_Moscow.jpg/800px-Saint_Basil%27s_Cathedral_in_Moscow.jpg',
-        text:`Собор Покрова Пресвятой Богородицы построен в 1555 1561 годах по приказу Ивана Грозного в честь взятия Казани. Архитекторы Барма и Постник создали уникальный ансамбль из 10 церквей с разноцветными луковичными куполами. Высота центрального шатра 65 м. Храм назван по имени юродивого Василия, похороненного у стен. Легенда гласит, что Иван Грозный ослепил зодчих, чтобы они не построили ничего красивее. Собор пережил пожары, войны и советские планы сноса.`,
-        addr:'Адрес Красная пл. 7, Москва',
-        map:'https://maps.google.com/?q=55.7525,37.6231'
-      },
-      {
-        name:'Третьяковская галерея',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Tretyakov_Gallery_building.jpg/800px-Tretyakov_Gallery_building.jpg',
-        text:`Крупнейший музей русского искусства основан купцом Павлом Третьяковым в 1856 году. Коллекция насчитывает 180000 произведений от древнерусских икон до авангарда 20 века. Здесь хранятся Троица Рублева, картины Репина, Сурикова и Васнецова. Фасад в русском стиле создан архитектором Башкировым по рисунку Васнецова в 1902 году. Третьяков завещал галерею городу в 1892 году. Новое здание в Крымском валу открыто в 1985 году для искусства 20 века. Ежегодно музей посещают 1.5 млн человек.`,
-        addr:'Адрес Лаврушинский пер. 10, Москва',
-        map:'https://maps.google.com/?q=55.7414,37.6207'
-      },
-      {
-        name:'Воробьевы горы и МГУ',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Moscow_State_University.jpg/800px-Moscow_State_University.jpg',
-        text:`Московский университет основан в 1755 году Михаилом Ломоносовым. Главное здание высотой 240 м построено в 1953 году в стиле сталинского ампира как одна из 7 высоток Москвы. 36 этажей включают аудитории, лаборатории и общежития на 6000 студентов. Шпиль венчает звезда весом 12 тонн. Смотровая площадка на Воробьевых горах высотой 80 м открывает панораму на центр Москвы. Канатная дорога длиной 720 м соединяет площадку со стадионом Лужники с 2018 года.`,
-        addr:'Адрес Ленинские горы 1, Москва',
-        map:'https://maps.google.com/?q=55.7033,37.5300'
-      },
-      {
-        name:'Новодевичий монастырь',
-        img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Novodevichy_Convent_Moscow.jpg/800px-Novodevichy_Convent_Moscow.jpg',
-        text:`Монастырь основан в 1524 году великим князем Василием 3 в честь взятия Смоленска. Архитектурный ансамбль 16 17 веков включен в список ЮНЕСКО в 2004 году. Смоленский собор 1525 года украшен фресками и 5 ярусным иконостасом. Колокольня высотой 72 м построена в стиле московского барокко в 1690 году. В монастыре жили царские дочери и жены включая сестру Петра 1 Софью. Некрополь основан в 1898 году и стал местом захоронения деятелей культуры и политики.`,
-        addr:'Адрес Новодевичий просп. 1, Москва',
-        map:'https://maps.google.com/?q=55.7267,37.5564'
-      }
-    ]
+// Функция для загрузки конфигураций городов
+async function loadCityConfigs() {
+  try {
+    const response = await fetch('cities.json');
+    if (!response.ok) {
+      throw new Error('Не удалось загрузить данные городов');
+    }
+    cityConfigs = await response.json();
+    console.log('Конфигурации городов загружены:', Object.keys(cityConfigs));
+    
+    // Заполняем выпадающие списки после загрузки данных
+    populateCitySelects();
+    
+  } catch (error) {
+    console.error('Ошибка загрузки городов:', error);
+    // Fallback - используем локальные данные
+    cityConfigs = [];
   }
-};
+}
+
+// Функция для заполнения выпадающих списков городов
+function populateCitySelects() {
+  const citySelect = document.getElementById('city-select');
+  const citySelectSidebar = document.getElementById('city-select-sidebar');
+  const supportedCitiesEl = document.getElementById('supported-cities');
+  
+  // Очищаем существующие опции
+  citySelect.innerHTML = '';
+  citySelectSidebar.innerHTML = '';
+  
+  // Создаем массив городов с ключами и названиями
+  const cities = Object.keys(cityConfigs).map(cityKey => ({
+    key: cityKey,
+    name: getCityDisplayName(cityKey)
+  }));
+  
+  // Сортируем города по алфавиту по названию
+  cities.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  
+  const cityNames = [];
+  
+  // Заполняем опциями из отсортированных данных
+  cities.forEach(city => {
+    cityNames.push(city.name);
+    
+    // Для модального окна настроек
+    const option1 = document.createElement('option');
+    option1.value = city.key;
+    option1.textContent = city.name;
+    citySelect.appendChild(option1);
+    
+    // Для боковой панели
+    const option2 = document.createElement('option');
+    option2.value = city.key;
+    option2.textContent = city.name;
+    citySelectSidebar.appendChild(option2);
+  });
+  
+  // Обновляем список поддерживаемых городов в приветственном сообщении
+  if (supportedCitiesEl) {
+    supportedCitiesEl.textContent = `Поддерживаются города: ${cityNames.join(', ')}`;
+  }
+}
+
+// Функция для получения отображаемого имени города
+function getCityDisplayName(cityKey) {
+  const cityNames = {
+    'subotica': 'Суботица',
+    'moscow': 'Москва',
+    'paris': 'Париж',
+    'london': 'Лондон',
+    'belgrade': 'Белград',
+    'berlin': 'Берлин',
+    'budapest': 'Будапешт',
+    'buenos-aires': 'Буэнос-Айрес',
+    'varna': 'Варна',
+    'vienna': 'Вена',
+    'kyoto': 'Киото',
+    'new-york': 'Нью-Йорк',
+    'novi-sad': 'Нови-Сад',
+    'novosibirsk': 'Новосибирск',
+    'palic': 'Палич',
+    'rome': 'Рим',
+    'samara': 'Самара',
+    'saint-petersburg': 'Санкт-Петербург',
+    'sombor': 'Сомбор',
+    'istanbul': 'Стамбул',
+    'tokyo': 'Токио',
+    'yekaterinburg': 'Екатеринбург',
+    'chicago': 'Чикаго'
+  };
+  
+  return cityNames[cityKey] || cityKey;
+}
 
 // Элементы интерфейса
 const nav = document.getElementById('poi-nav');
@@ -1401,6 +718,8 @@ const next = document.getElementById('next-btn');
 const tell = document.getElementById('tell-btn');
 const stop = document.getElementById('stop-btn');
 const cityTitle = document.getElementById('city-title');
+const poiSearch = document.getElementById('poi-search');
+const poiCounter = document.getElementById('poi-counter');
 
 // Настройки
 const settingsBtn = document.getElementById('settings-btn');
@@ -1707,17 +1026,11 @@ function loadCity(cityKey) {
   currentCity = cityKey;
   cityTitle.textContent = `Маршрут по ${config.name}`;
   
-  // Очищаем навигацию
-  nav.innerHTML = '';
+  // Очищаем поиск
+  poiSearch.value = '';
   
-  // Создаем кнопки для достопримечательностей
-  config.pois.forEach((poi, index) => {
-    const button = document.createElement('button');
-    button.textContent = poi.name;
-    button.className = 'block w-full text-left btn-secondary mb-2 p-3 rounded-xl transition-all hover:scale-105';
-    button.onclick = () => showPOI(index);
-    nav.appendChild(button);
-  });
+  // Создаем навигацию
+  renderPOINavigation();
   
   // Скрываем приветственное сообщение и показываем первую достопримечательность
   welcomeMessage.classList.add('hidden');
@@ -1728,6 +1041,54 @@ function loadCity(cityKey) {
   showPOI(0);
 }
 
+function renderPOINavigation(searchTerm = '') {
+  const config = cityConfigs[currentCity];
+  if (!config) return;
+  
+  // Очищаем навигацию
+  nav.innerHTML = '';
+  
+  // Фильтруем достопримечательности по поисковому запросу
+  const filteredPOIs = config.pois.filter((poi, index) => {
+    if (!searchTerm) return true;
+    return poi.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           poi.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           poi.addr.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+  
+  // Создаем кнопки для достопримечательностей
+  filteredPOIs.forEach((poi) => {
+    const originalIndex = config.pois.indexOf(poi);
+    const button = document.createElement('button');
+    button.textContent = poi.name;
+    button.className = 'block w-full text-left btn-secondary mb-2 p-3 rounded-xl transition-all hover:scale-105';
+    button.onclick = () => showPOI(originalIndex);
+    
+    // Подсвечиваем активную достопримечательность
+    if (originalIndex === current) {
+      button.style.backgroundColor = 'var(--primary-color)';
+      button.style.color = 'white';
+    }
+    
+    nav.appendChild(button);
+  });
+  
+  // Обновляем счетчик
+  if (searchTerm) {
+    poiCounter.textContent = `Найдено: ${filteredPOIs.length} из ${config.pois.length}`;
+  } else {
+    poiCounter.textContent = `Достопримечательностей: ${config.pois.length}`;
+  }
+  
+  // Показываем сообщение если ничего не найдено
+  if (filteredPOIs.length === 0 && searchTerm) {
+    const noResults = document.createElement('div');
+    noResults.className = 'text-center p-4 text-gray-500';
+    noResults.textContent = 'Ничего не найдено';
+    nav.appendChild(noResults);
+  }
+}
+
 function showPOI(index) {
   const config = cityConfigs[currentCity];
   if (!config || !config.pois[index]) return;
@@ -1735,22 +1096,62 @@ function showPOI(index) {
   current = index;
   const poi = config.pois[index];
   
-  img.src = poi.img;
+  // Показываем или скрываем изображение в зависимости от наличия атрибута img
+  const imgContainer = img.parentElement;
+  if (poi.img && poi.img.trim() !== '') {
+    // Показываем контейнер с индикатором загрузки
+    imgContainer.style.display = 'block';
+    imgContainer.classList.add('loading');
+    
+    // Создаем новое изображение для проверки валидности
+    const testImg = new Image();
+    testImg.onload = function() {
+      // Если изображение загрузилось успешно, показываем его
+      img.src = poi.img;
+      imgContainer.classList.remove('loading');
+    };
+    testImg.onerror = function() {
+      // Если изображение не загрузилось, скрываем контейнер
+      imgContainer.style.display = 'none';
+      imgContainer.classList.remove('loading');
+      console.warn('Не удалось загрузить изображение:', poi.img);
+    };
+    testImg.src = poi.img;
+  } else {
+    imgContainer.style.display = 'none';
+    imgContainer.classList.remove('loading');
+  }
+  
   title.textContent = poi.name;
   desc.textContent = poi.text;
-  let linksHtml = `<a class='underline' style='color: var(--primary-color)' href='${poi.map}' target='_blank'>Показать на карте</a>`;
-  if (poi.wikipedia) {
-    linksHtml += ` • <a class='underline' style='color: var(--primary-color)' href='${poi.wikipedia}' target='_blank'>Википедия</a>`;
+  
+  // Формируем ссылки только если они установлены
+  let linksHtml = '';
+  const links = [];
+  
+  if (poi.map && poi.map.trim() !== '') {
+    links.push(`<a class='underline' style='color: var(--primary-color)' href='${poi.map}' target='_blank'>Показать на карте</a>`);
   }
-  if (poi.website) {
-    linksHtml += ` • <a class='underline' style='color: var(--primary-color)' href='${poi.website}' target='_blank'>Официальный сайт</a>`;
+  if (poi.wikipedia && poi.wikipedia.trim() !== '') {
+    links.push(`<a class='underline' style='color: var(--primary-color)' href='${poi.wikipedia}' target='_blank'>Википедия</a>`);
   }
-  addrEl.innerHTML = `${poi.addr} • ${linksHtml}`;
+  if (poi.website && poi.website.trim() !== '') {
+    links.push(`<a class='underline' style='color: var(--primary-color)' href='${poi.website}' target='_blank'>Официальный сайт</a>`);
+  }
+  
+  if (links.length > 0) {
+    linksHtml = ' • ' + links.join(' • ');
+  }
+  
+  addrEl.innerHTML = `${poi.addr}${linksHtml}`;
   
   card.classList.remove('hidden');
   
   prev.disabled = index === 0;
   next.disabled = index === config.pois.length - 1;
+  
+  // Обновляем навигацию чтобы выделить текущую достопримечательность
+  renderPOINavigation(poiSearch.value);
   
   // Обновляем цвета маркеров на карте
   updateMarkerColors();
@@ -1820,6 +1221,11 @@ citySelectSidebar.onchange = () => {
   saveSettingsToStorage();
 };
 
+// Обработчик поиска по достопримечательностям
+poiSearch.oninput = () => {
+  renderPOINavigation(poiSearch.value);
+};
+
 themeSelect.onchange = () => {
   applyTheme(themeSelect.value);
 };
@@ -1841,7 +1247,9 @@ next.onclick = () => {
 
 tell.onclick = () => {
   const config = cityConfigs[currentCity];
-  speak(config.pois[current].text);
+  const poi = config.pois[current];
+  const textToSpeak = `${poi.name}. ${poi.text}`;
+  speak(textToSpeak);
 };
 
 stop.onclick = () => speechSynthesis.cancel();
@@ -1859,13 +1267,21 @@ document.onclick = (e) => {
 };
 
 // Инициализация
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Сначала загружаем конфигурации городов
+  await loadCityConfigs();
+  
   loadSettings();
   populateVoices();
   
   // Скрываем карту до выбора города
   const mapElement = document.getElementById('city-map');
   mapElement.classList.add('hidden');
+  
+  // Проверяем, что выбранный город доступен
+  if (!cityConfigs[currentCity]) {
+    currentCity = Object.keys(cityConfigs)[0] || 'subotica';
+  }
   
   loadCity(currentCity);
   
