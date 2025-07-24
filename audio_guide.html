@@ -556,11 +556,6 @@ RULES:
         </select>
       </div>
       
-      <!-- Поиск по достопримечательностям -->
-      <div class="mb-6">
-        <label class="block font-semibold mb-2 text-sm">Поиск:</label>
-        <input type="text" id="poi-search" class="select w-full" placeholder="Найти достопримечательность...">
-      </div>
       
       <!-- Счетчик достопримечательностей -->
       <div id="poi-counter" class="mb-4 text-sm opacity-75 text-center"></div>
@@ -718,7 +713,6 @@ const next = document.getElementById('next-btn');
 const tell = document.getElementById('tell-btn');
 const stop = document.getElementById('stop-btn');
 const cityTitle = document.getElementById('city-title');
-const poiSearch = document.getElementById('poi-search');
 const poiCounter = document.getElementById('poi-counter');
 
 // Настройки
@@ -748,9 +742,23 @@ let markerLayer;
 let popupOverlay;
 let currentMarkers = [];
 
+// Функции управления URL параметрами
+function getCityFromURL() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('city');
+}
+
+function updateURL(cityKey) {
+  const url = new URL(window.location);
+  url.searchParams.set('city', cityKey);
+  window.history.pushState({}, '', url);
+}
+
 // Функции управления настройками
 function loadSettings() {
-  const savedCity = localStorage.getItem('audioguide-city') || 'subotica';
+  // Сначала проверяем URL параметр, потом localStorage
+  const urlCity = getCityFromURL();
+  const savedCity = urlCity || localStorage.getItem('audioguide-city') || 'subotica';
   const savedTheme = localStorage.getItem('audioguide-theme') || 'light';
   const savedVoice = localStorage.getItem('audioguide-voice') || '-1';
   
@@ -1026,8 +1034,9 @@ function loadCity(cityKey) {
   currentCity = cityKey;
   cityTitle.textContent = config.name;
   
-  // Очищаем поиск
-  poiSearch.value = '';
+  // Обновляем URL
+  updateURL(cityKey);
+  
   
   // Создаем навигацию
   renderPOINavigation();
@@ -1041,31 +1050,22 @@ function loadCity(cityKey) {
   showPOI(0);
 }
 
-function renderPOINavigation(searchTerm = '') {
+function renderPOINavigation() {
   const config = cityConfigs[currentCity];
   if (!config) return;
   
   // Очищаем навигацию
   nav.innerHTML = '';
   
-  // Фильтруем достопримечательности по поисковому запросу
-  const filteredPOIs = config.pois.filter((poi, index) => {
-    if (!searchTerm) return true;
-    return poi.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           poi.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           poi.addr.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-  
   // Создаем кнопки для достопримечательностей
-  filteredPOIs.forEach((poi) => {
-    const originalIndex = config.pois.indexOf(poi);
+  config.pois.forEach((poi, index) => {
     const button = document.createElement('button');
     button.textContent = poi.name;
     button.className = 'block w-full text-left btn-secondary mb-2 p-3 rounded-xl transition-all hover:scale-105';
-    button.onclick = () => showPOI(originalIndex);
+    button.onclick = () => showPOI(index);
     
     // Подсвечиваем активную достопримечательность
-    if (originalIndex === current) {
+    if (index === current) {
       button.style.backgroundColor = 'var(--primary-color)';
       button.style.color = 'white';
     }
@@ -1074,19 +1074,7 @@ function renderPOINavigation(searchTerm = '') {
   });
   
   // Обновляем счетчик
-  if (searchTerm) {
-    poiCounter.textContent = `Найдено: ${filteredPOIs.length} из ${config.pois.length}`;
-  } else {
-    poiCounter.textContent = `Достопримечательностей: ${config.pois.length}`;
-  }
-  
-  // Показываем сообщение если ничего не найдено
-  if (filteredPOIs.length === 0 && searchTerm) {
-    const noResults = document.createElement('div');
-    noResults.className = 'text-center p-4 text-gray-500';
-    noResults.textContent = 'Ничего не найдено';
-    nav.appendChild(noResults);
-  }
+  poiCounter.textContent = `Достопримечательностей: ${config.pois.length}`;
 }
 
 function showPOI(index) {
@@ -1151,7 +1139,7 @@ function showPOI(index) {
   next.disabled = index === config.pois.length - 1;
   
   // Обновляем навигацию чтобы выделить текущую достопримечательность
-  renderPOINavigation(poiSearch.value);
+  renderPOINavigation();
   
   // Обновляем цвета маркеров на карте
   updateMarkerColors();
@@ -1221,10 +1209,6 @@ citySelectSidebar.onchange = () => {
   saveSettingsToStorage();
 };
 
-// Обработчик поиска по достопримечательностям
-poiSearch.oninput = () => {
-  renderPOINavigation(poiSearch.value);
-};
 
 themeSelect.onchange = () => {
   applyTheme(themeSelect.value);
@@ -1266,6 +1250,18 @@ document.onclick = (e) => {
   }
 };
 
+// Обработчик браузерной навигации (назад/вперед)
+window.addEventListener('popstate', () => {
+  const urlCity = getCityFromURL();
+  if (urlCity && urlCity !== currentCity && cityConfigs[urlCity]) {
+    currentCity = urlCity;
+    citySelect.value = currentCity;
+    citySelectSidebar.value = currentCity;
+    loadCity(currentCity);
+    saveSettingsToStorage();
+  }
+});
+
 // Инициализация
 document.addEventListener('DOMContentLoaded', async () => {
   // Сначала загружаем конфигурации городов
@@ -1281,6 +1277,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Проверяем, что выбранный город доступен
   if (!cityConfigs[currentCity]) {
     currentCity = Object.keys(cityConfigs)[0] || 'subotica';
+  }
+  
+  // Если в URL нет параметра города, добавляем его
+  if (!getCityFromURL()) {
+    updateURL(currentCity);
   }
   
   loadCity(currentCity);
