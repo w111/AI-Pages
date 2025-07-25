@@ -940,7 +940,7 @@
         "map": "https://maps.google.com/?q=52.5163,13.3777",
         "wikipedia": "https://ru.wikipedia.org/wiki/%D0%91%D1%80%D0%B0%D0%BD%D0%B4%D0%B5%D0%BD%D0%B1%D1%83%D1%80%D0%B3%D1%81%D0%BA%D0%B8%D0%B5_%D0%B2%D0%BE%D1%80%D0%BE%D1%82%D0%B0",
         "website": "https://www.berlin.de/sehenswuerdigkeiten/3560266-3558930-brandenburger-tor.html",
-        "img_valid": false,
+        "img_valid": true,
         "wikipedia_valid": true,
         "website_valid": true
       },
@@ -1396,10 +1396,10 @@
         "text": "Крупнейший театр России построен в 1945 году. Купол диаметром 60 метров был самым большим в мире на момент строительства. Зал вмещает 1774 зрителя. Театр славится балетными постановками и оперными спектаклями мирового уровня. Здание является символом Новосибирска и входит в список памятников архитектуры федерального значения.",
         "addr": "Красный проспект, 36",
         "map": "https://maps.google.com/?q=55.030169,82.920769",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Новосибирский_театр_оперы_и_балета",
-        "wikipedia_valid": false,
-        "website": "https://www.novat.ru",
-        "website_valid": false
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%9D%D0%BE%D0%B2%D0%BE%D1%81%D0%B8%D0%B1%D0%B8%D1%80%D1%81%D0%BA%D0%B8%D0%B9_%D1%82%D0%B5%D0%B0%D1%82%D1%80_%D0%BE%D0%BF%D0%B5%D1%80%D1%8B_%D0%B8_%D0%B1%D0%B0%D0%BB%D0%B5%D1%82%D0%B0",
+        "wikipedia_valid": true,
+        "website": "https://novat.ru/",
+        "website_valid": true
       },
       {
         "name": "Собор Александра Невского",
@@ -1408,8 +1408,8 @@
         "text": "Первый каменный храм Новосибирска заложен в 1896 году, освящён в 1899. Собор построен в неовизантийском стиле по проекту архитектора Крячкова. Высота храма 32 метра. В советское время использовался как органный зал филармонии. Возвращён церкви в 1991 году, полностью восстановлен в 2000-х годах.",
         "addr": "Красный проспект, 1А",
         "map": "https://maps.google.com/?q=55.041833,82.898167",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Собор_Александра_Невского_(Новосибирск)",
-        "wikipedia_valid": false
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%A1%D0%BE%D0%B1%D0%BE%D1%80_%D0%90%D0%BB%D0%B5%D0%BA%D1%81%D0%B0%D0%BD%D0%B4%D1%80%D0%B0_%D0%9D%D0%B5%D0%B2%D1%81%D0%BA%D0%BE%D0%B3%D0%BE",
+        "wikipedia_valid": true
       },
       {
         "name": "Новосибирский зоопарк",
@@ -1418,10 +1418,10 @@
         "text": "Один из крупнейших зоопарков России, основан в 1947 году. Площадь 65 гектаров. Содержит более 11 тысяч животных 770 видов. Зоопарк участвует в международных программах разведения редких видов. Особенно известен разведением кошачьих, в том числе редких видов тигров и леопардов.",
         "addr": "ул. Тимирязева, 71/1",
         "map": "https://maps.google.com/?q=54.992833,82.886667",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Новосибирский_зоопарк",
-        "wikipedia_valid": false,
-        "website": "https://www.zoo.nsk.ru",
-        "website_valid": false
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%9D%D0%BE%D0%B2%D0%BE%D1%81%D0%B8%D0%B1%D0%B8%D1%80%D1%81%D0%BA%D0%B8%D0%B9_%D0%B7%D0%BE%D0%BE%D0%BF%D0%B0%D1%80%D0%BA",
+        "wikipedia_valid": true,
+        "website": "http://www.zoo.nsk.ru/",
+        "website_valid": true
       },
       {
         "name": "Центральный сибирский ботанический сад",
@@ -1430,10 +1430,10 @@
         "text": "Один из крупнейших ботанических садов России, основан в 1946 году. Площадь 1000 гектаров. Коллекция включает более 5000 видов растений со всего мира. Сад известен исследованиями адаптации растений к сибирскому климату. Имеет оранжереи с тропическими и субтропическими растениями.",
         "addr": "ул. Золотодолинская, 101",
         "map": "https://maps.google.com/?q=54.948333,83.090833",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Центральный_сибирский_ботанический_сад",
-        "wikipedia_valid": false,
-        "website": "https://www.csbg.nsc.ru",
-        "website_valid": false
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%A6%D0%B5%D0%BD%D1%82%D1%80%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9_%D1%81%D0%B8%D0%B1%D0%B8%D1%80%D1%81%D0%BA%D0%B8%D0%B9_%D0%B1%D0%BE%D1%82%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B8%D0%B9_%D1%81%D0%B0%D0%B4",
+        "wikipedia_valid": true,
+        "website": "http://www.csbg.nsc.ru/",
+        "website_valid": true
       },
       {
         "name": "Музей железнодорожной техники",
@@ -1442,8 +1442,8 @@
         "text": "Музей под открытым небом, открыт в 2000 году. Экспозиция включает более 100 единиц железнодорожной техники: паровозы, тепловозы, электровозы, вагоны разных эпох. Представлена история Транссибирской магистрали. Многие экспонаты можно осмотреть изнутри. Музей расположен рядом с вокзалом Новосибирск-Главный.",
         "addr": "Димитровский мост",
         "map": "https://maps.google.com/?q=55.037667,82.929167",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_железнодорожной_техники_(Новосибирск)",
-        "wikipedia_valid": false,
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%9C%D1%83%D0%B7%D0%B5%D0%B9_%D0%B6%D0%B5%D0%BB%D0%B5%D0%B7%D0%BD%D0%BE%D0%B4%D0%BE%D1%80%D0%BE%D0%B6%D0%BD%D0%BE%D0%B9_%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D0%BA%D0%B8",
+        "wikipedia_valid": true,
         "website": "https://museum.zdt.ru",
         "website_valid": false
       }
@@ -1463,10 +1463,10 @@
         "text": "Храм-памятник построен на месте дома Ипатьева, где была расстреляна семья императора Николая II. Освящён в 2003 году в честь Всех святых, в земле Российской просиявших. Храм состоит из верхней и нижней церквей. В крипте сохранен фрагмент подвала дома Ипатьева. Высота храма 60 метров, он виден из многих точек города.",
         "addr": "ул. Царская, 10",
         "map": "https://maps.google.com/?q=56.844722,60.612778",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Храм-на-Крови",
-        "wikipedia_valid": false,
-        "website": "https://xram-na-krovi.ru",
-        "website_valid": false
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%A5%D1%80%D0%B0%D0%BC_%D0%BD%D0%B0_%D0%9A%D1%80%D0%BE%D0%B2%D0%B8_(%D0%95%D0%BA%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%BD%D0%B1%D1%83%D1%80%D0%B3)",
+        "wikipedia_valid": true,
+        "website": "https://xram-na-krovi.ru/",
+        "website_valid": true
       },
       {
         "name": "Ельцин Центр",
@@ -1475,10 +1475,10 @@
         "text": "Общественно-культурный центр, открытый в 2015 году. Посвящён первому президенту России Борису Ельцину. Включает музей, библиотеку, выставочные залы, образовательный центр. Экспозиция рассказывает о новейшей истории России 1990-х годов. Здание построено в современном архитектурном стиле, стало одним из символов нового Екатеринбурга.",
         "addr": "ул. Бориса Ельцина, 3",
         "map": "https://maps.google.com/?q=56.8389,60.6057",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Ельцин_Центр",
-        "wikipedia_valid": false,
-        "website": "https://yeltsin.ru",
-        "website_valid": false
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%95%D0%BB%D1%8C%D1%86%D0%B8%D0%BD-%D1%86%D0%B5%D0%BD%D1%82%D1%80",
+        "wikipedia_valid": true,
+        "website": "https://yeltsin.ru/",
+        "website_valid": true
       },
       {
         "name": "Екатеринбургский зоопарк",
@@ -1487,10 +1487,10 @@
         "text": "Один из старейших зоопарков России, основан в 1930 году. Площадь 2,5 гектара в центре города. Содержит более 1200 животных 380 видов. Участвует в программах сохранения редких видов. Известен разведением амурских тигров, белых медведей, приматов. Зоопарк работает круглый год, зимой многие животные активны на снегу.",
         "addr": "ул. Мамина-Сибиряка, 189",
         "map": "https://maps.google.com/?q=56.8256,60.5947",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Екатеринбургский_зоопарк",
-        "wikipedia_valid": false,
-        "website": "https://ekazoo.ru",
-        "website_valid": false
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%95%D0%BA%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%BD%D0%B1%D1%83%D1%80%D0%B3%D1%81%D0%BA%D0%B8%D0%B9_%D0%B7%D0%BE%D0%BE%D0%BF%D0%B0%D1%80%D0%BA",
+        "wikipedia_valid": true,
+        "website": "https://ekazoo.ru/",
+        "website_valid": true
       },
       {
         "name": "Невьянская башня",
@@ -1499,8 +1499,8 @@
         "text": "Наклонная башня XVIII века в городе Невьянске, в 100 км от Екатеринбурга. Построена в 1721-1725 годах по заказу промышленника Акинфия Демидова. Высота 57,5 метра, отклонение от вертикали 1,85 метра. Башня имеет 9 этажей, увенчана шпилем с флюгером. Является символом уральской промышленности и мастерства местных умельцев.",
         "addr": "г. Невьянск, пр. Революции, 2",
         "map": "https://maps.google.com/?q=57.4922,60.2256",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Невьянская_башня",
-        "wikipedia_valid": false,
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%9D%D0%B5%D0%B2%D1%8C%D1%8F%D0%BD%D1%81%D0%BA%D0%B0%D1%8F_%D0%B1%D0%B0%D1%88%D0%BD%D1%8F",
+        "wikipedia_valid": true,
         "website": "https://башня-невьянск.рф",
         "website_valid": false
       },
@@ -1511,10 +1511,10 @@
         "text": "Крупнейший художественный музей Урала, основан в 1936 году. Размещается в историческом здании - памятнике архитектуры XIX века. Коллекция включает русское и зарубежное искусство XIV-XXI веков: живопись, графику, скульптуру, декоративно-прикладное искусство. Особенно известен каслинским художественным литьём и уральскими самоцветами.",
         "addr": "ул. Воеводина, 5",
         "map": "https://maps.google.com/?q=56.8356,60.6081",
-        "wikipedia": "https://ru.wikipedia.org/wiki/Екатеринбургский_музей_изобразительных_искусств",
-        "wikipedia_valid": false,
-        "website": "https://emii.ru",
-        "website_valid": false
+        "wikipedia": "https://ru.wikipedia.org/wiki/%D0%9C%D1%83%D0%B7%D0%B5%D0%B9_%D0%B8%D0%B7%D0%BE%D0%B1%D1%80%D0%B0%D0%B7%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D1%85_%D0%B8%D1%81%D0%BA%D1%83%D1%81%D1%81%D1%82%D0%B2",
+        "wikipedia_valid": true,
+        "website": "https://i-z-o.art/",
+        "website_valid": true
       }
     ]
   }
