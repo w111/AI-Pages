@@ -578,6 +578,61 @@
                         <a href="gradio_lite.html" class="view-btn">Создать демо за 5 минут</a>
                     </div>
                 </div>
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-magic"></i> Web Stable Diffusion</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите генерировать изображения с ИИ без установки серверов?</p>
+                        <p>Генерация изображений с помощью ИИ прямо в браузере. Полностью клиентское решение с WebGPU ускорением.</p>
+                        <ul class="features-list">
+                            <li>Генерация без серверов</li>
+                            <li>Пресеты для обоев, аватаров, мемов</li>
+                            <li>WebGPU ускорение</li>
+                            <li>Работает локально</li>
+                        </ul>
+                        <div class="limited-offer">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>Требования:</strong> Chrome Canary с WebGPU и GPU 6GB+
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-tag">WebGPU</span>
+                            <span class="tech-tag">Transformers.js</span>
+                            <span class="tech-tag">Janus AI</span>
+                            <span class="tech-tag">ONNX</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="web-stable-diffusion.html" class="view-btn">Генерировать изображения</a>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-robot"></i> WebLLM Chat</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Устали от API-ключей и зависимости от внешних сервисов ИИ?</p>
+                        <p>Локальный ChatGPT-клон с моделями Llama 3, Mistral и другими. Полная конфиденциальность, работа без интернета после загрузки модели.</p>
+                        <ul class="features-list">
+                            <li>ИИ работает полностью локально</li>
+                            <li>Без API-ключей и платных подписок</li>
+                            <li>Поддержка Llama 3, Mistral, Phi-3, Gemma</li>
+                            <li>OpenAI-совместимый интерфейс</li>
+                        </ul>
+                        <div class="limited-offer">
+                            <i class="fas fa-heart"></i> <strong>ИИ в кармане:</strong> Экономьте мегабайты нервов!
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-tag">WebLLM</span>
+                            <span class="tech-tag">WebGPU</span>
+                            <span class="tech-tag">Llama 3</span>
+                            <span class="tech-tag">Mistral</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="webllm-chat.html" class="view-btn">Начать общение</a>
+                    </div>
+                </div>
             </div>
         </section>
         
@@ -1025,6 +1080,32 @@
                             "Support for various input/output types"
                         ]
                     },
+                    webStableDiffusion: {
+                        title: "Web Stable Diffusion",
+                        description: "Генерация изображений с помощью ИИ прямо в браузере. Полностью клиентское решение с WebGPU ускорением.",
+                        problem: "Хотите генерировать изображения с ИИ без установки серверов?",
+                        features: [
+                            "Генерация без серверов",
+                            "Пресеты для обоев, аватаров, мемов",
+                            "WebGPU ускорение",
+                            "Работает локально"
+                        ],
+                        limitedOfferTitle: "Требования",
+                        limitedOffer: "Chrome Canary с WebGPU и GPU 6GB+"
+                    },
+                    webllmChat: {
+                        title: "WebLLM Chat",
+                        description: "Локальный ChatGPT-клон с моделями Llama 3, Mistral и другими. Полная конфиденциальность, работа без интернета после загрузки модели.",
+                        problem: "Устали от API-ключей и зависимости от внешних сервисов ИИ?",
+                        features: [
+                            "ИИ работает полностью локально",
+                            "Без API-ключей и платных подписок",
+                            "Поддержка Llama 3, Mistral, Phi-3, Gemma",
+                            "OpenAI-совместимый интерфейс"
+                        ],
+                        limitedOfferTitle: "ИИ в кармане",
+                        limitedOffer: "Экономьте мегабайты нервов!"
+                    },
                     // Игры и развлечения
                     arcanoid: {
                         title: "Арканоид",
@@ -1214,6 +1295,32 @@
                             "Simplified API for interface creation",
                             "Support for various input/output types"
                         ]
+                    },
+                    webStableDiffusion: {
+                        title: "Web Stable Diffusion",
+                        description: "Generate AI images directly in the browser. Fully client-side solution with WebGPU acceleration.",
+                        problem: "Want to generate AI images without setting up servers?",
+                        features: [
+                            "Server-free generation",
+                            "Presets for wallpapers, avatars, memes",
+                            "WebGPU acceleration",
+                            "Works locally"
+                        ],
+                        limitedOfferTitle: "Requirements",
+                        limitedOffer: "Chrome Canary with WebGPU and 6GB+ GPU"
+                    },
+                    webllmChat: {
+                        title: "WebLLM Chat",
+                        description: "Local ChatGPT clone with Llama 3, Mistral and other models. Full privacy, works offline after model download.",
+                        problem: "Tired of API keys and dependency on external AI services?",
+                        features: [
+                            "AI runs completely locally",
+                            "No API keys or paid subscriptions",
+                            "Support for Llama 3, Mistral, Phi-3, Gemma",
+                            "OpenAI-compatible interface"
+                        ],
+                        limitedOfferTitle: "AI in your pocket",
+                        limitedOffer: "Save megabytes of nerves!"
                     },
                     // Games & Entertainment
                     arcanoid: {
@@ -1477,6 +1584,8 @@
             if (devToolsCards.length > 0) {
                 updateCard(devToolsCards[0], 'pythonEditor', '<i class="fas fa-code"></i>');
                 if (devToolsCards.length > 1) updateCard(devToolsCards[1], 'gradioLite', '<i class="fas fa-chart-bar"></i>');
+                if (devToolsCards.length > 2) updateCard(devToolsCards[2], 'webStableDiffusion', '<i class="fas fa-magic"></i>');
+                if (devToolsCards.length > 3) updateCard(devToolsCards[3], 'webllmChat', '<i class="fas fa-robot"></i>');
             }
             
             // Вторая категория: Игры и развлечения
