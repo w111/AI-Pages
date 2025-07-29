@@ -46,33 +46,9 @@ jobs:
           pip install -r requirements.txt
           pip install flake8 autopep8 yamllint
 
-      - name: 🔍 Lint JavaScript & Playwright
+      - name: 🔍 Lint code (JS, Python, HTML, CSS, JSON, YAML)
         run: |
-          npm run lint:js
-
-      - name: 🌐 Lint HTML
-        run: |
-          npm run lint:html
-
-      - name: 🎨 Lint CSS
-        run: |
-          npm run lint:css
-
-      - name: 📝 Lint Markdown
-        run: |
-          npm run lint:md
-
-      - name: 📄 Lint JSON
-        run: |
-          npm run lint:json
-
-      - name: ⚙️ Lint YAML
-        run: |
-          npm run lint:yaml
-
-      - name: 🐍 Lint Python
-        run: |
-          npm run lint:py
+          npm run lint:ci
 
       - name: 🎨 Check code formatting
         run: |
