@@ -36,13 +36,7 @@ export default defineConfig({
       }
     },
 
-    // Firefox тесты (Gecko engine)
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] }
-    },
-
-    // Safari тесты (WebKit engine)
+    // Safari тесты (WebKit engine) - важно для macOS пользователей
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] }

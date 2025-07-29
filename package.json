@@ -38,7 +38,7 @@
     "lint:css": "stylelint **/*.css",
     "lint:css:fix": "stylelint **/*.css --fix",
     "lint:json": "jsonlint *.json",
-    "lint:yaml": "source venv/bin/activate && yamllint .github/workflows/*.yml .bmad-core/**/*.yaml",
+    "lint:yaml": "source venv/bin/activate && yamllint .github/workflows/*.yml",
     "lint:md": "markdownlint *.md docs/*.md",
     "lint:md:fix": "markdownlint *.md docs/*.md --fix",
     "format": "prettier --write .",

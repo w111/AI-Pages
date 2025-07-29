@@ -40,6 +40,7 @@ RULES:
     <title>Аудиогид по городам Сербии</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
       /* CSS Variables for theming */
       :root {
@@ -204,28 +205,28 @@ RULES:
 
       .settings-button {
         position: fixed;
-        top: 1rem;
-        right: 1rem;
-        z-index: 50;
-        width: 3rem;
-        height: 3rem;
+        top: 20px;
+        right: 20px;
+        font-size: 24px;
+        color: var(--primary-color);
+        background-color: var(--card-bg);
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
-        background-color: var(--primary-color);
-        color: white;
-        border: none;
-        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.2rem;
-        transition: all 0.3s ease;
-        box-shadow: var(--shadow-light);
+        cursor: pointer;
+        box-shadow: var(--card-shadow);
+        z-index: 100;
+        transition: transform 0.3s ease;
+        border: none;
         outline: none;
         -webkit-tap-highlight-color: transparent;
       }
 
       .settings-button:hover {
-        transform: rotate(90deg) scale(1.05);
+        transform: rotate(45deg);
       }
 
       .settings-button:focus {
@@ -512,7 +513,7 @@ RULES:
   </head>
   <body class="min-h-screen">
     <!-- Кнопка настроек -->
-    <button id="settings-btn" class="settings-button">⚙️</button>
+    <button id="settings-btn" class="settings-button"><i class="fas fa-cog"></i></button>
 
     <!-- Кнопка меню для мобильных -->
     <button id="menu-toggle" class="menu-toggle md:hidden">☰</button>

@@ -32,5 +32,17 @@
       }
     ]
   },
-  "ignoreFiles": ["node_modules/**/*", "venv/**/*", "test-results/**/*", "playwright-report*/**/*"]
+  "ignoreFiles": [
+    "node_modules/**/*", 
+    "venv/**/*", 
+    "env/**/*", 
+    "ENV/**/*",
+    "test-results/**/*", 
+    "playwright-report*/**/*",
+    ".pytest_cache/**/*",
+    ".idea/**/*",
+    ".specstory/**/*",
+    ".bmad-core/**/*",
+    "__pycache__/**/*"
+  ]
 }

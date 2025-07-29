@@ -108,12 +108,42 @@ export default [
   // Исключения
   {
     ignores: [
-      'node_modules/**',
+      // Из .gitignore - IDE файлы
+      '.idea/**',
+      '.specstory/**',
+      '.bmad-core/**',
+      
+      // Из .gitignore - Python cache
+      '__pycache__/**',
+      '**/*.py[cod]',
+      '**/*$py.class',
+      '**/*.so',
+      
+      // Из .gitignore - Virtual environment
       'venv/**',
-      '.git/**',
+      'env/**',
+      'ENV/**',
+      
+      // Из .gitignore - Node modules
+      'node_modules/**',
+      
+      // Из .gitignore - OS files
+      '.DS_Store',
+      'Thumbs.db',
+      
+      // Из .gitignore - Test results
       'test-results/**',
-      'playwright-report*/**',
       '.pytest_cache/**',
+      'playwright-report/**',
+      
+      // Из .gitignore - Temporary files
+      '**/*.tmp',
+      '**/*.temp',
+      '**/*.log',
+      
+      // Дополнительные исключения
+      '.git/**',
+      'playwright-report*/**',
       '*.min.js',
     ],
   },

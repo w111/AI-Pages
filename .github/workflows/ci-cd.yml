@@ -1,3 +1,4 @@
+---
 name: CI/CD Pipeline
 
 on:
@@ -9,7 +10,7 @@ on:
     # Еженедельные проверки зависимостей по понедельникам в 02:00 UTC
     - cron: "0 2 * * 1"
   workflow_dispatch:
-    # Возможность ручного запуска
+  # Возможность ручного запуска
 
 # Настройки для повышения производительности
 concurrency:
@@ -123,10 +124,16 @@ jobs:
           curl -f http://localhost:5500 || exit 1
 
       - name: 🧪 Run Playwright tests (${{ matrix.display_name }})
-        run: npx playwright test --config=playwright-ci.config.js --project=chromium-ci
+        run: >
+          npx playwright test
+          --config=playwright-ci.config.js
+          --project=chromium-ci
 
       - name: 🧪 Run Python tests (${{ matrix.display_name }})
-        run: python3 -m pytest -c pytest-ci.ini tests/test_index_page_async.py -v --browser-name=${{ matrix.browser }}
+        run: >
+          python3 -m pytest -c pytest-ci.ini
+          tests/test_index_page_async.py -v
+          --browser-name=${{ matrix.browser }}
         env:
           PLAYWRIGHT_BROWSER: ${{ matrix.browser }}
 
@@ -172,7 +179,8 @@ jobs:
           lhci autorun || echo "Lighthouse warnings detected"
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
-          LHCI_BUILD_CONTEXT__COMMIT_TIME: ${{ github.event.head_commit.timestamp }}
+          LHCI_BUILD_CONTEXT__COMMIT_TIME: >
+            ${{ github.event.head_commit.timestamp }}
 
       - name: 📊 Upload Lighthouse results
         uses: actions/upload-artifact@v3
@@ -306,13 +314,20 @@ jobs:
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Lighthouse | ${{ needs.lighthouse.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lighthouse | ${{ needs.lighthouse.result }} |" >>
+            $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result }} |" >>
+            $GITHUB_STEP_SUMMARY
           echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
-            echo "🌐 **Live site:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Deployment completed successfully!**" >>
+              $GITHUB_STEP_SUMMARY
+            OWNER="${{ github.repository_owner }}"
+            REPO="${{ github.event.repository.name }}"
+            SITE_URL="https://$OWNER.github.io/$REPO"
+            echo "🌐 **Live site:** $SITE_URL" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Deployment failed. Check the logs above.**" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Deployment failed. Check the logs above.**" >>
+              $GITHUB_STEP_SUMMARY
           fi

@@ -1,6 +1,7 @@
 # IDE files
 .idea/
 .specstory/
+.bmad-core/
 
 # Python cache
 __pycache__/

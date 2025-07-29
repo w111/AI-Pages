@@ -30,6 +30,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Pages Python (Gradio Lite)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
     <!-- CodeMirror для редактора кода -->
     <link
@@ -51,6 +52,8 @@
         --output-background: #ffffff;
         --text-color: #1e293b;
         --border-color: #e2e8f0;
+        --card-bg: #ffffff;
+        --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
       body {
@@ -315,10 +318,25 @@
 
       /* Иконка настроек */
       .settings-icon {
-        cursor: pointer;
+        position: fixed;
+        top: 20px;
+        right: 20px;
         font-size: 24px;
         color: var(--primary-color);
-        margin-left: 10px;
+        background-color: var(--card-bg);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: var(--card-shadow);
+        z-index: 100;
+        transition: transform 0.3s ease;
+      }
+      .settings-icon:hover {
+        transform: rotate(45deg);
       }
     </style>
   </head>
@@ -327,7 +345,7 @@
       <!-- Шапка с заголовком -->
       <div class="header">
         <h1>AI Pages Python (Gradio)</h1>
-        <div class="settings-icon" title="Настройки">⚙</div>
+        <div class="settings-icon" title="Настройки"><i class="fas fa-cog"></i></div>
       </div>
 
       <!-- Панель с кнопками -->
