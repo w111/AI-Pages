@@ -1,0 +1,806 @@
+<!doctype html>
+<!--
+ТЗ: 
+1. Создать одностраничный HTML с 3D графикой, используя Three.js и Cannon.js
+2. Реализовать шарики, соединенные резинками (эластичными связями) 
+3. При взаимодействии с одним шариком все остальные должны реагировать по физическим законам
+4. Шарики должны оставаться в сцене и не исчезать
+5. Возможность изменять количество шариков через интерфейс (от 3 до 20)
+6. Настройка плотности связей между шариками (от 0% до 100%) 
+7. Возможность оттягивать шарики мышью для демонстрации физики
+8. Интерактивные элементы управления:
+   - Изменение силы гравитации
+   - Настройка упругости связей
+   - Кнопка сброса всех шариков в исходное положение
+   - Кнопка взрыва для добавления случайных сил
+9. Эффекты взаимодействия:
+   - Подсветка шариков при наведении мыши
+   - Визуальное выделение шариков при перетаскивании
+   - Изменение видимости и цвета связей в зависимости от расстояния
+10. Автоматическое вращение камеры для демонстрации 3D-эффекта
+11. Улучшенная визуализация шариков:
+    - Разные типы материалов (глянцевые, металлические, полупрозрачные)
+    - Яркие насыщенные цвета для лучшей видимости
+    - Динамическое освещение с помощью цветных источников света
+    - Отбрасывание и получение теней для объемного эффекта
+12. Физическое взаимодействие с поверхностью (пол) с эффектом отскока
+13. Увеличенный размер шариков для лучшей видимости и взаимодействия
+14. Однотонный черный фон для контрастного отображения объектов
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Elastic Balls Simulation</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+      }
+      canvas {
+        display: block;
+      }
+      #info {
+        position: absolute;
+        top: 10px;
+        width: 100%;
+        text-align: center;
+        color: white;
+        font-family: Arial, sans-serif;
+      }
+      #controls {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: white;
+        font-family: Arial, sans-serif;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 5px;
+      }
+      button {
+        background-color: #4caf50;
+        border: none;
+        color: white;
+        padding: 8px 16px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      input[type='range'] {
+        width: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      Click and drag any ball to pull it. Press spacebar to apply random forces.
+    </div>
+    <div id="controls">
+      <div>
+        <button id="reset">Reset Positions</button>
+        <button id="explode">Explode!</button>
+      </div>
+      <div style="margin-top: 10px">
+        <label for="gravity">Gravity: </label>
+        <input type="range" id="gravity" min="0" max="20" value="9.82" step="0.1" />
+        <span id="gravityValue">9.82</span>
+      </div>
+      <div>
+        <label for="elasticity">Elasticity: </label>
+        <input type="range" id="elasticity" min="1" max="20" value="5" step="0.5" />
+        <span id="elasticityValue">10</span>
+      </div>
+      <div>
+        <label for="ballCount">Ball Count: </label>
+        <input type="range" id="ballCount" min="3" max="20" value="10" step="1" />
+        <span id="ballCountValue">10</span>
+        <button id="applyBallCount">Apply</button>
+      </div>
+      <div>
+        <label for="connectionDensity">Connection Density: </label>
+        <input
+          type="range"
+          id="connectionDensity"
+          min="0"
+          max="100"
+          value="100"
+          step="5"
+        />
+        <span id="connectionDensityValue">100</span>%
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script>
+      // Initialize Three.js scene
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000);
+
+      // Enable shadows for better visual quality
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      document.body.appendChild(renderer.domElement);
+
+      // Add lighting
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(5, 10, 7);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.width = 1024;
+      directionalLight.shadow.mapSize.height = 1024;
+      directionalLight.shadow.camera.near = 0.5;
+      directionalLight.shadow.camera.far = 50;
+      directionalLight.shadow.camera.left = -10;
+      directionalLight.shadow.camera.right = 10;
+      directionalLight.shadow.camera.top = 10;
+      directionalLight.shadow.camera.bottom = -10;
+      scene.add(directionalLight);
+
+      // Add point lights for more dynamic lighting
+      const pointLight1 = new THREE.PointLight(0x4285f4, 1, 20);
+      pointLight1.position.set(5, 3, 5);
+      scene.add(pointLight1);
+
+      const pointLight2 = new THREE.PointLight(0x0f9d58, 1, 20);
+      pointLight2.position.set(-5, 3, 5);
+      scene.add(pointLight2);
+
+      const pointLight3 = new THREE.PointLight(0xf4b400, 1, 20);
+      pointLight3.position.set(0, -5, -5);
+      scene.add(pointLight3);
+
+      // Initialize physics world
+      const world = new CANNON.World();
+      world.gravity.set(0, -9.82, 0);
+      world.broadphase = new CANNON.NaiveBroadphase();
+      world.solver.iterations = 10;
+
+      // Materials
+      const ballMaterial = new CANNON.Material('ballMaterial');
+      const groundMaterial = new CANNON.Material('groundMaterial');
+
+      // Ground plane
+      const groundShape = new CANNON.Plane();
+      const groundBody = new CANNON.Body({
+        mass: 0,
+        material: groundMaterial,
+        position: new CANNON.Vec3(0, -10, 0),
+      });
+      groundBody.addShape(groundShape);
+      groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+      world.addBody(groundBody);
+
+      // Create a visual ground plane
+      const groundGeometry = new THREE.PlaneGeometry(50, 50);
+      const groundMesh = new THREE.Mesh(
+        groundGeometry,
+        new THREE.MeshPhongMaterial({
+          color: 0x222222,
+          transparent: true,
+          opacity: 0.5,
+          shininess: 30,
+        })
+      );
+      groundMesh.rotation.x = -Math.PI / 2;
+      groundMesh.position.y = -10;
+      groundMesh.receiveShadow = true;
+      scene.add(groundMesh);
+
+      // Ground-ball contact behavior
+      const groundBallContactMaterial = new CANNON.ContactMaterial(
+        groundMaterial,
+        ballMaterial,
+        {
+          friction: 0.3,
+          restitution: 0.6, // Bounciness
+        }
+      );
+      world.addContactMaterial(groundBallContactMaterial);
+
+      // Arrays to store balls and their components
+      const balls = [];
+      const ballBodies = [];
+      const constraints = [];
+      const initialPositions = [];
+
+      // Configuration
+      let springElasticity = 5;
+      let connectionDensity = 100; // Percentage of possible connections to create (0-100%)
+
+      // Ball material
+      const ballPhysMaterial = new THREE.MeshPhongMaterial({
+        color: 0x156289,
+        emissive: 0x072534,
+        side: THREE.DoubleSide,
+        flatShading: true,
+        shininess: 100,
+      });
+
+      // Ball creation parameters
+      let ballCount = 10;
+      const ballRadius = 0.8;
+      const ballDistance = 3;
+
+      // Load textures for balls
+      const textureLoader = new THREE.TextureLoader();
+      const textures = [
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'
+        ),
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/jupiter_2048.jpg'
+        ),
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/mars_2048.jpg'
+        ),
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/moon_2048.jpg'
+        ),
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/neptune_2048.jpg'
+        ),
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/saturn_2048.jpg'
+        ),
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/venus_2048.jpg'
+        ),
+      ];
+
+      // Normal maps for added detail
+      const normalMaps = [
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/earth_normal_2048.jpg'
+        ),
+        textureLoader.load(
+          'https://threejs.org/examples/textures/planets/moon_normal_2048.jpg'
+        ),
+      ];
+
+      // Environment map for reflections
+      const envMapTexture = new THREE.CubeTextureLoader()
+        .setPath('https://threejs.org/examples/textures/cube/Park3Med/')
+        .load(['px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg']);
+      // Don't set the environment map as background
+      // scene.background = envMapTexture;
+
+      // Set a solid background color instead
+      scene.background = new THREE.Color(0x000000);
+
+      // Connect all balls to each other with springs
+      function connectBalls() {
+        // Calculate total possible connections
+        const totalPossibleConnections = (ballCount * (ballCount - 1)) / 2;
+
+        // Calculate how many connections to create based on density
+        const connectionsToCreate = Math.floor(
+          (totalPossibleConnections * connectionDensity) / 100
+        );
+
+        if (connectionDensity === 100) {
+          // Connect all balls to each other (full mesh)
+          for (let i = 0; i < ballCount; i++) {
+            for (let j = i + 1; j < ballCount; j++) {
+              createSpring(i, j);
+            }
+          }
+        } else {
+          // Create priority connections first (nearest neighbors in the pattern)
+          // This ensures the structure stays connected
+          for (let i = 0; i < ballCount; i++) {
+            const next = (i + 1) % ballCount;
+            const opposite = (i + Math.floor(ballCount / 2)) % ballCount;
+            createSpring(i, next);
+
+            // Only create opposite connection if different from next
+            if (opposite !== next && opposite !== i) {
+              createSpring(i, opposite);
+            }
+          }
+
+          // If we need more connections beyond the minimum
+          if (connectionDensity > 30) {
+            // Create an array of all possible remaining connections
+            const remainingConnections = [];
+            for (let i = 0; i < ballCount; i++) {
+              for (let j = i + 1; j < ballCount; j++) {
+                // Skip connections we already made
+                const next = (i + 1) % ballCount;
+                const opposite = (i + Math.floor(ballCount / 2)) % ballCount;
+                if (j !== next && j !== opposite) {
+                  remainingConnections.push([i, j]);
+                }
+              }
+            }
+
+            // Shuffle the array to get random connections
+            for (let i = remainingConnections.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [remainingConnections[i], remainingConnections[j]] = [
+                remainingConnections[j],
+                remainingConnections[i],
+              ];
+            }
+
+            // Calculate how many additional connections to create
+            const minConnections = Math.min(ballCount * 2, totalPossibleConnections); // Already created connections
+            const additionalNeeded = connectionsToCreate - minConnections;
+
+            // Create additional random connections if needed
+            for (
+              let i = 0;
+              i < Math.min(additionalNeeded, remainingConnections.length);
+              i++
+            ) {
+              createSpring(remainingConnections[i][0], remainingConnections[i][1]);
+            }
+          }
+        }
+      }
+
+      // Create a visual representation
+      function createBallMesh(index) {
+        const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+
+        // Choose from just two material types for better reliability (no dark/gray balls)
+        let material;
+        const materialType = Math.floor(Math.random() * 2);
+
+        // Better color generation with brighter colors
+        const hue = (index / ballCount + Math.random() * 0.2) % 1;
+        const saturation = 0.7 + Math.random() * 0.3; // Higher saturation
+        const lightness = 0.5 + Math.random() * 0.3; // Brighter colors
+
+        if (materialType === 0) {
+          // Glossy colored material
+          material = new THREE.MeshStandardMaterial({
+            color: new THREE.Color().setHSL(hue, saturation, lightness),
+            metalness: 0.6,
+            roughness: 0.3,
+            envMap: envMapTexture,
+            envMapIntensity: 0.8,
+          });
+        } else {
+          // Shiny material with slight transparency
+          material = new THREE.MeshPhysicalMaterial({
+            color: new THREE.Color().setHSL(hue, saturation, lightness),
+            metalness: 0.2,
+            roughness: 0.1,
+            transmission: 0.3,
+            opacity: 1.0,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1,
+            envMap: envMapTexture,
+            envMapIntensity: 0.7,
+          });
+        }
+
+        const ball = new THREE.Mesh(ballGeometry, material);
+        ball.castShadow = true;
+        ball.receiveShadow = true;
+
+        return ball;
+      }
+
+      // Create balls in a 3D pattern
+      function createInitialBalls() {
+        // Clear existing balls and connections first
+        clearBallSystem();
+
+        // Create balls in a specific pattern
+        for (let i = 0; i < ballCount; i++) {
+          // Position in a 3D pattern
+          const angle = (i / ballCount) * Math.PI * 2;
+          const height = Math.sin((i / (ballCount / 2)) * Math.PI) * 2;
+          const x = Math.cos(angle) * ballDistance;
+          const y = height;
+          const z = Math.sin(angle) * ballDistance;
+
+          // Store initial position
+          initialPositions.push(new CANNON.Vec3(x, y, z));
+
+          // Create physics body
+          const ballBody = new CANNON.Body({
+            mass: 0.5 + Math.random() * 0.5, // Small random variation in mass
+            position: new CANNON.Vec3(x, y, z),
+            shape: new CANNON.Sphere(ballRadius),
+            material: ballMaterial,
+            linearDamping: 0.1,
+          });
+
+          world.addBody(ballBody);
+          ballBodies.push(ballBody);
+
+          // Create enhanced visual representation
+          const ball = createBallMesh(i);
+          ball.position.copy(ballBody.position);
+          scene.add(ball);
+          balls.push(ball);
+        }
+
+        // Connect balls according to connection density setting
+        connectBalls();
+      }
+
+      // Function to clear all balls, constraints, and their visual elements
+      function clearBallSystem() {
+        // Remove all physics bodies from world
+        for (let i = 0; i < ballBodies.length; i++) {
+          world.removeBody(ballBodies[i]);
+        }
+
+        // Remove all visual elements from scene
+        for (let i = 0; i < balls.length; i++) {
+          scene.remove(balls[i]);
+        }
+
+        // Remove all constraint lines
+        for (let i = 0; i < constraints.length; i++) {
+          scene.remove(constraints[i].line);
+        }
+
+        // Clear all arrays
+        balls.length = 0;
+        ballBodies.length = 0;
+        constraints.length = 0;
+        initialPositions.length = 0;
+      }
+
+      // Create a spring between two balls
+      function createSpring(i, j) {
+        // Create spring constraint between balls
+        const constraint = new CANNON.Spring(ballBodies[i], ballBodies[j], {
+          restLength: ballBodies[i].position.distanceTo(ballBodies[j].position) * 0.8,
+          stiffness: springElasticity,
+          damping: 0.3, // Damping factor
+        });
+
+        constraints.push(constraint);
+
+        // Visual line for the spring
+        const lineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.3,
+        });
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, 0, 0),
+        ]);
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        scene.add(line);
+        constraint.line = line;
+        constraint.ballA = i;
+        constraint.ballB = j;
+
+        // Calculate the distance-based opacity and width
+        updateSpringVisuals(constraint);
+      }
+
+      // Update the spring visuals based on distance
+      function updateSpringVisuals(constraint) {
+        const dist = constraint.bodyA.position.distanceTo(constraint.bodyB.position);
+        const maxDist = ballDistance * 3;
+
+        // Further balls have less visible connections
+        if (dist > maxDist) {
+          constraint.line.visible = false;
+        } else {
+          constraint.line.visible = true;
+          const opacity = 0.8 * (1 - dist / maxDist);
+          constraint.line.material.opacity = opacity;
+
+          // Make close connections more emphasized
+          const closenessFactor = 1 - dist / maxDist;
+          constraint.line.material.color.setHSL(0.6, 1, 0.5 * closenessFactor + 0.2);
+        }
+      }
+
+      // Update all spring elasticity
+      function updateAllSprings() {
+        constraints.forEach(constraint => {
+          constraint.stiffness = springElasticity;
+        });
+      }
+
+      // Reset balls to their initial positions
+      function resetPositions() {
+        for (let i = 0; i < ballBodies.length; i++) {
+          ballBodies[i].position.copy(initialPositions[i]);
+          ballBodies[i].velocity.set(0, 0, 0);
+          ballBodies[i].angularVelocity.set(0, 0, 0);
+          ballBodies[i].force.set(0, 0, 0);
+          ballBodies[i].torque.set(0, 0, 0);
+        }
+      }
+
+      // Apply random forces to all balls (explosion effect)
+      function explodeBalls() {
+        const explosionStrength = 50;
+        for (let i = 0; i < ballBodies.length; i++) {
+          const force = new CANNON.Vec3(
+            (Math.random() - 0.5) * explosionStrength,
+            Math.random() * explosionStrength,
+            (Math.random() - 0.5) * explosionStrength
+          );
+          ballBodies[i].applyImpulse(force, ballBodies[i].position);
+        }
+      }
+
+      // Apply random forces to all balls (gentler than explosion)
+      function applyRandomForces() {
+        const forceStrength = 10;
+        for (let i = 0; i < ballBodies.length; i++) {
+          const force = new CANNON.Vec3(
+            (Math.random() - 0.5) * forceStrength,
+            (Math.random() - 0.5) * forceStrength,
+            (Math.random() - 0.5) * forceStrength
+          );
+          ballBodies[i].applyImpulse(force, ballBodies[i].position);
+        }
+      }
+
+      // Set up camera position
+      camera.position.set(0, 0, 20);
+      camera.lookAt(0, 0, 0);
+
+      // Mouse controls
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      let isDragging = false;
+      let selectedBall = null;
+      let selectedBallIndex = -1;
+      let mouseConstraint = null;
+
+      // Create a virtual body at mouse position
+      const mouseBody = new CANNON.Body({
+        mass: 0,
+        shape: new CANNON.Sphere(0.1),
+        position: new CANNON.Vec3(0, 0, 0),
+      });
+      world.addBody(mouseBody);
+
+      document.addEventListener('mousedown', event => {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(balls);
+
+        if (intersects.length > 0) {
+          isDragging = true;
+          selectedBall = intersects[0].object;
+          selectedBallIndex = balls.indexOf(selectedBall);
+
+          // Get world position for the mouse
+          const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+          const worldPos = new THREE.Vector3();
+          raycaster.ray.intersectPlane(planeZ, worldPos);
+
+          // Update mouse body position
+          mouseBody.position.set(worldPos.x, worldPos.y, worldPos.z);
+
+          // Make the selected ball visually distinct
+          if (selectedBall.material.emissive) {
+            selectedBall.material.emissive.set(0x553311);
+          } else if (selectedBall.material.color) {
+            selectedBall.userData.originalColor = selectedBall.material.color.clone();
+            selectedBall.material.color.set(0xff9900);
+          }
+          selectedBall.scale.set(1.2, 1.2, 1.2);
+        }
+      });
+
+      document.addEventListener('mousemove', event => {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        if (isDragging && selectedBall) {
+          // Update mouse position
+          const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+          const worldPos = new THREE.Vector3();
+          raycaster.setFromCamera(mouse, camera);
+          raycaster.ray.intersectPlane(planeZ, worldPos);
+
+          // Set mouse body position
+          mouseBody.position.set(worldPos.x, worldPos.y, worldPos.z);
+
+          // Directly move the ball toward mouse position with a strong spring-like effect
+          const ballBody = ballBodies[selectedBallIndex];
+          const direction = new CANNON.Vec3()
+            .copy(mouseBody.position)
+            .vsub(ballBody.position);
+          const distance = direction.length();
+          const maxForce = 50; // Stronger pull force
+          const targetStrength = Math.min(distance * 10, maxForce);
+
+          direction.normalize();
+          direction.scale(targetStrength, direction);
+          ballBody.applyForce(direction, ballBody.position);
+        } else {
+          // Hover effect
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObjects(balls);
+
+          // Reset all balls first
+          balls.forEach(ball => {
+            if (ball !== selectedBall) {
+              if (ball.material.emissive) {
+                ball.material.emissive.set(0x072534);
+              } else if (ball.userData.originalColor && ball !== selectedBall) {
+                ball.material.color.copy(ball.userData.originalColor);
+                delete ball.userData.originalColor;
+              }
+              ball.scale.set(1, 1, 1);
+            }
+          });
+
+          // Highlight hovered ball
+          if (intersects.length > 0 && intersects[0].object !== selectedBall) {
+            const hoveredBall = intersects[0].object;
+            if (hoveredBall.material.emissive) {
+              hoveredBall.material.emissive.set(0x331100);
+            } else {
+              hoveredBall.userData.originalColor = hoveredBall.material.color.clone();
+              hoveredBall.material.color.setHSL(
+                hoveredBall.material.color.getHSL({}).h,
+                hoveredBall.material.color.getHSL({}).s,
+                hoveredBall.material.color.getHSL({}).l * 1.5
+              );
+            }
+            hoveredBall.scale.set(1.1, 1.1, 1.1);
+          }
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (isDragging && selectedBall) {
+          // Reset the visual appearance of the previously selected ball
+          if (selectedBall.material.emissive) {
+            selectedBall.material.emissive.set(0x072534);
+          } else if (selectedBall.userData.originalColor) {
+            selectedBall.material.color.copy(selectedBall.userData.originalColor);
+            delete selectedBall.userData.originalColor;
+          }
+          selectedBall.scale.set(1, 1, 1);
+
+          isDragging = false;
+          selectedBall = null;
+          selectedBallIndex = -1;
+        }
+      });
+
+      // Keyboard controls
+      document.addEventListener('keydown', event => {
+        if (event.code === 'Space') {
+          applyRandomForces();
+        }
+      });
+
+      // UI controls
+      document.getElementById('reset').addEventListener('click', resetPositions);
+      document.getElementById('explode').addEventListener('click', explodeBalls);
+      document.getElementById('applyBallCount').addEventListener('click', () => {
+        createInitialBalls();
+      });
+
+      const gravitySlider = document.getElementById('gravity');
+      const gravityValue = document.getElementById('gravityValue');
+      gravitySlider.addEventListener('input', () => {
+        const value = parseFloat(gravitySlider.value);
+        world.gravity.set(0, -value, 0);
+        gravityValue.textContent = value.toFixed(2);
+      });
+
+      const elasticitySlider = document.getElementById('elasticity');
+      const elasticityValue = document.getElementById('elasticityValue');
+      elasticitySlider.addEventListener('input', () => {
+        const value = parseFloat(elasticitySlider.value);
+        springElasticity = value;
+        elasticityValue.textContent = value.toFixed(2);
+        updateAllSprings();
+      });
+
+      const ballCountSlider = document.getElementById('ballCount');
+      const ballCountValue = document.getElementById('ballCountValue');
+      ballCountSlider.addEventListener('input', () => {
+        const value = parseInt(ballCountSlider.value);
+        ballCountValue.textContent = value;
+        ballCount = value;
+      });
+
+      const connectionDensitySlider = document.getElementById('connectionDensity');
+      const connectionDensityValue = document.getElementById('connectionDensityValue');
+      connectionDensitySlider.addEventListener('input', () => {
+        const value = parseInt(connectionDensitySlider.value);
+        connectionDensityValue.textContent = value;
+        connectionDensity = value;
+
+        // Recreate the ball system with new connection density
+        clearBallSystem();
+        createInitialBalls();
+      });
+
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const currentTime = Date.now();
+
+        // Animate point lights for dynamic lighting
+        pointLight1.position.x = 5 * Math.sin(currentTime * 0.001);
+        pointLight1.position.z = 5 * Math.cos(currentTime * 0.001);
+
+        pointLight2.position.x = 5 * Math.sin(currentTime * 0.001 + Math.PI);
+        pointLight2.position.z = 5 * Math.cos(currentTime * 0.001 + Math.PI);
+
+        // Step physics world
+        world.step(1 / 60);
+
+        // Apply spring forces manually
+        constraints.forEach(constraint => {
+          constraint.applyForce();
+
+          // Update spring visualizations
+          const posA = constraint.bodyA.position;
+          const posB = constraint.bodyB.position;
+
+          const points = [
+            new THREE.Vector3(posA.x, posA.y, posA.z),
+            new THREE.Vector3(posB.x, posB.y, posB.z),
+          ];
+
+          constraint.line.geometry.setFromPoints(points);
+          updateSpringVisuals(constraint);
+        });
+
+        // Update ball positions and rotations for a more lively appearance
+        for (let i = 0; i < balls.length; i++) {
+          balls[i].position.copy(ballBodies[i].position);
+          balls[i].quaternion.copy(ballBodies[i].quaternion);
+
+          // Add subtle rotation to textured balls to make them more interesting
+          if (balls[i].material.map) {
+            balls[i].rotation.y += 0.005;
+          }
+        }
+
+        // Slowly rotate the camera to show 3D effect
+        camera.position.x = 20 * Math.sin(currentTime * 0.0001);
+        camera.position.z = 20 * Math.cos(currentTime * 0.0001);
+        camera.position.y = 5 + 3 * Math.sin(currentTime * 0.0002);
+        camera.lookAt(0, 0, 0);
+
+        renderer.render(scene, camera);
+      }
+
+      // Create initial balls and start animation
+      createInitialBalls();
+      animate();
+    </script>
+  </body>
+</html>

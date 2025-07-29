@@ -1,0 +1,1337 @@
+<!doctype html>
+<!--
+RULES:
+1. В тексте сохраняются только точки "." и запятые "," как знаки препинания.
+2. Все числа записываются арабскими цифрами.
+3. Кавычки, тире и прочие спецсимволы в тексте аудиогида не используются.
+4. При изменении требований этот блок правил обновляется в первую очередь.
+
+ФУНКЦИОНАЛЬНЫЕ ТРЕБОВАНИЯ:
+1. Выбор города из списка  в файле cities.json
+2. Для каждого города отдельный конфиг с достопримечательностями
+3. Переключатель светлой/темной темы в иконке шестеренки вверху
+4. Выбор города размещен в боковой панели над списком объектов
+5. Сохранение всех настроек в localStorage (выбранный город, тема, голос)
+6. Восстановление настроек при загрузке страницы
+7. Кроссбраузерная совместимость (Safari, Chrome, Firefox, Edge)
+8. Адаптивный дизайн для всех устройств (desktop, tablet, mobile)
+9. Поддержка accessibility (фокус, контрастность, уменьшенная анимация)
+10. Поддержка русского TTS для всех городов
+11. Responsive меню с гамбургер-кнопкой на мобильных устройствах
+12. Аудио воспроизводится только по нажатию кнопки "Рассказать"
+13. Все кнопки управления размещены на одной линии: "Назад", "Рассказать", "Стоп", "Дальше"
+14. Все изображения заменены на реальные фотографии достопримечательностей из Wikimedia Commons
+15. Изображения используют надежный CDN Wikipedia для быстрой загрузки
+16. Исправлено сохранение и восстановление настроек голоса TTS при перезагрузке
+17. Интерактивная карта города с маркерами достопримечательностей на базе OpenLayers
+18. Изменение цвета маркера при выборе достопримечательности
+19. Автоматическое центрирование карты на выбранный город
+20. Подписи к маркерам с названиями достопримечательностей
+21. Адаптация цвета подписей к текущей теме (темная/светлая)
+22. Поиск по достопримечательностям с фильтрацией по названию, описанию и адресу
+23. Счетчик общего количества достопримечательностей
+24. Выделение активной достопримечательности в навигации
+25. Добавлены новые города: Лондон, Нью-Йорк, Рим с полным набором достопримечательностей
+-->
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Аудиогид по городам Сербии</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css" />
+    <style>
+      /* CSS Variables for theming */
+      :root {
+        --bg-color: #f9fafb;
+        --text-color: #111827;
+        --card-bg: #ffffff;
+        --border-color: #e5e7eb;
+        --primary-color: #4f46e5;
+        --secondary-color: #f3f4f6;
+        --secondary-text: #374151;
+        --shadow-light:
+          0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --shadow-hover:
+          0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+
+      [data-theme='dark'] {
+        --bg-color: #111827;
+        --text-color: #f9fafb;
+        --card-bg: #1f2937;
+        --border-color: #374151;
+        --primary-color: #6366f1;
+        --secondary-color: #374151;
+        --secondary-text: #d1d5db;
+        --shadow-light:
+          0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+        --shadow-hover:
+          0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+      }
+
+      /* Reset and base styles */
+      * {
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        transition:
+          background-color 0.3s ease,
+          color 0.3s ease;
+      }
+
+      /* Card component */
+      .card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 1rem;
+        box-shadow: var(--shadow-light);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+        overflow: hidden;
+      }
+
+      .card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+      }
+
+      /* Button styles */
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+      }
+
+      .btn:hover:not(:disabled) {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+
+      .btn:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+      }
+
+      .btn-secondary {
+        background-color: var(--secondary-color);
+        color: var(--secondary-text);
+      }
+
+      /* Select styles */
+      .select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        background-color: var(--secondary-color);
+        color: var(--secondary-text);
+        border: 1px solid var(--border-color);
+        font-size: 0.875rem;
+        cursor: pointer;
+        outline: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem;
+        padding-right: 2.5rem;
+      }
+
+      .select:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+      }
+
+      /* Input styles for search */
+      input[type='text'].select {
+        background-image: none;
+        padding-right: 1rem;
+        cursor: text;
+      }
+
+      /* Layout components */
+      .sidebar {
+        background-color: var(--card-bg);
+        border-right: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+      }
+
+      .settings-modal {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-hover);
+      }
+
+      .settings-button {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 50;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow-light);
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .settings-button:hover {
+        transform: rotate(90deg) scale(1.05);
+      }
+
+      .settings-button:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+      }
+
+      /* Image styles */
+      img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: -100%;
+          width: 85%;
+          max-width: 320px;
+          height: 100vh;
+          z-index: 40;
+          transition: left 0.3s ease;
+          box-shadow: var(--shadow-hover);
+        }
+
+        .sidebar.open {
+          left: 0;
+        }
+
+        .menu-toggle {
+          position: fixed;
+          top: 1rem;
+          left: 1rem;
+          z-index: 50;
+          width: 3rem;
+          height: 3rem;
+          background-color: var(--primary-color);
+          color: white;
+          border: none;
+          border-radius: 0.5rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.1rem;
+          box-shadow: var(--shadow-light);
+          outline: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .menu-toggle:focus {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 2px;
+        }
+
+        .card {
+          margin-left: 0;
+          margin-right: 0;
+          padding: 1rem;
+        }
+
+        .btn {
+          padding: 0.625rem 1rem;
+          font-size: 0.8125rem;
+        }
+
+        .settings-button {
+          top: 0.75rem;
+          right: 0.75rem;
+          width: 2.75rem;
+          height: 2.75rem;
+          font-size: 1.1rem;
+        }
+
+        /* На мобильных устройствах фото отображается сверху */
+        .poi-content-container {
+          flex-direction: column-reverse !important;
+        }
+
+        .poi-text-container,
+        .poi-image-container {
+          width: 100% !important;
+        }
+
+        .poi-image-container img {
+          height: 200px !important;
+          margin-bottom: 1rem;
+        }
+      }
+
+      /* Button groups */
+      .button-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .button-group .btn {
+        min-width: auto;
+        padding: 0.5rem 1rem;
+      }
+
+      /* Medium screens */
+      @media (max-width: 768px) and (min-width: 481px) {
+        .button-group {
+          justify-content: center;
+          gap: 0.75rem;
+        }
+
+        .button-group .btn {
+          flex: 0 1 auto;
+          min-width: 110px;
+        }
+      }
+
+      /* Small screens */
+      @media (max-width: 480px) {
+        .flex-wrap {
+          flex-direction: column;
+        }
+
+        .flex-wrap .btn {
+          width: 100%;
+          margin-bottom: 0.5rem;
+        }
+
+        .button-group {
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .button-group .btn {
+          width: 100%;
+          min-width: auto;
+        }
+
+        .sidebar {
+          width: 90%;
+          max-width: none;
+        }
+      }
+
+      /* Print styles */
+      @media print {
+        .settings-button,
+        .menu-toggle,
+        .btn,
+        #settings-modal {
+          display: none;
+        }
+
+        .sidebar {
+          position: static;
+          width: 100%;
+          border: none;
+        }
+
+        .card {
+          box-shadow: none;
+          border: 1px solid #ccc;
+        }
+      }
+
+      /* High contrast mode support */
+      @media (prefers-contrast: high) {
+        .card {
+          border-width: 2px;
+        }
+
+        .btn:focus,
+        .select:focus,
+        .settings-button:focus {
+          outline-width: 3px;
+        }
+      }
+
+      /* Reduced motion support */
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      /* Map styles */
+      #city-map {
+        height: 400px;
+        width: 100%;
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+        margin-top: 1.5rem;
+      }
+
+      /* Additional responsive styles for POI content */
+      .poi-image-container {
+        max-width: 100%;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .poi-image-container img {
+        transition: all 0.3s ease;
+      }
+
+      /* Индикатор загрузки изображения */
+      .poi-image-container.loading::before {
+        content: 'Загрузка изображения...';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--card-bg);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        color: var(--text-color);
+        font-size: 0.875rem;
+        z-index: 1;
+      }
+
+      .poi-image-container.loading::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--secondary-color);
+        border-radius: 1rem;
+        opacity: 0.8;
+      }
+
+      @media (min-width: 1024px) {
+        .poi-image-container img {
+          min-height: 300px;
+          max-height: 400px;
+        }
+      }
+
+      .ol-popup {
+        background: var(--card-bg);
+        border-radius: 0.75rem;
+        border: 1px solid var(--border-color);
+        padding: 1rem;
+        min-width: 200px;
+        font-size: 0.875rem;
+        max-width: 300px;
+        box-shadow: var(--shadow-light);
+        color: var(--text-color);
+      }
+
+      .ol-popup h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: var(--primary-color);
+      }
+
+      .ol-popup p {
+        margin: 0;
+        line-height: 1.4;
+      }
+
+      /* Map labels styling */
+      .ol-layer canvas {
+        pointer-events: auto;
+      }
+
+      @media (max-width: 768px) {
+        #city-map {
+          height: 300px;
+          margin-left: -1rem;
+          margin-right: -1rem;
+          border-radius: 0;
+          border-left: none;
+          border-right: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen">
+    <!-- Кнопка настроек -->
+    <button id="settings-btn" class="settings-button">⚙️</button>
+
+    <!-- Кнопка меню для мобильных -->
+    <button id="menu-toggle" class="menu-toggle md:hidden">☰</button>
+
+    <!-- Модальное окно настроек -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="settings-modal rounded-2xl p-6 max-w-md w-full">
+          <h3 class="text-xl font-bold mb-4">Настройки</h3>
+
+          <div class="mb-4">
+            <label class="block font-semibold mb-2">Город:</label>
+            <select id="city-select" class="select w-full">
+              <!-- Опции заполняются динамически из cities.json -->
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label class="block font-semibold mb-2">Тема:</label>
+            <select id="theme-select" class="select w-full">
+              <option value="light">Светлая</option>
+              <option value="dark">Темная</option>
+            </select>
+          </div>
+
+          <div class="mb-6">
+            <label class="block font-semibold mb-2">Голос:</label>
+            <select id="voice-select" class="select w-full"></select>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="save-settings" class="btn flex-1">Сохранить</button>
+            <button id="close-settings" class="btn-secondary flex-1">Закрыть</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex min-h-screen">
+      <!-- Боковая панель -->
+      <aside id="sidebar" class="sidebar w-full md:w-1/4 p-4 overflow-y-auto">
+        <h1 id="city-title" class="text-2xl font-bold mb-4">Город</h1>
+
+        <!-- Выбор города -->
+        <div class="mb-6">
+          <label class="block font-semibold mb-2 text-sm">Выберите город:</label>
+          <select id="city-select-sidebar" class="select w-full">
+            <!-- Опции заполняются динамически из cities.json -->
+          </select>
+        </div>
+
+        <!-- Счетчик достопримечательностей -->
+        <div id="poi-counter" class="mb-4 text-sm opacity-75 text-center"></div>
+
+        <nav id="poi-nav" class="space-y-2"></nav>
+      </aside>
+
+      <!-- Основной контент -->
+      <main class="flex-1 p-6 overflow-y-auto">
+        <div id="poi-card" class="card hidden">
+          <!-- Контейнер с текстом слева и фото справа -->
+          <div class="poi-content-container flex flex-col lg:flex-row gap-6 mb-4">
+            <!-- Левая часть: текст и кнопки -->
+            <div class="poi-text-container flex-1 lg:w-2/3">
+              <h2 id="poi-title" class="text-xl font-bold mb-2"></h2>
+              <p id="poi-desc" class="mb-2 whitespace-pre-line leading-relaxed"></p>
+              <p id="poi-addr" class="mb-4 text-sm font-semibold"></p>
+              <div class="button-group justify-center lg:justify-start">
+                <button id="prev-btn" class="btn">← Назад</button>
+                <button id="tell-btn" class="btn">▶️ Рассказать</button>
+                <button id="stop-btn" class="btn">⏹ Стоп</button>
+                <button id="next-btn" class="btn">Дальше →</button>
+              </div>
+            </div>
+
+            <!-- Правая часть: фото -->
+            <div class="poi-image-container lg:w-1/3">
+              <img
+                id="poi-img"
+                class="w-full h-64 lg:h-auto object-cover rounded-xl"
+                onerror="this.parentElement.style.display='none'"
+              />
+            </div>
+          </div>
+
+          <!-- Карта города под контентом -->
+          <div id="city-map" class="hidden"></div>
+        </div>
+
+        <!-- Приветственное сообщение -->
+        <div id="welcome-message" class="card text-center">
+          <h2 class="text-2xl font-bold mb-4">Добро пожаловать в аудиогид!</h2>
+          <p class="mb-4">
+            Выберите город в настройках (⚙️) и начните путешествие по
+            достопримечательностям.
+          </p>
+          <p id="supported-cities" class="text-sm opacity-75">
+            Загрузка списка городов...
+          </p>
+        </div>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
+    <script>
+      // Конфигурации городов (загружаются из JSON файла)
+      let cityConfigs = {};
+
+      // Функция для загрузки конфигураций городов
+      async function loadCityConfigs() {
+        try {
+          const response = await fetch('cities.json');
+          if (!response.ok) {
+            throw new Error('Не удалось загрузить данные городов');
+          }
+          cityConfigs = await response.json();
+          console.log('Конфигурации городов загружены:', Object.keys(cityConfigs));
+
+          // Заполняем выпадающие списки после загрузки данных
+          populateCitySelects();
+        } catch (error) {
+          console.error('Ошибка загрузки городов:', error);
+          // Fallback - используем локальные данные
+          cityConfigs = [];
+        }
+      }
+
+      // Функция для заполнения выпадающих списков городов
+      function populateCitySelects() {
+        const citySelect = document.getElementById('city-select');
+        const citySelectSidebar = document.getElementById('city-select-sidebar');
+        const supportedCitiesEl = document.getElementById('supported-cities');
+
+        // Очищаем существующие опции
+        citySelect.innerHTML = '';
+        citySelectSidebar.innerHTML = '';
+
+        // Создаем массив городов с ключами и названиями
+        const cities = Object.keys(cityConfigs).map(cityKey => ({
+          key: cityKey,
+          name: getCityDisplayName(cityKey),
+        }));
+
+        // Сортируем города по алфавиту по названию
+        cities.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+        const cityNames = [];
+
+        // Заполняем опциями из отсортированных данных
+        cities.forEach(city => {
+          cityNames.push(city.name);
+
+          // Для модального окна настроек
+          const option1 = document.createElement('option');
+          option1.value = city.key;
+          option1.textContent = city.name;
+          citySelect.appendChild(option1);
+
+          // Для боковой панели
+          const option2 = document.createElement('option');
+          option2.value = city.key;
+          option2.textContent = city.name;
+          citySelectSidebar.appendChild(option2);
+        });
+
+        // Обновляем список поддерживаемых городов в приветственном сообщении
+        if (supportedCitiesEl) {
+          supportedCitiesEl.textContent = `Поддерживаются города: ${cityNames.join(', ')}`;
+        }
+      }
+
+      // Функция для получения отображаемого имени города
+      function getCityDisplayName(cityKey) {
+        const cityNames = {
+          subotica: 'Суботица',
+          moscow: 'Москва',
+          paris: 'Париж',
+          london: 'Лондон',
+          belgrade: 'Белград',
+          berlin: 'Берлин',
+          budapest: 'Будапешт',
+          'buenos-aires': 'Буэнос-Айрес',
+          varna: 'Варна',
+          vienna: 'Вена',
+          kyoto: 'Киото',
+          'new-york': 'Нью-Йорк',
+          'novi-sad': 'Нови-Сад',
+          novosibirsk: 'Новосибирск',
+          palic: 'Палич',
+          rome: 'Рим',
+          samara: 'Самара',
+          'saint-petersburg': 'Санкт-Петербург',
+          sombor: 'Сомбор',
+          istanbul: 'Стамбул',
+          tokyo: 'Токио',
+          yekaterinburg: 'Екатеринбург',
+          chicago: 'Чикаго',
+        };
+
+        return cityNames[cityKey] || cityKey;
+      }
+
+      // Элементы интерфейса
+      const nav = document.getElementById('poi-nav');
+      const card = document.getElementById('poi-card');
+      const welcomeMessage = document.getElementById('welcome-message');
+      const img = document.getElementById('poi-img');
+      const title = document.getElementById('poi-title');
+      const desc = document.getElementById('poi-desc');
+      const addrEl = document.getElementById('poi-addr');
+      const prev = document.getElementById('prev-btn');
+      const next = document.getElementById('next-btn');
+      const tell = document.getElementById('tell-btn');
+      const stop = document.getElementById('stop-btn');
+      const cityTitle = document.getElementById('city-title');
+      const poiCounter = document.getElementById('poi-counter');
+
+      // Настройки
+      const settingsBtn = document.getElementById('settings-btn');
+      const settingsModal = document.getElementById('settings-modal');
+      const citySelect = document.getElementById('city-select');
+      const citySelectSidebar = document.getElementById('city-select-sidebar');
+      const themeSelect = document.getElementById('theme-select');
+      const voiceSelect = document.getElementById('voice-select');
+      const saveSettings = document.getElementById('save-settings');
+      const closeSettings = document.getElementById('close-settings');
+
+      // Мобильное меню
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebar = document.getElementById('sidebar');
+
+      // Состояние приложения
+      let voices = [];
+      let voiceIndex = -1;
+      let current = 0;
+      let currentCity = 'subotica';
+      let currentTheme = 'light';
+
+      // Карта и маркеры
+      let map;
+      let markerLayer;
+      let popupOverlay;
+      let currentMarkers = [];
+
+      // Функции управления URL параметрами
+      function getCityFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('city');
+      }
+
+      function updateURL(cityKey) {
+        const url = new URL(window.location);
+        url.searchParams.set('city', cityKey);
+        window.history.pushState({}, '', url);
+      }
+
+      // Функции управления настройками
+      function loadSettings() {
+        // Сначала проверяем URL параметр, потом localStorage
+        const urlCity = getCityFromURL();
+        const savedCity =
+          urlCity || localStorage.getItem('audioguide-city') || 'subotica';
+        const savedTheme = localStorage.getItem('audioguide-theme') || 'light';
+        const savedVoice = localStorage.getItem('audioguide-voice') || '-1';
+
+        currentCity = savedCity;
+        currentTheme = savedTheme;
+        voiceIndex = parseInt(savedVoice);
+
+        citySelect.value = currentCity;
+        citySelectSidebar.value = currentCity;
+        themeSelect.value = currentTheme;
+
+        // Устанавливаем голос после заполнения списка
+        if (voiceSelect.children.length > 0) {
+          voiceSelect.value = voiceIndex.toString();
+        }
+
+        applyTheme(currentTheme);
+      }
+
+      function saveSettingsToStorage() {
+        localStorage.setItem('audioguide-city', currentCity);
+        localStorage.setItem('audioguide-theme', currentTheme);
+        localStorage.setItem('audioguide-voice', voiceIndex.toString());
+      }
+
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        currentTheme = theme;
+
+        // Обновляем подписи маркеров при смене темы
+        if (currentMarkers && currentMarkers.length > 0) {
+          updateMarkerColors();
+        }
+      }
+
+      function populateVoices() {
+        voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ru'));
+        voiceSelect.innerHTML = '';
+
+        if (voices.length === 0) {
+          const option = document.createElement('option');
+          option.value = '-1';
+          option.textContent = 'Системный голос';
+          voiceSelect.appendChild(option);
+          if (voiceIndex === -1) voiceIndex = -1;
+        } else {
+          voices.forEach((voice, index) => {
+            const option = document.createElement('option');
+            option.value = index.toString();
+            option.textContent = voice.name;
+            voiceSelect.appendChild(option);
+          });
+          // Проверяем корректность сохраненного индекса голоса
+          if (voiceIndex < 0 || voiceIndex >= voices.length) {
+            voiceIndex = 0;
+          }
+        }
+
+        // Устанавливаем значение после создания опций
+        voiceSelect.value = voiceIndex.toString();
+      }
+
+      function speak(text) {
+        if (!('speechSynthesis' in window)) return;
+        speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ru-RU';
+
+        if (voiceIndex >= 0 && voices[voiceIndex]) {
+          utterance.voice = voices[voiceIndex];
+        }
+
+        speechSynthesis.speak(utterance);
+      }
+
+      // Функции карты
+      function initMap(cityKey) {
+        const config = cityConfigs[cityKey];
+        if (!config || !config.center) return;
+
+        const mapElement = document.getElementById('city-map');
+        mapElement.classList.remove('hidden');
+
+        // Очищаем существующую карту если есть
+        if (map) {
+          // Очищаем overlays
+          if (popupOverlay) {
+            map.removeOverlay(popupOverlay);
+            popupOverlay = null;
+          }
+          // Очищаем карту
+          map.setTarget(null);
+          map = null;
+        }
+
+        // Очищаем маркеры
+        currentMarkers = [];
+
+        // Создаем слой для маркеров
+        markerLayer = new ol.layer.Vector({
+          source: new ol.source.Vector(),
+        });
+
+        // Создаем карту
+        map = new ol.Map({
+          target: 'city-map',
+          layers: [
+            new ol.layer.Tile({
+              source: new ol.source.OSM(),
+            }),
+            markerLayer,
+          ],
+          view: new ol.View({
+            center: ol.proj.fromLonLat(config.center),
+            zoom: 13,
+          }),
+        });
+
+        // Создаем popup overlay
+        const popupElement = document.createElement('div');
+        popupElement.className = 'ol-popup';
+        popupOverlay = new ol.Overlay({
+          element: popupElement,
+          positioning: 'bottom-center',
+          stopEvent: false,
+          offset: [0, -10],
+        });
+        map.addOverlay(popupOverlay);
+
+        // Добавляем маркеры для всех достопримечательностей
+        addMarkersToMap(config.pois);
+
+        // Обновляем размер карты
+        setTimeout(() => {
+          if (map) {
+            map.updateSize();
+          }
+        }, 100);
+
+        // Обработчик клика на карту для закрытия popup
+        map.on('click', function (evt) {
+          const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
+            return feature;
+          });
+
+          if (feature) {
+            const index = feature.get('poiIndex');
+            const poi = config.pois[index];
+            showPopup(evt.coordinate, poi);
+            // Переключаем на выбранную достопримечательность
+            showPOI(index);
+          } else {
+            popupOverlay.setPosition(undefined);
+          }
+        });
+      }
+
+      function addMarkersToMap(pois) {
+        if (!markerLayer) return;
+
+        currentMarkers = [];
+        const source = markerLayer.getSource();
+        source.clear();
+
+        pois.forEach((poi, index) => {
+          // Извлекаем координаты из Google Maps URL
+          const coords = extractCoordsFromMapUrl(poi.map);
+          if (!coords) return;
+
+          // Создаем стиль маркера с подписью
+          const style = createMarkerStyle(
+            index === current ? '#ff4444' : '#4f46e5',
+            poi.name
+          );
+
+          // Создаем feature
+          const marker = new ol.Feature({
+            geometry: new ol.geom.Point(ol.proj.fromLonLat([coords.lng, coords.lat])),
+            poiIndex: index,
+            name: poi.name,
+          });
+          marker.setStyle(style);
+
+          source.addFeature(marker);
+          currentMarkers.push(marker);
+        });
+      }
+
+      function extractCoordsFromMapUrl(url) {
+        // Извлекаем координаты из URL вида https://maps.google.com/?q=lat,lng
+        const match = url.match(/q=([0-9.-]+),([0-9.-]+)/);
+        if (match) {
+          return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+        }
+        return null;
+      }
+
+      function createMarkerStyle(color, text) {
+        const style = new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: 8,
+            fill: new ol.style.Fill({ color: color }),
+            stroke: new ol.style.Stroke({
+              color: 'white',
+              width: 2,
+            }),
+          }),
+        });
+
+        // Добавляем текстовую подпись если передан текст
+        if (text) {
+          style.setText(
+            new ol.style.Text({
+              text: text,
+              font: '12px Arial, sans-serif',
+              fill: new ol.style.Fill({
+                color:
+                  document.documentElement.getAttribute('data-theme') === 'dark'
+                    ? '#f9fafb'
+                    : '#111827',
+              }),
+              stroke: new ol.style.Stroke({
+                color:
+                  document.documentElement.getAttribute('data-theme') === 'dark'
+                    ? '#111827'
+                    : '#ffffff',
+                width: 3,
+              }),
+              offsetY: 20,
+              textAlign: 'center',
+              textBaseline: 'top',
+              maxAngle: 0,
+              overflow: true,
+              placement: 'point',
+            })
+          );
+        }
+
+        return style;
+      }
+
+      function showPopup(coordinate, poi) {
+        if (!popupOverlay) return;
+
+        const element = popupOverlay.getElement();
+        element.innerHTML = `
+    <h4>${poi.name}</h4>
+    <p>${poi.addr}</p>
+  `;
+        popupOverlay.setPosition(coordinate);
+      }
+
+      function updateMarkerColors() {
+        if (!currentMarkers || currentMarkers.length === 0) return;
+
+        currentMarkers.forEach((marker, index) => {
+          const markerName = marker.get('name');
+          const style = createMarkerStyle(
+            index === current ? '#ff4444' : '#4f46e5',
+            markerName
+          );
+          marker.setStyle(style);
+        });
+      }
+
+      function centerMapOnPOI(index) {
+        const config = cityConfigs[currentCity];
+        if (!config || !config.pois[index] || !map) return;
+
+        const poi = config.pois[index];
+        const coords = extractCoordsFromMapUrl(poi.map);
+        if (!coords) return;
+
+        const view = map.getView();
+        view.animate({
+          center: ol.proj.fromLonLat([coords.lng, coords.lat]),
+          zoom: 16,
+          duration: 1000,
+        });
+      }
+
+      function loadCity(cityKey) {
+        const config = cityConfigs[cityKey];
+        if (!config) return;
+
+        currentCity = cityKey;
+        cityTitle.textContent = config.name;
+
+        // Обновляем URL
+        updateURL(cityKey);
+
+        // Создаем навигацию
+        renderPOINavigation();
+
+        // Скрываем приветственное сообщение и показываем первую достопримечательность
+        welcomeMessage.classList.add('hidden');
+
+        // Инициализируем карту для нового города
+        initMap(cityKey);
+
+        showPOI(0);
+      }
+
+      function renderPOINavigation() {
+        const config = cityConfigs[currentCity];
+        if (!config) return;
+
+        // Очищаем навигацию
+        nav.innerHTML = '';
+
+        // Создаем кнопки для достопримечательностей
+        config.pois.forEach((poi, index) => {
+          const button = document.createElement('button');
+          button.textContent = poi.name;
+          button.className =
+            'block w-full text-left btn-secondary mb-2 p-3 rounded-xl transition-all hover:scale-105';
+          button.onclick = () => showPOI(index);
+
+          // Подсвечиваем активную достопримечательность
+          if (index === current) {
+            button.style.backgroundColor = 'var(--primary-color)';
+            button.style.color = 'white';
+          }
+
+          nav.appendChild(button);
+        });
+
+        // Обновляем счетчик
+        poiCounter.textContent = `Достопримечательностей: ${config.pois.length}`;
+      }
+
+      function showPOI(index) {
+        const config = cityConfigs[currentCity];
+        if (!config || !config.pois[index]) return;
+
+        current = index;
+        const poi = config.pois[index];
+
+        // Показываем или скрываем изображение в зависимости от наличия атрибута img
+        const imgContainer = img.parentElement;
+        if (poi.img && poi.img.trim() !== '') {
+          // Показываем контейнер с индикатором загрузки
+          imgContainer.style.display = 'block';
+          imgContainer.classList.add('loading');
+
+          // Создаем новое изображение для проверки валидности
+          const testImg = new Image();
+          testImg.onload = function () {
+            // Если изображение загрузилось успешно, показываем его
+            img.src = poi.img;
+            imgContainer.classList.remove('loading');
+          };
+          testImg.onerror = function () {
+            // Если изображение не загрузилось, скрываем контейнер
+            imgContainer.style.display = 'none';
+            imgContainer.classList.remove('loading');
+            console.warn('Не удалось загрузить изображение:', poi.img);
+          };
+          testImg.src = poi.img;
+        } else {
+          imgContainer.style.display = 'none';
+          imgContainer.classList.remove('loading');
+        }
+
+        title.textContent = poi.name;
+        desc.textContent = poi.text;
+
+        // Формируем ссылки только если они установлены
+        let linksHtml = '';
+        const links = [];
+
+        if (poi.map && poi.map.trim() !== '') {
+          links.push(
+            `<a class='underline' style='color: var(--primary-color)' href='${poi.map}' target='_blank'>Показать на карте</a>`
+          );
+        }
+        if (poi.wikipedia && poi.wikipedia.trim() !== '') {
+          links.push(
+            `<a class='underline' style='color: var(--primary-color)' href='${poi.wikipedia}' target='_blank'>Википедия</a>`
+          );
+        }
+        if (poi.website && poi.website.trim() !== '') {
+          links.push(
+            `<a class='underline' style='color: var(--primary-color)' href='${poi.website}' target='_blank'>Официальный сайт</a>`
+          );
+        }
+
+        if (links.length > 0) {
+          linksHtml = ' • ' + links.join(' • ');
+        }
+
+        addrEl.innerHTML = `${poi.addr}${linksHtml}`;
+
+        card.classList.remove('hidden');
+
+        prev.disabled = index === 0;
+        next.disabled = index === config.pois.length - 1;
+
+        // Обновляем навигацию чтобы выделить текущую достопримечательность
+        renderPOINavigation();
+
+        // Обновляем цвета маркеров на карте
+        updateMarkerColors();
+
+        // Центрируем карту на выбранной достопримечательности
+        centerMapOnPOI(index);
+
+        // Закрываем popup если открыт
+        if (popupOverlay) {
+          popupOverlay.setPosition(undefined);
+        }
+
+        // Закрываем мобильное меню
+        sidebar.classList.remove('open');
+      }
+
+      // Обработчики событий
+      speechSynthesis.onvoiceschanged = () => {
+        populateVoices();
+        // Устанавливаем сохраненный голос после загрузки списка
+        if (voiceSelect.children.length > 0) {
+          voiceSelect.value = voiceIndex.toString();
+        }
+      };
+
+      settingsBtn.onclick = () => settingsModal.classList.remove('hidden');
+      closeSettings.onclick = () => settingsModal.classList.add('hidden');
+
+      settingsModal.onclick = e => {
+        if (e.target === settingsModal) settingsModal.classList.add('hidden');
+      };
+
+      saveSettings.onclick = () => {
+        const newCity = citySelect.value;
+        const newTheme = themeSelect.value;
+        const newVoiceIndex = parseInt(voiceSelect.value);
+
+        // Проверяем изменился ли город
+        const cityChanged = currentCity !== newCity;
+
+        currentCity = newCity;
+        currentTheme = newTheme;
+        voiceIndex = newVoiceIndex;
+
+        applyTheme(currentTheme);
+
+        // Если город изменился, сбрасываем индекс
+        if (cityChanged) {
+          current = 0;
+        }
+
+        loadCity(currentCity);
+        citySelectSidebar.value = currentCity;
+        saveSettingsToStorage();
+        settingsModal.classList.add('hidden');
+      };
+
+      // Обработчик выбора города в боковой панели
+      citySelectSidebar.onchange = () => {
+        currentCity = citySelectSidebar.value;
+        citySelect.value = currentCity;
+
+        // Сбрасываем текущий индекс при смене города
+        current = 0;
+
+        loadCity(currentCity);
+        saveSettingsToStorage();
+      };
+
+      themeSelect.onchange = () => {
+        applyTheme(themeSelect.value);
+      };
+
+      voiceSelect.onchange = () => {
+        voiceIndex = parseInt(voiceSelect.value);
+        // Сохраняем настройки сразу при изменении голоса
+        saveSettingsToStorage();
+      };
+
+      prev.onclick = () => {
+        if (current > 0) showPOI(current - 1);
+      };
+
+      next.onclick = () => {
+        const config = cityConfigs[currentCity];
+        if (current < config.pois.length - 1) showPOI(current + 1);
+      };
+
+      tell.onclick = () => {
+        const config = cityConfigs[currentCity];
+        const poi = config.pois[current];
+        const textToSpeak = `${poi.name}. ${poi.text}`;
+        speak(textToSpeak);
+      };
+
+      stop.onclick = () => speechSynthesis.cancel();
+
+      // Мобильное меню
+      menuToggle.onclick = () => {
+        sidebar.classList.toggle('open');
+      };
+
+      // Закрытие мобильного меню при клике вне его
+      document.onclick = e => {
+        if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+          sidebar.classList.remove('open');
+        }
+      };
+
+      // Обработчик браузерной навигации (назад/вперед)
+      window.addEventListener('popstate', () => {
+        const urlCity = getCityFromURL();
+        if (urlCity && urlCity !== currentCity && cityConfigs[urlCity]) {
+          currentCity = urlCity;
+          citySelect.value = currentCity;
+          citySelectSidebar.value = currentCity;
+          loadCity(currentCity);
+          saveSettingsToStorage();
+        }
+      });
+
+      // Инициализация
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Сначала загружаем конфигурации городов
+        await loadCityConfigs();
+
+        loadSettings();
+        populateVoices();
+
+        // Скрываем карту до выбора города
+        const mapElement = document.getElementById('city-map');
+        mapElement.classList.add('hidden');
+
+        // Проверяем, что выбранный город доступен
+        if (!cityConfigs[currentCity]) {
+          currentCity = Object.keys(cityConfigs)[0] || 'subotica';
+        }
+
+        // Если в URL нет параметра города, добавляем его
+        if (!getCityFromURL()) {
+          updateURL(currentCity);
+        }
+
+        loadCity(currentCity);
+
+        // Дополнительная проверка голосов через таймаут
+        setTimeout(() => {
+          if (voices.length === 0) {
+            populateVoices();
+          }
+          // Устанавливаем сохраненный голос после загрузки
+          if (voiceSelect.children.length > 0) {
+            voiceSelect.value = voiceIndex.toString();
+          }
+        }, 100);
+      });
+    </script>
+  </body>
+</html>

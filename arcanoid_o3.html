@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Арканоид</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- 
+    Описание игры:
+    Арканоид - классическая игра, где игрок управляет платформой-ракеткой и должен отбивать мяч,
+    разрушая блоки в верхней части экрана. Цель - уничтожить все блоки, не потеряв все жизни.
+
+    Техническое задание:
+    1. Игровое поле:
+       - Размер canvas: 800x900 пикселей
+       - Фон игрового поля: градиент от темно-синего к синему
+       - Адаптивный размер под разные экраны
+       
+    2. Игровые элементы:
+       - Мяч: радиус 10px, неоновый зеленый цвет с градиентом
+       - Ракетка: 75x10 пикселей, неоновый градиент
+       - Блоки: 5 рядов по 7 блоков, размер 95x20 пикселей
+       - Отступы между блоками: 10px
+       - Неоновое свечение для всех элементов
+       
+           3. Управление:
+       - Клавиши влево/вправо для движения ракетки
+       - Управление мышью (перемещение курсора)
+       - Пробел для паузы
+       - Клавиша A для включения/выключения автоматического режима
+       - Клавиша M для включения/выключения звука
+       - Клавиша B для включения/выключения фоновой музыки
+       
+    4. Игровая механика:
+       - 3 жизни у игрока
+       - Отскок мяча от стен, ракетки и блоков
+       - Подсчет очков за разрушенные блоки
+       - Победа при уничтожении всех блоков
+       - Поражение при потере всех жизней
+       - Автоматический режим, в котором ракетка сама следует за мячом
+       - Плавное движение ракетки с ускорением и замедлением
+       - Подрезка мяча: угол отскока зависит от скорости движения ракетки
+       - Эффект края: удар по краю ракетки изменяет направление мяча сильнее
+       - Ограничение максимальной скорости мяча для лучшего контроля
+       
+           5. Интерфейс:
+       - Счетчик очков в левом верхнем углу
+       - Счетчик жизней в правом верхнем углу
+       - Панель управления справа от игрового поля
+       - Кнопки для управления автоматическим режимом, паузой и перезапуском игры
+       - Кнопка включения/выключения звука
+       - Кнопка включения/выключения фоновой музыки
+       - Адаптивный дизайн для мобильных устройств
+       
+           6. Звуковые эффекты:
+       - Звук при отскоке от ракетки
+       - Звук при разрушении блока
+       - Звук при отскоке от стены
+       - Звук при проигрыше
+       - Фоновая музыка (радиостанция) с возможностью включения/выключения
+       - Клавиша B для включения/выключения фоновой музыки
+  -->
+    <style>
+      body {
+        margin: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #0a0a2e 100%);
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        font-family: 'Arial', sans-serif;
+        position: relative;
+      }
+
+      .game-container {
+        display: flex;
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        justify-content: center;
+        align-items: center;
+      }
+
+      canvas {
+        display: block;
+        background: linear-gradient(to bottom, #000428, #004e92);
+        max-width: 100%;
+        max-height: 90vh;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 149, 221, 0.3);
+      }
+
+      .canvas-container {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+      .game-controls {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 15px;
+        border-radius: 10px;
+        border: 2px solid #39ff14;
+        box-shadow: 0 0 15px #39ff14;
+        z-index: 10;
+        width: 200px;
+      }
+
+      .game-button {
+        background-color: #1a1a1a;
+        color: #39ff14;
+        border: 2px solid #39ff14;
+        padding: 10px 15px;
+        font-family: 'Orbitron', monospace;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        box-shadow: 0 0 10px #39ff14;
+        transition: all 0.3s;
+        text-align: center;
+        letter-spacing: 0.5px;
+      }
+
+      .game-button:hover {
+        background-color: #39ff14;
+        color: #000;
+      }
+
+      .game-button.active {
+        background-color: #39ff14;
+        color: #000;
+      }
+
+      .game-stats {
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 16px;
+        color: #39ff14;
+        text-shadow: 0 0 5px #39ff14;
+        margin-bottom: 15px;
+        letter-spacing: 1px;
+      }
+
+      .game-stats div {
+        margin-bottom: 10px;
+      }
+
+      .controls {
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 400;
+        font-size: 14px;
+        color: #39ff14;
+        text-shadow: 0 0 3px #39ff14;
+        letter-spacing: 0.5px;
+      }
+
+      .controls p {
+        margin: 8px 0;
+        line-height: 1.4;
+      }
+
+      .game-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .music-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .music-control .game-button {
+        flex: 1;
+      }
+
+      .radio-link {
+        color: #39ff14;
+        text-decoration: none;
+        font-size: 18px;
+        padding: 8px;
+        border: 2px solid #39ff14;
+        border-radius: 4px;
+        background-color: #1a1a1a;
+        transition: all 0.3s;
+        text-shadow: 0 0 5px #39ff14;
+        box-shadow: 0 0 10px #39ff14;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+      }
+
+      .radio-link:hover {
+        background-color: #39ff14;
+        color: #000;
+        transform: scale(1.1);
+        box-shadow: 0 0 15px #39ff14;
+      }
+
+      @media (max-width: 1200px) {
+        .game-controls {
+          right: 10px;
+          width: 180px;
+          font-size: 12px;
+        }
+
+        .game-button {
+          padding: 8px 12px;
+          font-size: 12px;
+        }
+
+        .game-stats {
+          font-size: 14px;
+        }
+
+        .radio-link {
+          font-size: 16px;
+          min-width: 32px;
+          height: 32px;
+        }
+      }
+
+      @media (max-width: 900px) {
+        body {
+          flex-direction: column;
+          overflow-y: auto;
+          height: auto;
+          padding: 20px 0;
+        }
+
+        .game-container {
+          flex-direction: column;
+          height: auto;
+        }
+
+        canvas {
+          max-width: 95%;
+          max-height: 80vh;
+        }
+
+        .game-controls {
+          position: static;
+          transform: none;
+          margin-top: 20px;
+          width: 95%;
+          max-width: 400px;
+          box-sizing: border-box;
+        }
+
+        .game-buttons {
+          flex-direction: column;
+          gap: 10px;
+        }
+      }
+    </style>
+    <!-- Обновляем аудио элементы с прямыми ссылками на звуки -->
+    <audio
+      id="paddleHit"
+      src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"
+      preload="auto"
+    ></audio>
+    <audio
+      id="brickHit"
+      src="https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3"
+      preload="auto"
+    ></audio>
+    <audio
+      id="wallHit"
+      src="https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3"
+      preload="auto"
+    ></audio>
+    <audio
+      id="gameOver"
+      src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3"
+      preload="auto"
+    ></audio>
+    <audio
+      id="backgroundMusic"
+      src="http://stream.srg-ssr.ch/m/rsj/aacp_96"
+      preload="none"
+      loop
+    ></audio>
+  </head>
+  <body>
+    <div class="game-container">
+      <canvas id="gameCanvas"></canvas>
+      <div class="game-controls">
+        <div class="game-stats">
+          <div id="scoreDisplay">Счёт: 0</div>
+          <div id="livesDisplay">Жизни: 3</div>
+          <div id="modeDisplay">Режим: Ручной</div>
+          <div id="soundDisplay">Звук: ВКЛ</div>
+          <div id="musicDisplay">Музыка: ВЫКЛ</div>
+        </div>
+        <div class="game-buttons">
+          <button id="autoModeBtn" class="game-button">Авторежим: ВЫКЛ</button>
+          <button id="resetBtn" class="game-button">Новая игра</button>
+          <button id="pauseBtn" class="game-button">Пауза</button>
+          <button id="soundBtn" class="game-button">Звук: ВКЛ</button>
+          <div class="music-control">
+            <button id="musicBtn" class="game-button">Музыка: ВЫКЛ</button>
+            <a
+              href="https://www.radioswissjazz.ch/en"
+              target="_blank"
+              class="radio-link"
+              title="Radio Swiss Jazz"
+              >🎵</a
+            >
+          </div>
+        </div>
+        <div class="controls">
+          <p>Управление:</p>
+          <p>← → - движение</p>
+          <p>Пробел - пауза</p>
+          <p>A - авторежим</p>
+          <p>M - вкл/выкл звук</p>
+          <p>B - вкл/выкл музыка</p>
+          <p>Подрезка - двигайте ракетку во время удара</p>
+        </div>
+      </div>
+    </div>
+    <script>
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+
+      // Параметры мяча
+      let ballRadius = 10;
+      let x = canvas.width / 2;
+      let y = canvas.height - 50;
+      let dx = 2;
+      let dy = -2;
+
+      // Параметры ракетки
+      let paddleHeight = 10;
+      let paddleWidth = 75;
+      let paddleX = (canvas.width - paddleWidth) / 2;
+      let paddleSpeed = 0; // Текущая скорость ракетки
+      let paddleAcceleration = 0.15; // Уменьшил ускорение с 0.3 до 0.15
+      let paddleMaxSpeed = 5; // Уменьшил максимальную скорость с 7 до 5
+      let paddleFriction = 0.98; // Увеличил трение для ещё более плавного торможения
+
+      // Звуковые эффекты
+      const paddleHitSound = document.getElementById('paddleHit');
+      const brickHitSound = document.getElementById('brickHit');
+      const wallHitSound = document.getElementById('wallHit');
+      const gameOverSound = document.getElementById('gameOver');
+      const backgroundMusic = document.getElementById('backgroundMusic');
+
+      // Добавим переменную для автоматического режима
+      let isAutoMode = false;
+
+      // Добавим переменную для паузы
+      let isPaused = false;
+
+      // Добавим переменные для счета и жизней
+      let score = 0;
+      let lives = 3;
+
+      // Параметры блоков
+      const brickRowCount = 5;
+      const brickColumnCount = 7;
+      const brickWidth = 95;
+      const brickHeight = 20;
+      const brickPadding = 10;
+      const brickOffsetTop = 50;
+      const brickOffsetLeft = 30;
+      const bricks = [];
+
+      // Добавим переменную для состояния звука
+      let isSoundEnabled = true;
+
+      // Добавим переменную для состояния фоновой музыки
+      let isMusicEnabled = false;
+
+      // Функция для воспроизведения звуков с учетом состояния звука
+      function playSound(sound, volume = 1.0) {
+        if (sound && isSoundEnabled) {
+          try {
+            // Создаем новый аудио элемент вместо клонирования
+            const audio = new Audio(sound.src);
+            audio.volume = volume;
+            audio.play().catch(e => {
+              console.log('Ошибка воспроизведения звука:', e);
+              // Пробуем воспроизвести оригинальный звук
+              sound.volume = volume;
+              sound.currentTime = 0;
+              sound
+                .play()
+                .catch(err => console.log('Не удалось воспроизвести звук:', err));
+            });
+          } catch (e) {
+            console.log('Ошибка при создании звука:', e);
+          }
+        }
+      }
+
+      // Функция для разблокировки звуков
+      function unlockAudio() {
+        console.log('Разблокировка звуков...');
+
+        // Создаем и воспроизводим тихий звук для разблокировки аудио контекста
+        const silentSound = new Audio(
+          'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'
+        );
+        silentSound
+          .play()
+          .catch(e => console.log('Не удалось разблокировать аудио:', e));
+
+        // Пробуем воспроизвести все звуки с нулевой громкостью
+        const sounds = [paddleHitSound, brickHitSound, wallHitSound, gameOverSound];
+        sounds.forEach(sound => {
+          if (sound) {
+            const originalVolume = sound.volume;
+            sound.volume = 0;
+            sound
+              .play()
+              .then(() => {
+                sound.pause();
+                sound.currentTime = 0;
+                sound.volume = originalVolume;
+                console.log(`Звук ${sound.id} инициализирован`);
+              })
+              .catch(e =>
+                console.log(`Не удалось инициализировать звук ${sound.id}:`, e)
+              );
+          }
+        });
+      }
+
+      // Функция для обновления отображения статистики
+      function updateStats() {
+        document.getElementById('scoreDisplay').textContent = `Счёт: ${score}`;
+        document.getElementById('livesDisplay').textContent = `Жизни: ${lives}`;
+        document.getElementById('modeDisplay').textContent =
+          `Режим: ${isAutoMode ? 'Авто' : 'Ручной'}`;
+        document.getElementById('soundDisplay').textContent =
+          `Звук: ${isSoundEnabled ? 'ВКЛ' : 'ВЫКЛ'}`;
+        document.getElementById('musicDisplay').textContent =
+          `Музыка: ${isMusicEnabled ? 'ВКЛ' : 'ВЫКЛ'}`;
+      }
+
+      // Функция для переключения фоновой музыки
+      function toggleBackgroundMusic() {
+        isMusicEnabled = !isMusicEnabled;
+        const musicBtn = document.getElementById('musicBtn');
+
+        if (isMusicEnabled) {
+          backgroundMusic.volume = 0.3; // Устанавливаем тихую громкость
+          backgroundMusic.play().catch(e => {
+            console.log('Ошибка воспроизведения музыки:', e);
+            isMusicEnabled = false;
+          });
+        } else {
+          backgroundMusic.pause();
+        }
+
+        musicBtn.textContent = `Музыка: ${isMusicEnabled ? 'ВКЛ' : 'ВЫКЛ'}`;
+        musicBtn.classList.toggle('active', isMusicEnabled);
+        updateStats();
+      }
+
+      // Инициализация блоков с правильным размещением
+      function initBricks() {
+        // Получаем масштаб для текущего размера canvas
+        const scale = canvas.width / 800;
+
+        // Масштабируем размеры блоков
+        const scaledBrickWidth = Math.round(brickWidth * scale);
+        const scaledBrickHeight = Math.max(10, Math.round(brickHeight * scale));
+        const scaledPadding = Math.round(brickPadding * scale);
+        const scaledOffsetTop = Math.round(brickOffsetTop * scale);
+        const scaledOffsetLeft = Math.round(brickOffsetLeft * scale);
+
+        for (let c = 0; c < brickColumnCount; c++) {
+          bricks[c] = [];
+          for (let r = 0; r < brickRowCount; r++) {
+            const brickX = c * (scaledBrickWidth + scaledPadding) + scaledOffsetLeft;
+            const brickY = r * (scaledBrickHeight + scaledPadding) + scaledOffsetTop;
+            bricks[c][r] = {
+              x: brickX,
+              y: brickY,
+              width: scaledBrickWidth,
+              height: scaledBrickHeight,
+              status: 1,
+            };
+          }
+        }
+      }
+
+      // Вызываем инициализацию блоков
+      initBricks();
+
+      // Функция для установки размеров canvas
+      function resizeCanvas() {
+        const aspectRatio = 800 / 900;
+        const maxHeight = window.innerHeight * 0.9;
+        const maxWidth =
+          window.innerWidth > 1200 ? window.innerWidth - 280 : window.innerWidth * 0.9;
+
+        let newWidth, newHeight;
+
+        if (maxWidth / maxHeight > aspectRatio) {
+          newHeight = maxHeight;
+          newWidth = maxHeight * aspectRatio;
+        } else {
+          newWidth = maxWidth;
+          newHeight = maxWidth / aspectRatio;
+        }
+
+        // Ограничиваем размер для мобильных устройств
+        if (window.innerWidth <= 900) {
+          newWidth = Math.min(newWidth, window.innerWidth * 0.95);
+          newHeight = newWidth / aspectRatio;
+        }
+
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+
+        // Масштабируем размеры элементов игры в зависимости от размера canvas
+        const scale = newWidth / 800; // Базовый масштаб относительно оригинального размера
+
+        // Масштабируем параметры игры
+        ballRadius = Math.max(5, Math.round(10 * scale));
+        paddleWidth = Math.round(75 * scale);
+        paddleHeight = Math.max(5, Math.round(10 * scale));
+
+        // Обновляем позиции элементов игры
+        paddleX = (canvas.width - paddleWidth) / 2;
+        x = canvas.width / 2;
+        y = canvas.height - 50 * scale;
+
+        // Пересчитываем размеры и позиции блоков
+        initBricks();
+
+        // Обновляем статистику
+        updateStats();
+
+        // Разблокируем звуки
+        unlockAudio();
+      }
+
+      // Функция для пересчета размеров и позиций блоков
+      function recalculateBricks() {
+        const scale = canvas.width / 800;
+
+        // Масштабируем размеры блоков
+        const scaledBrickWidth = Math.round(brickWidth * scale);
+        const scaledBrickHeight = Math.max(10, Math.round(brickHeight * scale));
+        const scaledPadding = Math.round(brickPadding * scale);
+        const scaledOffsetTop = Math.round(brickOffsetTop * scale);
+        const scaledOffsetLeft = Math.round(brickOffsetLeft * scale);
+
+        // Пересчитываем позиции блоков
+        for (let c = 0; c < brickColumnCount; c++) {
+          for (let r = 0; r < brickRowCount; r++) {
+            if (bricks[c] && bricks[c][r]) {
+              bricks[c][r].x =
+                c * (scaledBrickWidth + scaledPadding) + scaledOffsetLeft;
+              bricks[c][r].y =
+                r * (scaledBrickHeight + scaledPadding) + scaledOffsetTop;
+              bricks[c][r].width = scaledBrickWidth;
+              bricks[c][r].height = scaledBrickHeight;
+            }
+          }
+        }
+      }
+
+      // Вызываем функцию изначально
+      resizeCanvas();
+
+      // И при изменении размера окна
+      window.addEventListener('resize', resizeCanvas);
+
+      // Флаги для отслеживания нажатых клавиш
+      let rightPressed = false;
+      let leftPressed = false;
+
+      // Добавляем слушатели событий для управления
+      document.addEventListener('keydown', keyDownHandler, false); // Нажатие клавиши
+      document.addEventListener('keyup', keyUpHandler, false); // Отпускание клавиши
+      document.addEventListener('mousemove', mouseMoveHandler, false); // Движение мыши
+
+      // Обработчик нажатия клавиш
+      function keyDownHandler(e) {
+        if (e.key === 'Right' || e.key === 'ArrowRight') {
+          rightPressed = true;
+        } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+          leftPressed = true;
+        } else if (e.key === ' ' || e.code === 'Space') {
+          // Переключение паузы по пробелу
+          isPaused = !isPaused;
+          pauseBtn.textContent = isPaused ? 'Продолжить' : 'Пауза';
+          pauseBtn.classList.toggle('active', isPaused);
+        } else if (e.key === 'a' || e.key === 'A' || e.code === 'KeyA') {
+          // Переключение автоматического режима
+          isAutoMode = !isAutoMode;
+          autoModeBtn.textContent = `Авторежим: ${isAutoMode ? 'ВКЛ' : 'ВЫКЛ'}`;
+          autoModeBtn.classList.toggle('active', isAutoMode);
+          document.getElementById('modeDisplay').textContent =
+            `Режим: ${isAutoMode ? 'Авто' : 'Ручной'}`;
+        } else if (e.key === 'm' || e.key === 'M' || e.code === 'KeyM') {
+          // Переключение звука
+          isSoundEnabled = !isSoundEnabled;
+          soundBtn.textContent = `Звук: ${isSoundEnabled ? 'ВКЛ' : 'ВЫКЛ'}`;
+          soundBtn.classList.toggle('active', isSoundEnabled);
+          updateStats();
+        } else if (e.key === 'b' || e.key === 'B' || e.code === 'KeyB') {
+          // Переключение фоновой музыки
+          toggleBackgroundMusic();
+        }
+      }
+
+      // Обработчик отпускания клавиш
+      function keyUpHandler(e) {
+        if (e.key === 'Right' || e.key === 'ArrowRight') {
+          rightPressed = false;
+        } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+          leftPressed = false;
+        }
+      }
+
+      // Обработчик движения мыши для управления ракеткой
+      function mouseMoveHandler(e) {
+        let relativeX = e.clientX - canvas.offsetLeft; // Позиция мыши относительно canvas
+        if (relativeX > 0 && relativeX < canvas.width) {
+          paddleX = relativeX - paddleWidth / 2; // Центрируем ракетку относительно курсора
+        }
+      }
+
+      // Функция отрисовки мяча
+      function drawBall() {
+        ctx.beginPath();
+        ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+
+        // Градиент для мяча
+        const ballGradient = ctx.createRadialGradient(
+          x - 3,
+          y - 3,
+          1,
+          x,
+          y,
+          ballRadius
+        );
+        ballGradient.addColorStop(0, '#ffffff');
+        ballGradient.addColorStop(1, '#00ff9d');
+
+        ctx.fillStyle = ballGradient;
+        ctx.fill();
+
+        // Неоновое свечение для мяча
+        ctx.shadowColor = '#00ff9d';
+        ctx.shadowBlur = 15;
+        ctx.strokeStyle = '#00ff9d';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.closePath();
+      }
+
+      // Функция отрисовки ракетки
+      function drawPaddle() {
+        ctx.beginPath();
+
+        // Градиент для ракетки
+        const paddleGradient = ctx.createLinearGradient(
+          paddleX,
+          canvas.height - paddleHeight,
+          paddleX,
+          canvas.height
+        );
+        paddleGradient.addColorStop(0, '#00ff9d');
+        paddleGradient.addColorStop(1, '#00c3ff');
+
+        ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+        ctx.fillStyle = paddleGradient;
+        ctx.fill();
+
+        // Неоновое свечение для ракетки
+        ctx.shadowColor = '#00ff9d';
+        ctx.shadowBlur = 15;
+        ctx.strokeStyle = '#00ff9d';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.closePath();
+      }
+
+      // Функция отрисовки кирпичей
+      function drawBricks() {
+        for (let c = 0; c < brickColumnCount; c++) {
+          for (let r = 0; r < brickRowCount; r++) {
+            if (bricks[c] && bricks[c][r] && bricks[c][r].status === 1) {
+              // Используем сохраненные в объекте размеры
+              const brickX = bricks[c][r].x;
+              const brickY = bricks[c][r].y;
+              const brickW = bricks[c][r].width || brickWidth;
+              const brickH = bricks[c][r].height || brickHeight;
+
+              // Создаем градиент для кирпича
+              const brickGradient = ctx.createLinearGradient(
+                brickX,
+                brickY,
+                brickX,
+                brickY + brickH
+              );
+
+              // Разные цвета для разных рядов
+              switch (r % 5) {
+                case 0:
+                  brickGradient.addColorStop(0, '#ff1493');
+                  brickGradient.addColorStop(1, '#ff69b4');
+                  break;
+                case 1:
+                  brickGradient.addColorStop(0, '#00bfff');
+                  brickGradient.addColorStop(1, '#1e90ff');
+                  break;
+                case 2:
+                  brickGradient.addColorStop(0, '#00ff7f');
+                  brickGradient.addColorStop(1, '#32cd32');
+                  break;
+                case 3:
+                  brickGradient.addColorStop(0, '#ffd700');
+                  brickGradient.addColorStop(1, '#ff8c00');
+                  break;
+                case 4:
+                  brickGradient.addColorStop(0, '#ff4500');
+                  brickGradient.addColorStop(1, '#ff0000');
+                  break;
+              }
+
+              ctx.beginPath();
+              ctx.rect(brickX, brickY, brickW, brickH);
+              ctx.fillStyle = brickGradient;
+
+              // Неоновое свечение для кирпичей
+              ctx.shadowColor = '#ff1493';
+              ctx.shadowBlur = 10;
+              ctx.fill();
+              ctx.shadowBlur = 0;
+
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.closePath();
+            }
+          }
+        }
+      }
+
+      // Функция определения столкновений мяча с кирпичами
+      function collisionDetection() {
+        for (let c = 0; c < brickColumnCount; c++) {
+          for (let r = 0; r < brickRowCount; r++) {
+            let b = bricks[c][r];
+            if (b.status === 1) {
+              // Используем сохраненные размеры блока
+              if (x > b.x && x < b.x + b.width && y > b.y && y < b.y + b.height) {
+                dy = -dy;
+                b.status = 0;
+                score++;
+                playSound(brickHitSound, 0.4);
+                if (score === brickRowCount * brickColumnCount) {
+                  alert('Поздравляем! Вы выиграли!');
+                  document.location.reload();
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Добавим функцию для автоматического управления платформой
+      function autoControl() {
+        if (!isAutoMode) return;
+
+        // Определяем положение мяча
+        const ballCenterX = x + ballRadius;
+
+        // Определяем положение платформы
+        const paddleCenterX = paddleX + paddleWidth / 2;
+
+        // Вычисляем разницу между центрами мяча и платформы
+        const diff = ballCenterX - paddleCenterX;
+
+        // Устанавливаем скорость движения платформы в автоматическом режиме
+        const autoSpeed = 8;
+
+        // Если мяч справа от платформы, двигаем платформу вправо
+        if (diff > 0 && paddleX + paddleWidth < canvas.width) {
+          paddleX += Math.min(autoSpeed, diff);
+        }
+        // Если мяч слева от платформы, двигаем платформу влево
+        else if (diff < 0 && paddleX > 0) {
+          paddleX += Math.max(-autoSpeed, diff);
+        }
+
+        // Ограничиваем положение платформы границами поля
+        if (paddleX < 0) {
+          paddleX = 0;
+        } else if (paddleX + paddleWidth > canvas.width) {
+          paddleX = canvas.width - paddleWidth;
+        }
+      }
+
+      function draw() {
+        // Очищаем холст
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Отрисовываем элементы игры
+        drawBricks();
+        drawBall();
+        drawPaddle();
+        drawScore();
+        drawLives();
+
+        if (!isPaused) {
+          // Обработка столкновений
+          collisionDetection();
+
+          // Отскок от боковых стен
+          if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+            dx = -dx;
+            playSound(wallHitSound);
+          }
+
+          // Отскок от верхней стены
+          if (y + dy < ballRadius) {
+            dy = -dy;
+            playSound(wallHitSound);
+          }
+          // Проверка достижения нижней границы
+          else if (y + dy > canvas.height - ballRadius) {
+            if (x > paddleX && x < paddleX + paddleWidth) {
+              // Изменяем угол отскока в зависимости от скорости ракетки
+              // Базовый отскок
+              dy = -dy;
+
+              // Добавляем эффект подрезки в зависимости от скорости ракетки
+              // Максимальное изменение угла - 45 градусов (или 0.785 радиан)
+              const maxAngleChange = 0.785;
+
+              // Нормализуем скорость ракетки к диапазону [-1, 1]
+              const normalizedSpeed = paddleSpeed / paddleMaxSpeed;
+
+              // Вычисляем изменение угла
+              const angleChange = normalizedSpeed * maxAngleChange;
+
+              // Вычисляем текущий угол движения мяча
+              let angle = Math.atan2(dy, dx);
+
+              // Изменяем угол в зависимости от скорости ракетки
+              angle += angleChange;
+
+              // Вычисляем новую скорость мяча
+              const speed = Math.sqrt(dx * dx + dy * dy);
+              dx = Math.cos(angle) * speed;
+              dy = Math.sin(angle) * speed;
+
+              // Также можно изменить скорость мяча в зависимости от места удара по ракетке
+              const hitPosition = (x - paddleX) / paddleWidth;
+
+              // Если мяч ударяется о край ракетки, он отскакивает сильнее в сторону
+              if (hitPosition < 0.2) {
+                // Левый край - отскок влево
+                dx -= 1;
+              } else if (hitPosition > 0.8) {
+                // Правый край - отскок вправо
+                dx += 1;
+              }
+
+              // Ограничиваем максимальную скорость мяча
+              const maxSpeed = 8;
+              const currentSpeed = Math.sqrt(dx * dx + dy * dy);
+              if (currentSpeed > maxSpeed) {
+                dx = (dx / currentSpeed) * maxSpeed;
+                dy = (dy / currentSpeed) * maxSpeed;
+              }
+
+              // Воспроизводим звук удара
+              playSound(paddleHitSound);
+            } else {
+              lives--;
+              updateStats();
+              if (!lives) {
+                playSound(gameOverSound);
+                alert('Игра окончена!');
+                resetGame();
+                return;
+              } else {
+                x = canvas.width / 2;
+                y = canvas.height - 50;
+                dx = 2;
+                dy = -2;
+                paddleX = (canvas.width - paddleWidth) / 2;
+              }
+            }
+          }
+
+          // Обновляем позицию мяча
+          x += dx;
+          y += dy;
+
+          // Плавное движение ракетки
+          if (rightPressed && paddleSpeed < paddleMaxSpeed) {
+            paddleSpeed += paddleAcceleration;
+          } else if (leftPressed && paddleSpeed > -paddleMaxSpeed) {
+            paddleSpeed -= paddleAcceleration;
+          } else {
+            paddleSpeed *= paddleFriction; // Применяем трение
+          }
+
+          // Обновляем позицию ракетки
+          paddleX += paddleSpeed;
+
+          // Ограничиваем движение ракетки границами поля
+          if (paddleX < 0) {
+            paddleX = 0;
+            paddleSpeed = 0;
+          } else if (paddleX + paddleWidth > canvas.width) {
+            paddleX = canvas.width - paddleWidth;
+            paddleSpeed = 0;
+          }
+
+          // Вызываем автоматическое управление, если оно включено
+          if (isAutoMode) {
+            autoControl();
+          }
+        } else {
+          // Отображаем сообщение о паузе
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.font = "bold 32px 'Orbitron', monospace";
+          ctx.fillStyle = '#00ff9d';
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#00ff9d';
+          ctx.shadowBlur = 15;
+          ctx.fillText('ПАУЗА', canvas.width / 2, canvas.height / 2);
+          ctx.shadowBlur = 0;
+        }
+
+        // Продолжаем анимацию
+        requestAnimationFrame(draw);
+      }
+
+      draw();
+
+      // Получаем ссылки на кнопки
+      const autoModeBtn = document.getElementById('autoModeBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const soundBtn = document.getElementById('soundBtn');
+      const musicBtn = document.getElementById('musicBtn');
+
+      // Добавляем обработчики событий для кнопок
+      autoModeBtn.addEventListener('click', () => {
+        isAutoMode = !isAutoMode;
+        autoModeBtn.textContent = `Авторежим: ${isAutoMode ? 'ВКЛ' : 'ВЫКЛ'}`;
+        autoModeBtn.classList.toggle('active', isAutoMode);
+        document.getElementById('modeDisplay').textContent =
+          `Режим: ${isAutoMode ? 'Авто' : 'Ручной'}`;
+      });
+
+      resetBtn.addEventListener('click', () => {
+        // Перезапуск игры
+        resetGame();
+        isPaused = false;
+        pauseBtn.textContent = 'Пауза';
+        pauseBtn.classList.remove('active');
+      });
+
+      pauseBtn.addEventListener('click', () => {
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? 'Продолжить' : 'Пауза';
+        pauseBtn.classList.toggle('active', isPaused);
+      });
+
+      soundBtn.addEventListener('click', () => {
+        isSoundEnabled = !isSoundEnabled;
+        soundBtn.textContent = `Звук: ${isSoundEnabled ? 'ВКЛ' : 'ВЫКЛ'}`;
+        soundBtn.classList.toggle('active', isSoundEnabled);
+
+        // Обновляем отображение состояния звука
+        updateStats();
+      });
+
+      musicBtn.addEventListener('click', () => {
+        toggleBackgroundMusic();
+      });
+
+      // Функция полного сброса игры
+      function resetGame() {
+        // Сбрасываем счет и жизни
+        score = 0;
+        lives = 3;
+
+        // Сбрасываем позицию мяча и ракетки
+        x = canvas.width / 2;
+        y = canvas.height - 50;
+        dx = 2;
+        dy = -2;
+        paddleX = (canvas.width - paddleWidth) / 2;
+        paddleSpeed = 0;
+
+        // Сбрасываем блоки
+        initBricks();
+
+        // Сбрасываем автоматический режим
+        isAutoMode = false;
+        autoModeBtn.textContent = 'Авторежим: ВЫКЛ';
+        autoModeBtn.classList.remove('active');
+
+        // Сбрасываем паузу
+        isPaused = false;
+        pauseBtn.textContent = 'Пауза';
+        pauseBtn.classList.remove('active');
+
+        // Обновляем статистику (музыка остается в текущем состоянии)
+        updateStats();
+      }
+
+      // Добавим функции для отображения счета и жизней
+      function drawScore() {
+        ctx.font = "bold 18px 'Orbitron', monospace";
+        ctx.fillStyle = '#00ff9d';
+        ctx.shadowColor = '#00ff9d';
+        ctx.shadowBlur = 10;
+        ctx.textAlign = 'left';
+        ctx.fillText('СЧЁТ: ' + score, 8, 22);
+        ctx.shadowBlur = 0;
+      }
+
+      function drawLives() {
+        ctx.font = "bold 18px 'Orbitron', monospace";
+        ctx.fillStyle = '#00ff9d';
+        ctx.shadowColor = '#00ff9d';
+        ctx.shadowBlur = 10;
+        ctx.textAlign = 'right';
+        ctx.fillText('ЖИЗНИ: ' + lives, canvas.width - 8, 22);
+        ctx.shadowBlur = 0;
+      }
+
+      // Инициализация звуков при загрузке страницы
+      window.addEventListener('load', () => {
+        // Добавляем обработчики для разблокировки звуков
+        document.addEventListener('click', unlockAudio, { once: true });
+        document.addEventListener('keydown', unlockAudio, { once: true });
+
+        // Пробуем разблокировать звуки автоматически
+        setTimeout(unlockAudio, 1000);
+
+        console.log('Страница загружена, звуки готовы к инициализации');
+      });
+    </script>
+  </body>
+</html>

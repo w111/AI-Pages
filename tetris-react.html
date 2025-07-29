@@ -1,0 +1,694 @@
+<!--
+Техническое задание для игры Тетрис:
+
+Базовая функциональность:
+1. Игровое поле 10x20 клеток
+2. 7 классических фигур тетриса (I, O, T, L, J, S, Z)
+3. Управление:
+   - Стрелки влево/вправо - перемещение фигуры
+   - Стрелка вверх - поворот фигуры
+   - Стрелка вниз - ускорение падения
+   - Пробел - мгновенное падение фигуры
+   - P - пауза игры
+
+4. Подсчет очков:
+   - 100 очков за каждую заполненную линию
+   - Уровень повышается каждые 1000 очков
+   - Скорость падения увеличивается с уровнем
+
+5. Уровни сложности:
+   - Уровень 1: 1000мс
+   - Уровень 2: 800мс
+   - Уровень 3: 600мс
+   - Уровень 4: 400мс
+   - Уровень 5: 200мс
+
+6. Звуковые эффекты:
+   - Поворот фигуры
+   - Падение фигуры
+   - Очистка линии
+   - Конец игры
+
+7. Дополнительные элементы:
+   - Отображение следующей фигуры
+   - Таблица рекордов (топ-5, сохранение в localStorage)
+   - Мобильное управление (для экранов <768px)
+   - Пауза с визуальным индикатором
+   - Адаптивная верстка под высоту экрана
+
+История изменений:
+1. Создана базовая версия игры
+2. Добавлено управление пробелом для мгновенного падения
+3. Добавлены звуковые эффекты
+4. Добавлены подробные комментарии к коду
+5. Добавлена адаптивная верстка под высоту экрана
+6. Оптимизирована верстка для устранения скролла
+7. Переписано на React
+8. Добавлена следующая фигура
+9. Добавлены уровни сложности
+10. Добавлена таблица рекордов
+11. Добавлена пауза
+12. Добавлено мобильное управление
+13. Исправлена очистка линий
+14. Оптимизирована проверка окончания игры
+
+Планируемые улучшения:
+- Добавить анимацию очистки линий
+- Добавить тени для фигур
+- Добавить режим для двух игроков
+- Добавить цветовые темы
+- Добавить настройки управления
+-->
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Тетрис</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #4a4a4a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        font-family: 'Press Start 2P', cursive;
+        overflow: hidden;
+        padding: 10px 0;
+      }
+      .game-container {
+        text-align: center;
+        background-color: #8b8b8b;
+        padding: 8px;
+        border-radius: 15px;
+        box-shadow:
+          inset 0 0 20px rgba(0, 0, 0, 0.5),
+          5px 5px 20px rgba(0, 0, 0, 0.3);
+        height: 92vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .game-frame {
+        background-color: #3a3a3a;
+        padding: 8px;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        height: 100%;
+      }
+      canvas {
+        border: 4px solid #2a2a2a;
+        background-color: #9a9364;
+        image-rendering: pixelated;
+        height: calc(100% - 200px);
+        width: auto;
+        aspect-ratio: 1/2;
+      }
+      .score {
+        color: #2a2a2a;
+        font-size: 12px;
+        text-transform: uppercase;
+        margin: 2px 0;
+      }
+      .controls {
+        color: #2a2a2a;
+        font-size: 8px;
+        line-height: 1.4;
+        margin: 1px 0;
+      }
+      .brand {
+        color: #2a2a2a;
+        font-size: 16px;
+        margin: 2px 0;
+        text-transform: uppercase;
+      }
+      .next-piece {
+        background-color: #2a2a2a;
+        padding: 5px;
+        border-radius: 5px;
+        margin: 2px 0;
+        height: 50px;
+      }
+
+      .game-info {
+        display: flex;
+        justify-content: space-between;
+        margin: 2px 0;
+      }
+
+      .level {
+        color: #2a2a2a;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .high-scores {
+        background-color: #2a2a2a;
+        color: #9a9364;
+        padding: 5px;
+        border-radius: 5px;
+        margin: 2px 0;
+        font-size: 8px;
+        max-height: 50px;
+        overflow-y: auto;
+      }
+
+      .mobile-controls {
+        display: none;
+      }
+
+      @media (max-width: 768px) {
+        .mobile-controls {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 5px;
+          margin-top: 10px;
+        }
+
+        .mobile-btn {
+          background: #2a2a2a;
+          color: #9a9364;
+          border: none;
+          padding: 10px;
+          border-radius: 5px;
+          font-family: inherit;
+          font-size: 16px;
+        }
+      }
+
+      .paused {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: #9a9364;
+        padding: 20px;
+        border-radius: 10px;
+        display: none;
+      }
+
+      .paused.active {
+        display: block;
+      }
+      .next-piece canvas {
+        height: 100%;
+        width: auto;
+        aspect-ratio: 1/1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script
+      src="https://unpkg.com/react@18/umd/react.development.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+      crossorigin
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+      const BOARD_WIDTH = 10;
+      const BOARD_HEIGHT = 20;
+      const BLOCK_SIZE = 30;
+
+      const PIECES = [
+        [[1, 1, 1, 1]], // I
+        [
+          [1, 1],
+          [1, 1],
+        ], // O
+        [
+          [1, 1, 1],
+          [0, 1, 0],
+        ], // T
+        [
+          [1, 1, 1],
+          [1, 0, 0],
+        ], // L
+        [
+          [1, 1, 1],
+          [0, 0, 1],
+        ], // J
+        [
+          [1, 1, 0],
+          [0, 1, 1],
+        ], // S
+        [
+          [0, 1, 1],
+          [1, 1, 0],
+        ], // Z
+      ];
+
+      const COLORS = [
+        '#9a9364', // фон
+        '#4a4a2d', // I
+        '#4a4a2d', // O
+        '#4a4a2d', // T
+        '#4a4a2d', // L
+        '#4a4a2d', // J
+        '#4a4a2d', // S
+        '#4a4a2d', // Z
+      ];
+
+      const sounds = {
+        rotate: new Audio(
+          'data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YTtvAAAAAAAAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAAAAAP//AAABAP////8AAAAA//8AAAAAAAD//wAAAQD+////AAAAAP//AQD////////+/wAAAQD//wAA//8AAP////8AAAAAAAD//w=='
+        ),
+        drop: new Audio(
+          'data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YTtvAAAAAP7/AQD//wAA/v8BAP//AAABAP7/AAABAP7/AQAAAP//AAABAP7/AQAAAP7/AQAAAP//AAABAP7/AQAAAP7/AQAAAP//AAABAP7/AQAAAP7/AQAAAP//AAABAP7/AQAAAP7/AQAAAP//AAABAP7/AQAAAP7/AQAAAP//AAD//wAA'
+        ),
+        line: new Audio(
+          'data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YTtvAAAAAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAAEA/v8BAAAA//8AAA=='
+        ),
+        gameOver: new Audio(
+          'data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YTtvAAD+/wIA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA/f8DAP3/AwD9/wMA'
+        ),
+      };
+
+      function playSound(soundName) {
+        sounds[soundName].currentTime = 0;
+        sounds[soundName].play().catch(e => console.log('Sound play failed:', e));
+      }
+
+      const SPEEDS = {
+        1: 1000,
+        2: 800,
+        3: 600,
+        4: 400,
+        5: 200,
+      };
+
+      function Tetris() {
+        const [board, setBoard] = React.useState(
+          Array(BOARD_HEIGHT)
+            .fill()
+            .map(() => Array(BOARD_WIDTH).fill(0))
+        );
+        const [currentPiece, setCurrentPiece] = React.useState(null);
+        const [nextPiece, setNextPiece] = React.useState(null);
+        const [score, setScore] = React.useState(0);
+        const [level, setLevel] = React.useState(1);
+        const [isPaused, setIsPaused] = React.useState(false);
+        const [highScores, setHighScores] = React.useState(
+          JSON.parse(localStorage.getItem('tetrisHighScores')) || []
+        );
+        const canvasRef = React.useRef(null);
+        const nextPieceCanvasRef = React.useRef(null);
+
+        const createNewPiece = React.useCallback(() => {
+          const randomIndex = Math.floor(Math.random() * PIECES.length);
+          return {
+            shape: PIECES[randomIndex],
+            color: randomIndex + 1,
+            x:
+              Math.floor(BOARD_WIDTH / 2) -
+              Math.floor(PIECES[randomIndex][0].length / 2),
+            y: 0,
+          };
+        }, []);
+
+        const getNextPiece = React.useCallback(() => {
+          if (!nextPiece) {
+            const piece = createNewPiece();
+            setNextPiece(createNewPiece());
+            if (collision(piece)) {
+              playSound('gameOver');
+              saveHighScore();
+              alert('Игра окончена! Ваши очки: ' + score);
+              setBoard(
+                Array(BOARD_HEIGHT)
+                  .fill()
+                  .map(() => Array(BOARD_WIDTH).fill(0))
+              );
+              setScore(0);
+              setLevel(1);
+              return createNewPiece();
+            }
+            return piece;
+          }
+          const current = nextPiece;
+          setNextPiece(createNewPiece());
+          if (collision(current)) {
+            playSound('gameOver');
+            saveHighScore();
+            alert('Игра окончена! Ваши очки: ' + score);
+            setBoard(
+              Array(BOARD_HEIGHT)
+                .fill()
+                .map(() => Array(BOARD_WIDTH).fill(0))
+            );
+            setScore(0);
+            setLevel(1);
+            return createNewPiece();
+          }
+          return current;
+        }, [nextPiece, createNewPiece, collision, score, saveHighScore]);
+
+        const collision = React.useCallback(
+          piece => {
+            for (let y = 0; y < piece.shape.length; y++) {
+              for (let x = 0; x < piece.shape[y].length; x++) {
+                if (piece.shape[y][x]) {
+                  const boardX = piece.x + x;
+                  const boardY = piece.y + y;
+                  if (
+                    boardX < 0 ||
+                    boardX >= BOARD_WIDTH ||
+                    boardY >= BOARD_HEIGHT ||
+                    (boardY >= 0 && board[boardY][boardX])
+                  ) {
+                    return true;
+                  }
+                }
+              }
+            }
+            return false;
+          },
+          [board]
+        );
+
+        const mergePiece = React.useCallback(
+          piece => {
+            const newBoard = board.map(row => [...row]);
+            for (let y = 0; y < piece.shape.length; y++) {
+              for (let x = 0; x < piece.shape[y].length; x++) {
+                if (piece.shape[y][x]) {
+                  const boardY = piece.y + y;
+                  if (boardY >= 0) {
+                    newBoard[boardY][piece.x + x] = piece.color;
+                  }
+                }
+              }
+            }
+            return newBoard;
+          },
+          [board]
+        );
+
+        const clearLines = React.useCallback(currentBoard => {
+          const newBoard = currentBoard
+            ? currentBoard.map(row => [...row])
+            : board.map(row => [...row]);
+          let linesCleared = 0;
+
+          for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+            if (newBoard[y].every(cell => cell !== 0)) {
+              newBoard.splice(y, 1);
+              newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+              linesCleared++;
+              y++;
+            }
+          }
+
+          if (linesCleared > 0) {
+            setScore(prev => prev + linesCleared * 100);
+            playSound('line');
+          }
+          return newBoard;
+        }, []);
+
+        const rotatePiece = React.useCallback(piece => {
+          const rotated = piece.shape[0].map((_, i) =>
+            piece.shape.map(row => row[i]).reverse()
+          );
+          return { ...piece, shape: rotated };
+        }, []);
+
+        const dropPiece = React.useCallback(() => {
+          if (!currentPiece) return;
+
+          let tempPiece = { ...currentPiece };
+          while (!collision({ ...tempPiece, y: tempPiece.y + 1 })) {
+            tempPiece.y++;
+          }
+          playSound('drop');
+          const mergedBoard = mergePiece(tempPiece);
+          const newBoard = clearLines(mergedBoard);
+          setBoard(newBoard);
+          setCurrentPiece(getNextPiece());
+        }, [currentPiece, collision, mergePiece, clearLines, getNextPiece]);
+
+        // Обработка паузы
+        const togglePause = React.useCallback(() => {
+          setIsPaused(prev => !prev);
+        }, []);
+
+        // Обновление уровня
+        React.useEffect(() => {
+          const newLevel = Math.floor(score / 1000) + 1;
+          if (newLevel <= 5 && newLevel !== level) {
+            setLevel(newLevel);
+          }
+        }, [score, level]);
+
+        // Сохранение рекордов
+        const saveHighScore = React.useCallback(() => {
+          const newHighScores = [...highScores, score]
+            .sort((a, b) => b - a)
+            .slice(0, 5);
+          setHighScores(newHighScores);
+          localStorage.setItem('tetrisHighScores', JSON.stringify(newHighScores));
+        }, [score, highScores]);
+
+        // Исправляем обработчик клавиш
+        const handleKeyDown = React.useCallback(
+          e => {
+            if (e.key === 'p' || e.key === 'P') {
+              togglePause();
+              return;
+            }
+
+            if (isPaused || !currentPiece) return;
+
+            let tempPiece = { ...currentPiece };
+            switch (e.key) {
+              case 'ArrowLeft':
+                tempPiece.x--;
+                if (!collision(tempPiece)) {
+                  setCurrentPiece(tempPiece);
+                }
+                break;
+              case 'ArrowRight':
+                tempPiece.x++;
+                if (!collision(tempPiece)) {
+                  setCurrentPiece(tempPiece);
+                }
+                break;
+              case 'ArrowDown':
+                tempPiece.y++;
+                if (!collision(tempPiece)) {
+                  setCurrentPiece(tempPiece);
+                }
+                break;
+              case 'ArrowUp':
+                const rotatedPiece = rotatePiece(tempPiece);
+                if (!collision(rotatedPiece)) {
+                  setCurrentPiece(rotatedPiece);
+                  playSound('rotate');
+                }
+                break;
+              case ' ':
+                dropPiece();
+                break;
+            }
+          },
+          [currentPiece, collision, rotatePiece, dropPiece, isPaused, togglePause]
+        );
+
+        // Инициализация игры
+        React.useEffect(() => {
+          if (!currentPiece && !isPaused) {
+            setCurrentPiece(getNextPiece());
+          }
+        }, [currentPiece, getNextPiece, isPaused]);
+
+        // Добавляем обработчик клавиш
+        React.useEffect(() => {
+          document.addEventListener('keydown', handleKeyDown);
+          return () => document.removeEventListener('keydown', handleKeyDown);
+        }, [handleKeyDown]);
+
+        // Игровой цикл
+        React.useEffect(() => {
+          if (isPaused) return;
+
+          const gameLoop = () => {
+            if (!currentPiece) {
+              setCurrentPiece(getNextPiece());
+              return;
+            }
+
+            const tempPiece = { ...currentPiece, y: currentPiece.y + 1 };
+            if (!collision(tempPiece)) {
+              setCurrentPiece(tempPiece);
+            } else {
+              const mergedBoard = mergePiece(currentPiece);
+              const newBoard = clearLines(mergedBoard);
+              setBoard(newBoard);
+              setCurrentPiece(null);
+            }
+          };
+
+          const intervalId = setInterval(gameLoop, SPEEDS[level]);
+          return () => clearInterval(intervalId);
+        }, [
+          currentPiece,
+          collision,
+          mergePiece,
+          clearLines,
+          getNextPiece,
+          score,
+          level,
+          isPaused,
+          saveHighScore,
+        ]);
+
+        React.useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d');
+
+          // Очистка canvas
+          ctx.fillStyle = COLORS[0];
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Отрисовка доски
+          for (let y = 0; y < BOARD_HEIGHT; y++) {
+            for (let x = 0; x < BOARD_WIDTH; x++) {
+              if (board[y][x]) {
+                ctx.fillStyle = COLORS[board[y][x]];
+                ctx.fillRect(
+                  x * BLOCK_SIZE,
+                  y * BLOCK_SIZE,
+                  BLOCK_SIZE - 1,
+                  BLOCK_SIZE - 1
+                );
+              }
+            }
+          }
+
+          // Отрисовка текущей фигуры
+          if (currentPiece) {
+            ctx.fillStyle = COLORS[currentPiece.color];
+            for (let y = 0; y < currentPiece.shape.length; y++) {
+              for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                if (currentPiece.shape[y][x]) {
+                  ctx.fillRect(
+                    (currentPiece.x + x) * BLOCK_SIZE,
+                    (currentPiece.y + y) * BLOCK_SIZE,
+                    BLOCK_SIZE - 1,
+                    BLOCK_SIZE - 1
+                  );
+                }
+              }
+            }
+          }
+        }, [board, currentPiece]);
+
+        // Отрисовка следующей фигуры
+        React.useEffect(() => {
+          if (!nextPieceCanvasRef.current || !nextPiece) return;
+
+          const ctx = nextPieceCanvasRef.current.getContext('2d');
+          ctx.clearRect(0, 0, 120, 120);
+          ctx.fillStyle = COLORS[nextPiece.color];
+
+          nextPiece.shape.forEach((row, y) => {
+            row.forEach((cell, x) => {
+              if (cell) {
+                ctx.fillRect(x * 30 + 30, y * 30 + 30, 29, 29);
+              }
+            });
+          });
+        }, [nextPiece]);
+
+        return (
+          <div className="game-container">
+            <div className="brand">Электроника</div>
+            <div className="game-frame">
+              <div className="game-info">
+                <div className="score">Очки: {score}</div>
+                <div className="level">Уровень: {level}</div>
+              </div>
+              <div className="next-piece">
+                <canvas ref={nextPieceCanvasRef} width="120" height="120" />
+              </div>
+              <canvas
+                ref={canvasRef}
+                width={BOARD_WIDTH * BLOCK_SIZE}
+                height={BOARD_HEIGHT * BLOCK_SIZE}
+              />
+              <div className="high-scores">
+                Рекорды:
+                {highScores.map((score, index) => (
+                  <div key={index}>
+                    {index + 1}. {score}
+                  </div>
+                ))}
+              </div>
+              <div className="controls">
+                ← → Движение
+                <br />
+                ↑ Поворот
+                <br />
+                ↓ Ускорение
+                <br />
+                Пробел - Сброс
+                <br />P - Пауза
+              </div>
+              <div className="mobile-controls">
+                <button
+                  className="mobile-btn"
+                  onClick={() => handleKeyDown({ key: 'ArrowLeft' })}
+                >
+                  ←
+                </button>
+                <button
+                  className="mobile-btn"
+                  onClick={() => handleKeyDown({ key: 'ArrowUp' })}
+                >
+                  ↑
+                </button>
+                <button
+                  className="mobile-btn"
+                  onClick={() => handleKeyDown({ key: 'ArrowRight' })}
+                >
+                  →
+                </button>
+                <button
+                  className="mobile-btn"
+                  onClick={() => handleKeyDown({ key: 'ArrowDown' })}
+                >
+                  ↓
+                </button>
+                <button
+                  className="mobile-btn"
+                  onClick={() => handleKeyDown({ key: ' ' })}
+                >
+                  Drop
+                </button>
+                <button className="mobile-btn" onClick={togglePause}>
+                  ⏸
+                </button>
+              </div>
+            </div>
+            <div className={`paused ${isPaused ? 'active' : ''}`}>ПАУЗА</div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<Tetris />);
+    </script>
+  </body>
+</html>

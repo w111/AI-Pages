@@ -1,0 +1,63 @@
+[flake8]
+# Настройки качества кода согласно DEVELOPMENT_PRINCIPLES.md
+
+# Цикломатическая сложность < 10 (требование документации)
+max-complexity = 10
+
+# Длина строки (согласно autopep8)
+max-line-length = 88
+
+# Максимальная длина функций (логических строк)
+max-function-length = 20
+
+# Игнорируемые ошибки
+ignore = 
+    # E203: whitespace before ':' (конфликт с black)
+    E203,
+    # W503: line break before binary operator (стиль PEP 8)
+    W503
+
+# Исключаемые директории и файлы
+exclude = 
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    build,
+    dist,
+    .eggs,
+    *.egg-info,
+    validate_audio_guide,
+    node_modules,
+    test-results,
+    playwright-report*
+
+# Файлы для проверки
+filename = *.py
+
+# Показать источник ошибки
+show-source = True
+
+# Подсчет ошибок
+count = True
+
+# Статистика по типам ошибок
+statistics = True
+
+# Дополнительные проверки
+select = 
+    # Pyflakes
+    F,
+    # pycodestyle errors
+    E,
+    # pycodestyle warnings  
+    W,
+    # McCabe complexity
+    C
+
+# Настройки для конкретных правил
+per-file-ignores =
+    # Тесты могут иметь более длинные строки для читаемости
+    tests/*.py:E501
+    # Конфигурационные файлы могут иметь длинные строки
+    *config*.py:E501 

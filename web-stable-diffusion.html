@@ -1,0 +1,2122 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Stable Diffusion Playground</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script type="module">
+      // Импорт Transformers.js для text-to-image генерации
+      window.transformersLoaded = false;
+      window.loadTransformers = async () => {
+        try {
+          const { AutoProcessor, MultiModalityCausalLM } = await import(
+            'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.1'
+          );
+          window.AutoProcessor = AutoProcessor;
+          window.MultiModalityCausalLM = MultiModalityCausalLM;
+          window.transformersLoaded = true;
+          console.log('Transformers.js loaded successfully');
+        } catch (error) {
+          console.error('Failed to load Transformers.js:', error);
+          throw error;
+        }
+      };
+    </script>
+
+    <!-- 
+    Техническое описание:
+    - Web Stable Diffusion на клиенте с WebGPU поддержкой
+    - Генерация изображений без сервера (полностью в браузере)
+    - Пресеты: обои, аватарка, мем
+    - Требует Chrome с включенным WebGPU
+    
+    История изменений:
+    2025-01-26: Первоначальная версия Web Stable Diffusion Playground
+  -->
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary-color: #6366f1;
+        --secondary-color: #8b5cf6;
+        --bg-color: #0f0f23;
+        --card-bg: #1a1a2e;
+        --text-color: #e2e8f0;
+        --border-color: #374151;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --error-color: #ef4444;
+      }
+
+      body {
+        font-family:
+          'Segoe UI',
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: linear-gradient(135deg, var(--bg-color) 0%, #1a1a2e 100%);
+        color: var(--text-color);
+        height: 100vh;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      .main-container {
+        display: flex;
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        width: 350px;
+        background: var(--card-bg);
+        border-right: 1px solid var(--border-color);
+        padding: 20px;
+        overflow-y: auto;
+        min-height: 0;
+        flex-shrink: 0;
+      }
+
+      .app-header-section {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .app-title {
+        font-size: 1.4rem;
+        color: white;
+        margin-bottom: 5px;
+        font-weight: 600;
+      }
+
+      .app-title i {
+        margin-right: 8px;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .app-subtitle {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+        margin: 0;
+      }
+
+      .compatibility-warning {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid var(--warning-color);
+      }
+
+      .requirements-header {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .requirements-header i {
+        transition: transform 0.3s ease;
+      }
+
+      .requirements-header.collapsed i {
+        transform: rotate(-90deg);
+      }
+
+      .requirements-content {
+        max-height: 200px;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+
+      .requirements-content.collapsed {
+        max-height: 0;
+      }
+
+      .resizer {
+        width: 4px;
+        background: var(--border-color);
+        cursor: col-resize;
+        position: relative;
+        transition: background-color 0.2s ease;
+        flex-shrink: 0;
+      }
+
+      .resizer:hover {
+        background: var(--primary-color);
+      }
+
+      .resizer::before {
+        content: '';
+        position: absolute;
+        left: -2px;
+        right: -2px;
+        top: 0;
+        bottom: 0;
+      }
+
+      .main-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .result-section {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 25px;
+        border: 1px solid var(--border-color);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .result-header {
+        margin-bottom: 20px;
+      }
+
+      .section-title {
+        color: var(--primary-color);
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .preset-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 25px;
+      }
+
+      .preset-btn {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        color: white;
+        border: none;
+        padding: 12px 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .preset-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+      }
+
+      .preset-btn.active {
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text-color);
+        font-weight: 500;
+      }
+
+      .model-select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-color);
+        font-size: 1rem;
+        margin-bottom: 8px;
+      }
+
+      .model-hint {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        display: block;
+      }
+
+      .size-controls {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .size-separator {
+        color: var(--text-color);
+        text-align: center;
+        font-weight: 600;
+      }
+
+      .result-actions {
+        display: flex;
+        gap: 10px;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .result-container:hover .result-actions {
+        opacity: 1;
+      }
+
+      .share-btn {
+        background: rgba(139, 92, 246, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: none;
+      }
+
+      .share-btn:hover {
+        background: rgba(139, 92, 246, 1);
+      }
+
+      .requirements-section {
+        margin-top: 20px;
+        padding: 15px;
+        background: var(--bg-color);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+
+      .form-group input,
+      .form-group textarea,
+      .form-group select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-color);
+        font-size: 1rem;
+      }
+
+      .form-group textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+
+      .range-group {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 15px;
+        align-items: center;
+      }
+
+      .range-input {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 6px;
+        background: var(--border-color);
+        border-radius: 3px;
+        outline: none;
+      }
+
+      .range-input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: var(--primary-color);
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      .range-value {
+        background: var(--primary-color);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.9rem;
+        min-width: 50px;
+        text-align: center;
+      }
+
+      .generate-btn {
+        width: 100%;
+        background: linear-gradient(135deg, var(--success-color), #059669);
+        color: white;
+        border: none;
+        padding: 15px;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .generate-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+      }
+
+      .generate-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .progress-container {
+        margin: 20px 0;
+        display: none;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+
+      .progress-text {
+        text-align: center;
+        margin-top: 10px;
+        color: var(--text-color);
+        font-size: 0.9rem;
+      }
+
+      .model-loading-progress {
+        margin: 15px 0;
+        display: none;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .model-loading-progress.show {
+        display: block;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .model-progress-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .model-progress-icon {
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+      }
+
+      .model-progress-title {
+        font-weight: 600;
+        color: var(--text-color);
+        font-size: 0.95rem;
+      }
+
+      .model-progress-bar {
+        width: 100%;
+        height: 8px;
+        background: var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 12px;
+        position: relative;
+      }
+
+      .model-progress-fill {
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--secondary-color),
+          var(--primary-color)
+        );
+        background-size: 200% 100%;
+        width: 0%;
+        transition: width 0.5s ease;
+        animation: shimmer 2s infinite;
+        position: relative;
+      }
+
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+
+      .model-progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 10px;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        animation: moveGloss 2s infinite;
+      }
+
+      @keyframes moveGloss {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+
+      .model-progress-text {
+        font-size: 0.9rem;
+        color: var(--text-color);
+        text-align: center;
+        font-weight: 500;
+        margin-bottom: 5px;
+      }
+
+      .model-progress-details {
+        font-size: 0.8rem;
+        color: #64748b;
+        text-align: center;
+        line-height: 1.4;
+      }
+
+      .model-progress-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .progress-stat {
+        text-align: center;
+      }
+
+      .progress-stat-value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        display: block;
+      }
+
+      .progress-stat-label {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .result-container {
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed var(--border-color);
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .result-placeholder {
+        text-align: center;
+        color: #64748b;
+      }
+
+      .result-image {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 8px;
+        display: none;
+      }
+
+      .download-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(99, 102, 241, 0.9);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: none;
+        transition: all 0.3s ease;
+      }
+
+      .download-btn:hover {
+        background: rgba(99, 102, 241, 1);
+      }
+
+      .webgpu-status {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-left: 4px solid var(--primary-color);
+      }
+
+      .webgpu-status.error {
+        border-left-color: var(--error-color);
+      }
+
+      .webgpu-status.success {
+        border-left-color: var(--success-color);
+      }
+
+      .model-info {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-left: 4px solid var(--primary-color);
+        display: none;
+      }
+
+      .model-info.show {
+        display: block;
+      }
+
+      .model-info h4 {
+        color: var(--primary-color);
+        margin: 0 0 10px 0;
+        font-size: 1.1rem;
+      }
+
+      .model-specs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .spec-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px;
+        background: var(--bg-color);
+        border-radius: 6px;
+      }
+
+      .spec-value {
+        font-weight: 600;
+        color: var(--text-color);
+      }
+
+      .spec-label {
+        font-size: 0.85rem;
+        color: #94a3b8;
+      }
+
+      @media (max-width: 768px) {
+        .main-container {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          height: auto;
+          min-height: auto;
+          max-height: 50vh;
+        }
+
+        .resizer {
+          display: none;
+        }
+
+        .main-content {
+          height: auto;
+          min-height: 50vh;
+        }
+
+        .preset-buttons {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <!-- Боковая панель настроек -->
+      <div class="sidebar">
+        <!-- Заголовок приложения -->
+        <div class="app-header-section">
+          <div class="app-title">
+            <i class="fas fa-magic"></i>
+            Web Stable Diffusion
+          </div>
+          <p class="app-subtitle">Генерация изображений в браузере</p>
+        </div>
+
+        <!-- Статус WebGPU -->
+        <div class="webgpu-status" id="webgpuStatus">
+          <i class="fas fa-spinner fa-spin"></i> Проверка совместимости WebGPU...
+        </div>
+
+        <!-- Прогресс загрузки модели -->
+        <div class="model-loading-progress" id="modelLoadingProgress">
+          <div class="model-progress-header">
+            <div class="model-progress-icon">
+              <i class="fas fa-download"></i>
+            </div>
+            <div class="model-progress-title">Загрузка модели ИИ</div>
+          </div>
+          
+          <div class="model-progress-bar">
+            <div class="model-progress-fill" id="modelProgressFill"></div>
+          </div>
+          
+          <div class="model-progress-text" id="modelProgressText">
+            Подготовка к загрузке...
+          </div>
+          <div class="model-progress-details" id="modelProgressDetails">
+            Инициализация системы
+          </div>
+          
+          <div class="model-progress-stats" id="modelProgressStats" style="display: none;">
+            <div class="progress-stat">
+              <span class="progress-stat-value" id="progressFiles">0/0</span>
+              <span class="progress-stat-label">Файлы</span>
+            </div>
+            <div class="progress-stat">
+              <span class="progress-stat-value" id="progressSpeed">0 MB/с</span>
+              <span class="progress-stat-label">Скорость</span>
+            </div>
+            <div class="progress-stat">
+              <span class="progress-stat-value" id="progressETA">-- мин</span>
+              <span class="progress-stat-label">Осталось</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Выбор модели -->
+        <div class="model-section">
+          <div class="section-title">
+            <i class="fas fa-brain"></i>
+            Модель
+          </div>
+          <select id="modelSelect" class="model-select">
+            <option value="janus-1.3b">
+              Janus-1.3B (WASM - Рекомендуется) - 1.5GB
+            </option>
+            <option value="janus-webgpu">
+              Janus-1.3B (WebGPU - Экспериментальная) - 1.5GB
+            </option>
+            <option value="demo">Демо-режим (без загрузки)</option>
+          </select>
+          <small class="model-hint">
+            WASM версия рекомендуется для лучшей совместимости.
+          </small>
+        </div>
+
+        <!-- Информация о модели -->
+        <div class="model-info" id="modelInfo">
+          <h4 id="modelTitle">Информация о модели</h4>
+          <p id="modelDescription">Выберите модель для отображения информации</p>
+          <div class="model-specs" id="modelSpecs">
+            <!-- Спецификации модели будут добавлены динамически -->
+          </div>
+        </div>
+
+        <!-- Пресеты -->
+        <div class="preset-section">
+          <div class="section-title">
+            <i class="fas fa-palette"></i>
+            Быстрые пресеты
+          </div>
+          <div class="preset-buttons">
+            <button class="preset-btn" data-preset="wallpaper">
+              <i class="fas fa-image"></i> Обои
+            </button>
+            <button class="preset-btn" data-preset="avatar">
+              <i class="fas fa-user-circle"></i> Аватар
+            </button>
+            <button class="preset-btn" data-preset="meme">
+              <i class="fas fa-laugh"></i> Мем
+            </button>
+          </div>
+        </div>
+
+        <!-- Настройки генерации -->
+        <form id="generationForm">
+          <div class="settings-section">
+            <div class="section-title">
+              <i class="fas fa-sliders-h"></i>
+              Настройки
+            </div>
+
+            <div class="form-group">
+              <label for="prompt">Описание изображения:</label>
+              <textarea
+                id="prompt"
+                placeholder="Опишите, что вы хотите создать..."
+                required
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="negativePrompt">Негативный prompt:</label>
+              <textarea
+                id="negativePrompt"
+                placeholder="Что не должно быть на изображении..."
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="steps"
+                >Количество шагов: <span id="stepsValue">20</span></label
+              >
+              <input
+                type="range"
+                id="steps"
+                class="range-input"
+                min="10"
+                max="50"
+                value="20"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="guidance"
+                >Guidance Scale: <span id="guidanceValue">7.5</span></label
+              >
+              <input
+                type="range"
+                id="guidance"
+                class="range-input"
+                min="1"
+                max="20"
+                step="0.5"
+                value="7.5"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="width">Размер изображения:</label>
+              <div class="size-controls">
+                <select id="width">
+                  <option value="512">512px</option>
+                  <option value="768">768px</option>
+                  <option value="1024">1024px</option>
+                </select>
+                <span class="size-separator">×</span>
+                <select id="height">
+                  <option value="512">512px</option>
+                  <option value="768">768px</option>
+                  <option value="1024">1024px</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Прогресс генерации -->
+            <div class="progress-container" id="progressContainer">
+              <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+              <div class="progress-text" id="progressText">
+                Генерация изображения...
+              </div>
+            </div>
+
+            <button type="submit" class="generate-btn" id="generateBtn">
+              <i class="fas fa-magic"></i>
+              Сгенерировать изображение
+            </button>
+          </div>
+        </form>
+
+        <!-- Системные требования -->
+        <div class="requirements-section">
+          <div class="requirements-header" onclick="toggleRequirements()">
+            <i class="fas fa-chevron-down" id="requirementsIcon"></i>
+            <span>Системные требования</span>
+          </div>
+          <div class="requirements-content collapsed" id="requirementsContent">
+            <ul>
+              <li>Chrome 113+ или Edge 113+ с поддержкой WebGPU</li>
+              <li>GPU с минимум 4GB видеопамяти (рекомендуется 6GB+)</li>
+              <li>Стабильное интернет-соединение для загрузки модели (~1.5GB)</li>
+              <li>Лучшая производительность: Mac M1/M2, RTX 3060+, RTX 4000+</li>
+            </ul>
+            <p class="tech-info">
+              <strong>Технология:</strong> Transformers.js + модель Janus-1.3B
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Разделитель с возможностью изменения размера -->
+      <div class="resizer" id="resizer"></div>
+
+      <!-- Основная область с результатом -->
+      <div class="main-content">
+        <div class="result-section">
+          <div class="result-header">
+            <h2 class="section-title">
+              <i class="fas fa-image"></i>
+              Результат генерации
+            </h2>
+          </div>
+
+          <div class="result-container" id="resultContainer">
+            <div class="result-placeholder" id="resultPlaceholder">
+              <i class="fas fa-magic fa-3x"></i>
+              <p>Здесь появится сгенерированное изображение</p>
+              <small>Настройте параметры слева и нажмите "Сгенерировать"</small>
+            </div>
+            <img class="result-image" id="resultImage" alt="Generated image" />
+            <div class="result-actions">
+              <button class="download-btn" id="downloadBtn">
+                <i class="fas fa-download"></i> Скачать
+              </button>
+              <button class="share-btn" id="shareBtn">
+                <i class="fas fa-share"></i> Поделиться
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      class WebStableDiffusionPlayground {
+        constructor() {
+          this.initializeElements();
+          this.setupEventListeners();
+          this.setupResizer();
+          this.checkWebGPUSupport();
+          this.initializePresets();
+          this.initializeModels();
+          this.model = null;
+          this.processor = null;
+          this.isModelLoading = false;
+          this.demoMode = false;
+          this.currentModelId = 'janus-1.3b';
+        }
+
+        initializeElements() {
+          this.form = document.getElementById('generationForm');
+          this.generateBtn = document.getElementById('generateBtn');
+          this.progressContainer = document.getElementById('progressContainer');
+          this.progressFill = document.getElementById('progressFill');
+          this.progressText = document.getElementById('progressText');
+          this.resultImage = document.getElementById('resultImage');
+          this.resultPlaceholder = document.getElementById('resultPlaceholder');
+          this.downloadBtn = document.getElementById('downloadBtn');
+          this.webgpuStatus = document.getElementById('webgpuStatus');
+
+          this.stepsSlider = document.getElementById('steps');
+          this.stepsValue = document.getElementById('stepsValue');
+          this.guidanceSlider = document.getElementById('guidance');
+          this.guidanceValue = document.getElementById('guidanceValue');
+
+          // Элементы для управления моделями
+          this.modelSelect = document.getElementById('modelSelect');
+          this.modelInfo = document.getElementById('modelInfo');
+          this.modelTitle = document.getElementById('modelTitle');
+          this.modelDescription = document.getElementById('modelDescription');
+          this.modelSpecs = document.getElementById('modelSpecs');
+
+          // Элементы для прогресса загрузки модели
+          this.modelLoadingProgress = document.getElementById('modelLoadingProgress');
+          this.modelProgressFill = document.getElementById('modelProgressFill');
+          this.modelProgressText = document.getElementById('modelProgressText');
+          this.modelProgressDetails = document.getElementById('modelProgressDetails');
+        }
+
+        setupEventListeners() {
+          this.form.addEventListener('submit', e => this.handleGenerate(e));
+
+          this.stepsSlider.addEventListener('input', e => {
+            this.stepsValue.textContent = e.target.value;
+          });
+
+          this.guidanceSlider.addEventListener('input', e => {
+            this.guidanceValue.textContent = e.target.value;
+          });
+
+          document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', e =>
+              this.applyPreset(e.target.dataset.preset)
+            );
+          });
+
+          this.downloadBtn.addEventListener('click', () => this.downloadImage());
+
+          // Обработчик для выбора модели
+          this.modelSelect.addEventListener('change', e =>
+            this.handleModelChange(e.target.value)
+          );
+        }
+
+        async checkWebGPUSupport() {
+          try {
+            if (!navigator.gpu) {
+              const suggestions = [
+                'Используйте Chrome 113+ или Edge 113+',
+                'Включите WebGPU в chrome://flags',
+                'Убедитесь что GPU драйверы обновлены',
+              ];
+
+              this.showError(
+                'WebGPU не поддерживается',
+                'Ваш браузер не поддерживает WebGPU API',
+                suggestions
+              );
+              return;
+            }
+
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+              const suggestions = [
+                'Проверьте что GPU включен в системе',
+                'Обновите драйверы видеокарты',
+                'Перезапустите браузер с флагом --enable-unsafe-webgpu',
+              ];
+
+              this.showError(
+                'WebGPU адаптер недоступен',
+                'Не удалось получить доступ к GPU',
+                suggestions
+              );
+              return;
+            }
+
+            this.webgpuStatus.className = 'webgpu-status success';
+            this.webgpuStatus.innerHTML = `
+            <i class="fas fa-check-circle"></i> 
+            WebGPU поддерживается! Загружаем библиотеку Transformers.js...
+          `;
+
+            // Загружаем Transformers.js
+            await this.loadTransformersLibrary();
+          } catch (error) {
+            const suggestions = [
+              'Попробуйте перезагрузить страницу',
+              'Используйте Chrome Canary с включенным WebGPU',
+              'Проверьте что хватает видеопамяти (минимум 4GB)',
+            ];
+
+            this.showError('Ошибка инициализации WebGPU', error.message, suggestions);
+          }
+        }
+
+        async loadTransformersLibrary() {
+          try {
+            this.webgpuStatus.innerHTML = `
+            <i class="fas fa-spinner fa-spin"></i> 
+            Загружаем библиотеку Transformers.js...
+          `;
+
+            await window.loadTransformers();
+
+            this.webgpuStatus.className = 'webgpu-status success';
+            this.webgpuStatus.innerHTML = `
+            <i class="fas fa-check-circle"></i> 
+            Transformers.js загружен! Готов к генерации изображений.
+          `;
+
+            this.generateBtn.disabled = false;
+          } catch (error) {
+            console.warn(
+              'Transformers.js не удалось загрузить, переключаемся на демо-режим:',
+              error
+            );
+
+            this.webgpuStatus.className = 'webgpu-status';
+            this.webgpuStatus.innerHTML = `
+            <i class="fas fa-info-circle"></i> 
+            Демо-режим: Transformers.js недоступен. Работаем с демонстрационными изображениями.
+          `;
+
+            this.generateBtn.disabled = false;
+            this.demoMode = true;
+          }
+        }
+
+        async initializeModel() {
+          if (this.model && this.processor) {
+            return { model: this.model, processor: this.processor };
+          }
+
+          if (this.isModelLoading) {
+            return null;
+          }
+
+          this.isModelLoading = true;
+
+          // Получаем текущую выбранную модель
+          const currentModel = this.models[this.currentModelId];
+          if (!currentModel || !currentModel.id) {
+            throw new Error('Модель не выбрана или недоступна');
+          }
+
+          this.webgpuStatus.innerHTML = `
+          <i class="fas fa-spinner fa-spin"></i> 
+          Загружаем модель ${currentModel.name} для генерации изображений (${currentModel.size})...
+        `;
+
+          // Показываем прогресс загрузки
+          this.showModelLoadingProgress();
+
+          try {
+            const model_id = currentModel.id;
+
+            // Создаем callback для отслеживания прогресса
+            const progressCallback = info => {
+              console.log('Progress callback received:', info);
+              this.updateModelLoadingProgress(info);
+            };
+
+            // Загружаем процессор с отслеживанием прогресса
+            this.updateModelLoadingProgress({
+              status: 'Загрузка процессора модели...',
+              name: 'AutoProcessor',
+            });
+
+            // Используем предопределенное устройство из конфигурации модели
+            let device = currentModel.device || 'wasm';
+            let dtype = 'fp32'; // Используем fp32 для лучшей совместимости
+
+            // Имитируем прогресс для процессора
+            const processorProgressInterval = setInterval(() => {
+              const currentWidth = parseFloat(this.modelProgressFill.style.width) || 0;
+              if (currentWidth < 30) {
+                this.modelProgressFill.style.width = `${currentWidth + 2}%`;
+                this.modelProgressText.textContent = `Загрузка процессора модели... ${Math.round(currentWidth)}%`;
+              }
+            }, 100);
+
+            try {
+              this.processor = await window.AutoProcessor.from_pretrained(model_id, {
+                device: device,
+                progress_callback: progressCallback,
+              });
+              clearInterval(processorProgressInterval);
+              this.modelProgressFill.style.width = '30%';
+              this.modelProgressText.textContent = 'Процессор модели загружен';
+            } catch (webgpuError) {
+              clearInterval(processorProgressInterval);
+              console.warn(
+                'WebGPU failed for processor, falling back to WASM:',
+                webgpuError
+              );
+              device = 'wasm';
+
+              this.updateModelLoadingProgress({
+                status: 'Переключение на CPU...',
+                name: 'AutoProcessor',
+              });
+
+              this.processor = await window.AutoProcessor.from_pretrained(model_id, {
+                device: device,
+                progress_callback: progressCallback,
+              });
+              this.modelProgressFill.style.width = '30%';
+              this.modelProgressText.textContent = 'Процессор модели загружен (WASM)';
+            }
+
+            // Загружаем модель с отслеживанием прогресса
+            this.updateModelLoadingProgress({
+              status: `Загрузка основной модели (${device.toUpperCase()})...`,
+              name: 'MultiModalityCausalLM',
+            });
+
+            // Имитируем прогресс для основной модели
+            const modelProgressInterval = setInterval(() => {
+              const currentWidth = parseFloat(this.modelProgressFill.style.width) || 30;
+              if (currentWidth < 90) {
+                this.modelProgressFill.style.width = `${currentWidth + 1}%`;
+                this.modelProgressText.textContent = `Загрузка основной модели... ${Math.round(currentWidth)}%`;
+              }
+            }, 150);
+
+            try {
+              this.model = await window.MultiModalityCausalLM.from_pretrained(
+                model_id,
+                {
+                  device: device,
+                  dtype: dtype,
+                  progress_callback: progressCallback,
+                }
+              );
+              clearInterval(modelProgressInterval);
+              this.modelProgressFill.style.width = '100%';
+              this.modelProgressText.textContent = 'Модель полностью загружена!';
+            } catch (webgpuError) {
+              clearInterval(modelProgressInterval);
+              if (device === 'webgpu') {
+                console.warn(
+                  'WebGPU failed for model, falling back to WASM:',
+                  webgpuError
+                );
+                device = 'wasm';
+                dtype = 'fp32';
+
+                this.updateModelLoadingProgress({
+                  status: 'WebGPU недоступен, загрузка на WASM...',
+                  name: 'MultiModalityCausalLM',
+                });
+
+                // Перезапускаем прогресс для CPU
+                const cpuProgressInterval = setInterval(() => {
+                  const currentWidth =
+                    parseFloat(this.modelProgressFill.style.width) || 30;
+                  if (currentWidth < 90) {
+                    this.modelProgressFill.style.width = `${currentWidth + 1}%`;
+                    this.modelProgressText.textContent = `Загрузка на WASM... ${Math.round(currentWidth)}%`;
+                  }
+                }, 200);
+
+                this.model = await window.MultiModalityCausalLM.from_pretrained(
+                  model_id,
+                  {
+                    device: device,
+                    dtype: dtype,
+                    progress_callback: progressCallback,
+                  }
+                );
+
+                clearInterval(cpuProgressInterval);
+                this.modelProgressFill.style.width = '100%';
+                this.modelProgressText.textContent = 'Модель загружена на WASM!';
+              } else {
+                throw webgpuError;
+              }
+            }
+
+            // Скрываем прогресс загрузки с небольшой задержкой
+            setTimeout(() => {
+              this.hideModelLoadingProgress();
+            }, 1500);
+
+            this.webgpuStatus.className = 'webgpu-status success';
+            this.webgpuStatus.innerHTML = `
+            <i class="fas fa-check-circle"></i> 
+            Модель ${currentModel.name} загружена на ${device === 'wasm' ? 'WASM' : device.toUpperCase()}! Готов к генерации.
+          `;
+
+            return { model: this.model, processor: this.processor };
+          } catch (error) {
+            let errorMessage = 'Не удалось загрузить модель';
+            let details = error.message;
+            let suggestions = [];
+
+            if (error.message.includes('fetch')) {
+              errorMessage = 'Ошибка загрузки модели из сети';
+              details = 'Проблема с подключением к серверу HuggingFace';
+              suggestions = [
+                'Проверьте интернет-соединение',
+                'Попробуйте позже (сервер может быть перегружен)',
+                'Используйте VPN если доступ заблокирован',
+              ];
+            } else if (
+              error.message.includes('memory') ||
+              error.message.includes('allocation')
+            ) {
+              errorMessage = 'Недостаточно видеопамяти';
+              details = 'GPU не хватает памяти для загрузки модели';
+              suggestions = [
+                'Закройте другие вкладки и приложения',
+                'Используйте GPU с большим объемом памяти (6GB+)',
+                'Попробуйте уменьшить разрешение изображения',
+              ];
+            } else if (
+              error.message.includes('webgpu') ||
+              error.message.includes('device')
+            ) {
+              errorMessage = 'Ошибка WebGPU устройства';
+              details = 'Проблема с инициализацией GPU';
+              suggestions = [
+                'Перезапустите браузер',
+                'Обновите драйверы видеокарты',
+                'Проверьте поддержку WebGPU в chrome://gpu',
+              ];
+            } else {
+              suggestions = [
+                'Попробуйте перезагрузить страницу',
+                'Убедитесь что системные требования выполнены',
+                'Проверьте консоль браузера для деталей',
+              ];
+            }
+
+            // Скрываем прогресс загрузки при ошибке
+            this.hideModelLoadingProgress();
+
+            this.showError(errorMessage, details, suggestions);
+            throw error;
+          } finally {
+            this.isModelLoading = false;
+          }
+        }
+
+        initializeModels() {
+          this.models = {
+            'janus-1.3b': {
+              id: 'onnx-community/Janus-1.3B-ONNX',
+              name: 'Janus-1.3B (WASM)',
+              description:
+                'Универсальная модель для генерации изображений. Работает на WASM для лучшей совместимости.',
+              size: '1.5GB',
+              vramRequired: '2GB RAM',
+              speed: 'Средняя',
+              quality: 'Высокое',
+              features: ['Text-to-Image', 'Мультимодальность', 'WASM совместимость'],
+              recommended: true,
+              device: 'wasm',
+            },
+            'janus-webgpu': {
+              id: 'onnx-community/Janus-1.3B-ONNX',
+              name: 'Janus-1.3B (WebGPU)',
+              description:
+                'GPU-ускоренная версия для современных браузеров с поддержкой WebGPU.',
+              size: '1.5GB',
+              vramRequired: '4GB',
+              speed: 'Быстрая',
+              quality: 'Высокое',
+              features: ['GPU ускорение', 'Быстрая генерация', 'WebGPU'],
+              recommended: false,
+              device: 'webgpu',
+            },
+            demo: {
+              id: null,
+              name: 'Демо-режим',
+              description:
+                'Демонстрационный режим без загрузки модели. Показывает примеры интерфейса.',
+              size: '0MB',
+              vramRequired: '0GB',
+              speed: 'Мгновенная',
+              quality: 'Демо',
+              features: ['Без загрузки', 'Мгновенный результат', 'Тестирование UI'],
+              recommended: false,
+            },
+          };
+
+          // Показываем информацию о модели по умолчанию
+          this.handleModelChange(this.currentModelId);
+        }
+
+        initializePresets() {
+          this.presets = {
+            wallpaper: {
+              prompt:
+                'Beautiful landscape, mountains, sunset, high quality, detailed, 4k wallpaper, photorealistic',
+              negativePrompt:
+                'blurry, low quality, pixelated, artifacts, distorted, ugly, bad composition',
+              width: 768,
+              height: 512,
+              steps: 20,
+              guidance: 7.5,
+            },
+            avatar: {
+              prompt:
+                'Portrait of a person, professional headshot, clean background, high quality, detailed face',
+              negativePrompt:
+                'blurry, low quality, distorted face, multiple faces, bad anatomy, deformed',
+              width: 512,
+              height: 512,
+              steps: 25,
+              guidance: 8.0,
+            },
+            meme: {
+              prompt:
+                'Funny cartoon character, simple style, bold colors, meme template, illustration',
+              negativePrompt:
+                'realistic, complex background, dark, scary, blurry, low quality',
+              width: 512,
+              height: 512,
+              steps: 15,
+              guidance: 6.0,
+            },
+          };
+        }
+
+        handleModelChange(modelId) {
+          this.currentModelId = modelId;
+          const model = this.models[modelId];
+
+          if (!model) return;
+
+          // Обновляем информацию о модели
+          this.modelTitle.textContent = model.name;
+          this.modelDescription.textContent = model.description;
+
+          // Создаем спецификации
+          this.modelSpecs.innerHTML = `
+          <div class="spec-item">
+            <div class="spec-value">${model.size}</div>
+            <div class="spec-label">Размер</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-value">${model.vramRequired}</div>
+            <div class="spec-label">VRAM</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-value">${model.speed}</div>
+            <div class="spec-label">Скорость</div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-value">${model.quality}</div>
+            <div class="spec-label">Качество</div>
+          </div>
+        `;
+
+          // Показываем панель информации
+          this.modelInfo.classList.add('show');
+
+          // Сбрасываем загруженную модель если изменилась
+          if (this.model && this.currentModelId !== modelId) {
+            this.model = null;
+            this.processor = null;
+          }
+
+          // Включаем/выключаем демо-режим
+          this.demoMode = modelId === 'demo';
+
+          console.log(`Выбрана модель: ${model.name} (${modelId})`);
+        }
+
+        showModelLoadingProgress() {
+          this.modelLoadingProgress.classList.add('show');
+          this.modelProgressFill.style.width = '0%';
+          this.modelProgressText.textContent = 'Инициализация загрузки...';
+          this.modelProgressDetails.textContent = 'Подготовка к загрузке модели';
+          
+          // Показываем статистики
+          const statsElement = document.getElementById('modelProgressStats');
+          if (statsElement) {
+            statsElement.style.display = 'grid';
+          }
+          
+          // Сбрасываем статистики
+          this.updateProgressStats(0, 0, 0, 0);
+          
+          // Инициализируем трекер времени
+          this.loadingStartTime = Date.now();
+        }
+
+        hideModelLoadingProgress() {
+          this.modelLoadingProgress.classList.remove('show');
+          
+          // Скрываем статистики
+          const statsElement = document.getElementById('modelProgressStats');
+          if (statsElement) {
+            statsElement.style.display = 'none';
+          }
+          
+          // Сбрасываем трекер файлов
+          this.fileTracker = null;
+          this.loadingStartTime = null;
+        }
+
+        updateProgressStats(completedFiles, totalFiles, speedMBps, totalProgress) {
+          const progressFiles = document.getElementById('progressFiles');
+          const progressSpeed = document.getElementById('progressSpeed');
+          const progressETA = document.getElementById('progressETA');
+          
+          if (progressFiles) {
+            progressFiles.textContent = `${completedFiles}/${totalFiles}`;
+          }
+          
+          if (progressSpeed) {
+            if (speedMBps > 0) {
+              progressSpeed.textContent = `${speedMBps.toFixed(1)} MB/с`;
+            } else {
+              progressSpeed.textContent = '-- MB/с';
+            }
+          }
+          
+          if (progressETA && this.loadingStartTime && totalProgress > 5) {
+            const elapsedTime = (Date.now() - this.loadingStartTime) / 1000; // в секундах
+            const estimatedTotalTime = (elapsedTime / totalProgress) * 100;
+            const remainingTime = estimatedTotalTime - elapsedTime;
+            
+            if (remainingTime > 0) {
+              const minutes = Math.ceil(remainingTime / 60);
+              progressETA.textContent = minutes === 1 ? '< 1 мин' : `${minutes} мин`;
+            } else {
+              progressETA.textContent = '< 1 мин';
+            }
+          } else if (progressETA) {
+            progressETA.textContent = '-- мин';
+          }
+        }
+
+        updateModelLoadingProgress(info) {
+          if (!info) return;
+
+          // Инициализируем трекер файлов если его нет
+          if (!this.fileTracker) {
+            this.fileTracker = {
+              files: new Map(),
+              totalFiles: 0,
+              completedFiles: 0,
+              currentFile: null,
+              totalBytesLoaded: 0,
+              totalBytesTotal: 0,
+            };
+          }
+
+          if (info.file) {
+            const fileName = info.file.split('/').pop();
+
+            // Регистрируем новый файл
+            if (!this.fileTracker.files.has(fileName)) {
+              this.fileTracker.files.set(fileName, {
+                loaded: 0,
+                total: info.total || 0,
+                progress: 0,
+                completed: false,
+                startTime: Date.now(),
+              });
+              this.fileTracker.totalFiles++;
+              this.fileTracker.totalBytesTotal += info.total || 0;
+            }
+
+            // Обновляем прогресс файла
+            if (info.loaded && info.total) {
+              const fileData = this.fileTracker.files.get(fileName);
+              const fileProgress = (info.loaded / info.total) * 100;
+              
+              // Обновляем общее количество загруженных байт
+              const prevLoaded = fileData.loaded;
+              this.fileTracker.totalBytesLoaded += (info.loaded - prevLoaded);
+
+              fileData.loaded = info.loaded;
+              fileData.total = info.total;
+              fileData.progress = fileProgress;
+
+              // Если файл завершен, отмечаем это
+              if (fileProgress >= 100 && !fileData.completed) {
+                fileData.completed = true;
+                this.fileTracker.completedFiles++;
+              }
+
+              this.fileTracker.currentFile = fileName;
+
+              // Рассчитываем общий прогресс по всем файлам
+              let totalProgress = 0;
+              let totalFilesProgress = 0;
+
+              this.fileTracker.files.forEach(data => {
+                totalFilesProgress += Math.min(data.progress, 100);
+              });
+
+              if (this.fileTracker.totalFiles > 0) {
+                totalProgress = totalFilesProgress / this.fileTracker.totalFiles;
+              }
+
+              // Рассчитываем скорость загрузки
+              const elapsedTime = (Date.now() - this.loadingStartTime) / 1000; // секунды
+              const speedBps = elapsedTime > 0 ? this.fileTracker.totalBytesLoaded / elapsedTime : 0;
+              const speedMBps = speedBps / (1024 * 1024);
+
+              // Отображаем информацию о текущем файле
+              const loadedMB = (info.loaded / 1024 / 1024).toFixed(1);
+              const totalMB = (info.total / 1024 / 1024).toFixed(1);
+              const fileSpeedMBps = info.rate ? (info.rate / 1024 / 1024).toFixed(1) : null;
+
+              // Обновляем основной текст
+              if (fileName.length > 25) {
+                this.modelProgressText.textContent = `Загрузка: ...${fileName.slice(-22)}`;
+              } else {
+                this.modelProgressText.textContent = `Загрузка: ${fileName}`;
+              }
+
+              // Обновляем детали
+              let details = `${loadedMB}MB из ${totalMB}MB`;
+              if (fileSpeedMBps) {
+                details += ` • ${fileSpeedMBps} MB/с`;
+              }
+              if (totalProgress > 0) {
+                details += ` • ${totalProgress.toFixed(0)}% завершено`;
+              }
+
+              this.modelProgressDetails.textContent = details;
+
+              // Обновляем визуальный прогресс
+              this.modelProgressFill.style.width = `${Math.min(totalProgress, 100)}%`;
+
+              // Обновляем статистики
+              this.updateProgressStats(
+                this.fileTracker.completedFiles,
+                this.fileTracker.totalFiles,
+                speedMBps,
+                totalProgress
+              );
+
+              // Логируем общий прогресс
+              console.log(
+                `Общий прогресс загрузки: ${totalProgress.toFixed(1)}% (файлов: ${this.fileTracker.completedFiles}/${this.fileTracker.totalFiles}), скорость: ${speedMBps.toFixed(1)} MB/с`
+              );
+            } else {
+              this.modelProgressText.textContent = `Подготовка: ${fileName}`;
+              this.modelProgressDetails.textContent = 'Инициализация файла...';
+            }
+          } else if (info.status) {
+            this.modelProgressText.textContent = info.status;
+            this.modelProgressDetails.textContent =
+              info.name || 'Обработка компонентов модели';
+
+            // Для статусных сообщений показываем базовый прогресс
+            if (!this.fileTracker || !this.fileTracker.totalFiles) {
+              this.modelProgressFill.style.width = '10%';
+            }
+          } else {
+            this.modelProgressText.textContent = 'Загрузка модели...';
+            this.modelProgressDetails.textContent = 'Инициализация системы...';
+          }
+        }
+
+        applyPreset(presetName) {
+          document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.classList.remove('active');
+          });
+
+          document
+            .querySelector(`[data-preset="${presetName}"]`)
+            .classList.add('active');
+
+          const preset = this.presets[presetName];
+          if (preset) {
+            document.getElementById('prompt').value = preset.prompt;
+            document.getElementById('negativePrompt').value = preset.negativePrompt;
+            document.getElementById('width').value = preset.width;
+            document.getElementById('height').value = preset.height;
+            document.getElementById('steps').value = preset.steps;
+            document.getElementById('guidance').value = preset.guidance;
+
+            this.stepsValue.textContent = preset.steps;
+            this.guidanceValue.textContent = preset.guidance;
+          }
+        }
+
+        async handleGenerate(e) {
+          e.preventDefault();
+
+          if (this.generateBtn.disabled) {
+            return;
+          }
+
+          this.generateBtn.disabled = true;
+          this.generateBtn.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Генерация...';
+          this.progressContainer.style.display = 'block';
+          this.hideResult();
+
+          try {
+            // Получаем параметры генерации
+            const prompt = document.getElementById('prompt').value.trim();
+            const negativePrompt = document
+              .getElementById('negativePrompt')
+              .value.trim();
+            const steps = parseInt(document.getElementById('steps').value);
+            const guidance = parseFloat(document.getElementById('guidance').value);
+            const width = parseInt(document.getElementById('width').value);
+            const height = parseInt(document.getElementById('height').value);
+
+            if (!prompt) {
+              throw new Error('Пожалуйста, введите описание изображения');
+            }
+
+            // Проверяем режим работы
+            if (this.demoMode || !window.transformersLoaded) {
+              // Демо-режим
+              await this.simulateGeneration();
+              this.showMockResult();
+            } else {
+              // Реальная генерация
+              await this.initializeModel();
+              await this.generateImage({
+                prompt,
+                negativePrompt,
+                numInferenceSteps: steps,
+                guidanceScale: guidance,
+                width,
+                height,
+              });
+            }
+          } catch (error) {
+            let errorMessage = 'Ошибка генерации изображения';
+            let details = error.message;
+            let suggestions = [];
+
+            if (error.message.includes('Пожалуйста, введите описание')) {
+              errorMessage = 'Пустое описание изображения';
+              details = 'Необходимо ввести текст для генерации';
+              suggestions = [
+                'Введите описание в поле "Описание изображения"',
+                'Попробуйте использовать пресеты для примера',
+                'Опишите что вы хотите увидеть на изображении',
+              ];
+            } else if (
+              error.message.includes('model') ||
+              error.message.includes('модель')
+            ) {
+              errorMessage = 'Ошибка работы с моделью ИИ';
+              suggestions = [
+                'Проверьте что модель полностью загружена',
+                'Попробуйте использовать демо-режим',
+                'Перезапустите процесс генерации',
+              ];
+            } else if (
+              error.message.includes('memory') ||
+              error.message.includes('allocation')
+            ) {
+              errorMessage = 'Недостаточно памяти для генерации';
+              details = 'Не хватает видеопамяти GPU';
+              suggestions = [
+                'Закройте другие вкладки браузера',
+                'Уменьшите размер изображения',
+                'Используйте меньшее количество шагов генерации',
+              ];
+            } else if (
+              error.message.includes('timeout') ||
+              error.message.includes('time')
+            ) {
+              errorMessage = 'Превышено время ожидания';
+              details = 'Генерация занимает слишком много времени';
+              suggestions = [
+                'Попробуйте уменьшить количество шагов',
+                'Используйте более простое описание',
+                'Проверьте производительность GPU',
+              ];
+            } else {
+              suggestions = [
+                'Попробуйте другое описание изображения',
+                'Используйте демо-режим для тестирования',
+                'Проверьте системные требования',
+              ];
+            }
+
+            this.showError(errorMessage, details, suggestions);
+          } finally {
+            this.generateBtn.disabled = false;
+            this.generateBtn.innerHTML =
+              '<i class="fas fa-magic"></i> Сгенерировать изображение';
+            this.progressContainer.style.display = 'none';
+          }
+        }
+
+        async generateImage(params) {
+          let progressInterval = null;
+
+          try {
+            this.progressText.textContent = 'Генерируем изображение...';
+            this.progressFill.style.width = '10%';
+
+            // Имитируем прогресс для UI
+            progressInterval = setInterval(() => {
+              const currentWidth = parseFloat(this.progressFill.style.width) || 0;
+              if (currentWidth < 90) {
+                this.progressFill.style.width = `${currentWidth + 5}%`;
+              }
+            }, 200);
+
+            // Подготавливаем разговор для модели Janus
+            const conversation = [
+              {
+                role: 'User',
+                content: params.prompt,
+              },
+            ];
+
+            // Обрабатываем ввод
+            const inputs = await this.processor(conversation, {
+              chat_template: 'text_to_image',
+            });
+
+            if (progressInterval) {
+              clearInterval(progressInterval);
+              progressInterval = null;
+            }
+            this.progressFill.style.width = '70%';
+            this.progressText.textContent = 'Генерируем изображение с помощью ИИ...';
+
+            // Генерируем изображение
+            const num_image_tokens = this.processor.num_image_tokens;
+            const outputs = await this.model.generate_images({
+              ...inputs,
+              min_new_tokens: num_image_tokens,
+              max_new_tokens: num_image_tokens,
+              do_sample: true,
+            });
+
+            this.progressFill.style.width = '100%';
+            this.progressText.textContent = 'Обработка результата...';
+
+            // Конвертируем результат в изображение
+            if (outputs && outputs.length > 0) {
+              // Получаем первое сгенерированное изображение
+              const generatedImage = outputs[0];
+
+              // Сохраняем изображение как blob и создаем URL
+              const imageBlob = await generatedImage.toBlob();
+              const imageUrl = URL.createObjectURL(imageBlob);
+
+              // Показываем результат
+              this.showResult(imageUrl);
+            } else {
+              throw new Error('Не удалось сгенерировать изображение');
+            }
+          } catch (error) {
+            console.error('Ошибка генерации:', error);
+
+            // Анализируем тип ошибки для детального описания
+            let errorMessage = 'Ошибка в процессе генерации';
+            let details = error.message;
+            let suggestions = [];
+
+            if (
+              error.message.includes('processor') ||
+              error.message.includes('inputs')
+            ) {
+              errorMessage = 'Ошибка обработки текста';
+              details = 'Не удалось обработать описание изображения';
+              suggestions = [
+                'Попробуйте упростить описание',
+                'Используйте английский язык для описания',
+                'Проверьте что описание не содержит спецсимволов',
+              ];
+            } else if (
+              error.message.includes('generate_images') ||
+              error.message.includes('num_image_tokens')
+            ) {
+              errorMessage = 'Ошибка генерации изображения';
+              details = 'Модель не смогла сгенерировать изображение';
+              suggestions = [
+                'Попробуйте другое описание',
+                'Уменьшите сложность запроса',
+                'Проверьте что модель полностью загружена',
+              ];
+            } else if (
+              error.message.includes('WebGPU') ||
+              error.message.includes('Unsupported data type')
+            ) {
+              errorMessage = 'Ошибка совместимости WebGPU';
+              details = 'Используемый тип данных не поддерживается в WebGPU';
+              suggestions = [
+                'Переключитесь на CPU версию модели',
+                'Обновите браузер до последней версии',
+                'Используйте браузер с полной поддержкой WebGPU',
+              ];
+            } else if (
+              error.message.includes('blob') ||
+              error.message.includes('toBlob')
+            ) {
+              errorMessage = 'Ошибка обработки результата';
+              details = 'Не удалось преобразовать изображение';
+              suggestions = [
+                'Попробуйте сгенерировать заново',
+                'Проверьте свободное место на диске',
+                'Перезапустите браузер',
+              ];
+            } else {
+              suggestions = [
+                'Попробуйте перезагрузить страницу',
+                'Используйте демо-режим',
+                'Проверьте системные требования',
+              ];
+            }
+
+            // Показываем детальную ошибку
+            console.warn('Детальная ошибка генерации:', errorMessage, details);
+
+            // Откатываемся к демо-режиму
+            console.log('Переключаемся на демо-режим из-за ошибки генерации');
+            if (progressInterval) {
+              clearInterval(progressInterval); // Останавливаем прогресс если есть
+            }
+            await this.simulateGeneration();
+            this.showMockResult();
+
+            // Показываем предупреждение что переключились на демо
+            setTimeout(() => {
+              this.webgpuStatus.className = 'webgpu-status';
+              this.webgpuStatus.innerHTML = `
+              <i class="fas fa-info-circle"></i> 
+              Переключились на демо-режим. Причина: ${errorMessage}
+            `;
+            }, 2000);
+          }
+        }
+
+        async simulateGeneration() {
+          const steps = parseInt(document.getElementById('steps').value);
+
+          for (let i = 0; i <= steps; i++) {
+            const progress = (i / steps) * 100;
+            this.progressFill.style.width = `${progress}%`;
+            this.progressText.textContent = `Шаг ${i} из ${steps}...`;
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+
+        showMockResult() {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const width = parseInt(document.getElementById('width').value);
+          const height = parseInt(document.getElementById('height').value);
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const gradient = ctx.createLinearGradient(0, 0, width, height);
+          gradient.addColorStop(0, '#6366f1');
+          gradient.addColorStop(0.5, '#8b5cf6');
+          gradient.addColorStop(1, '#ec4899');
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, width, height);
+
+          ctx.fillStyle = 'white';
+          ctx.font = '24px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('Демо изображение', width / 2, height / 2 - 20);
+          ctx.fillText('Web Stable Diffusion', width / 2, height / 2 + 20);
+
+          const dataURL = canvas.toDataURL();
+          this.showResult(dataURL);
+        }
+
+        showResult(imageUrl) {
+          this.resultPlaceholder.style.display = 'none';
+          this.resultImage.src = imageUrl;
+          this.resultImage.style.display = 'block';
+          this.downloadBtn.style.display = 'block';
+        }
+
+        hideResult() {
+          this.resultPlaceholder.style.display = 'block';
+          this.resultImage.style.display = 'none';
+          this.downloadBtn.style.display = 'none';
+        }
+
+        showError(message, details = null, suggestions = []) {
+          console.error('Web Stable Diffusion Error:', message, details);
+
+          this.webgpuStatus.className = 'webgpu-status error';
+
+          let errorHtml = `
+          <i class="fas fa-exclamation-triangle"></i> 
+          <strong>Ошибка генерации:</strong> ${message}
+        `;
+
+          if (details) {
+            errorHtml += `<br><small><strong>Детали:</strong> ${details}</small>`;
+          }
+
+          if (suggestions.length > 0) {
+            errorHtml += `<br><small><strong>Рекомендации:</strong></small>`;
+            errorHtml += `<ul style="margin: 5px 0 0 20px; font-size: 0.9em;">`;
+            suggestions.forEach(suggestion => {
+              errorHtml += `<li>${suggestion}</li>`;
+            });
+            errorHtml += `</ul>`;
+          }
+
+          this.webgpuStatus.innerHTML = errorHtml;
+
+          // Автоматически переключаемся в демо-режим через 3 секунды
+          setTimeout(() => {
+            if (this.webgpuStatus.className === 'webgpu-status error') {
+              this.webgpuStatus.className = 'webgpu-status';
+              this.webgpuStatus.innerHTML = `
+              <i class="fas fa-info-circle"></i> 
+              Переключился в демо-режим. Используйте кнопку генерации для демонстрации.
+            `;
+              this.demoMode = true;
+              this.generateBtn.disabled = false;
+            }
+          }, 3000);
+        }
+
+        downloadImage() {
+          if (this.resultImage.src) {
+            const link = document.createElement('a');
+            link.download = `stable-diffusion-${Date.now()}.png`;
+            link.href = this.resultImage.src;
+            link.click();
+          }
+        }
+
+        // Метод для тестирования различных типов ошибок (для разработки)
+        testErrorHandling() {
+          console.log('Тестирование обработки ошибок...');
+
+          // Тест ошибки WebGPU
+          this.showError(
+            'WebGPU не поддерживается',
+            'Ваш браузер не поддерживает WebGPU API',
+            ['Используйте Chrome 113+', 'Включите WebGPU в chrome://flags']
+          );
+
+          setTimeout(() => {
+            // Тест ошибки загрузки модели
+            this.showError(
+              'Ошибка загрузки модели из сети',
+              'Проблема с подключением к серверу HuggingFace',
+              ['Проверьте интернет-соединение', 'Попробуйте позже']
+            );
+          }, 5000);
+
+          setTimeout(() => {
+            // Тест ошибки генерации
+            this.showError(
+              'Ошибка генерации изображения',
+              'Модель не смогла сгенерировать изображение',
+              ['Попробуйте другое описание', 'Уменьшите сложность запроса']
+            );
+          }, 10000);
+        }
+
+        setupResizer() {
+          const resizer = document.getElementById('resizer');
+          const sidebar = document.querySelector('.sidebar');
+          const mainContainer = document.querySelector('.main-container');
+
+          let isResizing = false;
+          let startX = 0;
+          let startWidth = 0;
+
+          resizer.addEventListener('mousedown', e => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = sidebar.offsetWidth;
+
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+
+            // Предотвращаем выделение текста во время перетаскивания
+            e.preventDefault();
+          });
+
+          document.addEventListener('mousemove', e => {
+            if (!isResizing) return;
+
+            const deltaX = e.clientX - startX;
+            const newWidth = startWidth + deltaX;
+
+            // Ограничиваем ширину боковой панели
+            const minWidth = 250;
+            const maxWidth = window.innerWidth * 0.6;
+
+            if (newWidth >= minWidth && newWidth <= maxWidth) {
+              sidebar.style.width = `${newWidth}px`;
+            }
+          });
+
+          document.addEventListener('mouseup', () => {
+            if (isResizing) {
+              isResizing = false;
+              document.body.style.cursor = '';
+              document.body.style.userSelect = '';
+            }
+          });
+
+          // Обработка двойного клика для сброса к исходному размеру
+          resizer.addEventListener('dblclick', () => {
+            sidebar.style.width = '350px';
+          });
+        }
+      }
+
+      // Функция для переключения требований
+      function toggleRequirements() {
+        const header = document.querySelector('.requirements-header');
+        const content = document.getElementById('requirementsContent');
+
+        header.classList.toggle('collapsed');
+        content.classList.toggle('collapsed');
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const playground = new WebStableDiffusionPlayground();
+
+        // Делаем доступным в глобальной области для тестирования
+        window.webSDPlayground = playground;
+
+        // Изначально сворачиваем требования
+        setTimeout(() => {
+          toggleRequirements();
+        }, 100);
+
+        // Добавляем команду для тестирования в консоль
+        console.log(
+          '💡 Для тестирования обработки ошибок выполните: webSDPlayground.testErrorHandling()'
+        );
+      });
+    </script>
+  </body>
+</html>

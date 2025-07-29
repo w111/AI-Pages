@@ -1,0 +1,110 @@
+{
+  "name": "ai-pages",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "AI Pages: Коллекция интерактивных HTML-примеров",
+  "main": "index.html",
+  "scripts": {
+    "test": "npm run test:python && npm run test:js",
+    "test:python": "python3 -m pytest tests/ -v",
+    "test:python:parallel": "python3 -m pytest -c pytest-parallel.ini tests/test_index_page_async.py -v",
+    "test:python:ci": "python3 -m pytest -c pytest-ci.ini tests/test_index_page_async.py -v",
+    "test:python:cov": "python3 -m pytest tests/ --cov=. --cov-report=html --html=pytest-report.html",
+    "test:python:chromium": "PLAYWRIGHT_BROWSER=chromium python3 -m pytest tests/ -v",
+    "test:python:firefox": "PLAYWRIGHT_BROWSER=firefox python3 -m pytest tests/ -v",
+    "test:python:webkit": "PLAYWRIGHT_BROWSER=webkit python3 -m pytest tests/ -v",
+    "test:js": "playwright test",
+    "test:js:fast": "playwright test --config=playwright-debug.config.js",
+    "test:js:single": "playwright test --config=playwright-debug.config.js --project=chromium-debug",
+    "test:js:parallel": "playwright test --config=playwright-builtin.config.js --project=chromium-builtin",
+    "test:js:debug-parallel": "playwright test --config=playwright-debug.config.js --workers=4",
+    "test:js:ci": "playwright test --config=playwright-ci.config.js",
+    "test:js:headed": "playwright test --headed",
+    "test:js:debug": "playwright test --debug",
+    "test:js:chromium": "playwright test --project=chromium",
+    "test:js:firefox": "playwright test --project=firefox",
+    "test:js:webkit": "playwright test --project=webkit",
+    "test:js:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
+    "test:js:all": "playwright test --project=chromium --project=firefox --project=webkit",
+    "install:browsers": "playwright install",
+    "serve": "python3 -m http.server 5500",
+    "lint:py": "source venv/bin/activate && python -m flake8 tests/ || python3 -m flake8 tests/",
+    "lint:js": "eslint test_js/ playwright*.config.js",
+    "lint:js:ci": "find . -name 'playwright*.config.js' -o -path './test_js/*.js' | xargs eslint",
+    "lint:js:all": "find . -name 'playwright*.config.js' -exec eslint {} \\; && eslint test_js/",
+    "lint:py:full": "source venv/bin/activate && python -m flake8 tests/ validate_docs_diagrams.py",
+    "lint:py:complexity": "source venv/bin/activate && python -m flake8 tests/ --select=C --statistics",
+    "lint:html": "htmlhint *.html",
+    "lint:css": "stylelint **/*.css",
+    "lint:css:fix": "stylelint **/*.css --fix",
+    "lint:json": "jsonlint *.json",
+    "lint:yaml": "source venv/bin/activate && yamllint .github/workflows/*.yml .bmad-core/**/*.yaml",
+    "lint:md": "markdownlint *.md docs/*.md",
+    "lint:md:fix": "markdownlint *.md docs/*.md --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm run lint:js && npm run lint:py && npm run lint:html && npm run lint:css && npm run lint:json && npm run lint:yaml && npm run lint:md",
+    "lint:fix": "npm run lint:js:fix && npm run lint:css:fix && npm run lint:md:fix && npm run format && source venv/bin/activate && python -m autopep8 --in-place --aggressive --max-line-length=88 tests/",
+    "docs:check-diagrams": "python3 validate_docs_diagrams.py",
+    "docs:validate-mermaid": "npm install -g @mermaid-js/mermaid-cli && find docs/ -name '*.md' -exec grep -l '```mermaid' {} \\; | xargs -I {} sh -c 'mmdc -i {} --dry-run'",
+    "docs:check-colors": "grep -r 'style.*fill:' docs/ || echo 'ℹ️ Цветовые схемы не найдены'",
+    "docs:generate-report": "npm run docs:check-diagrams && npm run docs:check-colors",
+    "lint:complexity": "eslint test_js/ playwright*.config.js",
+    "lint:function-length": "eslint test_js/ playwright*.config.js",
+    "check:duplication": "echo '🔍 Проверка дублирования кода (требует установки jscpd)' && npx jscpd test_js/ playwright*.config.js --threshold 5 --min-lines 5 || echo '⚠️ Установите jscpd: npm install -g jscpd'",
+    "test:coverage": "echo '📊 Покрытие тестами (placeholder - требует настройки coverage инструмента)'",
+    "prepare": "husky",
+    "pre-commit": "lint-staged"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{html,css,json,md}": [
+      "prettier --write"
+    ],
+    "*.py": [
+      "python -m flake8"
+    ],
+    "playwright*.config.js": [
+      "eslint --fix"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.40.0",
+    "eslint": "^9.32.0",
+    "eslint-plugin-playwright": "^2.2.0",
+    "htmlhint": "^1.6.3",
+    "husky": "^9.1.7",
+    "jsonlint-cli": "^1.0.1",
+    "lint-staged": "^16.1.2",
+    "markdownlint-cli": "^0.45.0",
+    "playwright": "^1.40.0",
+    "prettier": "^3.6.2",
+    "serve": "^14.2.4",
+    "stylelint": "^16.22.0",
+    "stylelint-config-standard": "^38.0.0",
+    "yaml-lint": "^1.7.0"
+  },
+  "keywords": [
+    "html",
+    "javascript",
+    "playground",
+    "examples",
+    "interactive",
+    "education",
+    "web-development"
+  ],
+  "author": "AI Pages Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ai-pages/html-examples"
+  },
+  "bugs": {
+    "url": "https://github.com/ai-pages/html-examples/issues"
+  },
+  "homepage": "https://ai-pages.github.io/html-examples/"
+}

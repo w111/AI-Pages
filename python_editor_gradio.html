@@ -1,0 +1,999 @@
+<!doctype html>
+<!-- 
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивный редактор Python, работающий полностью в браузере с использованием Gradio Lite.
+
+Функциональные требования:
+1. Редактор кода с подсветкой синтаксиса Python
+2. Выполнение Python-кода в браузере без серверной части
+3. Отображение результатов выполнения кода
+4. Визуализация данных с помощью Matplotlib
+5. Поддержка библиотек Numpy и Pandas
+6. Сохранение и загрузка кода
+7. Форматирование и проверка кода
+8. Возможность создания интерактивных графиков
+
+Технические требования:
+1. Использование Gradio Lite для выполнения Python-кода
+2. Интеграция CodeMirror для редактирования кода
+3. Адаптивный дизайн для разных устройств
+4. Оптимизация производительности при работе с большими объемами данных
+5. Обработка ошибок и исключений Python
+6. Поддержка современных браузеров
+7. Минимальная зависимость от внешних ресурсов
+8. Корректная работа в офлайн-режиме после первой загрузки
+-->
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Pages Python (Gradio Lite)</title>
+
+    <!-- CodeMirror для редактора кода -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/monokai.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.min.js"></script>
+
+    <style>
+      :root {
+        --primary-color: #2563eb;
+        --background-color: #f8fafc;
+        --editor-background: #1e1e1e;
+        --output-background: #ffffff;
+        --text-color: #1e293b;
+        --border-color: #e2e8f0;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        background-color: var(--background-color);
+        color: var(--text-color);
+      }
+
+      #app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+      .header {
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      h1 {
+        margin: 0;
+        padding: 0;
+        font-size: 1.5rem;
+        line-height: 1.5;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background-color 0.2s;
+        white-space: nowrap;
+      }
+
+      button:hover {
+        background-color: #1d4ed8;
+      }
+
+      button:disabled {
+        background-color: #93c5fd;
+        cursor: not-allowed;
+      }
+
+      .examples-dropdown {
+        padding: 8px;
+        font-size: 0.9rem;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+      }
+
+      /* Новая сетка для основного контента */
+      .main-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .editor-container {
+        grid-column: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 400px;
+      }
+
+      .right-panel {
+        grid-column: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .output-container {
+        padding: 10px;
+        background-color: var(--output-background);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        overflow-y: auto;
+        min-height: 150px;
+        max-height: 40vh;
+        white-space: pre-wrap;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.9rem;
+      }
+
+      .plots-container {
+        padding: 10px;
+        background-color: var(--output-background);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        min-height: 200px;
+        overflow-y: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        flex: 1;
+      }
+
+      .plot-item {
+        position: relative;
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .plot-item img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .plot-controls {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        display: flex;
+        gap: 5px;
+      }
+
+      .plot-button {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+        opacity: 0.8;
+      }
+
+      .plot-button:hover {
+        opacity: 1;
+      }
+
+      .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 10px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .CodeMirror {
+        height: 100% !important;
+        border-radius: 8px;
+        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 14px;
+        flex: 1;
+      }
+
+      .cm-s-monokai.CodeMirror {
+        background-color: var(--editor-background);
+      }
+
+      .error {
+        color: #dc2626;
+        margin-top: 5px;
+      }
+
+      /* Темная тема */
+      .dark-theme {
+        --primary-color: #3b82f6;
+        --background-color: #1a1a1a;
+        --editor-background: #1e1e1e;
+        --output-background: #2d2d2d;
+        --text-color: #e5e7eb;
+        --border-color: #404040;
+      }
+
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+      }
+
+      .theme-toggle label {
+        margin-right: 8px;
+      }
+
+      .fullscreen-plot {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .fullscreen-plot img {
+        max-width: 90%;
+        max-height: 90vh;
+      }
+
+      .fullscreen-controls {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .status-bar {
+        display: flex;
+        align-items: center;
+        padding: 5px 10px;
+        font-size: 0.8rem;
+        background-color: #f0f0f0;
+        border-top: 1px solid var(--border-color);
+        margin-top: 10px;
+      }
+
+      .dark-theme .status-bar {
+        background-color: #333;
+      }
+
+      /* Иконка настроек */
+      .settings-icon {
+        cursor: pointer;
+        font-size: 24px;
+        color: var(--primary-color);
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Шапка с заголовком -->
+      <div class="header">
+        <h1>AI Pages Python (Gradio)</h1>
+        <div class="settings-icon" title="Настройки">⚙</div>
+      </div>
+
+      <!-- Панель с кнопками -->
+      <div class="controls">
+        <button id="run-button">Запустить код (Ctrl+Enter)</button>
+        <button id="clear-button">Очистить вывод</button>
+        <button id="format-button">Форматировать код</button>
+        <button id="lint-button">Проверить код</button>
+        <select id="examples" class="examples-dropdown">
+          <option value="">-- Выберите пример --</option>
+          <option value="hello">Hello World</option>
+          <option value="fibonacci">Fibonacci Sequence</option>
+          <option value="turtle">Colorful Spiral</option>
+          <option value="numpy">Sine Wave</option>
+          <option value="pandas">Data Analysis</option>
+          <option value="plotly">3D Spiral Plot</option>
+        </select>
+        <div class="theme-toggle">
+          <label for="theme-switch">Темная тема</label>
+          <input type="checkbox" id="theme-switch" />
+        </div>
+      </div>
+
+      <!-- Основной контент - сетка с кодом слева и выводом справа -->
+      <div class="main-content">
+        <!-- Левая колонка с редактором -->
+        <div class="editor-container" id="editor-container"></div>
+
+        <!-- Правая колонка с выводом и графиками -->
+        <div class="right-panel">
+          <div class="output-container" id="output"></div>
+          <div class="plots-container" id="plots">
+            <div class="no-plots">Графики будут отображаться здесь</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-bar" id="status-bar">Готов</div>
+    </div>
+
+    <!-- Подключаем Pyodide напрямую вместо Gradio Lite -->
+    <script type="module">
+      import { loadPyodide } from 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.mjs';
+
+      // Объявляем переменные глобально для использования в обработчиках
+      window.editor = null;
+      window.pyodide = null;
+      window.isRunning = false;
+      window.plots = [];
+
+      // Определяем функции глобально
+      window.updateStatus = function (status) {
+        const statusBar = document.getElementById('status-bar');
+        if (statusBar) {
+          statusBar.textContent = status;
+        }
+      };
+
+      window.displayPlot = function (imgStr) {
+        const plotsContainer = document.getElementById('plots');
+
+        // Удаляем сообщение о пустых графиках, если это первый график
+        const noPlots = plotsContainer.querySelector('.no-plots');
+        if (noPlots) {
+          plotsContainer.removeChild(noPlots);
+        }
+
+        // Создаем элемент для графика
+        const plotItem = document.createElement('div');
+        plotItem.className = 'plot-item';
+
+        // Добавляем изображение
+        const img = document.createElement('img');
+        img.src = `data:image/png;base64,${imgStr}`;
+        img.alt = 'Plot';
+
+        // Добавляем элементы управления
+        const controls = document.createElement('div');
+        controls.className = 'plot-controls';
+
+        // Кнопка полноэкранного режима
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'plot-button';
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.title = 'Полный экран';
+        fullscreenBtn.addEventListener('click', () => window.showFullscreen(imgStr));
+
+        // Кнопка скачивания
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'plot-button';
+        downloadBtn.textContent = '↓';
+        downloadBtn.title = 'Скачать';
+        downloadBtn.addEventListener('click', () => window.downloadPlot(imgStr));
+
+        // Кнопка закрытия
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'plot-button';
+        closeBtn.textContent = '×';
+        closeBtn.title = 'Закрыть';
+        closeBtn.addEventListener('click', () => {
+          plotsContainer.removeChild(plotItem);
+          if (plotsContainer.children.length === 0) {
+            const noPlots = document.createElement('div');
+            noPlots.className = 'no-plots';
+            noPlots.textContent = 'Графики будут отображаться здесь';
+            plotsContainer.appendChild(noPlots);
+          }
+        });
+
+        // Собираем все элементы
+        controls.appendChild(fullscreenBtn);
+        controls.appendChild(downloadBtn);
+        controls.appendChild(closeBtn);
+
+        plotItem.appendChild(img);
+        plotItem.appendChild(controls);
+
+        // Добавляем в контейнер
+        plotsContainer.appendChild(plotItem);
+
+        // Сохраняем для дальнейшего использования
+        window.plots.push({ src: `data:image/png;base64,${imgStr}` });
+      };
+
+      window.jsInput = function (prompt) {
+        return prompt ? window.prompt(prompt) : window.prompt();
+      };
+
+      window.showFullscreen = function (imgStr) {
+        // Создаем полноэкранный контейнер
+        const fullscreen = document.createElement('div');
+        fullscreen.className = 'fullscreen-plot';
+
+        // Добавляем изображение
+        const img = document.createElement('img');
+        img.src = `data:image/png;base64,${imgStr}`;
+
+        // Добавляем элементы управления
+        const controls = document.createElement('div');
+        controls.className = 'fullscreen-controls';
+
+        // Кнопка скачивания
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'plot-button';
+        downloadBtn.textContent = '↓';
+        downloadBtn.title = 'Скачать';
+        downloadBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          window.downloadPlot(imgStr);
+        });
+
+        // Кнопка закрытия
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'plot-button';
+        closeBtn.textContent = '×';
+        closeBtn.title = 'Закрыть';
+        closeBtn.addEventListener('click', () => {
+          document.body.removeChild(fullscreen);
+        });
+
+        // Закрытие при клике вне изображения
+        fullscreen.addEventListener('click', () => {
+          document.body.removeChild(fullscreen);
+        });
+
+        // Предотвращаем закрытие при клике на изображение
+        img.addEventListener('click', e => {
+          e.stopPropagation();
+        });
+
+        // Собираем все элементы
+        controls.appendChild(downloadBtn);
+        controls.appendChild(closeBtn);
+
+        fullscreen.appendChild(img);
+        fullscreen.appendChild(controls);
+
+        // Добавляем в body
+        document.body.appendChild(fullscreen);
+      };
+
+      window.downloadPlot = function (imgStr) {
+        const link = document.createElement('a');
+        link.href = `data:image/png;base64,${imgStr}`;
+        link.download = `plot_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      window.clearOutput = function () {
+        document.getElementById('output').innerHTML = '';
+        const plotsContainer = document.getElementById('plots');
+        plotsContainer.innerHTML = '';
+
+        const noPlots = document.createElement('div');
+        noPlots.className = 'no-plots';
+        noPlots.textContent = 'Графики будут отображаться здесь';
+        plotsContainer.appendChild(noPlots);
+
+        window.plots = [];
+      };
+
+      window.appendOutput = function (text, isError = false) {
+        const output = document.getElementById('output');
+        const span = document.createElement('span');
+        span.textContent = text;
+        if (isError) {
+          span.className = 'error';
+        }
+        output.appendChild(span);
+        output.scrollTop = output.scrollHeight;
+      };
+
+      window.toggleTheme = function () {
+        const isDark = document.getElementById('theme-switch').checked;
+        if (isDark) {
+          document.body.classList.add('dark-theme');
+          localStorage.setItem('theme', 'dark');
+        } else {
+          document.body.classList.remove('dark-theme');
+          localStorage.setItem('theme', 'light');
+        }
+      };
+
+      window.runCode = async function () {
+        if (!window.pyodide || window.isRunning) return;
+
+        const code = window.editor.getValue();
+        localStorage.setItem('lastCode', code);
+
+        // Очищаем вывод и графики
+        window.clearOutput();
+
+        window.isRunning = true;
+        window.updateStatus('Выполнение...');
+
+        try {
+          // Перенаправляем stdout и stderr
+          window.pyodide.globals.set('_stdout_capture', '');
+          window.pyodide.globals.set('_stderr_capture', '');
+
+          await window.pyodide.runPythonAsync(`
+                    import sys
+                    from io import StringIO
+                    
+                    class CaptureIO(StringIO):
+                        def write(self, text):
+                            global _stdout_capture
+                            _stdout_capture += text
+                            return len(text)
+                    
+                    class CaptureErr(StringIO):
+                        def write(self, text):
+                            global _stderr_capture
+                            _stderr_capture += text
+                            return len(text)
+                    
+                    _stdout = sys.stdout
+                    _stderr = sys.stderr
+                    sys.stdout = CaptureIO()
+                    sys.stderr = CaptureErr()
+                `);
+
+          // Выполняем код
+          await window.pyodide.runPythonAsync(code);
+
+          // Получаем вывод
+          const stdout = await window.pyodide.globals.get('_stdout_capture');
+          const stderr = await window.pyodide.globals.get('_stderr_capture');
+
+          // Восстанавливаем stdout и stderr
+          await window.pyodide.runPythonAsync(`
+                    sys.stdout = _stdout
+                    sys.stderr = _stderr
+                `);
+
+          // Отображаем вывод
+          if (stdout) {
+            window.appendOutput(stdout);
+          }
+
+          if (stderr) {
+            window.appendOutput(`Error:\n${stderr}`, true);
+          }
+
+          window.updateStatus('Выполнено');
+        } catch (error) {
+          console.error('Error running code:', error);
+          window.appendOutput(`Error: ${error.message}`, true);
+          window.updateStatus('Ошибка');
+        } finally {
+          window.isRunning = false;
+        }
+      };
+
+      window.formatCode = async function () {
+        if (!window.pyodide || window.isRunning) return;
+
+        window.isRunning = true;
+        window.updateStatus('Форматирование...');
+
+        try {
+          // Инициализируем black если еще не установлен
+          await window.pyodide.runPythonAsync(`
+                    import micropip
+                    try:
+                        import black
+                    except ImportError:
+                        await micropip.install('black')
+                        import black
+                `);
+
+          // Форматируем код
+          const code = window.editor.getValue();
+          const result = await window.pyodide.runPythonAsync(`
+                    def format_python_code(code):
+                        import black
+                        try:
+                            mode = black.Mode(
+                                line_length=88,
+                                string_normalization=True,
+                                is_pyi=False
+                            )
+                            return black.format_str(code, mode=mode)
+                        except Exception as e:
+                            print(f"Formatting error: {str(e)}")
+                            return None
+                            
+                    format_python_code("""${code.replace(/"""/g, '\\"\\"\\"')}""")
+                `);
+
+          if (result) {
+            window.editor.setValue(result);
+            window.appendOutput('Код отформатирован успешно.\n');
+          } else {
+            window.appendOutput('Ошибка форматирования кода.\n', true);
+          }
+
+          window.updateStatus('Готов');
+        } catch (error) {
+          console.error('Error formatting code:', error);
+          window.appendOutput(`Ошибка форматирования: ${error.message}\n`, true);
+          window.updateStatus('Ошибка');
+        } finally {
+          window.isRunning = false;
+        }
+      };
+
+      window.lintCode = async function () {
+        if (!window.pyodide || window.isRunning) return;
+
+        window.isRunning = true;
+        window.updateStatus('Проверка кода...');
+
+        try {
+          // Инициализируем pyflakes если еще не установлен
+          await window.pyodide.runPythonAsync(`
+                    import micropip
+                    try:
+                        import pyflakes
+                    except ImportError:
+                        await micropip.install('pyflakes')
+                        import pyflakes
+                `);
+
+          // Проверяем код
+          const code = window.editor.getValue();
+          const result = await window.pyodide.runPythonAsync(`
+                    from pyflakes.api import check
+                    from pyflakes.reporter import Reporter
+                    import io
+                    
+                    class LintReporter:
+                        def __init__(self):
+                            self.errors = []
+                            
+                        def unexpectedError(self, filename, msg):
+                            self.errors.append({"line": 0, "type": "error", "message": str(msg)})
+                            
+                        def syntaxError(self, filename, msg, lineno, offset, text):
+                            self.errors.append({"line": lineno, "type": "error", "message": str(msg)})
+                            
+                        def flake(self, message):
+                            self.errors.append({
+                                "line": message.lineno,
+                                "type": "warning",
+                                "message": str(message.message)
+                            })
+                    
+                    reporter = LintReporter()
+                    check("""${code.replace(/"""/g, '\\"\\"\\"')}""", "code.py", reporter)
+                    
+                    result_report = "Lint Results:\\n" + "-" * 50 + "\\n"
+                    
+                    if not reporter.errors:
+                        result_report += "No issues found!\\n"
+                    else:
+                        for error in reporter.errors:
+                            result_report += f"{error['type'].upper()} at line {error['line']}: {error['message']}\\n"
+                    
+                    result_report
+                `);
+
+          window.appendOutput(result + '\n');
+          window.updateStatus('Готов');
+        } catch (error) {
+          console.error('Error linting code:', error);
+          window.appendOutput(`Ошибка проверки кода: ${error.message}\n`, true);
+          window.updateStatus('Ошибка');
+        } finally {
+          window.isRunning = false;
+        }
+      };
+
+      // Примеры кода
+      window.examples = {
+        hello: `print("Hello, World!")
+name = input("What's your name? ")
+print(f"Nice to meet you, {name}!")`,
+
+        fibonacci: `def fibonacci(n):
+    if n <= 0:
+        return []
+    elif n == 1:
+        return [0]
+    elif n == 2:
+        return [0, 1]
+    
+    fib = [0, 1]
+    for i in range(2, n):
+        fib.append(fib[i-1] + fib[i-2])
+    return fib
+
+n = 10
+result = fibonacci(n)
+print(f"First {n} numbers of Fibonacci sequence:")
+print(result)`,
+
+        turtle: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Create a spiral pattern
+t = np.linspace(0, 10*np.pi, 1000)
+x = t * np.cos(t)
+y = t * np.sin(t)
+
+# Create colorful plot
+plt.figure(figsize=(8, 8))
+points = plt.scatter(x, y, c=t, cmap='rainbow', s=1)
+plt.colorbar(points)
+plt.title('Mathematical Spiral')
+plt.axis('equal')
+plt.grid(True)
+plt.show()`,
+
+        numpy: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Create data
+x = np.linspace(0, 10, 100)
+y = np.sin(x)
+
+# Create plot
+plt.figure(figsize=(8, 4))
+plt.plot(x, y, 'b-', label='sin(x)')
+plt.title('Sine Wave')
+plt.xlabel('x')
+plt.ylabel('sin(x)')
+plt.grid(True)
+plt.legend()
+plt.show()`,
+
+        pandas: `import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем временной ряд
+dates = pd.date_range('2023-01-01', periods=100)
+data = pd.DataFrame({
+    'Date': dates,
+    'Sales': np.random.normal(100, 15, 100).cumsum() + 1000,
+    'Visitors': np.random.normal(50, 10, 100).cumsum() + 500,
+    'Conversion': np.random.uniform(1, 5, 100)
+})
+
+# Устанавливаем Date как индекс
+data.set_index('Date', inplace=True)
+
+# Создаем график с двумя осями Y
+fig, ax1 = plt.subplots(figsize=(12, 6))
+
+# Первая ось для Sales и Visitors
+color1, color2 = '#2563eb', '#16a34a'
+ax1.set_xlabel('Date')
+ax1.set_ylabel('Count', color=color1)
+ax1.plot(data.index, data['Sales'], color=color1, label='Sales')
+ax1.plot(data.index, data['Visitors'], color=color2, label='Visitors')
+ax1.tick_params(axis='y', labelcolor=color1)
+
+# Вторая ось для Conversion Rate
+ax2 = ax1.twinx()
+color3 = '#dc2626'
+ax2.set_ylabel('Conversion Rate (%)', color=color3)
+ax2.plot(data.index, data['Conversion'], color=color3, linestyle='--', label='Conversion')
+ax2.tick_params(axis='y', labelcolor=color3)
+
+# Добавляем заголовок и легенду
+plt.title('Sales, Visitors and Conversion Rate Over Time')
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+# Поворачиваем метки дат для лучшей читаемости
+plt.xticks(rotation=45)
+
+# Настраиваем макет
+plt.tight_layout()
+
+# Показываем график
+plt.show()
+
+# Выводим статистику
+print("\\nData Statistics:")
+print(data.describe())
+
+# Выводим корреляцию
+print("\\nCorrelation Matrix:")
+print(data.corr().round(2))`,
+
+        plotly: `import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Создаем данные для 3D графика
+theta = np.linspace(-4 * np.pi, 4 * np.pi, 100)
+z = np.linspace(-2, 2, 100)
+r = z**2 + 1
+x = r * np.sin(theta)
+y = r * np.cos(theta)
+
+# Создаем 3D график
+fig = plt.figure(figsize=(12, 5))
+
+# Первый subplot - 3D спираль
+ax1 = fig.add_subplot(121, projection='3d')
+scatter = ax1.scatter(x, y, z, c=z, cmap='viridis')
+ax1.set_title('3D Spiral')
+plt.colorbar(scatter, ax=ax1)
+
+# Второй subplot - 2D проекция
+ax2 = fig.add_subplot(122)
+scatter2 = ax2.scatter(x, y, c=z, cmap='viridis')
+ax2.set_title('2D Projection')
+plt.colorbar(scatter2, ax=ax2)
+
+plt.tight_layout()
+plt.show()`,
+      };
+
+      // Инициализация после загрузки DOM
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Инициализация редактора
+        const editorContainer = document.getElementById('editor-container');
+        window.editor = CodeMirror(editorContainer, {
+          value: window.examples.hello,
+          mode: 'python',
+          theme: 'monokai',
+          lineNumbers: true,
+          indentUnit: 4,
+          tabSize: 4,
+          indentWithTabs: false,
+          smartIndent: true,
+          lineWrapping: false,
+          matchBrackets: true,
+          extraKeys: {
+            'Ctrl-Enter': window.runCode,
+            'Cmd-Enter': window.runCode,
+          },
+        });
+
+        // Настраиваем кнопки
+        document.getElementById('run-button').addEventListener('click', window.runCode);
+        document
+          .getElementById('clear-button')
+          .addEventListener('click', window.clearOutput);
+        document
+          .getElementById('format-button')
+          .addEventListener('click', window.formatCode);
+        document
+          .getElementById('lint-button')
+          .addEventListener('click', window.lintCode);
+
+        // Выбор примеров
+        document.getElementById('examples').addEventListener('change', e => {
+          const example = e.target.value;
+          if (window.examples[example]) {
+            window.editor.setValue(window.examples[example]);
+          }
+        });
+
+        // Переключение темы
+        document
+          .getElementById('theme-switch')
+          .addEventListener('change', window.toggleTheme);
+
+        // Проверяем последнюю тему
+        if (localStorage.getItem('theme') === 'dark') {
+          document.body.classList.add('dark-theme');
+          document.getElementById('theme-switch').checked = true;
+        }
+
+        // Инициализация Pyodide
+        window.updateStatus('Инициализация Python окружения...');
+        try {
+          window.pyodide = await loadPyodide();
+
+          window.updateStatus('Загрузка библиотек...');
+          await window.pyodide.loadPackage(['numpy', 'matplotlib', 'pandas']);
+
+          // Настраиваем matplotlib для работы с нашим интерфейсом
+          await window.pyodide.runPythonAsync(`
+                    import matplotlib.pyplot as plt
+                    import io, base64
+
+                    def show_plot():
+                        buf = io.BytesIO()
+                        plt.savefig(buf, format='png', bbox_inches='tight')
+                        buf.seek(0)
+                        img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+                        plt.close()
+                        return img_str
+
+                    # Переопределяем функцию plt.show()
+                    original_show = plt.show
+                    def custom_show(**kwargs):
+                        img_str = show_plot()
+                        # Вызываем JavaScript функцию для отображения графика
+                        display_plot(img_str)
+                        
+                    plt.show = custom_show
+                    
+                    # Реализация функции input
+                    def input(prompt=''):
+                        # Выводим подсказку
+                        print(prompt, end='')
+                        # Вызываем JavaScript prompt
+                        return js_input(prompt)
+                `);
+
+          // Добавляем функции в глобальное пространство Python
+          window.pyodide.globals.set('display_plot', window.displayPlot);
+          window.pyodide.globals.set('js_input', window.jsInput);
+
+          window.updateStatus('Готов');
+
+          // Восстанавливаем последний код
+          const lastCode = localStorage.getItem('lastCode');
+          if (lastCode) {
+            window.editor.setValue(lastCode);
+          }
+        } catch (error) {
+          window.updateStatus(`Ошибка инициализации: ${error.message}`);
+          console.error('Failed to initialize Pyodide:', error);
+        }
+      });
+    </script>
+  </body>
+</html>

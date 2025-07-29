@@ -1,0 +1,4524 @@
+<!--
+Техническое задание:
+1. Создать веб-редактор Python кода с использованием Pyodide для выполнения кода в браузере
+2. Основные компоненты:
+   - Редактор кода с подсветкой синтаксиса (на основе CodeMirror)
+   - Панель вывода результатов
+   - Кнопки управления (запуск, очистка)
+   - Примеры кода
+   - Индикация загрузки и инициализации
+
+3. Функциональные требования:
+   - Выполнение Python кода в браузере
+   - Поддержка библиотек numpy и matplotlib
+   - Отображение графиков и визуализаций
+   - Вывод ошибок и результатов выполнения
+   - Горячие клавиши (Ctrl+Enter для запуска)
+   - Автопрокрутка к новому выводу
+
+4. Интерфейс:
+   - Разделение экрана на редактор и вывод
+   - Удобное расположение элементов управления
+   - Индикация процесса выполнения
+   - Адаптивный дизайн
+   - Поддержка длинного вывода с прокруткой
+
+5. Обработка ошибок:
+   - Информативные сообщения об ошибках
+   - Индикация статуса загрузки окружения
+   - Обработка ошибок инициализации
+   - Защита от некорректного ввода
+
+6. Примеры кода:
+   - Hello World (базовый пример)
+   - Fibonacci (алгоритмический пример)
+   - Spiral Plot (визуализация с matplotlib)
+   - Sine Wave (работа с numpy и графиками)
+
+7. Разделение правой колонки:
+   - Область вывода текста (40% высоты)
+   - Область графиков (60% высоты)
+   - Интерактивный разделитель для изменения пропорций
+   - Минимальные размеры для каждой области
+   - Визуальная индикация при перетаскивании
+   - Сохранение пропорций при изменении размера окна
+
+8. Интерактивный разделитель:
+   - Изменение курсора при наведении
+   - Визуальная подсказка о возможности перетаскивания
+   - Плавное перетаскивание
+   - Ограничение минимальных размеров областей
+   - Сохранение работоспособности при быстром перетаскивании
+
+9. Особенности реализации разделителя:
+   - Использование библиотеки Split.js
+   - Отдельный компонент RightColumn для управления разделением
+   - Стилизация разделителя через CSS
+   - Обработка событий перетаскивания
+   - Корректная работа с прокруткой в обеих областях
+
+Комментарии по реализации:
+1. Используется Pyodide v0.27.2 для запуска Python в браузере
+2. CSS переменные для легкой кастомизации темы
+3. Асинхронная загрузка и инициализация окружения
+4. Отдельные буферы для stdout и stderr
+5. Прогресс-бар для отслеживания загрузки компонентов
+6. Оптимизированная работа с DOM для улучшения производительности
+7. Автоматическая прокрутка для длинного вывода
+8. Обработка изображений matplotlib
+9. Система кэширования для быстрой загрузки
+10. Поддержка горячих клавиш
+
+Особенности реализации:
+- Использование CSS Grid для разметки
+- Flexbox для компонентов управления
+- Анимации для улучшения UX
+- Модульная структура JavaScript кода
+- Оптимизированная обработка событий
+
+10. Разделители областей:
+    - Вертикальный разделитель между кодом и результатами (50/50)
+    - Горизонтальный разделитель в области результатов (40/60)
+    - Возможность изменения пропорций мышью
+    - Минимальные размеры для всех областей
+    - Визуальные индикаторы разделителей
+    - Сохранение пропорций при изменении размера окна
+    - Разные курсоры для разных типов разделителей
+
+11. Сохранение настроек:
+    - Сохранение размеров разделителей в localStorage
+    - Кнопка настроек в правом верхнем углу
+    - Панель настроек с возможностью сброса layout
+    - Восстановление размеров при перезагрузке страницы
+    - Сброс к размерам по умолчанию
+    - Сохранение последнего выбранного примера
+    - Автоматическая загрузка последнего примера при старте
+
+12. Управление графиками:
+    - Кнопка раскрытия на весь экран
+    - Кнопка экспорта в PNG файл
+    - Кнопка закрытия графика
+    - Полноэкранный режим просмотра
+    - Возможность скачивания графиков
+    - Всплывающие подсказки для кнопок
+    - Анимация при открытии/закрытии
+
+13. Горячие клавиши редактора:
+    - Ctrl/Cmd+Enter для запуска кода
+    - Ctrl/Cmd+/ для комментирования кода
+    - Tab/Shift+Tab для управления отступами
+    - Ctrl/Cmd+D для дублирования строки
+    - Ctrl/Cmd+Y для удаления строки
+    - Alt+Up/Down для перемещения строк
+    - Ctrl/Cmd+F для поиска
+    - Ctrl/Cmd+H для замены
+    - Ctrl/Cmd+Z для отмены действия
+    - Ctrl/Cmd+Shift+Z для повтора действия
+    - Ctrl/Cmd+A для выделения всего текста
+    - Ctrl/Cmd+G для перехода к строке
+
+14. Работа с графиками:
+    - Поддержка различных типов графиков matplotlib
+    - Возможность экспорта графиков в PNG
+    - Полноэкранный режим просмотра
+    - Управление размером графиков
+    - Интерактивные элементы управления
+    - Автоматическое масштабирование
+    - Поддержка множественных графиков
+    - Сохранение истории графиков
+    - Возможность удаления отдельных графиков
+    - Настройка параметров отображения
+
+15. Темы оформления:
+    - Поддержка светлой и темной темы
+    - Настраиваемые цветовые схемы
+    - CSS переменные для легкой кастомизации
+    - Сохранение выбранной темы
+    - Автоматическое применение темы
+    - Адаптивное оформление элементов
+    - Анимации при смене темы
+    - Контрастные цвета для улучшения читаемости
+    - Стилизация скроллбаров
+    - Единообразное оформление компонентов
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Pages Python (Pyodide)</title>
+    <!-- Основные библиотеки (React 18) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Pyodide с указанием integrity для безопасности -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
+
+    <!-- CodeMirror с минифицированными файлами -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/monokai.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.min.js"></script>
+
+    <!-- Добавляем скрипты для автодополнения -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/python-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/anyword-hint.min.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/hint/show-hint.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/split.js@1.6.5/dist/split.min.js"></script>
+    <!-- Добавляем в head после других стилей -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/css/shepherd.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/js/shepherd.min.js"></script>
+    <!-- В head после других скриптов добавляем -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/lint/lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/lint/python-lint.min.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/lint/lint.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-color: #2563eb;
+        --background-color: #f8fafc;
+        --editor-background: #1e1e1e;
+        --output-background: #ffffff;
+        --text-color: #1e293b;
+        --border-color: #e2e8f0;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+        background-color: var(--background-color);
+        color: var(--text-color);
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 10px;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+
+      .header {
+        flex-shrink: 0;
+      }
+
+      .main-content {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+
+      h1 {
+        margin: 0;
+        padding: 0;
+        font-size: 1.2rem;
+        line-height: 1;
+      }
+
+      .editor-container {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .code-editor {
+        height: 100%;
+      }
+
+      #code {
+        width: 100%;
+        height: 400px;
+        padding: 15px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        border: none;
+        background-color: var(--editor-background);
+        color: #ffffff;
+        resize: none;
+      }
+
+      .output-container,
+      .plots-container {
+        overflow: auto;
+        padding: 5px;
+        margin: 0;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background-color: var(--output-background);
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary-color) #edf2f7;
+      }
+
+      .output-container::-webkit-scrollbar,
+      .plots-container::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      .output-container::-webkit-scrollbar-track,
+      .plots-container::-webkit-scrollbar-track {
+        background: #edf2f7;
+        border-radius: 4px;
+      }
+
+      .output-container::-webkit-scrollbar-thumb,
+      .plots-container::-webkit-scrollbar-thumb {
+        background-color: var(--primary-color);
+        border-radius: 4px;
+        border: 2px solid #edf2f7;
+      }
+
+      .output-container::-webkit-scrollbar-thumb:hover,
+      .plots-container::-webkit-scrollbar-thumb:hover {
+        background-color: #1d4ed8;
+      }
+
+      #output {
+        white-space: pre;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        margin: 0;
+        padding: 5px;
+      }
+
+      #output img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 10px 0;
+      }
+
+      .controls {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        gap: 5px;
+        height: 28px;
+      }
+
+      button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        height: 28px;
+        transition: background-color 0.2s;
+      }
+
+      button:hover {
+        background-color: #1d4ed8;
+      }
+
+      button:disabled {
+        background-color: #93c5fd;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-color);
+      }
+
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .examples-dropdown {
+        padding: 4px 8px;
+        font-size: 0.9rem;
+        height: 28px;
+      }
+
+      .init-status {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--output-background);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        z-index: 1000;
+        min-width: 300px;
+      }
+
+      .status-text {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--text-color);
+      }
+
+      .status-details {
+        font-size: 14px;
+        color: #666;
+        text-align: center;
+      }
+
+      .init-status .spinner {
+        width: 30px;
+        height: 30px;
+      }
+
+      /* Стили для плавающего контейнера с графиком */
+      .plot-container {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--output-background);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: auto;
+      }
+
+      .plot-container img {
+        max-width: 100%;
+        height: auto;
+      }
+
+      .plot-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+      }
+
+      .plot-close:hover {
+        background-color: #1d4ed8;
+      }
+
+      /* Стили для CodeMirror */
+      .CodeMirror {
+        height: 100% !important;
+        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+
+      /* Улучшаем внешний вид редактора */
+      .cm-s-monokai.CodeMirror {
+        background-color: var(--editor-background);
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+
+      .CodeMirror-gutters {
+        border-right: 1px solid #444;
+        background-color: var(--editor-background);
+      }
+
+      .CodeMirror-linenumber {
+        color: #666;
+      }
+
+      /* Стили для области графиков */
+      .plots-container {
+        padding: 5px;
+        gap: 10px;
+      }
+
+      .plot-item {
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 0;
+        margin-bottom: 5px;
+        overflow: hidden;
+        line-height: 0;
+      }
+
+      .plot-item img {
+        width: 100%;
+        height: auto;
+        display: block;
+        margin: 0;
+      }
+
+      .plot-close {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        opacity: 0.8;
+      }
+
+      .plot-close:hover {
+        opacity: 1;
+      }
+
+      .plots-header {
+        display: none;
+      }
+
+      .no-plots {
+        color: #666;
+        text-align: center;
+        padding: 20px;
+        font-style: italic;
+      }
+
+      /* Стили для разделителя и областей разделения */
+      .split {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .gutter {
+        background-color: var(--border-color);
+        background-repeat: no-repeat;
+        background-position: 50%;
+      }
+
+      .gutter.gutter-vertical {
+        background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=');
+        cursor: row-resize;
+        height: 6px;
+      }
+
+      .split-item {
+        overflow: auto;
+      }
+
+      /* Стили для горизонтального разделителя */
+      .gutter.gutter-horizontal {
+        background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+        cursor: col-resize;
+        width: 6px;
+      }
+
+      .settings-button {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 20px;
+        color: var(--text-color);
+        z-index: 1000;
+      }
+
+      .settings-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        z-index: 999;
+      }
+
+      .settings-panel {
+        position: fixed;
+        top: 40px;
+        right: 10px;
+        background: var(--output-background);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        min-width: 200px;
+      }
+
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .settings-header h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .close-button {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0 5px;
+      }
+
+      .reset-button {
+        width: 100%;
+        padding: 8px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      /* Добавляем стили для горизонтального скроллбара */
+      .output-container::-webkit-scrollbar,
+      .plots-container::-webkit-scrollbar,
+      .CodeMirror-hscrollbar::-webkit-scrollbar {
+        height: 8px;
+      }
+
+      /* Обновляем стили для кнопок управления графиком */
+      .plot-controls {
+        position: absolute;
+        top: 0;
+        right: 0;
+        display: flex;
+        gap: 4px;
+        padding: 3px;
+        background: none;
+        border-top-right-radius: 8px;
+      }
+
+      .plot-button {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        opacity: 0.8;
+        transition:
+          opacity 0.2s,
+          transform 0.2s;
+        backdrop-filter: none;
+        padding: 0;
+      }
+
+      .plot-button:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      /* Стили для полноэкранного режима */
+      .fullscreen-plot {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 20px;
+      }
+
+      .fullscreen-plot img {
+        max-width: 90%;
+        max-height: 90vh;
+        object-fit: contain;
+      }
+
+      .fullscreen-controls {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .fullscreen-button,
+      .fullscreen-close {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.8;
+        transition:
+          opacity 0.2s,
+          transform 0.2s;
+        padding: 0;
+        line-height: 1;
+      }
+
+      .fullscreen-button span,
+      .fullscreen-close span {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        margin-top: -2px;
+      }
+
+      .fullscreen-button:hover,
+      .fullscreen-close:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      /* Добавляем переменные для темной темы */
+      :root[data-theme='dark'] {
+        --primary-color: #3b82f6;
+        --background-color: #1a1a1a;
+        --editor-background: #1e1e1e;
+        --output-background: #2d2d2d;
+        --text-color: #e5e7eb;
+        --border-color: #404040;
+      }
+
+      /* Стили для переключателя темы */
+      .theme-switch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 20px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 20px;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: '';
+        height: 16px;
+        width: 16px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+
+      input:checked + .slider {
+        background-color: var(--primary-color);
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(20px);
+      }
+
+      .theme-label {
+        font-size: 0.9rem;
+        user-select: none;
+      }
+
+      /* Добавляем контейнер для кнопки настроек и панели */
+      .settings-container {
+        position: relative;
+        display: inline-block;
+      }
+
+      /* Добавляем подключение шрифта */
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+      /* Стили для подсветки элементов тура */
+      .shepherd-enabled.shepherd-element {
+        z-index: 9999;
+      }
+
+      .shepherd-target {
+        position: relative;
+      }
+
+      /* Кастомизация стилей тура */
+      .shepherd-element {
+        max-width: 400px;
+        border-radius: 8px;
+      }
+
+      .shepherd-element .shepherd-content {
+        padding: 15px;
+      }
+
+      .shepherd-element .shepherd-text {
+        color: #333;
+        line-height: 1.5;
+      }
+
+      .shepherd-element .shepherd-footer {
+        padding: 10px 15px;
+      }
+
+      .shepherd-button {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        margin: 0 5px;
+        cursor: pointer;
+      }
+
+      .shepherd-button:hover {
+        background: #1d4ed8;
+      }
+
+      .shepherd-button.shepherd-button-secondary {
+        background: #6b7280;
+      }
+
+      .shepherd-button.shepherd-button-secondary:hover {
+        background: #4b5563;
+      }
+
+      .error-line {
+        background-color: rgba(255, 0, 0, 0.2);
+        animation: errorHighlight 3s;
+      }
+
+      @keyframes errorHighlight {
+        0% {
+          background-color: rgba(255, 0, 0, 0.4);
+        }
+        100% {
+          background-color: rgba(255, 0, 0, 0.2);
+        }
+      }
+
+      .CodeMirror-selected {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+      }
+      .CodeMirror-selectedtext {
+        color: inherit !important;
+      }
+
+      .cm-matchhighlight {
+        background-color: rgba(255, 255, 0, 0.3);
+      }
+
+      .CodeMirror-selection-highlight-scrollbar {
+        background-color: rgba(255, 255, 0, 0.3);
+      }
+
+      /* Стили для кнопки форматирования */
+      button[title^='Format'] {
+        background-color: #4b5563;
+      }
+
+      button[title^='Format']:hover {
+        background-color: #374151;
+      }
+
+      button[title^='Format']:disabled {
+        background-color: #9ca3af;
+      }
+
+      /* Анимация для процесса форматирования */
+      @keyframes formatting {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      .formatting {
+        animation: formatting 1s infinite;
+      }
+
+      .CodeMirror-hints {
+        position: absolute;
+        z-index: 10;
+        overflow: hidden;
+        list-style: none;
+        margin: 0;
+        padding: 2px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        background: var(--output-background);
+        font-size: 90%;
+        font-family: 'JetBrains Mono', monospace;
+        max-height: 20em;
+        overflow-y: auto;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      .CodeMirror-hint {
+        margin: 0;
+        padding: 4px 8px;
+        border-radius: 2px;
+        white-space: pre;
+        color: var(--text-color);
+        cursor: pointer;
+        font-size: 13px;
+      }
+
+      .CodeMirror-hint-active {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .CodeMirror-lint-tooltip {
+        background-color: var(--output-background);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        color: var(--text-color);
+        font-family: 'JetBrains Mono', monospace;
+        padding: 4px 8px;
+        font-size: 12px;
+        z-index: 100;
+        max-width: 600px;
+        white-space: pre-wrap;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      .CodeMirror-lint-marker-error,
+      .CodeMirror-lint-marker-warning {
+        width: 16px;
+        height: 16px;
+        background-position: center center;
+        background-repeat: no-repeat;
+        cursor: pointer;
+      }
+
+      .CodeMirror-lint-marker-error {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23dc2626'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E");
+      }
+
+      .CodeMirror-lint-marker-warning {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'%3E%3Cpath d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E");
+      }
+
+      .CodeMirror-lint-mark-error {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='3'%3E%3Cpath d='M 0 2.5 L 1 2.5' stroke='%23dc2626'/%3E%3C/svg%3E");
+        background-position: left bottom;
+        background-repeat: repeat-x;
+      }
+
+      .CodeMirror-lint-mark-warning {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='3'%3E%3Cpath d='M 0 2.5 L 1 2.5' stroke='%23f59e0b'/%3E%3C/svg%3E");
+        background-position: left bottom;
+        background-repeat: repeat-x;
+      }
+
+      .lint-marker {
+        width: 16px;
+        height: 16px;
+        background-position: center center;
+        background-repeat: no-repeat;
+        cursor: pointer;
+        position: relative;
+      }
+
+      .lint-marker:hover::after {
+        content: attr(title);
+        position: absolute;
+        left: 20px;
+        top: 0;
+        background: var(--output-background);
+        border: 1px solid var(--border-color);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 1000;
+        color: var(--text-color);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      // Обновляем компонент Controls, добавляем параметр onLint
+      const Controls = ({
+        onRun,
+        onClear,
+        onFormat,
+        onLint,
+        examples,
+        onExampleSelect,
+        isRunning,
+        selectedExample,
+        code,
+      }) => {
+        console.log('Controls rendered, onLint exists:', !!onLint); // Отладочный вывод
+        return (
+          <div className="controls">
+            <button onClick={onRun} disabled={isRunning}>
+              Run Code (Ctrl+Enter)
+            </button>
+            <button onClick={onClear}>Clear Output</button>
+            <button
+              onClick={() => onFormat(code)}
+              disabled={isRunning}
+              title="Format code (Alt+Shift+F)"
+              className={isRunning ? 'formatting' : ''}
+            >
+              {isRunning ? 'Formatting...' : 'Format'}
+            </button>
+            <button
+              onClick={() => {
+                console.log('Lint button clicked in Controls'); // Отладочный вывод
+                onLint();
+              }}
+              title="Check code (Ctrl+L)"
+              disabled={isRunning} // Добавляем disabled состояние
+            >
+              {isRunning ? 'Processing...' : 'Lint Code'}
+            </button>
+            <select
+              className="examples-dropdown"
+              onChange={e => onExampleSelect(e.target.value)}
+              value={selectedExample || ''}
+            >
+              <option value="">-- Select Example --</option>
+              <option value="hello">Hello World</option>
+              <option value="fibonacci">Fibonacci Sequence</option>
+              <option value="turtle">Colorful Spiral</option>
+              <option value="numpy">Sine Wave</option>
+              <option value="plotly">3D Spiral Plot</option>
+              <option value="pandas">Data Analysis</option>
+              <option value="http">Bitcoin Price Analysis</option>
+              <option value="pillow">Image Processing</option>
+              <option value="html_parser">HTML Parser</option>
+              <option value="rss_parser">RSS Parser</option>
+              <option value="scipy">SciPy Curve Fitting</option>
+              <option value="sympy">SymPy Symbolic Math</option>
+              <option value="networkx">NetworkX Graph Analysis</option>
+              <option value="sklearn">Scikit-learn ML</option>
+              <option value="statsmodels">Time Series Analysis</option>
+              <option value="signal">Signal Processing</option>
+              <option value="skimage">Image Processing (scikit-image)</option>
+              <option value="wordcloud">Word Cloud</option>
+              <option value="xgboost">XGBoost ML</option>
+              <option value="zarr">Zarr Arrays</option>
+              <option value="xarray">XArray Data</option>
+              <option value="boost_histogram">Boost Histogram</option>
+              <option value="geodata">Geographic Data</option>
+              <option value="maps">Maps & Coordinates</option>
+              <option value="interactive_plot">Interactive Plot</option>
+              <option value="http_requests">HTTP Requests</option>
+              <option value="xml_parser">XML Parser</option>
+              <option value="templating">Template Engine</option>
+              <option value="diagrams">Various Diagrams</option>
+            </select>
+            {isRunning && (
+              <div className="loading">
+                <div className="spinner" />
+                <span>Running...</span>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      // Компонент редактора кода с CodeMirror
+      const CodeEditor = React.forwardRef(
+        ({ code, onChange, onRun, onFormat, pyodide }, ref) => {
+          const editorRef = React.useRef(null);
+          const cmRef = React.useRef(null);
+
+          // Экспортируем методы редактора через ref
+          React.useImperativeHandle(ref, () => ({
+            performLint: async () => {
+              if (!cmRef.current) return;
+
+              try {
+                // Очищаем предыдущие маркеры и классы
+                cmRef.current.clearGutter('CodeMirror-lint-markers');
+                const lineCount = cmRef.current.lineCount();
+                for (let i = 0; i < lineCount; i++) {
+                  cmRef.current.removeLineClass(i, 'background', 'lint-error-line');
+                  cmRef.current.removeLineClass(i, 'background', 'lint-warning-line');
+                }
+
+                const code = cmRef.current.getValue();
+
+                // Устанавливаем pyflakes если еще не установлен
+                if (!pyodide.isPyflakesInstalled) {
+                  await pyodide.loadPackage('micropip');
+                  await pyodide.runPythonAsync(`
+                                import micropip
+                                await micropip.install('pyflakes')
+                            `);
+                  pyodide.isPyflakesInstalled = true;
+                }
+
+                // Используем pyodide из пропсов
+                const result = await pyodide.runPythonAsync(`
+                            import io
+                            import sys
+                            from pyflakes.api import check
+                            from pyflakes.reporter import Reporter
+
+                            class LintReporter:
+                                def __init__(self):
+                                    self.errors = []
+                                    
+                                def unexpectedError(self, filename, msg):
+                                    self.errors.append({"line": 0, "type": "error", "message": str(msg)})
+                                    
+                                def syntaxError(self, filename, msg, lineno, offset, text):
+                                    self.errors.append({"line": lineno, "type": "error", "message": str(msg)})
+                                    
+                                def flake(self, message):
+                                    self.errors.append({
+                                        "line": message.lineno,
+                                        "type": "warning",
+                                        "message": str(message.message)
+                                    })
+
+                            reporter = LintReporter()
+                            check(${JSON.stringify(code)}, "code.py", reporter)
+                            reporter.errors
+                        `);
+
+                const errors = result.toJs();
+                let report = 'Lint Results:\n' + '-'.repeat(50) + '\n';
+
+                if (errors.length === 0) {
+                  report += 'No issues found!\n';
+                } else {
+                  errors.forEach(error => {
+                    const line = error.line - 1;
+                    const msg = error.message;
+                    report += `${error.type.toUpperCase()} at line ${error.line}: ${msg}\n`;
+
+                    // Создаем маркер ошибки с подсказкой
+                    const marker = document.createElement('div');
+                    marker.className = `lint-marker ${error.type}`;
+                    marker.setAttribute('title', msg); // Добавляем подсказку
+
+                    // Добавляем маркер и подсветку
+                    cmRef.current.setGutterMarker(
+                      line,
+                      'CodeMirror-lint-markers',
+                      marker
+                    );
+                    cmRef.current.addLineClass(
+                      line,
+                      'background',
+                      `lint-${error.type}-line`
+                    );
+                  });
+                }
+
+                return report;
+              } catch (error) {
+                console.error('Lint error:', error);
+                throw error;
+              }
+            },
+          }));
+
+          React.useEffect(() => {
+            if (editorRef.current && !cmRef.current) {
+              console.log('Initializing CodeMirror');
+              cmRef.current = CodeMirror(editorRef.current, {
+                value: code,
+                mode: 'python',
+                theme: 'monokai',
+                lineNumbers: true,
+                indentUnit: 4,
+                tabSize: 4,
+                indentWithTabs: false,
+                smartIndent: true,
+                lineWrapping: false,
+                scrollbarStyle: 'native',
+                matchBrackets: true,
+                autoCloseBrackets: true,
+                foldGutter: true,
+                gutters: [
+                  'CodeMirror-lint-markers',
+                  'CodeMirror-linenumbers',
+                  'CodeMirror-foldgutter',
+                ],
+                highlightSelectionMatches: { showToken: /\w/, annotateScrollbar: true },
+                extraKeys: {
+                  'Ctrl-Enter': onRun,
+                  'Cmd-Enter': onRun,
+                  'Ctrl-Space': function (cm) {
+                    CodeMirror.commands.autocomplete(cm, null, {
+                      completeSingle: false,
+                    });
+                  },
+                  'Ctrl-/': cm => {
+                    const commentCode = cm => {
+                      const selections = cm.listSelections();
+                      const isMultiLine = selections.some(
+                        sel => sel.head.line !== sel.anchor.line
+                      );
+
+                      if (isMultiLine) {
+                        // Улучшенное комментирование блоков
+                        cm.toggleComment({
+                          lineComment: '#',
+                          blockComment: ['"""', '"""'],
+                        });
+                      } else {
+                        // Улучшенное комментирование строк
+                        const cursor = cm.getCursor();
+                        const line = cm.getLine(cursor.line);
+                        const isCommented = line.trimStart().startsWith('#');
+
+                        cm.replaceRange(
+                          isCommented ? line.replace(/^\s*#\s?/, '') : '# ' + line,
+                          { line: cursor.line, ch: 0 },
+                          { line: cursor.line, ch: line.length }
+                        );
+                      }
+                    };
+                    commentCode(cm);
+                  },
+                  'Alt-Shift-F': cm => {
+                    onFormat(cm.getValue());
+                  },
+                  'Ctrl-L': cm => {
+                    cm.performLint();
+                  },
+                },
+                hintOptions: {
+                  completeSingle: false,
+                  alignWithWord: true,
+                  closeOnUnfocus: true,
+                  hint: function (cm, options) {
+                    const cursor = cm.getCursor();
+                    const token = cm.getTokenAt(cursor);
+                    const line = cm.getLine(cursor.line);
+                    const start = token.start;
+                    const end = cursor.ch;
+                    const word = token.string;
+
+                    // Собираем все возможные подсказки
+                    const list = options.words.filter(function (item) {
+                      return item.toLowerCase().indexOf(word.toLowerCase()) === 0;
+                    });
+
+                    return {
+                      list: list,
+                      from: CodeMirror.Pos(cursor.line, start),
+                      to: CodeMirror.Pos(cursor.line, end),
+                    };
+                  },
+                  words: [
+                    // Базовые функции Python
+                    'print',
+                    'input',
+                    'len',
+                    'range',
+                    'enumerate',
+                    'zip',
+                    'map',
+                    'filter',
+                    'sorted',
+                    'reversed',
+                    'sum',
+                    'min',
+                    'max',
+                    'abs',
+                    'round',
+                    'int',
+                    'float',
+                    'str',
+                    'list',
+                    'dict',
+                    'set',
+                    'tuple',
+                    'any',
+                    'all',
+                    'isinstance',
+                    'type',
+                    'dir',
+                    'help',
+                    'id',
+                    'hash',
+                    'super',
+
+                    // Ключевые слова Python
+                    'def',
+                    'class',
+                    'import',
+                    'from',
+                    'return',
+                    'if',
+                    'else',
+                    'elif',
+                    'for',
+                    'while',
+                    'try',
+                    'except',
+                    'finally',
+                    'with',
+                    'as',
+                    'in',
+                    'not',
+                    'and',
+                    'or',
+                    'is',
+                    'True',
+                    'False',
+                    'None',
+                    'self',
+                    'lambda',
+                    'async',
+                    'await',
+                    'yield',
+                    'break',
+                    'continue',
+                    'pass',
+                    'raise',
+                    'assert',
+                    'del',
+                    'global',
+                    'nonlocal',
+
+                    // Методы строк
+                    'split',
+                    'join',
+                    'strip',
+                    'lstrip',
+                    'rstrip',
+                    'upper',
+                    'lower',
+                    'title',
+                    'capitalize',
+                    'replace',
+                    'startswith',
+                    'endswith',
+                    'find',
+                    'format',
+                    'count',
+
+                    // Методы списков
+                    'append',
+                    'extend',
+                    'insert',
+                    'remove',
+                    'pop',
+                    'clear',
+                    'index',
+                    'sort',
+                    'reverse',
+
+                    // Методы словарей
+                    'keys',
+                    'values',
+                    'items',
+                    'get',
+                    'update',
+                    'setdefault',
+                    'copy',
+
+                    // Популярные библиотеки
+                    'numpy',
+                    'np',
+                    'pandas',
+                    'pd',
+                    'matplotlib',
+                    'plt',
+                    'sklearn',
+                    'torch',
+                    'tensorflow',
+                    'tf',
+                    'scipy',
+                    'requests',
+                    'json',
+                    'os',
+                    'sys',
+                    'math',
+                    'random',
+                    'datetime',
+                    'time',
+                    're',
+
+                    // Numpy методы
+                    'array',
+                    'zeros',
+                    'ones',
+                    'empty',
+                    'arange',
+                    'linspace',
+                    'reshape',
+                    'transpose',
+                    'concatenate',
+                    'split',
+                    'mean',
+                    'std',
+                    'min',
+                    'max',
+                    'argmin',
+                    'argmax',
+
+                    // Pandas методы
+                    'DataFrame',
+                    'Series',
+                    'read_csv',
+                    'read_excel',
+                    'to_csv',
+                    'to_excel',
+                    'groupby',
+                    'merge',
+                    'concat',
+                    'pivot',
+                    'pivot_table',
+                    'fillna',
+                    'dropna',
+                    'sort_values',
+                    'sort_index',
+                    'reset_index',
+                    'set_index',
+
+                    // Matplotlib методы
+                    'plot',
+                    'scatter',
+                    'hist',
+                    'bar',
+                    'barh',
+                    'pie',
+                    'boxplot',
+                    'subplot',
+                    'figure',
+                    'title',
+                    'xlabel',
+                    'ylabel',
+                    'legend',
+                    'grid',
+                    'show',
+                    'savefig',
+                    'close',
+                    'clf',
+                    'cla',
+                    'axis',
+                    'colorbar',
+                  ],
+                },
+                // Добавляем поддержку линтера
+                lint: {
+                  async getAnnotations(text) {
+                    // Проверяем, что Pyodide и pyflakes инициализированы
+                    if (!pyodide) return [];
+
+                    try {
+                      // Устанавливаем pyflakes если еще не установлен
+                      if (!pyodide.isPyflakesInstalled) {
+                        await pyodide.loadPackage('micropip');
+                        await pyodide.runPythonAsync(`
+                                            import micropip
+                                            await micropip.install('pyflakes')
+                                        `);
+                        pyodide.isPyflakesInstalled = true;
+                      }
+
+                      // Запускаем проверку кода
+                      const result = await pyodide.runPythonAsync(`
+                                        import io
+                                        import sys
+                                        from pyflakes.api import check
+                                        from pyflakes.reporter import Reporter
+
+                                        class LintReporter:
+                                            def __init__(self):
+                                                self.errors = []
+                                                
+                                            def unexpectedError(self, filename, msg):
+                                                self.errors.append({"line": 0, "type": "error", "message": str(msg)})
+                                                
+                                            def syntaxError(self, filename, msg, lineno, offset, text):
+                                                self.errors.append({"line": lineno, "type": "error", "message": str(msg)})
+                                                
+                                            def flake(self, message):
+                                                self.errors.append({
+                                                    "line": message.lineno,
+                                                    "type": "warning",
+                                                    "message": str(message.message)
+                                                })
+
+                                        reporter = LintReporter()
+                                        check(${JSON.stringify(text)}, "code.py", reporter)
+                                        reporter.errors
+                                    `);
+
+                      // Преобразуем результаты в формат CodeMirror
+                      return result.toJs().map(error => ({
+                        from: CodeMirror.Pos(error.line - 1, 0),
+                        to: CodeMirror.Pos(error.line - 1, 1000),
+                        message: error.message,
+                        severity: error.type,
+                      }));
+                    } catch (e) {
+                      console.error('Lint error:', e);
+                      return [];
+                    }
+                  },
+                  async: true,
+                  delay: 1000, // Увеличиваем задержку до 1 секунды
+                },
+                gutters: [
+                  'CodeMirror-lint-markers',
+                  'CodeMirror-linenumbers',
+                  'CodeMirror-foldgutter',
+                ],
+              });
+
+              // Добавляем обработчик изменений для обновления линтера
+              cmRef.current.on('change', () => {
+                if (cmRef.current.state.lint) {
+                  clearTimeout(cmRef.current.state.lint.timeout);
+                  cmRef.current.state.lint.timeout = setTimeout(() => {
+                    cmRef.current.performLint();
+                  }, 1000);
+                }
+              });
+
+              console.log(
+                'CodeMirror initialized with gutters:',
+                cmRef.current.getOption('gutters')
+              );
+            }
+          }, [code, pyodide]); // Добавляем pyodide в зависимости
+
+          // Обновляем содержимое редактора при изменении props
+          React.useEffect(() => {
+            if (cmRef.current && code !== cmRef.current.getValue()) {
+              cmRef.current.setValue(code);
+              // Перемещаем курсор в начало документа
+              cmRef.current.setCursor(0, 0);
+              // Фокусируемся на редакторе
+              cmRef.current.focus();
+            }
+          }, [code]);
+
+          // Восстанавливаем последний код при загрузке
+          React.useEffect(() => {
+            const lastCode = localStorage.getItem('lastCode');
+            if (lastCode && cmRef.current) {
+              cmRef.current.setValue(lastCode);
+            }
+          }, []);
+
+          return <div ref={editorRef} className="code-editor" />;
+        }
+      );
+
+      // Компонент вывода
+      const Output = ({ content }) => (
+        <div className="output-container">
+          <pre id="output">{content}</pre>
+        </div>
+      );
+
+      // Компонент для полноэкранного просмотра
+      const FullscreenPlot = ({ src, onClose, onDownload }) => (
+        <div className="fullscreen-plot" onClick={onClose}>
+          <img src={src} onClick={e => e.stopPropagation()} />
+          <div className="fullscreen-controls">
+            <button
+              className="fullscreen-button"
+              onClick={e => {
+                e.stopPropagation();
+                onDownload();
+              }}
+              title="Download"
+            >
+              <span>↓</span>
+            </button>
+            <button className="fullscreen-close" onClick={onClose} title="Close">
+              <span>×</span>
+            </button>
+          </div>
+        </div>
+      );
+
+      // Обновленный компонент PlotsPanel
+      const PlotsPanel = ({ plots, onRemovePlot }) => {
+        const [fullscreenPlot, setFullscreenPlot] = React.useState(null);
+
+        const downloadPlot = (src, index) => {
+          const link = document.createElement('a');
+          link.href = src;
+          link.download = `plot_${index + 1}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        };
+
+        return (
+          <div className="plots-container">
+            {plots.length === 0 ? (
+              <div className="no-plots">No plots to display</div>
+            ) : (
+              plots.map((plot, index) => (
+                <div key={index} className="plot-item">
+                  <div className="plot-controls">
+                    <button
+                      className="plot-button"
+                      onClick={() => setFullscreenPlot({ src: plot.src, index })}
+                      title="Fullscreen"
+                    >
+                      ⛶
+                    </button>
+                    <button
+                      className="plot-button"
+                      onClick={() => downloadPlot(plot.src, index)}
+                      title="Download"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      className="plot-button"
+                      onClick={() => onRemovePlot(index)}
+                      title="Close"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <img src={plot.src} alt={`Plot ${index + 1}`} />
+                </div>
+              ))
+            )}
+            {fullscreenPlot && (
+              <FullscreenPlot
+                src={fullscreenPlot.src}
+                onClose={() => setFullscreenPlot(null)}
+                onDownload={() =>
+                  downloadPlot(fullscreenPlot.src, fullscreenPlot.index)
+                }
+              />
+            )}
+          </div>
+        );
+      };
+
+      // Компонент статуса инициализации
+      const InitStatus = ({ status, progress }) => (
+        <div className="init-status">
+          <div className="spinner" />
+          <div className="status-text">Initializing AI Pages Python...</div>
+          <div className="status-details">
+            {status} {progress && `${progress}%`}
+          </div>
+        </div>
+      );
+
+      // Компонент настроек
+      const Settings = ({ onReset, isOpen, onClose, onStartTour }) => {
+        const panelRef = React.useRef(null);
+        const [isDarkTheme, setIsDarkTheme] = React.useState(
+          localStorage.getItem('theme') === 'dark'
+        );
+
+        const toggleTheme = () => {
+          const newTheme = isDarkTheme ? 'light' : 'dark';
+          setIsDarkTheme(!isDarkTheme);
+          localStorage.setItem('theme', newTheme);
+          document.documentElement.setAttribute('data-theme', newTheme);
+        };
+
+        React.useEffect(() => {
+          const savedTheme = localStorage.getItem('theme') || 'light';
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        }, []);
+
+        const handleOverlayClick = e => {
+          if (!panelRef.current.contains(e.target)) {
+            onClose();
+          }
+        };
+
+        if (!isOpen) return null;
+
+        return (
+          <div className="settings-overlay" onClick={handleOverlayClick}>
+            <div className="settings-panel" ref={panelRef}>
+              <div className="settings-header">
+                <h3>Settings</h3>
+                <button className="close-button" onClick={onClose}>
+                  ×
+                </button>
+              </div>
+              <div className="settings-content">
+                <div className="theme-switch">
+                  <span className="theme-label">Dark Theme</span>
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={isDarkTheme}
+                      onChange={toggleTheme}
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+                <button
+                  className="reset-button"
+                  onClick={() => {
+                    localStorage.removeItem('tourCompleted');
+                    onStartTour();
+                    onClose();
+                  }}
+                  style={{ marginBottom: '10px' }}
+                >
+                  Start Product Tour
+                </button>
+                <button className="reset-button" onClick={onReset}>
+                  Reset Layout
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // Обновляем правую колонку
+      const RightColumn = ({ output, plots, onRemovePlot }) => {
+        const splitRef = React.useRef(null);
+        const defaultSizes = [40, 60];
+
+        React.useEffect(() => {
+          if (splitRef.current) {
+            const savedSizes = localStorage.getItem('verticalSplit');
+            const sizes = savedSizes ? JSON.parse(savedSizes) : defaultSizes;
+
+            Split(splitRef.current.children, {
+              direction: 'vertical',
+              sizes: sizes,
+              minSize: [100, 100],
+              gutterSize: 6,
+              cursor: 'row-resize',
+              onDragEnd: sizes => {
+                localStorage.setItem('verticalSplit', JSON.stringify(sizes));
+              },
+            });
+          }
+        }, []);
+
+        return (
+          <div className="right-column">
+            <div className="split" ref={splitRef}>
+              <div className="split-item">
+                <Output content={output} />
+              </div>
+              <div className="split-item">
+                <PlotsPanel plots={plots} onRemovePlot={onRemovePlot} />
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // Главный компонент приложения
+      const App = () => {
+        const [pyodide, setPyodide] = React.useState(null);
+        const [code, setCode] = React.useState('print("Hello, World!")');
+        const [output, setOutput] = React.useState('');
+        const [isRunning, setIsRunning] = React.useState(false);
+        const [initStatus, setInitStatus] = React.useState('');
+        const [initProgress, setInitProgress] = React.useState(0);
+        const [plots, setPlots] = React.useState([]);
+        const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+        const mainContentRef = React.useRef(null);
+        const editorRef = React.useRef(null); // Добавляем ref для редактора
+        const defaultSizes = [50, 50];
+        const [selectedExample, setSelectedExample] = React.useState(
+          localStorage.getItem('selectedExample') || ''
+        );
+
+        // Добавляем обработчик для линтера
+        const handleLint = React.useCallback(async () => {
+          console.log('Lint button clicked');
+          if (!pyodide) {
+            const message =
+              'Error: Python environment is not ready yet. Please wait for initialization to complete.\n';
+            console.error(message);
+            setOutput(message);
+            return;
+          }
+
+          if (editorRef.current) {
+            console.log('Editor ref exists');
+            try {
+              setIsRunning(true);
+              const report = await editorRef.current.performLint();
+              setOutput(prev => prev + '\n' + report); // Добавляем отчет в вывод
+              console.log('Lint completed');
+            } catch (error) {
+              console.error('Lint error:', error);
+              setOutput(prev => prev + `\nLint error: ${error.message}\n`);
+            } finally {
+              setIsRunning(false);
+            }
+          } else {
+            console.log('Editor ref is null');
+          }
+        }, [pyodide]);
+
+        React.useEffect(() => {
+          if (mainContentRef.current) {
+            const savedSizes = localStorage.getItem('horizontalSplit');
+            const sizes = savedSizes ? JSON.parse(savedSizes) : defaultSizes;
+
+            Split(mainContentRef.current.children, {
+              direction: 'horizontal',
+              sizes: sizes,
+              minSize: [300, 300],
+              gutterSize: 6,
+              onDragEnd: sizes => {
+                localStorage.setItem('horizontalSplit', JSON.stringify(sizes));
+              },
+            });
+          }
+        }, []);
+
+        // Инициализация Pyodide
+        React.useEffect(() => {
+          const initPyodide = async () => {
+            try {
+              setInitStatus('Downloading Python core...');
+              const pyodideInstance = await loadPyodide({
+                stdout: text => setOutput(prev => prev + text + '\n'),
+                stderr: text => setOutput(prev => prev + 'Error: ' + text + '\n'),
+                progress: progress => {
+                  if (progress.loaded && progress.total) {
+                    setInitProgress(
+                      Math.round((progress.loaded / progress.total) * 100)
+                    );
+                  }
+                },
+              });
+
+              setInitStatus('Loading NumPy package...');
+              await pyodideInstance.loadPackage('numpy');
+
+              setInitStatus('Loading Matplotlib package...');
+              await pyodideInstance.loadPackage('matplotlib');
+
+              setInitStatus('Loading Pandas package...');
+              await pyodideInstance.loadPackage('pandas');
+
+              setInitStatus('Loading Pillow package...');
+              await pyodideInstance.loadPackage('pillow');
+
+              setInitStatus('Loading SciPy package...');
+              await pyodideInstance.loadPackage('scipy');
+
+              setInitStatus('Loading SymPy package...');
+              await pyodideInstance.loadPackage('sympy');
+
+              setInitStatus('Loading NetworkX package...');
+              await pyodideInstance.loadPackage('networkx');
+
+              setInitStatus('Loading scikit-learn package...');
+              await pyodideInstance.loadPackage('scikit-learn');
+
+              setInitStatus('Loading statsmodels package...');
+              await pyodideInstance.loadPackage('statsmodels');
+
+              setInitStatus('Loading scikit-image package...');
+              await pyodideInstance.loadPackage('scikit-image');
+
+              setInitStatus('Loading wordcloud package...');
+              await pyodideInstance.loadPackage('wordcloud');
+
+              setInitStatus('Loading xgboost package...');
+              await pyodideInstance.loadPackage('xgboost');
+
+              setInitStatus('Loading zarr package...');
+              await pyodideInstance.loadPackage('zarr');
+
+              setInitStatus('Loading xarray package...');
+              await pyodideInstance.loadPackage('xarray');
+
+              setInitStatus('Loading boost-histogram package...');
+              await pyodideInstance.loadPackage('boost-histogram');
+
+              // Настраиваем matplotlib для работы с нашим интерфейсом
+              await pyodideInstance.runPythonAsync(`
+                            import matplotlib.pyplot as plt
+                            import io, base64
+
+                            def show_plot():
+                                buf = io.BytesIO()
+                                plt.savefig(buf, format='png', bbox_inches='tight')
+                                buf.seek(0)
+                                img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+                                plt.close()
+                                return img_str
+
+                            def custom_show():
+                                img_str = show_plot()
+                                display_plot(img_str)
+                                
+                            plt.show = custom_show
+
+                            # Добавляем собственную реализацию input
+                            def input(prompt=''):
+                                # Сначала выводим prompt
+                                print(prompt, end='')
+                                # Затем вызываем JavaScript prompt
+                                return js_input(prompt)
+                        `);
+
+              // Добавляем функцию js_input в глобальное пространство Python
+              pyodideInstance.globals.set('js_input', prompt => {
+                return prompt ? window.prompt(prompt) : window.prompt();
+              });
+
+              // Добавляем функцию для отображения графиков в нашем интерфейсе
+              pyodideInstance.globals.set('display_plot', img_str => {
+                setPlots(prev => [
+                  ...prev,
+                  { src: `data:image/png;base64,${img_str}` },
+                ]);
+              });
+
+              setPyodide(pyodideInstance);
+              setInitStatus('');
+            } catch (error) {
+              setInitStatus(`Error: ${error.message}`);
+              console.error('Failed to initialize Pyodide:', error);
+            }
+          };
+
+          initPyodide();
+        }, []);
+
+        // Выполнение кода
+        const runCode = async () => {
+          if (!pyodide) return;
+
+          setIsRunning(true);
+          setOutput('');
+          setPlots([]);
+
+          try {
+            // Добавляем обработку timeout
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Execution timeout')), 30000);
+            });
+
+            const executionPromise = pyodide.runPythonAsync(code);
+            await Promise.race([executionPromise, timeoutPromise]);
+          } catch (error) {
+            let errorMessage = error.message;
+
+            // Улучшенная обработка ошибок Python
+            if (error.type === 'PythonError') {
+              const lines = error.message.split('\n');
+              const lastLine = lines[lines.length - 1];
+              errorMessage = `Python Error: ${lastLine}\n\nTraceback:\n${error.message}`;
+            }
+
+            setOutput(`Error: ${errorMessage}\n`);
+
+            // Подсвечиваем строку с ошибкой в редакторе
+            if (error.lineno) {
+              cmRef.current.addLineClass(error.lineno - 1, 'background', 'error-line');
+              setTimeout(() => {
+                cmRef.current.removeLineClass(
+                  error.lineno - 1,
+                  'background',
+                  'error-line'
+                );
+              }, 3000);
+            }
+          } finally {
+            setIsRunning(false);
+          }
+        };
+
+        // Загрузка примеров
+        const loadExample = exampleKey => {
+          if (examples[exampleKey]) {
+            setCode(examples[exampleKey]);
+            setSelectedExample(exampleKey);
+            localStorage.setItem('selectedExample', exampleKey);
+            // Очищаем вывод при загрузке нового примера
+            setOutput('');
+            setPlots([]);
+          }
+        };
+
+        // Добавим загрузку последнего примера при инициализации
+        React.useEffect(() => {
+          const lastExample = localStorage.getItem('selectedExample');
+          // Проверяем также наличие сохраненного кода
+          const lastCode = localStorage.getItem('lastCode');
+          if (lastCode) {
+            setCode(lastCode);
+          } else if (lastExample && examples[lastExample]) {
+            setCode(examples[lastExample]);
+            setSelectedExample(lastExample);
+          }
+        }, []);
+
+        // Очистка вывода
+        const clearOutput = () => {
+          setOutput('');
+          setPlots([]);
+        };
+
+        // Обработка горячих клавиш
+        React.useEffect(() => {
+          const handleKeyDown = e => {
+            // Убираем глобальный обработчик, так как CodeMirror
+            // будет обрабатывать Ctrl+Enter самостоятельно
+          };
+
+          document.addEventListener('keydown', handleKeyDown);
+          return () => document.removeEventListener('keydown', handleKeyDown);
+        }, [runCode]);
+
+        const removePlot = index => {
+          setPlots(plots => plots.filter((_, i) => i !== index));
+        };
+
+        const resetLayout = () => {
+          localStorage.removeItem('horizontalSplit');
+          localStorage.removeItem('verticalSplit');
+          localStorage.removeItem('selectedExample');
+          window.location.reload();
+        };
+
+        React.useEffect(() => {
+          const savedTheme = localStorage.getItem('theme') || 'light';
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        }, []);
+
+        // В компоненте App добавляем:
+        React.useEffect(() => {
+          // Инициализация тура
+          const tour = new Shepherd.Tour({
+            useModalOverlay: true,
+            defaultStepOptions: {
+              classes: 'shadow-md',
+              scrollTo: true,
+              cancelIcon: {
+                enabled: true,
+              },
+            },
+          });
+
+          // Добавляем шаги тура
+          tour.addStep({
+            id: 'welcome',
+            text: 'Добро пожаловать в Garpun AI Python! Давайте познакомимся с основными возможностями редактора.',
+            buttons: [
+              {
+                text: 'Пропустить',
+                action: tour.complete,
+              },
+              {
+                text: 'Далее',
+                action: tour.next,
+              },
+            ],
+          });
+
+          tour.addStep({
+            id: 'editor',
+            attachTo: {
+              element: '.editor-container',
+              on: 'right',
+            },
+            text: 'Здесь вы можете писать и редактировать Python код. Редактор поддерживает подсветку синтаксиса и автоматические отступы.',
+            buttons: [
+              {
+                text: 'Назад',
+                action: tour.back,
+              },
+              {
+                text: 'Далее',
+                action: tour.next,
+              },
+            ],
+          });
+
+          tour.addStep({
+            id: 'run-button',
+            attachTo: {
+              element: 'button:first-of-type',
+              on: 'bottom',
+            },
+            text: 'Нажмите эту кнопку или используйте Ctrl+Enter для запуска кода.',
+            buttons: [
+              {
+                text: 'Назад',
+                action: tour.back,
+              },
+              {
+                text: 'Далее',
+                action: tour.next,
+              },
+            ],
+          });
+
+          tour.addStep({
+            id: 'examples',
+            attachTo: {
+              element: '.examples-dropdown',
+              on: 'bottom',
+            },
+            text: 'Выберите один из готовых примеров для изучения различных возможностей Python.',
+            buttons: [
+              {
+                text: 'Назад',
+                action: tour.back,
+              },
+              {
+                text: 'Далее',
+                action: tour.next,
+              },
+            ],
+          });
+
+          tour.addStep({
+            id: 'output',
+            attachTo: {
+              element: '.output-container',
+              on: 'left',
+            },
+            text: 'Здесь будет отображаться вывод вашей программы и сообщения об ошибках.',
+            buttons: [
+              {
+                text: 'Назад',
+                action: tour.back,
+              },
+              {
+                text: 'Далее',
+                action: tour.next,
+              },
+            ],
+          });
+
+          tour.addStep({
+            id: 'plots',
+            attachTo: {
+              element: '.plots-container',
+              on: 'left',
+            },
+            text: 'В этой области будут отображаться графики, созданные с помощью matplotlib и других библиотек визуализации.',
+            buttons: [
+              {
+                text: 'Назад',
+                action: tour.back,
+              },
+              {
+                text: 'Далее',
+                action: tour.next,
+              },
+            ],
+          });
+
+          tour.addStep({
+            id: 'settings',
+            attachTo: {
+              element: '.settings-button',
+              on: 'left',
+            },
+            text: 'Нажмите здесь для доступа к настройкам редактора, включая выбор темы и сброс layout.',
+            buttons: [
+              {
+                text: 'Назад',
+                action: tour.back,
+              },
+              {
+                text: 'Завершить',
+                action: tour.complete,
+              },
+            ],
+          });
+
+          // Запускаем тур после инициализации Pyodide
+          if (!pyodide) {
+            const startTour = () => {
+              // Проверяем, не был ли тур уже показан
+              if (!localStorage.getItem('tourCompleted')) {
+                tour.start();
+                localStorage.setItem('tourCompleted', 'true');
+              }
+            };
+
+            const checkPyodide = setInterval(() => {
+              if (pyodide) {
+                clearInterval(checkPyodide);
+                startTour();
+              }
+            }, 1000);
+          }
+
+          return () => {
+            tour.complete();
+          };
+        }, [pyodide]);
+
+        const startTour = () => {
+          const tour = new Shepherd.Tour({
+            useModalOverlay: true,
+            defaultStepOptions: {
+              classes: 'shadow-md',
+              scrollTo: true,
+              cancelIcon: {
+                enabled: true,
+              },
+            },
+          });
+
+          // Добавляем шаги тура
+          tour.addStep({
+            id: 'welcome',
+            text: 'Добро пожаловать в Garpun AI Python! Давайте познакомимся с основными возможностями редактора.',
+            buttons: [
+              {
+                text: 'Пропустить',
+                action: tour.complete,
+              },
+              {
+                text: 'Далее',
+                action: tour.next,
+              },
+            ],
+          });
+
+          // Добавляем остальные шаги...
+          tour.addStep({
+            id: 'editor',
+            attachTo: {
+              element: '.editor-container',
+              on: 'right',
+            },
+            text: 'Здесь вы можете писать и редактировать Python код. Редактор поддерживает подсветку синтаксиса и автоматические отступы.',
+            buttons: [
+              {
+                text: 'Назад',
+                action: tour.back,
+              },
+              {
+                text: 'Далее',
+                action: tour.next,
+              },
+            ],
+          });
+
+          // ... добавляем остальные шаги как в useEffect ...
+
+          tour.start();
+        };
+
+        // Функция форматирования кода
+        const formatCode = async code => {
+          if (!pyodide) return;
+
+          setIsRunning(true);
+          setOutput('Formatting code...\n');
+
+          try {
+            // Инициализируем black если еще не установлен
+            if (!pyodide.globals.get('black')) {
+              setOutput('Installing black formatter...\n');
+              await pyodide.loadPackage('micropip');
+              await pyodide.runPythonAsync(`
+import micropip
+await micropip.install('black')
+import black
+                        `);
+              setOutput('Black formatter installed successfully.\n');
+            }
+
+            // Форматируем код
+            const formatScript = `
+def format_python_code(code):
+    import black
+    try:
+        mode = black.Mode(
+            line_length=88,
+            string_normalization=True,
+            is_pyi=False
+        )
+        return black.format_str(code, mode=mode)
+    except Exception as e:
+        print(f"Formatting error: {str(e)}")
+        return None
+                       `;
+
+            await pyodide.runPythonAsync(formatScript);
+            pyodide.globals.set('code_to_format', code);
+
+            const result = await pyodide.runPythonAsync(`
+format_python_code(code_to_format)
+                       `);
+
+            console.log('Format result:', result);
+
+            if (result) {
+              setOutput('Code formatted successfully.\n');
+              const formattedCode = result.trimEnd();
+              setCode(formattedCode);
+              return formattedCode;
+            }
+            return null;
+          } catch (error) {
+            console.error('Formatting failed:', error);
+            setOutput(`Formatting error: ${error.message}\n`);
+            return null;
+          } finally {
+            setIsRunning(false);
+          }
+        };
+
+        // Добавляем обработчик форматирования в основной компонент
+        return (
+          <div className="container">
+            <button
+              className="settings-button"
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              title="Settings"
+            >
+              ⚙
+            </button>
+            <button
+              className="tour-button"
+              onClick={startTour}
+              style={{
+                position: 'fixed',
+                top: '10px',
+                right: '50px',
+                background: 'var(--primary-color)',
+                color: 'white',
+                border: 'none',
+                padding: '5px 10px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                zIndex: 1000,
+              }}
+            >
+              Start Tour
+            </button>
+            <div className="header">
+              <h1>Garpun AI Python (Pyodide)</h1>
+              <Controls
+                onRun={runCode}
+                onClear={clearOutput}
+                onFormat={formatCode}
+                onLint={handleLint}
+                examples={examples}
+                onExampleSelect={loadExample}
+                isRunning={isRunning}
+                selectedExample={selectedExample}
+                code={code}
+              />
+            </div>
+            <div className="main-content" ref={mainContentRef}>
+              <div className="editor-container">
+                <CodeEditor
+                  ref={editorRef}
+                  code={code}
+                  onChange={setCode}
+                  onRun={runCode}
+                  onFormat={formatCode}
+                  pyodide={pyodide} // Передаем pyodide в CodeEditor
+                />
+              </div>
+              <RightColumn output={output} plots={plots} onRemovePlot={removePlot} />
+            </div>
+            {initStatus && <InitStatus status={initStatus} progress={initProgress} />}
+            <Settings
+              isOpen={isSettingsOpen}
+              onClose={() => setIsSettingsOpen(false)}
+              onReset={resetLayout}
+              onStartTour={startTour}
+            />
+          </div>
+        );
+      };
+
+      // Примеры кода
+      const examples = {
+        hello: `print("Hello, World!")
+name = input("What's your name? ")
+print(f"Nice to meet you, {name}!")`,
+
+        fibonacci: `def fibonacci(n):
+    if n <= 0:
+        return []
+    elif n == 1:
+        return [0]
+    elif n == 2:
+        return [0, 1]
+    
+    fib = [0, 1]
+    for i in range(2, n):
+        fib.append(fib[i-1] + fib[i-2])
+    return fib
+
+n = 10
+result = fibonacci(n)
+print(f"First {n} numbers of Fibonacci sequence:")
+print(result)`,
+
+        turtle: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Create a spiral pattern
+t = np.linspace(0, 10*np.pi, 1000)
+x = t * np.cos(t)
+y = t * np.sin(t)
+
+# Create colorful plot
+plt.figure(figsize=(8, 8))
+points = plt.scatter(x, y, c=t, cmap='rainbow', s=1)
+plt.colorbar(points)
+plt.title('Mathematical Spiral')
+plt.axis('equal')
+plt.grid(True)
+plt.show()`,
+
+        numpy: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Create data
+x = np.linspace(0, 10, 100)
+y = np.sin(x)
+
+# Create plot
+plt.figure(figsize=(8, 4))
+plt.plot(x, y, 'b-', label='sin(x)')
+plt.title('Sine Wave')
+plt.xlabel('x')
+plt.ylabel('sin(x)')
+plt.grid(True)
+plt.legend()
+plt.show()`,
+
+        plotly: `import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Создаем данные для 3D графика
+theta = np.linspace(-4 * np.pi, 4 * np.pi, 100)
+z = np.linspace(-2, 2, 100)
+r = z**2 + 1
+x = r * np.sin(theta)
+y = r * np.cos(theta)
+
+# Создаем 3D график
+fig = plt.figure(figsize=(12, 5))
+
+# Первый subplot - 3D спираль
+ax1 = fig.add_subplot(121, projection='3d')
+scatter = ax1.scatter(x, y, z, c=z, cmap='viridis')
+ax1.set_title('3D Spiral')
+plt.colorbar(scatter, ax=ax1)
+
+# Второй subplot - 2D проекция
+ax2 = fig.add_subplot(122)
+scatter2 = ax2.scatter(x, y, c=z, cmap='viridis')
+ax2.set_title('2D Projection')
+plt.colorbar(scatter2, ax=ax2)
+
+plt.tight_layout()
+plt.show()`,
+
+        pandas: `import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем временной ряд
+dates = pd.date_range('2023-01-01', periods=100)
+data = pd.DataFrame({
+    'Date': dates,
+    'Sales': np.random.normal(100, 15, 100).cumsum() + 1000,
+    'Visitors': np.random.normal(50, 10, 100).cumsum() + 500,
+    'Conversion': np.random.uniform(1, 5, 100)
+})
+
+# Устанавливаем Date как индекс
+data.set_index('Date', inplace=True)
+
+# Создаем график с двумя осями Y
+fig, ax1 = plt.subplots(figsize=(12, 6))
+
+# Первая ось для Sales и Visitors
+color1, color2 = '#2563eb', '#16a34a'
+ax1.set_xlabel('Date')
+ax1.set_ylabel('Count', color=color1)
+ax1.plot(data.index, data['Sales'], color=color1, label='Sales')
+ax1.plot(data.index, data['Visitors'], color=color2, label='Visitors')
+ax1.tick_params(axis='y', labelcolor=color1)
+
+# Вторая ось для Conversion Rate
+ax2 = ax1.twinx()
+color3 = '#dc2626'
+ax2.set_ylabel('Conversion Rate (%)', color=color3)
+ax2.plot(data.index, data['Conversion'], color=color3, linestyle='--', label='Conversion')
+ax2.tick_params(axis='y', labelcolor=color3)
+
+# Добавляем заголовок и легенду
+plt.title('Sales, Visitors and Conversion Rate Over Time')
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+# Поворачиваем метки дат для лучшей читаемости
+plt.xticks(rotation=45)
+
+# Настраиваем макет
+plt.tight_layout()
+
+# Показываем график
+plt.show()
+
+# Выводим статистику
+print("\\nData Statistics:")
+print(data.describe())
+
+# Выводим корреляцию
+print("\\nCorrelation Matrix:")
+print(data.corr().round(2))`,
+
+        http: `from pyodide.http import pyfetch
+import json
+import pandas as pd
+import matplotlib.pyplot as plt
+
+async def get_bitcoin_price():
+    response = await pyfetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+    data = await response.json()
+    return data['bitcoin']['usd']
+
+# Получаем текущую цену биткоина
+price = await get_bitcoin_price()
+print(f"Current Bitcoin price: $" + f"{price:,.2f}")
+
+# Получаем исторические данные
+response = await pyfetch(
+    "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
+)
+data = await response.json()
+
+# Преобразуем данные
+prices = [[x[0], x[1]] for x in data['prices']]
+dates = [pd.to_datetime(x[0], unit='ms') for x in prices]
+values = [x[1] for x in prices]
+
+# Создаем график
+plt.figure(figsize=(12, 6))
+plt.plot(dates, values, 'b-', label='Bitcoin Price')
+plt.title('Bitcoin Price Last 30 Days')
+plt.xlabel('Date')
+plt.ylabel('Price (USD)')
+plt.grid(True)
+plt.legend()
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# Выводим базовую статистику
+prices_series = pd.Series(values)
+print("\\nPrice Statistics:")
+print("Mean: $" + f"{prices_series.mean():,.2f}")
+print("Min: $" + f"{prices_series.min():,.2f}")
+print("Max: $" + f"{prices_series.max():,.2f}")
+print("Std Dev: $" + f"{prices_series.std():,.2f}")`,
+
+        pillow: `from PIL import Image, ImageDraw, ImageFilter
+import numpy as np
+import matplotlib.pyplot as plt
+import io
+
+# Создаем новое изображение
+width = 400
+height = 300
+image = Image.new('RGB', (width, height), 'white')
+draw = ImageDraw.Draw(image)
+
+# Рисуем разноцветные фигуры
+for _ in range(50):
+    # Случайные координаты и цвета
+    x1 = np.random.randint(0, width)
+    y1 = np.random.randint(0, height)
+    x2 = np.random.randint(0, width)
+    y2 = np.random.randint(0, height)
+    r = np.random.randint(0, 255)
+    g = np.random.randint(0, 255)
+    b = np.random.randint(0, 255)
+    
+    # Рисуем линии разной толщины
+    thickness = np.random.randint(1, 5)
+    draw.line([(x1, y1), (x2, y2)], fill=(r, g, b), width=thickness)
+
+# Рисуем несколько кругов
+for _ in range(20):
+    x = np.random.randint(0, width)
+    y = np.random.randint(0, height)
+    radius = np.random.randint(10, 30)
+    r = np.random.randint(0, 255)
+    g = np.random.randint(0, 255)
+    b = np.random.randint(0, 255)
+    draw.ellipse([x-radius, y-radius, x+radius, y+radius], 
+                 outline=(r, g, b), 
+                 width=2)
+
+# Добавляем текст
+draw.text((width//2-60, 10), 'Pillow Drawing', fill='black')
+
+# Конвертируем в массив numpy для отображения
+img_array = np.array(image)
+
+# Отображаем результат
+plt.figure(figsize=(10, 8))
+plt.imshow(img_array)
+plt.axis('off')
+plt.title('Generated Image using Pillow')
+plt.show()
+
+# Применяем некоторые фильтры
+filtered = image.filter(ImageFilter.BLUR)
+img_array = np.array(filtered)
+
+plt.figure(figsize=(10, 8))
+plt.imshow(img_array)
+plt.axis('off')
+plt.title('Blurred Image')
+plt.show()
+
+# Поворачиваем изображение
+rotated = image.rotate(45, expand=True)
+img_array = np.array(rotated)
+
+plt.figure(figsize=(10, 8))
+plt.imshow(img_array)
+plt.axis('off')
+plt.title('Rotated Image')
+plt.show()`,
+
+        html_parser: `from html.parser import HTMLParser
+import io
+from pyodide.http import pyfetch
+import json
+
+async def fetch_and_parse_posts():
+    print("Fetching posts from JSONPlaceholder API...")
+    
+    # Получаем данные из открытого API
+    response = await pyfetch("https://jsonplaceholder.typicode.com/posts")
+    posts = await response.json()
+    
+    # Получаем комментарии
+    response = await pyfetch("https://jsonplaceholder.typicode.com/comments?_limit=10")
+    comments = await response.json()
+    
+    print("\\nLatest Posts:\\n")
+    print("="*60)
+    
+    # Выводим посты
+    for post in posts[:5]:  # Первые 5 постов
+        print(f"Title: {post['title']}")
+        print(f"Content: {post['body'][:100]}...")  # Первые 100 символов
+        print("-"*60)
+    
+    print("\\nLatest Comments:\\n")
+    print("="*60)
+    
+    # Выводим комментарии
+    for comment in comments[:3]:  # Первые 3 комментария
+        print(f"Name: {comment['name']}")
+        print(f"Email: {comment['email']}")
+        print(f"Comment: {comment['body']}")
+        print("-"*60)
+
+# Запускаем парсинг
+await fetch_and_parse_posts()`,
+
+        rss_parser: `from pyodide.http import pyfetch
+import pandas as pd
+import xml.etree.ElementTree as ET
+import io
+
+async def parse_rss(url):
+    print(f"Fetching RSS from TechInsider...\\n")
+    
+    # Получаем RSS
+    response = await pyfetch(url)
+    rss_content = await response.string()
+    
+    # Парсим XML
+    root = ET.fromstring(rss_content)
+    
+    # Находим все items
+    items = root.findall('.//item')
+    
+    # Собираем данные
+    news_data = []
+    for item in items:
+        title = item.find('title').text if item.find('title') is not None else ''
+        link = item.find('link').text if item.find('link') is not None else ''
+        date = item.find('pubDate').text if item.find('pubDate') is not None else ''
+        category = item.find('category').text if item.find('category') is not None else ''
+        
+        news_data.append({
+            'Заголовок': title,
+            'Дата': date,
+            'Категория': category,
+            'Ссылка': link
+        })
+    
+    # Создаем DataFrame
+    df = pd.DataFrame(news_data)
+    
+    # Выводим результаты
+    print("Последние новости TechInsider:")
+    print("="*100)
+    print(df.to_string(index=False))
+    
+    # Базовая статистика
+    print("\\nСтатистика:")
+    print(f"Всего статей: {len(df)}")
+    print(f"Уникальных категорий: {df['Категория'].nunique()}")
+    print("\\nКатегории:")
+    print(df['Категория'].value_counts())
+
+# Парсим RSS ленту TechInsider
+await parse_rss("https://www.techinsider.ru/out/public-feed-all-news.xml")`,
+
+        scipy: `import numpy as np
+from scipy import optimize, stats
+import matplotlib.pyplot as plt
+
+# Создаем зашумленные данные
+x = np.linspace(0, 10, 100)
+y_true = 3 * np.exp(-x/2)
+y_noisy = y_true + np.random.normal(0, 0.2, x.shape)
+
+# Определяем функцию для оптимизации
+def exp_decay(x, a, b):
+    return a * np.exp(-b * x)
+
+# Находим оптимальные параметры
+popt, pcov = optimize.curve_fit(exp_decay, x, y_noisy)
+
+# Строим график
+plt.figure(figsize=(10, 6))
+plt.scatter(x, y_noisy, label='Noisy data')
+plt.plot(x, exp_decay(x, *popt), 'r-', label='Fitted curve')
+plt.title('Exponential Decay Fitting')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Статистический анализ
+print("Fitted Parameters:")
+print(f"a = {popt[0]:.3f}")
+print(f"b = {popt[1]:.3f}")
+
+# Проверка нормальности распределения шума
+residuals = y_noisy - exp_decay(x, *popt)
+stat, p_value = stats.normaltest(residuals)
+print(f"\\nNormality test p-value: {p_value:.3f}")`,
+
+        sympy: `from sympy import symbols, solve, diff, integrate, latex
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Определяем символьные переменные
+x, y = symbols('x y')
+expr = x**2 + 2*x + 1
+
+# Находим производную
+derivative = diff(expr, x)
+print(f"Expression: {expr}")
+print(f"Derivative: {derivative}")
+
+# Находим интеграл
+integral = integrate(expr, x)
+print(f"Integral: {integral}")
+
+# Решаем уравнение
+equation = expr - 4
+solution = solve(equation, x)
+print(f"Solutions for {expr} = 4: {solution}")
+
+# Визуализируем функцию
+x_vals = np.linspace(-5, 5, 100)
+y_vals = [i**2 + 2*i + 1 for i in x_vals]
+
+plt.figure(figsize=(10, 6))
+plt.plot(x_vals, y_vals)
+plt.title(f'$f(x) = {latex(expr)}$')
+plt.grid(True)
+plt.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+plt.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+plt.show()`,
+
+        networkx: `import networkx as nx
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Создаем случайный граф
+G = nx.random_geometric_graph(20, 0.3)
+
+# Получаем наибольшую компоненту связности
+largest_cc = max(nx.connected_components(G), key=len)
+G = G.subgraph(largest_cc).copy()
+
+# Вычисляем метрики графа
+degrees = dict(G.degree())
+centrality = nx.betweenness_centrality(G)
+
+# Создаем фигуру с правильными размерами
+fig, ax = plt.subplots(figsize=(10, 8))
+
+# Получаем layout для графа
+pos = nx.spring_layout(G)
+
+# Создаем маппинг для цветов
+nodes = nx.draw_networkx_nodes(G, pos,
+                             node_size=[v * 1000 for v in centrality.values()],
+                             node_color=list(degrees.values()),
+                             cmap=plt.cm.viridis,
+                             ax=ax)
+
+# Рисуем ребра
+nx.draw_networkx_edges(G, pos, alpha=0.2, ax=ax)
+
+# Добавляем метки узлов
+nx.draw_networkx_labels(G, pos, font_size=8)
+
+# Добавляем colorbar
+plt.colorbar(nodes, ax=ax, label='Node Degree')
+
+# Настраиваем внешний вид
+plt.title('Connected Component Analysis')
+ax.set_axis_off()
+
+# Показываем график
+plt.tight_layout()
+plt.show()
+
+# Анализ графа
+print("Graph Analysis:")
+print(f"Number of nodes: {G.number_of_nodes()}")
+print(f"Number of edges: {G.number_of_edges()}")
+print(f"Average clustering coefficient: {nx.average_clustering(G):.3f}")
+print(f"Average shortest path length: {nx.average_shortest_path_length(G):.3f}")
+
+# Дополнительная информация о степенях узлов
+degree_sequence = sorted([d for n, d in G.degree()], reverse=True)
+print("\\nDegree Distribution:")
+print(f"Maximum degree: {max(degree_sequence)}")
+print(f"Minimum degree: {min(degree_sequence)}")
+print(f"Average degree: {sum(degree_sequence)/len(degree_sequence):.2f}")
+
+# Дополнительные метрики
+print("\\nAdditional Metrics:")
+print(f"Graph density: {nx.density(G):.3f}")
+print(f"Graph diameter: {nx.diameter(G)}")
+print(f"Graph radius: {nx.radius(G)}")`,
+
+        sklearn: `from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Генерируем данные
+X, y = make_classification(n_samples=1000, n_features=2, n_redundant=0, 
+                         n_clusters_per_class=1, random_state=42)
+
+# Разделяем на тренировочную и тестовую выборки
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+
+# Обучаем модель
+clf = RandomForestClassifier(n_estimators=100)
+clf.fit(X_train, y_train)
+
+# Делаем предсказания
+y_pred = clf.predict(X_test)
+
+# Визуализируем результаты
+plt.figure(figsize=(12, 5))
+
+# График данных и границы решения
+plt.subplot(121)
+x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02),
+                     np.arange(y_min, y_max, 0.02))
+Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+
+plt.contourf(xx, yy, Z, alpha=0.4)
+plt.scatter(X[:, 0], X[:, 1], c=y, alpha=0.8)
+plt.title('Classification Results')
+
+# Матрица ошибок
+plt.subplot(122)
+cm = confusion_matrix(y_test, y_pred)
+plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+plt.title('Confusion Matrix')
+plt.colorbar()
+plt.show()
+
+# Выводим метрики
+print(f"Accuracy: {clf.score(X_test, y_test):.3f}")`,
+
+        statsmodels: `import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.stattools import adfuller, acf, pacf
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+# Создаем временной ряд с трендом, сезонностью и шумом
+np.random.seed(42)
+dates = pd.date_range(start='2020-01-01', end='2023-12-31', freq='D')
+n = len(dates)
+
+# Создаем компоненты временного ряда
+trend = np.linspace(0, 100, n)  # Линейный тренд
+seasonal = 20 * np.sin(2 * np.pi * np.arange(n)/365)  # Годовая сезонность
+noise = np.random.normal(0, 5, n)  # Случайный шум
+
+# Создаем временной ряд
+data = trend + seasonal + noise
+ts = pd.Series(data, index=dates, name='value')
+
+# 1. Декомпозиция временного ряда
+decomposition = seasonal_decompose(ts, period=365)
+
+# Визуализация декомпозиции
+fig = plt.figure(figsize=(12, 10))
+plt.subplot(411)
+plt.plot(ts)
+plt.title('Original Time Series')
+plt.grid(True)
+
+plt.subplot(412)
+plt.plot(decomposition.trend)
+plt.title('Trend')
+plt.grid(True)
+
+plt.subplot(413)
+plt.plot(decomposition.seasonal)
+plt.title('Seasonal')
+plt.grid(True)
+
+plt.subplot(414)
+plt.plot(decomposition.resid)
+plt.title('Residuals')
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+# 2. Анализ стационарности
+def print_adf_test(series):
+    result = adfuller(series.dropna())
+    print('Augmented Dickey-Fuller Test:')
+    print(f'ADF Statistic: {result[0]:.3f}')
+    print(f'p-value: {result[1]:.3f}')
+    print('Critical values:')
+    for key, value in result[4].items():
+        print(f'\\t{key}: {value:.3f}')
+
+print("Stationarity Test for Original Series:")
+print_adf_test(ts)
+
+# 3. ACF и PACF анализ
+fig = plt.figure(figsize=(12, 6))
+ax1 = plt.subplot(121)
+plot_acf(ts, ax=ax1, lags=40)
+plt.title('Autocorrelation Function')
+
+ax2 = plt.subplot(122)
+plot_pacf(ts, ax=ax2, lags=40)
+plt.title('Partial Autocorrelation Function')
+
+plt.tight_layout()
+plt.show()
+
+# 4. Прогнозирование
+# Разделяем данные
+train = ts[:'2023-06-30']
+test = ts['2023-07-01':]
+
+# Создаем и обучаем SARIMA модель
+model = sm.tsa.statespace.SARIMAX(train, 
+                                 order=(1, 1, 1),
+                                 seasonal_order=(1, 1, 1, 12))
+results = model.fit()
+
+# Делаем прогноз
+forecast = results.get_forecast(steps=len(test))
+forecast_mean = forecast.predicted_mean
+forecast_ci = forecast.conf_int()
+
+# Визуализация прогноза
+plt.figure(figsize=(12, 6))
+plt.plot(train.index, train.values, label='Training Data')
+plt.plot(test.index, test.values, label='Actual Values')
+plt.plot(forecast_mean.index, forecast_mean.values, color='red', label='Forecast')
+plt.fill_between(forecast_ci.index,
+                forecast_ci.iloc[:, 0],
+                forecast_ci.iloc[:, 1], color='r', alpha=.1)
+plt.title('SARIMA Forecast')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# 5. Диагностика модели
+fig = plt.figure(figsize=(12, 8))
+results.plot_diagnostics(fig=fig)
+plt.tight_layout()
+plt.show()
+
+# 6. Оценка качества прогноза
+def calculate_metrics(actual, predicted):
+    mse = np.mean((actual - predicted) ** 2)
+    rmse = np.sqrt(mse)
+    mae = np.mean(np.abs(actual - predicted))
+    mape = np.mean(np.abs((actual - predicted) / actual)) * 100
+    return {'MSE': mse, 'RMSE': rmse, 'MAE': mae, 'MAPE': mape}
+
+metrics = calculate_metrics(test, forecast_mean)
+print("\\nForecast Metrics:")
+print("-" * 50)
+for metric, value in metrics.items():
+    print(f"{metric}: {value:.2f}")
+
+# 7. Анализ сезонности
+seasonal_patterns = ts.groupby(ts.index.month).agg(['mean', 'std'])
+plt.figure(figsize=(12, 6))
+seasonal_patterns['mean'].plot(kind='bar', yerr=seasonal_patterns['std'], capsize=5)
+plt.title('Monthly Seasonal Patterns')
+plt.xlabel('Month')
+plt.ylabel('Value')
+plt.grid(True)
+plt.show()
+
+# 8. Статистика модели
+print("\\nModel Summary:")
+print("-" * 50)
+print(results.summary().tables[1])`,
+
+        signal: `from scipy import signal
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем сигнал
+t = np.linspace(0, 1, 1000, endpoint=False)
+clean_signal = np.sin(2*np.pi*10*t) + 0.5*np.sin(2*np.pi*20*t)
+noise = np.random.normal(0, 0.5, clean_signal.shape)
+noisy_signal = clean_signal + noise
+
+# Применяем фильтры
+# Butterworth фильтр
+b, a = signal.butter(4, 0.2, 'low', analog=False)
+filtered_signal = signal.filtfilt(b, a, noisy_signal)
+
+# Спектрограмма
+f, t_spec, Sxx = signal.spectrogram(noisy_signal, 1000)
+
+# Визуализация
+plt.figure(figsize=(12, 8))
+
+# Временная область
+plt.subplot(221)
+plt.plot(t, clean_signal, 'g', label='Clean')
+plt.plot(t, noisy_signal, 'b', alpha=0.3, label='Noisy')
+plt.plot(t, filtered_signal, 'r', label='Filtered')
+plt.title('Time Domain')
+plt.legend()
+
+# Частотная область
+plt.subplot(222)
+freq = np.fft.fftfreq(len(t), t[1]-t[0])
+plt.plot(freq[:len(freq)//2], np.abs(np.fft.fft(noisy_signal))[:len(freq)//2])
+plt.title('Frequency Domain')
+plt.xlim(0, 50)
+
+# Спектрограмма
+plt.subplot(223)
+plt.pcolormesh(t_spec, f, Sxx)
+plt.title('Spectrogram')
+plt.ylabel('Frequency')
+plt.xlabel('Time')
+
+plt.tight_layout()
+plt.show()
+
+# Анализ сигнала
+print("Signal Analysis:")
+print(f"Signal-to-Noise Ratio: {np.mean(clean_signal**2)/np.mean(noise**2):.2f}")
+print(f"Peak frequency: {freq[np.argmax(np.abs(np.fft.fft(clean_signal)))]:.1f} Hz")`,
+
+        skimage: `from skimage import filters, feature, transform
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем тестовое изображение
+image = np.random.rand(100, 100)
+
+# Применяем различные фильтры
+edges = feature.canny(image)
+sobel = filters.sobel(image)
+rotated = transform.rotate(image, 45)
+
+# Визуализация
+plt.figure(figsize=(12, 4))
+plt.subplot(131)
+plt.imshow(edges)
+plt.title('Canny Edges')
+
+plt.subplot(132)
+plt.imshow(sobel)
+plt.title('Sobel Filter')
+
+plt.subplot(133)
+plt.imshow(rotated)
+plt.title('Rotated Image')
+
+plt.show()`,
+
+        wordcloud: `from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Создаем текст
+text = """Python programming language machine learning 
+data science artificial intelligence deep learning 
+neural networks computer vision natural language processing"""
+
+# Создаем облако слов
+wordcloud = WordCloud(width=800, height=400,
+                     background_color='white').generate(text)
+
+# Отображаем результат
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title('Word Cloud')
+plt.show()`,
+
+        xgboost: `import xgboost as xgb
+from sklearn.datasets import make_regression
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Создаем данные
+X, y = make_regression(n_samples=1000, n_features=5, random_state=42)
+X_train, X_test = X[:800], X[800:]
+y_train, y_test = y[:800], y[800:]
+
+# Создаем и обучаем модель
+model = xgb.XGBRegressor(n_estimators=100)
+model.fit(X_train, y_train)
+
+# Делаем предсказания
+y_pred = model.predict(X_test)
+
+# Визуализируем результаты
+plt.figure(figsize=(10, 5))
+plt.scatter(y_test, y_pred, alpha=0.5)
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
+plt.xlabel('True Values')
+plt.ylabel('Predictions')
+plt.title('XGBoost Regression Results')
+plt.show()
+
+# Выводим важность признаков
+importance = model.feature_importances_
+plt.figure(figsize=(10, 5))
+plt.bar(range(len(importance)), importance)
+plt.title('Feature Importance')
+plt.show()`,
+
+        zarr: `import zarr
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем большой массив данных
+z = zarr.zeros((1000, 1000), chunks=(100, 100), dtype='float64')
+z[:] = np.random.random((1000, 1000))
+
+# Выполняем операции с данными
+subset = z[400:600, 400:600]
+mean_value = subset.mean()
+std_value = subset.std()
+
+# Визуализируем часть данных
+plt.figure(figsize=(10, 8))
+plt.imshow(subset[:], cmap='viridis')
+plt.colorbar()
+plt.title(f'Data Subset (Mean: {mean_value:.2f}, Std: {std_value:.2f})')
+plt.show()`,
+
+        xarray: `import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Создаем многомерный массив с координатами
+times = pd.date_range('2023-01-01', periods=100)
+lats = np.linspace(0, 90, 30)
+lons = np.linspace(0, 180, 40)
+
+data = np.random.rand(len(times), len(lats), len(lons))
+da = xr.DataArray(data, 
+                 coords=[times, lats, lons],
+                 dims=['time', 'lat', 'lon'])
+
+# Вычисляем среднее по времени
+mean_data = da.mean(dim='time')
+
+# Визуализируем результаты
+plt.figure(figsize=(12, 6))
+mean_data.plot()
+plt.title('Mean Values Over Time')
+plt.show()
+
+# Временной ряд для конкретной точки
+point_data = da.sel(lat=45, lon=90, method='nearest')
+plt.figure(figsize=(12, 4))
+point_data.plot()
+plt.title('Time Series at Lat=45, Lon=90')
+plt.show()`,
+
+        boost_histogram: `import boost_histogram as bh
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем случайные данные
+np.random.seed(42)
+data1 = np.random.normal(0, 1, 10000)  # Нормальное распределение
+data2 = np.random.exponential(2, 10000)  # Экспоненциальное распределение
+
+# Создаем гистограммы
+hist1 = bh.Histogram(bh.axis.Regular(50, -5, 5))
+hist2 = bh.Histogram(bh.axis.Regular(50, 0, 10))
+
+# Заполняем гистограммы
+hist1.fill(data1)
+hist2.fill(data2)
+
+# Визуализация
+plt.figure(figsize=(12, 5))
+
+# Нормальное распределение
+plt.subplot(121)
+edges = hist1.axes[0].edges
+centers = (edges[:-1] + edges[1:]) / 2
+plt.bar(centers, hist1.values(), width=edges[1]-edges[0], alpha=0.5, label='Data')
+plt.title('Normal Distribution')
+plt.xlabel('Value')
+plt.ylabel('Counts')
+plt.grid(True)
+plt.legend()
+
+# Экспоненциальное распределение
+plt.subplot(122)
+edges = hist2.axes[0].edges
+centers = (edges[:-1] + edges[1:]) / 2
+plt.bar(centers, hist2.values(), width=edges[1]-edges[0], alpha=0.5, label='Data')
+plt.title('Exponential Distribution')
+plt.xlabel('Value')
+plt.ylabel('Counts')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+# Статистический анализ
+print("Normal Distribution Statistics:")
+print(f"Total entries: {sum(hist1.values())}")
+print(f"Mean: {np.average(centers, weights=hist1.values()):.2f}")
+print(f"Std Dev: {np.sqrt(np.average((centers - np.average(centers, weights=hist1.values()))**2, weights=hist1.values())):.2f}")
+
+print("\\nExponential Distribution Statistics:")
+print(f"Total entries: {sum(hist2.values())}")
+print(f"Mean: {np.average(centers, weights=hist2.values()):.2f}")
+print(f"Std Dev: {np.sqrt(np.average((centers - np.average(centers, weights=hist2.values()))**2, weights=hist2.values())):.2f}")`,
+
+        geodata: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем данные для карты
+def create_map_data(n_points=1000):
+    # Генерируем случайные координаты
+    lats = np.random.normal(55, 10, n_points)  # Примерно центр России
+    lons = np.random.normal(37, 20, n_points)  # Примерно центр России
+    values = np.random.rand(n_points)  # Случайные значения для точек
+    return lats, lons, values
+
+# Создаем данные
+lats, lons, values = create_map_data()
+
+# Создаем график
+plt.figure(figsize=(15, 10))
+
+# Scatter plot с цветовой шкалой
+scatter = plt.scatter(lons, lats, c=values, cmap='viridis', 
+                     alpha=0.6, s=50)
+plt.colorbar(scatter, label='Values')
+
+# Добавляем основные города России для ориентации
+cities = {
+    'Moscow': (55.7558, 37.6173),
+    'Saint Petersburg': (59.9343, 30.3351),
+    'Novosibirsk': (55.0084, 82.9357),
+    'Yekaterinburg': (56.8389, 60.6057)
+}
+
+# Отмечаем города на карте
+for city, coords in cities.items():
+    plt.plot(coords[1], coords[0], 'r*', markersize=15)
+    plt.annotate(city, (coords[1], coords[0]), xytext=(5, 5), 
+                textcoords='offset points')
+
+# Настраиваем внешний вид
+plt.title('Geographic Data Visualization')
+plt.xlabel('Longitude')
+plt.ylabel('Latitude')
+plt.grid(True)
+
+# Добавляем простую сетку координат
+plt.axhline(y=0, color='k', linestyle=':')
+plt.axvline(x=0, color='k', linestyle=':')
+
+plt.show()
+
+# Анализ данных
+print("Data Analysis:")
+print(f"Number of points: {len(lats)}")
+print(f"\\nLatitude range:")
+print(f"Min: {lats.min():.2f}°")
+print(f"Max: {lats.max():.2f}°")
+print(f"Mean: {lats.mean():.2f}°")
+
+print(f"\\nLongitude range:")
+print(f"Min: {lons.min():.2f}°")
+print(f"Max: {lons.max():.2f}°")
+print(f"Mean: {lons.mean():.2f}°")
+
+# Находим ближайшие точки к городам
+def find_nearest_points(city_coords, lats, lons, values, n=5):
+    distances = np.sqrt((lats - city_coords[0])**2 + (lons - city_coords[1])**2)
+    nearest_idx = np.argsort(distances)[:n]
+    return values[nearest_idx]
+
+print("\\nNearest points analysis:")
+for city, coords in cities.items():
+    nearest_values = find_nearest_points(coords, lats, lons, values)
+    print(f"\\n{city}:")
+    print(f"Mean value of 5 nearest points: {nearest_values.mean():.3f}")
+    print(f"Max value of 5 nearest points: {nearest_values.max():.3f}")
+    print(f"Min value of 5 nearest points: {nearest_values.min():.3f}")`,
+
+        maps: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем данные о городах России
+cities = {
+    'Moscow': (55.7558, 37.6173, 12500000),
+    'Saint Petersburg': (59.9343, 30.3351, 5400000),
+    'Novosibirsk': (55.0084, 82.9357, 1600000),
+    'Yekaterinburg': (56.8389, 60.6057, 1500000),
+    'Kazan': (55.7887, 49.1221, 1250000)
+}
+
+# Создаем базовую карту
+plt.figure(figsize=(10, 6))
+
+# Отмечаем города
+for city, (lat, lon, pop) in cities.items():
+    size = np.sqrt(pop) / 100  # Размер маркера зависит от населения
+    plt.plot(lon, lat, 'ro', markersize=size)
+    plt.annotate(city, (lon, lat), xytext=(5, 5), 
+                textcoords='offset points')
+
+# Добавляем случайные точки для плотности населения
+n_points = 1000
+lats = np.random.normal(55, 10, n_points)
+lons = np.random.normal(60, 30, n_points)
+density = np.random.rand(n_points)
+
+# Создаем тепловую карту
+plt.hexbin(lons, lats, C=density, cmap='YlOrRd', alpha=0.3)
+plt.colorbar(label='Population Density')
+
+# Настраиваем внешний вид
+plt.title('Major Cities of Russia')
+plt.xlabel('Longitude')
+plt.ylabel('Latitude')
+plt.grid(True)
+
+plt.show()
+
+# Анализ данных
+print("Cities Analysis:")
+print("-" * 50)
+for city, (lat, lon, pop) in cities.items():
+    print(f"{city}:")
+    print(f"  Population: {pop:,}")
+    print(f"  Coordinates: {lat:.2f}°N, {lon:.2f}°E")
+
+# Находим ближайшие города
+def find_nearest_cities(lat, lon, cities, n=2):
+    distances = {}
+    for city, (clat, clon, _) in cities.items():
+        dist = np.sqrt((lat - clat)**2 + (lon - clon)**2)
+        distances[city] = dist
+    return sorted(distances.items(), key=lambda x: x[1])[:n]
+
+print("\\nNearest Cities Analysis:")
+print("-" * 50)
+for i in range(3):
+    random_lat = np.random.uniform(50, 70)
+    random_lon = np.random.uniform(30, 90)
+    nearest = find_nearest_cities(random_lat, random_lon, cities)
+    print(f"\\nPoint {i+1} ({random_lat:.2f}°N, {random_lon:.2f}°E):")
+    for city, dist in nearest:
+        print(f"  {city}: {dist:.2f} degrees away")`,
+
+        interactive_plot: `import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+# Создаем данные
+t = np.linspace(0, 10, 1000)
+frequencies = [1, 2, 3]
+amplitudes = [1, 0.5, 0.3]
+phases = [0, np.pi/4, np.pi/2]
+
+# Функция для создания сигнала
+def create_signal(t, freq, amp, phase):
+    return amp * np.sin(2 * np.pi * freq * t + phase)
+
+# Создаем комбинированный сигнал
+signal = np.zeros_like(t)
+for f, a, p in zip(frequencies, amplitudes, phases):
+    signal += create_signal(t, f, a, p)
+
+# Создаем график
+plt.figure(figsize=(12, 8))
+
+# График полного сигнала
+plt.subplot(211)
+plt.plot(t, signal, 'b-', label='Combined Signal')
+plt.title('Interactive Signal Analysis')
+plt.grid(True)
+plt.legend()
+
+# График компонентов
+plt.subplot(212)
+for i, (f, a, p) in enumerate(zip(frequencies, amplitudes, phases)):
+    component = create_signal(t, f, a, p)
+    plt.plot(t, component, label=f'Component {i+1} (f={f}Hz)')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+# Анализ сигнала
+print("Signal Analysis:")
+print("-" * 50)
+print(f"Number of components: {len(frequencies)}")
+print("\\nComponent details:")
+for i, (f, a, p) in enumerate(zip(frequencies, amplitudes, phases)):
+    print(f"\\nComponent {i+1}:")
+    print(f"  Frequency: {f} Hz")
+    print(f"  Amplitude: {a}")
+    print(f"  Phase: {p:.2f} rad")
+
+# Статистический анализ
+print("\\nSignal Statistics:")
+print("-" * 50)
+print(f"Mean value: {np.mean(signal):.3f}")
+print(f"Max value: {np.max(signal):.3f}")
+print(f"Min value: {np.min(signal):.3f}")
+print(f"Standard deviation: {np.std(signal):.3f}")
+
+# Спектральный анализ
+freqs = np.fft.fftfreq(len(t), t[1] - t[0])
+spectrum = np.abs(np.fft.fft(signal))
+
+plt.figure(figsize=(10, 5))
+plt.plot(freqs[:len(freqs)//2], spectrum[:len(freqs)//2])
+plt.title('Frequency Spectrum')
+plt.xlabel('Frequency (Hz)')
+plt.ylabel('Amplitude')
+plt.grid(True)
+plt.show()
+
+# Находим основные частоты
+peak_freqs = freqs[np.argsort(spectrum)[-3:]]
+print("\\nDetected Frequencies:")
+print("-" * 50)
+for i, freq in enumerate(sorted(abs(peak_freqs)), 1):
+    print(f"Peak {i}: {freq:.2f} Hz")`,
+
+        http_requests: `from pyodide.http import pyfetch
+import json
+import pandas as pd
+import matplotlib.pyplot as plt
+
+async def fetch_data(url):
+    """Функция для получения данных по URL"""
+    response = await pyfetch(url)
+    return await response.json()
+
+# Получаем данные о пользователях
+print("Fetching users data...")
+users_data = await fetch_data("https://jsonplaceholder.typicode.com/users")
+
+# Получаем данные о постах
+print("Fetching posts data...")
+posts_data = await fetch_data("https://jsonplaceholder.typicode.com/posts")
+
+# Получаем данные о комментариях
+print("Fetching comments data...")
+comments_data = await fetch_data("https://jsonplaceholder.typicode.com/comments")
+
+# Создаем DataFrame
+users_df = pd.DataFrame(users_data)
+posts_df = pd.DataFrame(posts_data)
+comments_df = pd.DataFrame(comments_data)
+
+# Анализ данных
+print("\\nData Analysis:")
+print("-" * 50)
+print(f"Number of users: {len(users_df)}")
+print(f"Number of posts: {len(posts_df)}")
+print(f"Number of comments: {len(comments_df)}")
+
+# Анализ активности пользователей
+posts_per_user = posts_df['userId'].value_counts()
+comments_per_post = comments_df['postId'].value_counts()
+
+# Визуализация
+plt.figure(figsize=(12, 5))
+
+# График постов пользователей
+plt.subplot(121)
+plt.bar(posts_per_user.index, posts_per_user.values)
+plt.title('Posts per User')
+plt.xlabel('User ID')
+plt.ylabel('Number of Posts')
+plt.grid(True)
+
+# График комментариев к постам
+plt.subplot(122)
+plt.hist(comments_per_post.values, bins=20)
+plt.title('Distribution of Comments per Post')
+plt.xlabel('Number of Comments')
+plt.ylabel('Frequency')
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+# Детальная статистика
+print("\\nUser Statistics:")
+print("-" * 50)
+for _, user in users_df.iterrows():
+    user_posts = len(posts_df[posts_df['userId'] == user['id']])
+    user_comments = sum(len(comments_df[comments_df['postId'] == post_id]) 
+                       for post_id in posts_df[posts_df['userId'] == user['id']]['id'])
+    print(f"User: {user['name']}")
+    print(f"  Email: {user['email']}")
+    print(f"  Posts: {user_posts}")
+    print(f"  Comments received: {user_comments}")
+    print()
+
+# Анализ длины постов и комментариев
+print("\\nContent Analysis:")
+print("-" * 50)
+posts_df['body_length'] = posts_df['body'].str.len()
+comments_df['body_length'] = comments_df['body'].str.len()
+
+print("Posts length statistics:")
+print(posts_df['body_length'].describe())
+print("\\nComments length statistics:")
+print(comments_df['body_length'].describe())
+
+# Визуализация длины контента
+plt.figure(figsize=(12, 5))
+
+plt.subplot(121)
+plt.boxplot(posts_df['body_length'])
+plt.title('Posts Length Distribution')
+plt.ylabel('Number of Characters')
+
+plt.subplot(122)
+plt.boxplot(comments_df['body_length'])
+plt.title('Comments Length Distribution')
+plt.ylabel('Number of Characters')`,
+
+        xml_parser: `import xml.etree.ElementTree as ET
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Создаем тестовый XML документ
+xml_data = """<?xml version="1.0"?>
+<library>
+    <book category="fiction">
+        <title>The Great Gatsby</title>
+        <author>F. Scott Fitzgerald</author>
+        <year>1925</year>
+        <rating>4.8</rating>
+    </book>
+    <book category="science">
+        <title>A Brief History of Time</title>
+        <author>Stephen Hawking</author>
+        <year>1988</year>
+        <rating>4.7</rating>
+    </book>
+    <book category="fiction">
+        <title>1984</title>
+        <author>George Orwell</author>
+        <year>1949</year>
+        <rating>4.9</rating>
+    </book>
+    <book category="science">
+        <title>The Selfish Gene</title>
+        <author>Richard Dawkins</author>
+        <year>1976</year>
+        <rating>4.6</rating>
+    </book>
+</library>"""
+
+# Парсим XML
+root = ET.fromstring(xml_data)
+
+# Собираем данные
+books = []
+for book in root.findall('book'):
+    books.append({
+        'title': book.find('title').text,
+        'author': book.find('author').text,
+        'year': int(book.find('year').text),
+        'rating': float(book.find('rating').text),
+        'category': book.get('category')
+    })
+
+# Анализ данных
+print("Library Analysis:")
+print("-" * 50)
+
+# Количество книг по категориям
+categories = {}
+for book in books:
+    categories[book.get('category')] = categories.get(book.get('category'), 0) + 1
+
+print("\\nBooks by Category:")
+for category, count in categories.items():
+    print(f"{category}: {count} books")
+
+# Средний рейтинг по категориям
+ratings_by_category = {}
+for book in books:
+    cat = book['category']
+    if cat not in ratings_by_category:
+        ratings_by_category[cat] = []
+    ratings_by_category[cat].append(book['rating'])
+
+print("\\nAverage Ratings by Category:")
+for category, ratings in ratings_by_category.items():
+    avg_rating = sum(ratings) / len(ratings)
+    print(f"{category}: {avg_rating:.2f}")
+
+# Визуализация данных
+plt.figure(figsize=(12, 5))
+
+# График количества книг по категориям
+plt.subplot(121)
+plt.bar(categories.keys(), categories.values())
+plt.title('Books by Category')
+plt.ylabel('Number of Books')
+
+# График средних рейтингов по категориям
+plt.subplot(122)
+avg_ratings = {cat: sum(ratings)/len(ratings) for cat, ratings in ratings_by_category.items()}
+plt.bar(avg_ratings.keys(), avg_ratings.values())
+plt.title('Average Ratings by Category')
+plt.ylabel('Rating')
+
+plt.tight_layout()
+plt.show()
+
+# Временная линия публикаций
+years = [book['year'] for book in books]
+titles = [book['title'] for book in books]
+
+plt.figure(figsize=(12, 4))
+plt.plot(years, range(len(years)), 'bo-')
+for i, (year, title) in enumerate(zip(years, titles)):
+    plt.annotate(title, (year, i), xytext=(5, 0), textcoords='offset points')
+plt.title('Publication Timeline')
+plt.xlabel('Year')
+plt.grid(True)
+plt.show()
+
+# Детальная информация о книгах
+print("\\nDetailed Book Information:")
+print("-" * 50)
+for book in sorted(books, key=lambda x: x['year']):
+    print(f"\\nTitle: {book['title']}")
+    print(f"Author: {book['author']}")
+    print(f"Year: {book['year']}")
+    print(f"Rating: {book['rating']}")
+    print(f"Category: {book['category']}")`,
+
+        templating: `from string import Template
+import json
+import matplotlib.pyplot as plt
+
+# Пример шаблона HTML страницы
+html_template = Template("""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>$title</title>
+</head>
+<body>
+    <h1>$header</h1>
+    <div class="content">
+        <p>Welcome, $user_name!</p>
+        <ul>
+        $items
+        </ul>
+    </div>
+    <footer>
+        <p>$footer</p>
+    </footer>
+</body>
+</html>
+""")
+
+# Данные для шаблона
+data = {
+    'title': 'My Website',
+    'header': 'Welcome to My Website',
+    'user_name': 'John Doe',
+    'items': '\\n'.join([
+        '        <li>Item 1: Python Programming</li>',
+        '        <li>Item 2: Data Analysis</li>',
+        '        <li>Item 3: Web Development</li>'
+    ]),
+    'footer': '© 2024 My Website'
+}
+
+# Применяем шаблон
+result = html_template.substitute(data)
+print("Generated HTML:")
+print("-" * 50)
+print(result)
+
+# Пример шаблона для JSON
+json_template = Template("""
+{
+    "user": {
+        "name": "$name",
+        "email": "$email",
+        "preferences": {
+            "theme": "$theme",
+            "language": "$language"
+        }
+    },
+    "settings": {
+        "notifications": $notifications,
+        "privacy": "$privacy_level"
+    }
+}
+""")
+
+# Данные для JSON шаблона
+json_data = {
+    'name': 'John Doe',
+    'email': 'john@example.com',
+    'theme': 'dark',
+    'language': 'en',
+    'notifications': 'true',
+    'privacy_level': 'high'
+}
+
+# Применяем JSON шаблон
+json_result = json_template.substitute(json_data)
+print("\\nGenerated JSON:")
+print("-" * 50)
+print(json_result)
+
+# Парсим JSON для анализа
+parsed_json = json.loads(json_result)
+
+# Визуализация структуры данных
+def create_structure_diagram():
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.set_axis_off()
+    
+    # Создаем древовидную структуру
+    levels = {
+        0: ['User Data'],
+        1: ['Personal Info', 'Preferences', 'Settings'],
+        2: ['Name/Email', 'Theme/Language', 'Notifications/Privacy']
+    }
+    
+    # Рисуем узлы
+    y_positions = {0: 0.8, 1: 0.5, 2: 0.2}
+    node_positions = {}
+    
+    for level, items in levels.items():
+        n_items = len(items)
+        for i, item in enumerate(items):
+            x = (i + 1) / (n_items + 1)
+            y = y_positions[level]
+            node_positions[item] = (x, y)
+            plt.plot(x, y, 'o', markersize=10, color='blue', alpha=0.6)
+            plt.text(x, y + 0.05, item, ha='center', va='bottom')
+    
+    # Рисуем связи
+    connections = [
+        ('User Data', 'Personal Info'),
+        ('User Data', 'Preferences'),
+        ('User Data', 'Settings'),
+        ('Personal Info', 'Name/Email'),
+        ('Preferences', 'Theme/Language'),
+        ('Settings', 'Notifications/Privacy')
+    ]
+    
+    for start, end in connections:
+        x1, y1 = node_positions[start]
+        x2, y2 = node_positions[end]
+        plt.plot([x1, x2], [y1, y2], '-', color='gray', alpha=0.5)
+    
+    plt.title('Data Structure Visualization')
+    plt.show()
+
+create_structure_diagram()
+
+# Анализ данных
+print("\\nData Analysis:")
+print("-" * 50)
+print("Template Variables Used:", len(data))
+print("JSON Structure Depth:", len(parsed_json))
+print("\\nUser Preferences:")
+for key, value in parsed_json['user']['preferences'].items():
+    print(f"  {key}: {value}")
+print("\\nSettings:")
+for key, value in parsed_json['settings'].items():
+    print(f"  {key}: {value}")
+
+# Создаем простой отчет
+report_template = Template("""
+User Profile Report
+==================
+Name: $name
+Email: $email
+
+Preferences
+----------
+Theme: $theme
+Language: $language
+
+Settings
+--------
+Notifications: $notifications
+Privacy Level: $privacy_level
+""")
+
+print("\\nGenerated Report:")
+print("-" * 50)
+print(report_template.substitute(json_data))`,
+
+        diagrams: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаем данные для диаграмм
+categories = ['A', 'B', 'C', 'D', 'E']
+values = [23, 45, 56, 78, 43]
+percentages = [15, 30, 25, 10, 20]
+growth = [10, -5, 15, 8, -3]
+
+# Создаем фигуру с несколькими графиками
+plt.figure(figsize=(15, 10))
+
+# 1. Столбчатая диаграмма
+plt.subplot(231)
+plt.bar(categories, values, color='skyblue')
+plt.title('Bar Chart')
+plt.grid(True, alpha=0.3)
+
+# 2. Горизонтальная столбчатая диаграмма
+plt.subplot(232)
+plt.barh(categories, values, color='lightgreen')
+plt.title('Horizontal Bar Chart')
+plt.grid(True, alpha=0.3)
+
+# 3. Круговая диаграмма
+plt.subplot(233)
+plt.pie(percentages, labels=categories, autopct='%1.1f%%',
+        colors=['lightblue', 'lightgreen', 'lightpink', 'wheat', 'lavender'])
+plt.title('Pie Chart')
+
+# 4. Диаграмма с областями
+plt.subplot(234)
+x = np.arange(5)
+plt.stackplot(x, [values, np.array(values)*0.5, np.array(values)*0.3],
+             labels=['Series 1', 'Series 2', 'Series 3'])
+plt.title('Area Chart')
+plt.legend(loc='upper left')
+plt.grid(True, alpha=0.3)
+
+# 5. Лепестковая диаграмма
+plt.subplot(235)
+angles = np.linspace(0, 2*np.pi, len(categories), endpoint=False)
+values_norm = np.array(values)/max(values)  # Нормализуем значения
+
+# Замыкаем диаграмму
+values_norm = np.concatenate((values_norm, [values_norm[0]]))
+angles = np.concatenate((angles, [angles[0]]))
+categories_closed = categories + [categories[0]]  # Используем список вместо np.array
+
+ax = plt.gca()
+ax.plot(angles, values_norm)
+ax.fill(angles, values_norm, alpha=0.25)
+ax.set_xticks(angles[:-1])
+ax.set_xticklabels(categories)  # Используем оригинальные категории
+plt.title('Radar Chart')
+
+# 6. Диаграмма изменений
+plt.subplot(236)
+colors = ['green' if x >= 0 else 'red' for x in growth]
+plt.bar(categories, growth, color=colors)
+plt.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+plt.title('Change Chart')
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# Создаем более сложную диаграмму с группировкой
+plt.figure(figsize=(12, 6))
+
+# Данные для сгруппированной диаграммы
+groups = ['Group 1', 'Group 2', 'Group 3', 'Group 4']
+series1 = [10, 15, 12, 8]
+series2 = [12, 8, 15, 10]
+series3 = [5, 12, 9, 14]
+
+x = np.arange(len(groups))
+width = 0.25
+
+plt.bar(x - width, series1, width, label='Series 1', color='skyblue')
+plt.bar(x, series2, width, label='Series 2', color='lightgreen')
+plt.bar(x + width, series3, width, label='Series 3', color='lightpink')
+
+plt.xlabel('Groups')
+plt.ylabel('Values')
+plt.title('Grouped Bar Chart')
+plt.xticks(x, groups)
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+plt.show()
+
+# Создаем диаграмму с накоплением
+plt.figure(figsize=(12, 6))
+
+bottom = np.zeros(len(groups))
+for i, data in enumerate([series1, series2, series3]):
+    plt.bar(groups, data, bottom=bottom, label=f'Series {i+1}')
+    bottom += data
+
+plt.xlabel('Groups')
+plt.ylabel('Values')
+plt.title('Stacked Bar Chart')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+plt.show()
+
+# Выводим статистику
+print("Data Analysis:")
+print("-" * 50)
+print("Basic Statistics:")
+print(f"Total categories: {len(categories)}")
+print(f"Total value: {sum(values)}")
+print(f"Average value: {np.mean(values):.2f}")
+print(f"Maximum value: {max(values)}")
+print(f"Minimum value: {min(values)}")
+
+print("\\nPercentage Distribution:")
+for cat, perc in zip(categories, percentages):
+    print(f"{cat}: {perc}%")
+
+print("\\nGrowth Analysis:")
+for cat, gr in zip(categories, growth):
+    status = "increase" if gr > 0 else "decrease" if gr < 0 else "no change"
+    print(f"{cat}: {gr}% ({status})")
+
+# Корреляционный анализ
+data = np.array([series1, series2, series3])
+corr = np.corrcoef(data)
+print("\\nCorrelation Matrix:")
+for i in range(len(corr)):
+    for j in range(len(corr)):
+        print(f"Series {i+1} vs Series {j+1}: {corr[i][j]:.2f}")`,
+
+        diagram_generator: `# Функция для создания диаграммы последовательности
+def create_sequence_diagram():
+    diagram = """
+sequenceDiagram
+    participant User
+    participant Client
+    participant Server
+    participant Database
+    
+    User->>Client: Submit Form
+    Client->>Server: POST /api/data
+    Server->>Database: Insert Data
+    Database-->>Server: Confirm Insert
+    Server-->>Client: Response 200 OK
+    Client-->>User: Show Success
+"""
+    return diagram
+
+# Функция для создания блок-схемы
+def create_flowchart():
+    diagram = """
+flowchart TD
+    A[Start] --> B{Is User Logged In?}
+    B -- Yes --> C[Show Dashboard]
+    B -- No --> D[Show Login Form]
+    D --> E[User Enters Credentials]
+    E --> F{Valid Credentials?}
+    F -- Yes --> C
+    F -- No --> D
+"""
+    return diagram
+
+# Функция для создания диаграммы классов
+def create_class_diagram():
+    diagram = """
+classDiagram
+    class User {
+        +String username
+        +String email
+        +String password
+        +login()
+        +logout()
+        +updateProfile()
+    }
+    class Profile {
+        +String fullName
+        +Date birthDate
+        +String avatar
+        +updateAvatar()
+    }
+    class Post {
+        +String title
+        +String content
+        +Date createdAt
+        +create()
+        +update()
+        +delete()
+    }
+    User "1" -- "1" Profile
+    User "1" -- "*" Post
+"""
+    return diagram
+
+# Функция для создания диаграммы состояний
+def create_state_diagram():
+    diagram = """
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Processing: Start Task
+    Processing --> Success: Task Complete
+    Processing --> Error: Task Failed
+    Success --> Idle: Reset
+    Error --> Idle: Reset
+    Idle --> [*]: Exit
+"""
+    return diagram
+
+# Функция для создания диаграммы Ганта
+def create_gantt_chart():
+    diagram = """
+gantt
+    title Project Timeline
+    dateFormat  YYYY-MM-DD
+    section Planning
+    Requirements    :a1, 2024-01-01, 30d
+    Design         :a2, after a1, 20d
+    section Development
+    Implementation :a3, after a2, 40d
+    Testing        :a4, after a3, 20d
+    section Deployment
+    Release        :a5, after a4, 10d
+"""
+    return diagram
+
+# Функция для создания диаграммы сущность-связь
+def create_er_diagram():
+    diagram = """
+erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE-ITEM : contains
+    CUSTOMER {
+        string name
+        string email
+        string address
+    }
+    ORDER {
+        int orderNumber
+        date orderDate
+        float totalAmount
+    }
+    LINE-ITEM {
+        string product
+        int quantity
+        float price
+    }
+"""
+    return diagram
+
+# Выводим все диаграммы
+print("Sequence Diagram:")
+print("-" * 50)
+print(create_sequence_diagram())
+
+print("\\nFlowchart:")
+print("-" * 50)
+print(create_flowchart())
+
+print("\\nClass Diagram:")
+print("-" * 50)
+print(create_class_diagram())
+
+print("\\nState Diagram:")
+print("-" * 50)
+print(create_state_diagram())
+
+print("\\nGantt Chart:")
+print("-" * 50)
+print(create_gantt_chart())
+
+print("\\nER Diagram:")
+print("-" * 50)
+print(create_er_diagram())
+
+# Создаем простой пример генерации диаграммы на основе данных
+def generate_flowchart_from_data(steps):
+    diagram = "flowchart TD\\n"
+    for i in range(len(steps)-1):
+        diagram += f"    {chr(65+i)}[{steps[i]}] --> {chr(65+i+1)}[{steps[i+1]}]\\n"
+    return diagram
+
+# Пример использования
+process_steps = [
+    "Start Process",
+    "Validate Input",
+    "Process Data",
+    "Save Results",
+    "End Process"
+]
+
+print("\\nGenerated Flowchart:")
+print("-" * 50)
+print(generate_flowchart_from_data(process_steps))
+
+# Генерация диаграммы последовательности из данных
+def generate_sequence_from_data(interactions):
+    diagram = "sequenceDiagram\\n"
+    participants = set()
+    for source, target, message in interactions:
+        participants.add(source)
+        participants.add(target)
+    
+    for participant in sorted(participants):
+        diagram += f"    participant {participant}\\n"
+    
+    for source, target, message in interactions:
+        diagram += f"    {source}->>{target}: {message}\\n"
+    
+    return diagram
+
+# Пример использования
+interactions = [
+    ("User", "System", "Login Request"),
+    ("System", "Database", "Verify Credentials"),
+    ("Database", "System", "Return Result"),
+    ("System", "User", "Access Granted")
+]
+
+print("\\nGenerated Sequence Diagram:")
+print("-" * 50)
+print(generate_sequence_from_data(interactions))`,
+
+        graph_viz: `import networkx as nx
+import matplotlib.pyplot as plt
+
+# Создаем граф
+G = nx.Graph()
+
+# Добавляем узлы и ребра
+nodes = ['A', 'B', 'C', 'D', 'E', 'F']
+edges = [('A', 'B'), ('B', 'C'), ('C', 'D'), ('D', 'E'), ('E', 'F'), ('F', 'A'),
+         ('A', 'C'), ('B', 'D'), ('C', 'E'), ('D', 'F')]
+
+G.add_nodes_from(nodes)
+G.add_edges_from(edges)
+
+# Создаем различные визуализации
+plt.figure(figsize=(15, 10))
+
+# 1. Круговая компоновка
+plt.subplot(231)
+nx.draw_circular(G, with_labels=True, node_color='lightblue', 
+                node_size=1000, font_size=10)
+plt.title('Circular Layout')
+
+# 2. Случайная компоновка
+plt.subplot(232)
+nx.draw_random(G, with_labels=True, node_color='lightgreen',
+               node_size=1000, font_size=10)
+plt.title('Random Layout')
+
+# 3. Спектральная компоновка
+plt.subplot(233)
+nx.draw_spectral(G, with_labels=True, node_color='lightpink',
+                node_size=1000, font_size=10)
+plt.title('Spectral Layout')
+
+# 4. Spring компоновка
+plt.subplot(234)
+nx.draw_spring(G, with_labels=True, node_color='wheat',
+              node_size=1000, font_size=10)
+plt.title('Spring Layout')
+
+# 5. Shell компоновка
+plt.subplot(235)
+nx.draw_shell(G, with_labels=True, node_color='lavender',
+             node_size=1000, font_size=10)
+plt.title('Shell Layout')
+
+# 6. Kamada-Kawai компоновка
+plt.subplot(236)
+pos = nx.kamada_kawai_layout(G)
+nx.draw(G, pos, with_labels=True, node_color='lightcyan',
+        node_size=1000, font_size=10)
+plt.title('Kamada-Kawai Layout')
+
+plt.tight_layout()
+plt.show()
+
+# Анализ графа
+print("Graph Analysis:")
+print("-" * 50)
+print(f"Number of nodes: {G.number_of_nodes()}")
+print(f"Number of edges: {G.number_of_edges()}")
+print(f"Average degree: {sum(dict(G.degree()).values())/G.number_of_nodes():.2f}")
+print(f"Density: {nx.density(G):.2f}")
+
+# Центральность узлов
+print("\\nNode Centrality:")
+print("-" * 50)
+degree_centrality = nx.degree_centrality(G)
+betweenness_centrality = nx.betweenness_centrality(G)
+closeness_centrality = nx.closeness_centrality(G)
+
+for node in G.nodes():
+    print(f"\\nNode {node}:")
+    print(f"  Degree centrality: {degree_centrality[node]:.3f}")
+    print(f"  Betweenness centrality: {betweenness_centrality[node]:.3f}")
+    print(f"  Closeness centrality: {closeness_centrality[node]:.3f}")
+
+# Визуализация с весами центральности
+plt.figure(figsize=(12, 4))
+
+# Размер узла зависит от степени центральности
+plt.subplot(131)
+node_size = [v * 3000 for v in degree_centrality.values()]
+nx.draw(G, pos, with_labels=True, node_size=node_size,
+        node_color='lightblue', font_size=8)
+plt.title('Node Size by Degree Centrality')
+
+# Цвет узла зависит от промежуточной центральности
+plt.subplot(132)
+node_color = list(betweenness_centrality.values())
+nx.draw(G, pos, with_labels=True, node_size=1000,
+        node_color=node_color, cmap=plt.cm.viridis, font_size=8)
+plt.title('Color by Betweenness Centrality')
+
+# Размер и цвет зависят от близости центральности
+plt.subplot(133)
+node_size = [v * 3000 for v in closeness_centrality.values()]
+node_color = list(closeness_centrality.values())
+nx.draw(G, pos, with_labels=True, node_size=node_size,
+        node_color=node_color, cmap=plt.cm.viridis, font_size=8)
+plt.title('Size and Color by Closeness Centrality')
+
+plt.tight_layout()
+plt.show()
+
+# Поиск кратчайших путей
+print("\\nShortest Paths:")
+print("-" * 50)
+for source in ['A', 'B']:
+    for target in ['E', 'F']:
+        if source != target:
+            path = nx.shortest_path(G, source=source, target=target)
+            print(f"{source} -> {target}: {' -> '.join(path)}")
+
+# Поиск клик
+cliques = list(nx.find_cliques(G))
+print("\\nMaximal Cliques:")
+print("-" * 50)
+for i, clique in enumerate(cliques, 1):
+    print(f"Clique {i}: {clique}")
+
+# Компоненты связности
+components = list(nx.connected_components(G))
+print("\\nConnected Components:")
+print("-" * 50)
+for i, component in enumerate(components, 1):
+    print(f"Component {i}: {component}")`,
+
+        altair: `import altair as alt
+import pandas as pd
+import numpy as np
+
+# Enable rendering in browser environment
+alt.renderers.enable('default')
+
+# Создаем данные
+np.random.seed(42)
+data = pd.DataFrame({
+    'date': pd.date_range('2024-01-01', periods=100),
+    'value': np.random.normal(0, 1, 100).cumsum(),
+    'category': np.random.choice(['A', 'B', 'C'], 100),
+    'size': np.random.randint(1, 100, 100)
+})
+
+# Создаем базовую диаграмму рассеяния
+scatter = alt.Chart(data).mark_circle().encode(
+    x='date:T',
+    y='value:Q',
+    color='category:N',
+    size='size:Q',
+    tooltip=['date', 'value', 'category', 'size']
+).properties(
+    width=600,
+    height=400,
+    title='Interactive Scatter Plot'
+)
+
+# Создаем график линии тренда
+line = alt.Chart(data).mark_line(
+    color='red',
+    strokeDash=[5,5]
+).transform_regression(
+    'date', 'value'
+).encode(
+    x='date:T',
+    y='value:Q'
+)
+
+# Создаем гистограмму значений
+histogram = alt.Chart(data).mark_bar().encode(
+    x=alt.X('value:Q', bin=True),
+    y='count()',
+    color=alt.value('lightblue')
+).properties(
+    width=600,
+    height=200,
+    title='Value Distribution'
+)
+
+# Объединяем графики и преобразуем в HTML
+combined = (scatter + line) & histogram
+print(combined.to_html())
+
+# Создаем тепловую карту
+heatmap = alt.Chart(data).mark_rect().encode(
+    x=alt.X('date:T', timeUnit='month', title='Month'),
+    y=alt.Y('date:T', timeUnit='day', title='Day'),
+    color='value:Q',
+    tooltip=['date', 'value']
+).properties(
+    width=400,
+    height=300,
+    title='Value Heatmap'
+)
+print(heatmap.to_html())
+
+# Создаем круговую диаграмму
+pie = alt.Chart(data).mark_arc().encode(
+    theta='count()',
+    color='category:N',
+    tooltip=['category', 'count()']
+).properties(
+    width=400,
+    height=400,
+    title='Category Distribution'
+)
+print(pie.to_html())
+
+# Выводим базовую статистику
+print("\\nData Statistics:")
+print("-" * 50)
+print(data.describe())
+
+print("\\nCategory Distribution:")
+print("-" * 50)
+print(data['category'].value_counts())
+
+# Корреляционный анализ
+correlations = data.corr()
+print("\\nCorrelation Matrix:")
+print("-" * 50)
+print(correlations)`,
+      };
+
+      // Добавляем стили для маркеров линтера
+      const styles = `
+            .lint-marker {
+                width: 16px;
+                height: 16px;
+                background-position: center center;
+                background-repeat: no-repeat;
+            }
+            
+            .lint-marker.error {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23dc2626'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E");
+            }
+            
+            .lint-marker.warning {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'%3E%3Cpath d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E");
+            }
+            
+            .lint-error-line {
+                background-color: rgba(220, 38, 38, 0.1);
+            }
+            
+            .lint-warning-line {
+                background-color: rgba(245, 158, 11, 0.1);
+            }
+        `;
+
+      // Добавляем стили в head
+      const styleSheet = document.createElement('style');
+      styleSheet.type = 'text/css';
+      styleSheet.innerText = styles;
+      document.head.appendChild(styleSheet);
+
+      // Рендерим приложение
+      // React 18 рендеринг
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
+</html>

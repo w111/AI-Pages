@@ -1,0 +1,1385 @@
+<!--
+Описание задания:
+1. Необходимо создать одностраничное приложение на HTML с использованием React (через CDN) и Babel для трансляции JSX.
+2. Приложение представляет собой новостную ленту, в которой выводятся новости из нескольких источников, сгруппированных по темам:
+   - Python: Planet Python, Real Python, Talk Python To Me (подкаст), Python Insider (официальный блог), Python Bytes (подкаст), Reddit /r/Python.
+   - AI: TechnologyReview (Artificial Intelligence), VentureBeat, TechCrunch (AI), DeepMind.
+   - Книги: Book Riot, Lithub, The Guardian (Books).
+   - Кино: Deadline, Indiewire.
+   - Музыка: Rolling Stone, NME, The Guardian (Music), Free Jazz RSS Feed, Jazz Profiles RSS Feed, American Blues Scene RSS Feed, Blues Blast Magazine RSS Feed, Living Blues Magazine RSS Feed.
+   - Технологии: TechRadar, Habr, Google News, Lifehacker, IEEE, TechCrunch, TechInsider.
+   - Жизнь: Lifehacker, Yoga Journal.
+3. Новости выводятся в виде карточек, каждая карточка включает:
+   - Изображение новости, обёрнутое в ссылку. Если изображение не загружается, отображается fallback‑блок с альтернативным текстом (например, заголовком новости).
+   - Заголовок новости.
+   - Краткое описание новости (текст обрезается, если слишком длинный).
+   - Метаданные: дата публикации, к которой добавлено время (если оно есть) в формате dd.mm.yyyy hh:ss, а также ссылка "Читать далее", которая кликабельна.
+4. Карточки имеют анимацию подъёма при наведении (через трансформацию внутреннего контейнера .card-inner), чтобы текст и fallback‑блок оставались стабильными.
+5. Приложение реализует бесконечную прокрутку: при достижении конца страницы подгружаются следующие новости.
+6. Все стили и скрипты размещены в одном HTML‑файле.
+7. Дополнительно: дата новости теперь включает время в формате dd.mm.yyyy hh:ss (если присутствует).
+8. Меню расположено слева – оно представлено в виде фиксированного сайдбара шириной 11rem. В сайдбаре темы отображаются в виде аккордеона; при клике на тему раскрывается список источников. В нижней части меню выводится логотип "(с) AI Pages".
+9. В правом верхнем углу находится кнопка‑настроек (шестерёнка). При нажатии открывается панель настроек, где можно выбрать вид отображения новостей:
+   - Карточки (по умолчанию).
+   - Список (компактное представление: небольшая картинка слева и текст справа; выводится в одну колонку, занимающую всю ширину контента).
+   Выбранный режим сохраняется в localStorage.
+10. Над новостями выводится заголовок, содержащий название выбранной ленты (источника), а также описание канала и его изображение, полученные из шапки RSS‑канала.
+11. Добавлена возможность выбора тёмной темы. Пользователь может переключаться между светлой и тёмной темами, при этом настройка сохраняется между сеансами.
+12. При переключении между темами и источниками содержимое обновляется (предыдущие результаты очищаются).
+13. Для получения новостных фидов используется сервис rss2json через запрос вида:
+    https://api.rss2json.com/v1/api.json?rss_url=<ENCODED_RSS_URL>
+14. Реализовано кеширование новостей:
+    - Используется localStorage для хранения кешированных данных
+    - Настраиваемое время жизни кеша (по умолчанию 15 минут, диапазон 1-60 минут)
+    - В настройках можно включить/отключить кеширование
+    - При отключении кеширования кеш очищается
+    - При изменении времени жизни кеша текущий кеш очищается
+    - Кеш автоматически очищается по истечении времени жизни
+    - В интерфейсе отображается время последнего обновления данных
+    - Реализована периодическая очистка устаревших данных из кеша
+    - Кешируются только успешные ответы, содержащие новости
+    - При ошибке загрузки источника устанавливается флаг ошибки и данные не кешируются
+    - При следующем обращении к источнику с ошибкой выполняется новый запрос
+15. Реализован локальный поиск по новостям:
+    - Поисковая строка располагается над списком новостей
+    - Поиск осуществляется по заголовкам и описаниям новостей
+    - Поиск регистронезависимый
+    - Результаты обновляются по мере ввода текста
+    - При отсутствии результатов выводится соответствующее сообщение
+-->
+
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>News Feed</title>
+    <style>
+      /* Определение CSS-переменных для основных цветов и стилей (светлая тема по умолчанию) */
+      :root {
+        --primary-color: #2563eb;
+        --background-color: #f8fafc;
+        --card-background: #ffffff;
+        --text-color: #1e293b;
+        --active-color: #2563eb;
+        --border-color: #e2e8f0;
+      }
+      /* Определение переменных для тёмной темы, применяемых при наличии класса .dark у body */
+      body.dark {
+        --primary-color: #bb86fc;
+        --background-color: #121212;
+        --card-background: #1e1e1e;
+        --text-color: #ffffff;
+        --active-color: #bb86fc;
+        --border-color: #333333;
+      }
+      /* Сброс стилей для body и задание базовых стилей шрифта */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        background-color: var(--background-color);
+        color: var(--text-color);
+      }
+      /* Сайдбар (левое меню) – фиксированная колонка с шириной 11rem */
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 11rem;
+        background-color: var(--card-background);
+        padding: 0.5rem;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      /* Стили для аккордеон-меню в сайдбаре */
+      .menu {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .accordion-item {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5rem;
+      }
+      .menu-item {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: var(--text-color);
+        width: 100%;
+        text-align: left;
+        padding: 0.5rem 0;
+      }
+      .accordion-content {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .accordion-item-source {
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+        color: var(--text-color);
+      }
+      .accordion-item-source.active {
+        color: var(--active-color);
+        font-weight: bold;
+      }
+      /* Логотип в нижней части сайдбара */
+      .sidebar-footer {
+        margin-top: auto;
+        font-size: 0.7rem;
+        text-align: center;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        color: var(--text-color);
+        padding-bottom: 1rem;
+      }
+      /* Контейнер основного контента, расположенный справа от сайдбара */
+      .content {
+        margin-left: 14rem;
+        margin-top: 1rem;
+        padding: 1rem;
+        max-width: 1200px;
+        margin-right: auto;
+      }
+      /* Заголовок ленты: выводится информация о канале (название, описание, изображение) */
+      .feed-header {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 0.5rem;
+      }
+      .news-container {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      }
+      /* Режим "Список": принудительно одна колонка */
+      .news-container.list-view {
+        grid-template-columns: 1fr !important;
+      }
+      .news-card {
+        background-color: var(--card-background);
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        height: 100%;
+      }
+      .news-image-container {
+        width: 100%;
+        height: 200px;
+        background-color: #e2e8f0;
+        overflow: hidden;
+        position: relative;
+      }
+      .news-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .fallback-image {
+        width: 100%;
+        height: 100%;
+        background-color: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        color: #64748b;
+        padding: 0.5rem;
+        box-sizing: border-box;
+        text-align: center;
+      }
+      .news-content {
+        padding: 1rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .news-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-color);
+      }
+      .news-description {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin-bottom: 1rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        line-clamp: 3;
+        overflow: hidden;
+        flex-grow: 1;
+      }
+      .news-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: auto;
+      }
+      .news-meta a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .news-meta a:hover {
+        text-decoration: underline;
+      }
+      .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #64748b;
+        font-weight: 500;
+      }
+      .error {
+        color: #ef4444;
+        text-align: center;
+        padding: 0.5rem;
+        background-color: #fee2e2;
+        border-radius: 0.5rem;
+        margin: 0.5rem 0;
+        font-size: 0.9rem;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .card-inner {
+        transition: transform 0.3s ease;
+        transform: translate3d(0, 0, 0);
+        will-change: transform;
+        backface-visibility: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      .news-card:hover .card-inner {
+        transform: translate3d(0, -4px, 0);
+      }
+      @media (max-width: 640px) {
+        .news-container {
+          grid-template-columns: 1fr;
+        }
+        .menu-item,
+        .accordion-item-source {
+          font-size: 0.9rem;
+        }
+      }
+      .news-card,
+      .news-card * {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+      /* Стили для кнопки настроек (шестерёнки) */
+      .settings-button {
+        position: fixed;
+        top: 0.5rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: var(--text-color);
+        z-index: 2000;
+        height: 32px;
+        display: flex;
+        align-items: center;
+      }
+      /* Стили для переключателей (свичеров) */
+      .switch-input {
+        position: relative;
+        appearance: none;
+        -webkit-appearance: none;
+        width: 40px;
+        height: 20px;
+        background: #ccc;
+        border-radius: 20px;
+        cursor: pointer;
+        margin-right: 8px;
+        vertical-align: middle;
+        transition: background 0.3s;
+        opacity: 1;
+        display: inline-block;
+        border: none;
+        outline: none;
+      }
+
+      .switch-input:checked {
+        background: var(--primary-color);
+      }
+
+      .switch-input::before {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: white;
+        top: 2px;
+        left: 2px;
+        transition: transform 0.3s;
+      }
+
+      .switch-input:checked::before {
+        transform: translateX(20px);
+      }
+
+      .switch-label {
+        vertical-align: middle;
+        margin-left: 8px;
+        display: inline-block;
+        cursor: pointer;
+      }
+      .settings-panel {
+        position: fixed;
+        top: 3rem;
+        right: 1rem;
+        background-color: var(--card-background);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        padding: 1rem;
+        z-index: 2000;
+        width: 250px;
+      }
+      .settings-panel h3 {
+        margin-top: 0;
+        font-size: 1rem;
+      }
+      .settings-option {
+        margin-bottom: 0.5rem;
+      }
+      .settings-option label {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+      }
+      /* Стили для времени последнего обновления */
+      .last-update {
+        color: #666;
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
+      }
+      /* Стили для поисковой строки */
+      .search-container {
+        position: relative;
+        margin-bottom: 1rem;
+      }
+
+      .search-input {
+        width: 200px;
+        padding-right: 2.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        background-color: var(--card-background);
+        color: var(--text-color);
+        transition: border-color 0.3s;
+        height: 32px;
+        padding: 0.5rem 2rem 0.5rem 1rem;
+        box-sizing: border-box;
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+      }
+
+      .search-clear {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-color);
+        cursor: pointer;
+        opacity: 0.5;
+        transition: opacity 0.3s;
+      }
+
+      .search-clear:hover {
+        opacity: 1;
+      }
+
+      .no-results {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-color);
+        background-color: var(--card-background);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      /* Стили для поисковой строки в верхнем правом углу */
+      .top-search-container {
+        position: fixed;
+        top: 0.5rem;
+        right: 4rem;
+        width: 200px;
+        z-index: 2000;
+        height: 32px;
+        display: flex;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Корневой элемент для React-приложения -->
+    <div id="root"></div>
+    <!-- Подключаем React 18, ReactDOM и Babel через CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Код React на JSX с комментариями -->
+    <script type="text/babel">
+      // Группировка источников по темам
+      const groupedSources = {
+        cinema: {
+          deadline: 'https://deadline.com/feed/',
+          indiewire: 'https://www.indiewire.com/feed/',
+        },
+        music: {
+          rollingstone: 'https://www.rollingstone.com/feed/',
+          nme: 'https://www.nme.com/rss',
+          guardianmusic: 'https://www.theguardian.com/music/rss',
+          freejazz: 'https://feeds.feedburner.com/blogspot/vEnU',
+          jazzprofiles: 'https://jazzprofiles.blogspot.com/feeds/posts/default',
+          americanblues: 'https://www.americanbluesscene.com/feed/',
+          bluesblast: 'https://www.bluesblastmagazine.com/feed/',
+          livingblues: 'https://livingblues.com/feed/',
+        },
+        books: {
+          bookriot: 'https://bookriot.com/feed/',
+          lithub: 'https://lithub.com/feed/',
+          guardianbooks: 'https://www.theguardian.com/books/rss',
+        },
+        life: {
+          lifehacker: 'http://feeds.feedburner.com/lifehacker-ru',
+          yogajournal: 'https://www.yogajournal.com/feed',
+        },
+        ai: {
+          techreviewai:
+            'https://www.technologyreview.com/topic/artificial-intelligence/feed/',
+          venturebeat: 'https://venturebeat.com/category/ai/feed/',
+          techcrunchai: 'https://techcrunch.com/tag/artificial-intelligence/feed/',
+          deepmind: 'https://deepmind.com/blog/feed/basic',
+        },
+        technology: {
+          techradar: 'https://www.techradar.com/feeds/articletype/news',
+          habr: 'https://habr.com/ru/rss/feed/167b753338639ca84d0dc08fd9e8d26b/?fl=ru&types[]=article&types[]=post&types[]=news',
+          google: 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en',
+          ieee: 'https://spectrum.ieee.org/rss',
+          techcrunch: 'https://techcrunch.com/feed/',
+          techinsider: 'https://www.techinsider.ru/out/public-feed-all-news.xml',
+        },
+        python: {
+          planetpython: 'https://planetpython.org/rss20.xml',
+          realpython: 'https://realpython.com/atom.xml',
+          talkpython: 'https://talkpython.fm/episodes/rss',
+          pythoninsider: 'https://blog.python.org/feeds/posts/default',
+          pythonbytes: 'https://pythonbytes.fm/episodes/rss',
+          redditpython: 'https://www.reddit.com/r/Python/.rss',
+        },
+      };
+
+      // Человекочитаемые названия источников
+      const sourceNames = {
+        cinema: {
+          deadline: 'Deadline',
+          indiewire: 'IndieWire',
+        },
+        music: {
+          rollingstone: 'Rolling Stone',
+          nme: 'NME',
+          guardianmusic: 'The Guardian Music',
+          freejazz: 'Free Jazz RSS Feed',
+          jazzprofiles: 'Jazz Profiles RSS Feed',
+          americanblues: 'American Blues Scene RSS Feed',
+          bluesblast: 'Blues Blast Magazine RSS Feed',
+          livingblues: 'Living Blues Magazine RSS Feed',
+        },
+        books: {
+          bookriot: 'Book Riot',
+          lithub: 'LitHub',
+          guardianbooks: 'The Guardian Books',
+        },
+        life: {
+          lifehacker: 'Lifehacker',
+          yogajournal: 'Yoga Journal',
+        },
+        ai: {
+          techreviewai: 'MIT Technology Review AI',
+          venturebeat: 'VentureBeat AI',
+          techcrunchai: 'TechCrunch AI',
+          deepmind: 'DeepMind',
+        },
+        technology: {
+          techradar: 'TechRadar',
+          habr: 'Habr',
+          google: 'Google News',
+          ieee: 'IEEE Spectrum',
+          techcrunch: 'TechCrunch',
+          techinsider: 'Tech Insider',
+        },
+        python: {
+          planetpython: 'Planet Python',
+          realpython: 'Real Python',
+          talkpython: 'Talk Python To Me',
+          pythoninsider: 'Python Insider',
+          pythonbytes: 'Python Bytes',
+          redditpython: 'Reddit /r/Python',
+        },
+      };
+
+      // Количество новостей, выводимых на каждой странице
+      const NEWS_PER_PAGE = 24;
+
+      // Добавим функции для работы с кешем
+      const CACHE_PREFIX = 'news_cache_';
+      const DEFAULT_CACHE_TIME = 15; // значение по умолчанию в минутах
+      const getCacheExpiration = () => {
+        const minutes =
+          parseInt(localStorage.getItem('cacheTime')) || DEFAULT_CACHE_TIME;
+        return minutes * 60 * 1000; // конвертируем в миллисекунды
+      };
+
+      // Функции для работы с кешем
+      const cacheHelpers = {
+        // Получение данных из кеша (без автоматического удаления)
+        getFromCache: (category, source) => {
+          const key = `${CACHE_PREFIX}${category}_${source}`;
+          const cached = localStorage.getItem(key);
+          if (!cached) return null;
+
+          const { data, timestamp } = JSON.parse(cached);
+          return {
+            data,
+            timestamp,
+            isExpired: Date.now() - timestamp > getCacheExpiration(),
+          };
+        },
+
+        // Сохранение данных в кеш
+        saveToCache: (category, source, data) => {
+          const key = `${CACHE_PREFIX}${category}_${source}`;
+          const cacheData = {
+            data,
+            timestamp: Date.now(),
+          };
+          localStorage.setItem(key, JSON.stringify(cacheData));
+        },
+
+        // Принудительное удаление кеша
+        removeFromCache: (category, source) => {
+          const key = `${CACHE_PREFIX}${category}_${source}`;
+          localStorage.removeItem(key);
+        },
+      };
+
+      // Добавим функции для работы с sessionStorage
+      const sessionCacheHelpers = {
+        getFromSessionCache: (category, source) => {
+          const key = `${CACHE_PREFIX}${category}_${source}`;
+          const cached = sessionStorage.getItem(key);
+          return cached ? JSON.parse(cached) : null;
+        },
+
+        saveToSessionCache: (category, source, data) => {
+          const key = `${CACHE_PREFIX}${category}_${source}`;
+          sessionStorage.setItem(key, JSON.stringify(data));
+        },
+      };
+
+      // Основной компонент приложения
+      function App() {
+        // Инициализация выбранной категории и источника с использованием localStorage
+        const initialCategory = localStorage.getItem('lastCategory') || 'technology';
+        const initialSource =
+          localStorage.getItem('lastSource') ||
+          Object.keys(groupedSources[initialCategory])[0];
+        const [currentCategory, setCurrentCategory] = React.useState(initialCategory);
+        const [currentSource, setCurrentSource] = React.useState(initialSource);
+        const [expandedCategory, setExpandedCategory] = React.useState(initialCategory);
+        const [news, setNews] = React.useState([]); // Состояние для списка новостей
+        const [channel, setChannel] = React.useState(null); // Состояние для информации о канале (шапка RSS)
+        const [page, setPage] = React.useState(0); // Номер текущей страницы (для бесконечной прокрутки)
+        const [loading, setLoading] = React.useState(false); // Флаг загрузки данных
+        const [error, setError] = React.useState(''); // Сообщение об ошибке
+        const [viewMode, setViewMode] = React.useState(
+          localStorage.getItem('viewMode') || 'card'
+        ); // Режим отображения: карточки или список
+        const [showSettings, setShowSettings] = React.useState(false); // Флаг отображения панели настроек
+        // Состояние для темы: 'light' или 'dark'
+        const [theme, setTheme] = React.useState(
+          localStorage.getItem('theme') || 'light'
+        );
+        // Добавить индикатор загрузки при смене источника
+        const [sourceLoading, setSourceLoading] = React.useState(false);
+        // Добавить уведомления о новых новостях
+        const [hasNewNews, setHasNewNews] = React.useState(false);
+        const [lastUpdate, setLastUpdate] = React.useState(null);
+        // Состояние для кеширования
+        const [cacheEnabled, setCacheEnabled] = React.useState(
+          localStorage.getItem('cacheEnabled') !== 'false'
+        );
+        const [searchQuery, setSearchQuery] = React.useState('');
+
+        // Обновляем класс на body в зависимости от выбранной темы и сохраняем выбор в localStorage
+        React.useEffect(() => {
+          document.body.classList.toggle('dark', theme === 'dark');
+          localStorage.setItem('theme', theme);
+        }, [theme]);
+
+        // Создание ссылок на элементы панели настроек и кнопки настроек
+        const settingsPanelRef = React.useRef(null);
+        const settingsButtonRef = React.useRef(null);
+
+        // Обработчик для закрытия панели настроек при клике вне её области
+        React.useEffect(() => {
+          function handleClickOutside(event) {
+            if (showSettings && settingsPanelRef.current && settingsButtonRef.current) {
+              if (
+                !settingsPanelRef.current.contains(event.target) &&
+                !settingsButtonRef.current.contains(event.target)
+              ) {
+                setShowSettings(false);
+              }
+            }
+          }
+          document.addEventListener('mousedown', handleClickOutside);
+          return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+          };
+        }, [showSettings]);
+
+        // Функция для обновления настроек в localStorage (категория, источник, режим отображения)
+        const updateStorage = (category, source, viewModeValue) => {
+          localStorage.setItem('lastCategory', category);
+          localStorage.setItem('lastSource', source);
+          if (viewModeValue) {
+            localStorage.setItem('viewMode', viewModeValue);
+          }
+        };
+
+        // При изменении выбранной категории или источника очищаем новости и загружаем новые
+        React.useEffect(() => {
+          setNews([]);
+          fetchNews(currentCategory, currentSource);
+        }, [currentCategory, currentSource]);
+
+        // Функция для загрузки новостей с повторными попытками
+        const fetchWithRetry = async (url, maxRetries = 3, initialDelay = 1000) => {
+          for (let i = 0; i < maxRetries; i++) {
+            try {
+              const response = await fetch(url);
+
+              // Если получили 429, ждем и пробуем снова
+              if (response.status === 429) {
+                // Получаем время ожидания из заголовка или используем экспоненциальную задержку
+                const retryAfter = response.headers.get('Retry-After');
+                const delay = retryAfter
+                  ? retryAfter * 1000
+                  : initialDelay * Math.pow(2, i);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+
+              return await response.json();
+            } catch (err) {
+              if (i === maxRetries - 1) throw err;
+            }
+          }
+        };
+
+        // Функция для загрузки новостей
+        const fetchNews = async (category, source) => {
+          setLoading(true);
+          setError('');
+
+          // Сначала проверяем кеш и показываем данные из него (если есть)
+          if (localStorage.getItem('cacheEnabled') !== 'false') {
+            const cachedResult = cacheHelpers.getFromCache(category, source);
+            if (cachedResult && cachedResult.data) {
+              // Показываем кешированные данные
+              setChannel(cachedResult.data.feed);
+              setNews(cachedResult.data.items);
+              setPage(1);
+              setLastUpdate(cachedResult.timestamp);
+
+              // Если кеш не устарел, не загружаем новые данные
+              if (!cachedResult.isExpired) {
+                setLoading(false);
+                return;
+              }
+
+              // Если кеш устарел, показываем уведомление и продолжаем загрузку
+              setError('Обновление данных...');
+            }
+          }
+
+          try {
+            // Пытаемся загрузить новые данные
+            const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(groupedSources[category][source])}`;
+            const data = await fetchWithRetry(apiUrl);
+
+            if (data.status === 'ok' && data.items && data.items.length > 0) {
+              // Успешно получили новые данные
+              localStorage.removeItem(`${CACHE_PREFIX}error_${category}_${source}`);
+
+              // Сохраняем в кеш, если кеширование включено
+              if (localStorage.getItem('cacheEnabled') !== 'false') {
+                cacheHelpers.saveToCache(category, source, data);
+              }
+
+              // Обновляем интерфейс новыми данными
+              setChannel(data.feed);
+              setNews(data.items);
+              setPage(1);
+              setLastUpdate(Date.now());
+              setError(''); // Очищаем ошибку
+            } else {
+              throw new Error('Invalid response');
+            }
+          } catch (err) {
+            // При ошибке загрузки проверяем, есть ли кешированные данные
+            if (localStorage.getItem('cacheEnabled') !== 'false') {
+              const cachedResult = cacheHelpers.getFromCache(category, source);
+              if (cachedResult && cachedResult.data) {
+                // Если кеш уже был показан выше, просто обновляем сообщение об ошибке
+                if (news.length > 0) {
+                  setError('Не удалось обновить данные. Показаны кешированные данные.');
+                } else {
+                  // Если кеша не было, показываем его сейчас
+                  setChannel(cachedResult.data.feed);
+                  setNews(cachedResult.data.items);
+                  setPage(1);
+                  setLastUpdate(cachedResult.timestamp);
+                  setError(
+                    'Не удалось загрузить новые данные. Показаны кешированные данные.'
+                  );
+                }
+                setLoading(false);
+                return;
+              }
+            }
+
+            // Если нет кешированных данных, показываем ошибку
+            localStorage.setItem(`${CACHE_PREFIX}error_${category}_${source}`, 'true');
+            setError('Не удалось загрузить данные. Попробуйте позже.');
+          }
+          setLoading(false);
+        };
+
+        // Обработчик для реализации бесконечной прокрутки
+        React.useEffect(() => {
+          const handleScroll = () => {
+            // Если пользователь прокрутил страницу почти до конца и данные не загружаются
+            if (
+              window.innerHeight + document.documentElement.scrollTop >=
+                document.documentElement.offsetHeight - 100 &&
+              !loading
+            ) {
+              // Если есть ещё новости для показа, увеличиваем номер страницы
+              if (page * NEWS_PER_PAGE < news.length) {
+                setPage(prev => prev + 1);
+              }
+            }
+          };
+          window.addEventListener('scroll', handleScroll);
+          return () => window.removeEventListener('scroll', handleScroll);
+        }, [loading, page, news]);
+
+        // Фильтруем новости с учетом поискового запроса
+        const filteredNews = React.useMemo(() => {
+          if (!searchQuery.trim()) return news;
+          const query = searchQuery.toLowerCase();
+          return news.filter(
+            item =>
+              item.title.toLowerCase().includes(query) ||
+              item.description.toLowerCase().includes(query)
+          );
+        }, [news, searchQuery]);
+
+        // Определяем новости, которые будут отображаться (с учетом пагинации и поиска)
+        const displayedNews = filteredNews.slice(0, page * NEWS_PER_PAGE);
+
+        // Обработчик клика по категории в меню
+        const handleCategoryClick = category => {
+          // Раскрываем/сворачиваем аккордеон для выбранной категории
+          setExpandedCategory(expandedCategory === category ? null : category);
+          setCurrentCategory(category);
+          // Выбираем первый источник выбранной категории по умолчанию
+          const newSource = Object.keys(groupedSources[category])[0];
+          setCurrentSource(newSource);
+          updateStorage(category, newSource);
+        };
+
+        // Функция очистки устаревшего кеша (только для ручной очистки)
+        const cleanupCache = (forceCleanup = false) => {
+          if (!forceCleanup) return; // Не очищаем кеш автоматически
+
+          Object.keys(localStorage).forEach(key => {
+            if (
+              key.startsWith(CACHE_PREFIX) &&
+              !key.startsWith(`${CACHE_PREFIX}error_`)
+            ) {
+              const cached = JSON.parse(localStorage.getItem(key));
+              if (Date.now() - cached.timestamp > getCacheExpiration()) {
+                localStorage.removeItem(key);
+              }
+            }
+          });
+        };
+
+        // Убираем периодическую очистку кеша
+        React.useEffect(() => {
+          // Очищаем кеш только при изменении настроек времени жизни
+          const handleStorageChange = () => {
+            if (localStorage.getItem('forceCacheCleanup') === 'true') {
+              cleanupCache(true);
+              localStorage.removeItem('forceCacheCleanup');
+            }
+          };
+
+          window.addEventListener('storage', handleStorageChange);
+          return () => window.removeEventListener('storage', handleStorageChange);
+        }, []);
+
+        // Функция для получения новостей из базы данных (пример SQL-запроса)
+        const fetchNewsFromDatabase = async (category, source) => {
+          try {
+            // Пример SQL-запроса с ЗАГЛАВНЫМИ ключевыми словами и указанием таблицы перед полями
+            const query = `
+            SELECT news.id, news.title, news.description, news.pubDate, news.link, news.image_url 
+            FROM news 
+            INNER JOIN sources ON news.source_id = sources.id 
+            WHERE sources.category = ? AND sources.name = ? 
+            ORDER BY news.pubDate DESC 
+            LIMIT 50
+          `;
+
+            // Здесь был бы код выполнения запроса к базе данных
+
+            return data;
+          } catch (error) {
+            console.error('Error fetching from database:', error);
+            return null;
+          }
+        };
+
+        return (
+          <div>
+            {/* Поисковая строка в верхнем правом углу */}
+            <div className="top-search-container">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Поиск..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className="search-clear" onClick={() => setSearchQuery('')}>
+                  ×
+                </button>
+              )}
+            </div>
+            {/* Кнопка настроек (иконка шестерёнки) */}
+            <button
+              className="settings-button"
+              ref={settingsButtonRef}
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              ⚙
+            </button>
+            {/* Панель настроек отображается по клику */}
+            {showSettings && (
+              <div className="settings-panel" ref={settingsPanelRef}>
+                <h3>Настройки</h3>
+                {/* Опция выбора режима отображения новостей (Карточки/Список) */}
+                <div className="settings-option">
+                  <label>
+                    <input
+                      type="radio"
+                      name="viewMode"
+                      value="card"
+                      checked={viewMode === 'card'}
+                      onChange={() => {
+                        setViewMode('card');
+                        updateStorage(currentCategory, currentSource, 'card');
+                      }}
+                    />
+                    Карточки
+                  </label>
+                </div>
+                <div className="settings-option">
+                  <label>
+                    <input
+                      type="radio"
+                      name="viewMode"
+                      value="list"
+                      checked={viewMode === 'list'}
+                      onChange={() => {
+                        setViewMode('list');
+                        updateStorage(currentCategory, currentSource, 'list');
+                      }}
+                    />
+                    Список
+                  </label>
+                </div>
+                {/* Опция выбора темы (Светлая/Тёмная) */}
+                <div className="settings-option">
+                  <h4 style={{ marginBottom: '0.5rem' }}>Тема</h4>
+                  <label>
+                    <input
+                      type="checkbox"
+                      className="switch-input"
+                      checked={theme === 'dark'}
+                      onChange={e => setTheme(e.target.checked ? 'dark' : 'light')}
+                    />
+                    <span className="switch-label">
+                      {theme === 'light' ? 'Светлая' : 'Тёмная'} тема
+                    </span>
+                  </label>
+                </div>
+                {/* Настройки кеширования */}
+                <div className="settings-option">
+                  <h4 style={{ marginBottom: '0.5rem' }}>Кеширование</h4>
+                  <label>
+                    <input
+                      type="checkbox"
+                      className="switch-input"
+                      checked={cacheEnabled}
+                      onChange={e => {
+                        setCacheEnabled(e.target.checked);
+                        localStorage.setItem('cacheEnabled', e.target.checked);
+                        if (!e.target.checked) {
+                          // Очищаем кеш при отключении
+                          Object.keys(localStorage).forEach(key => {
+                            if (key.startsWith(CACHE_PREFIX)) {
+                              localStorage.removeItem(key);
+                            }
+                          });
+                        }
+                      }}
+                    />
+                    <span className="switch-label">
+                      {cacheEnabled ? 'Кеширование включено' : 'Кеширование выключено'}
+                    </span>
+                  </label>
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.3rem' }}>
+                      Время жизни кеша (минуты):
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="60"
+                      value={localStorage.getItem('cacheTime') || DEFAULT_CACHE_TIME}
+                      onChange={e => {
+                        const value = Math.max(
+                          1,
+                          Math.min(60, parseInt(e.target.value) || DEFAULT_CACHE_TIME)
+                        );
+                        localStorage.setItem('cacheTime', value);
+                        // Помечаем, что нужно принудительно очистить устаревший кеш
+                        localStorage.setItem('forceCacheCleanup', 'true');
+                        // Запускаем событие для очистки кеша
+                        window.dispatchEvent(new Event('storage'));
+                      }}
+                      style={{
+                        width: '60px',
+                        padding: '4px',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        backgroundColor: 'var(--card-background)',
+                        color: 'var(--text-color)',
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <button
+                      onClick={() => {
+                        // Очищаем весь кеш
+                        Object.keys(localStorage).forEach(key => {
+                          if (key.startsWith(CACHE_PREFIX)) {
+                            localStorage.removeItem(key);
+                          }
+                        });
+                        // Перезагружаем текущий источник
+                        fetchNews(currentCategory, currentSource);
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        backgroundColor: 'var(--card-background)',
+                        color: 'var(--text-color)',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                      }}
+                    >
+                      Очистить кеш
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Боковое меню (сайдбар) с аккордеоном для выбора категории и источника */}
+            <div className="sidebar">
+              <nav className="menu">
+                {Object.entries(groupedSources).map(([category, sourcesObj]) => (
+                  <div key={category} className="accordion-item">
+                    <button
+                      className="menu-item"
+                      onClick={() => handleCategoryClick(category)}
+                    >
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </button>
+                    {/* При раскрытии аккордеона выводим список источников для данной категории */}
+                    {expandedCategory === category && (
+                      <div className="accordion-content">
+                        {Object.entries(sourcesObj).map(([sourceKey]) => (
+                          <button
+                            key={sourceKey}
+                            className={`accordion-item-source ${currentCategory === category && currentSource === sourceKey ? 'active' : ''}`}
+                            onClick={() => {
+                              setCurrentCategory(category);
+                              setCurrentSource(sourceKey);
+                              updateStorage(category, sourceKey);
+                            }}
+                          >
+                            {sourceNames[category] && sourceNames[category][sourceKey]
+                              ? sourceNames[category][sourceKey]
+                              : sourceKey.charAt(0).toUpperCase() + sourceKey.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {/* Логотип в нижней части сайдбара */}
+                <div className="sidebar-footer">(с) AI Pages, 2025</div>
+              </nav>
+            </div>
+            {/* Основной контент */}
+            <div className="content">
+              {/* Заголовок страницы: если информация о канале получена, выводим ее */}
+              {channel ? (
+                <div
+                  className="feed-header"
+                  style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}
+                >
+                  {channel.image && (
+                    <img
+                      src={channel.image}
+                      alt={channel.title}
+                      style={{ width: '50px', height: '50px', borderRadius: '50%' }}
+                    />
+                  )}
+                  <div>
+                    <h2 style={{ margin: 0 }}>{channel.title}</h2>
+                    <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                      {channel.description}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <h2 className="feed-header">
+                  {sourceNames[currentCategory] &&
+                  sourceNames[currentCategory][currentSource]
+                    ? sourceNames[currentCategory][currentSource]
+                    : currentSource.charAt(0).toUpperCase() + currentSource.slice(1)}
+                </h2>
+              )}
+              {/* Если произошла ошибка, выводим сообщение */}
+              {error && <div className="error">{error}</div>}
+              {lastUpdate && (
+                <div className="last-update">
+                  Последнее обновление:{' '}
+                  {(() => {
+                    const date = new Date(lastUpdate);
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const year = date.getFullYear();
+                    const hours = date.getHours().toString().padStart(2, '0');
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    return `${day}.${month}.${year} ${hours}:${minutes}`;
+                  })()}
+                </div>
+              )}
+              {/* Сообщение об отсутствии результатов */}
+              {searchQuery && filteredNews.length === 0 && (
+                <div className="no-results">
+                  По запросу "{searchQuery}" ничего не найдено
+                </div>
+              )}
+              <div
+                className={`news-container ${viewMode === 'list' ? 'list-view' : ''}`}
+              >
+                {displayedNews.map((item, index) => (
+                  <NewsCard key={index} item={item} viewMode={viewMode} />
+                ))}
+              </div>
+              {/* Индикация загрузки новостей */}
+              {loading && <div className="loading">Загрузка новостей...</div>}
+            </div>
+          </div>
+        );
+      }
+
+      // Компонент для отображения отдельной новости (карточка или элемент списка)
+      function NewsCard({ item, viewMode }) {
+        // Форматирование даты публикации новости в формате dd.mm.yyyy hh:mm
+        const pubDate = new Date(item.pubDate);
+        const day = pubDate.getDate().toString().padStart(2, '0');
+        const month = (pubDate.getMonth() + 1).toString().padStart(2, '0');
+        const year = pubDate.getFullYear();
+        const hours = pubDate.getHours().toString().padStart(2, '0');
+        const minutes = pubDate.getMinutes().toString().padStart(2, '0');
+        const formattedDate = `${day}.${month}.${year} ${hours}:${minutes}`;
+
+        // Состояние для отслеживания ошибки загрузки изображения
+        const [imgError, setImgError] = React.useState(false);
+        // Определяем URL изображения (проверяем несколько возможных полей)
+        const imageUrl =
+          (item.enclosure && item.enclosure.link) ||
+          item.thumbnail ||
+          (item.image && item.image.url) ||
+          '';
+
+        // Если выбран режим "Список", отображаем компактное представление
+        if (viewMode === 'list') {
+          return (
+            <div
+              className="news-card"
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                height: 'auto',
+                alignItems: 'center',
+                borderRadius: '0.5rem',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                marginBottom: '1rem',
+              }}
+            >
+              {/* Блок с изображением */}
+              <div style={{ flexShrink: 0, width: '100px', height: '100px' }}>
+                <a href={item.link} target="_blank" rel="noopener noreferrer">
+                  {!imageUrl || imgError ? (
+                    <div className="fallback-image" style={{ fontSize: '0.8rem' }}>
+                      {item.title}
+                    </div>
+                  ) : (
+                    <img
+                      className="news-image"
+                      src={imageUrl}
+                      alt={item.title}
+                      onError={() => setImgError(true)}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  )}
+                </a>
+              </div>
+              {/* Блок с текстовым содержимым новости */}
+              <div style={{ padding: '0.5rem', flexGrow: 1 }}>
+                <h2
+                  className="news-title"
+                  style={{ fontSize: '1rem', margin: '0 0 0.5rem 0' }}
+                >
+                  {item.title}
+                </h2>
+                <p
+                  className="news-description"
+                  style={{ fontSize: '0.8rem', margin: '0 0 0.5rem 0' }}
+                >
+                  {item.description.replace(/<[^>]*>/g, '')}
+                </p>
+                <div className="news-meta" style={{ fontSize: '0.7rem' }}>
+                  <span>{formattedDate}</span>
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '0.7rem' }}
+                  >
+                    Читать далее
+                  </a>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Отображение новости в виде карточки (режим "Карточки")
+        return (
+          <article className="news-card">
+            <div className="card-inner">
+              <div className="news-image-container">
+                <a href={item.link} target="_blank" rel="noopener noreferrer">
+                  {!imageUrl || imgError ? (
+                    <div className="fallback-image">{item.title}</div>
+                  ) : (
+                    <img
+                      className="news-image"
+                      src={imageUrl}
+                      alt={item.title}
+                      onError={() => setImgError(true)}
+                    />
+                  )}
+                </a>
+              </div>
+              <div className="news-content">
+                <h2 className="news-title">{item.title}</h2>
+                <p className="news-description">
+                  {item.description.replace(/<[^>]*>/g, '')}
+                </p>
+                <div className="news-meta">
+                  <span>{formattedDate}</span>
+                  <a href={item.link} target="_blank" rel="noopener noreferrer">
+                    Читать далее
+                  </a>
+                </div>
+              </div>
+            </div>
+          </article>
+        );
+      }
+
+      // Рендерим основное приложение в элемент с id="root"
+      // React 18 рендеринг
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+    <style>
+      /* Дополнительные стили для аккордеон-меню в сайдбаре */
+      .accordion-item {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5rem;
+      }
+      .accordion-content {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .accordion-item-source {
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        font-size: 0.9rem;
+        padding: 0.3rem 0.5rem;
+        color: var(--text-color);
+      }
+      .accordion-item-source.active {
+        color: var(--active-color);
+        font-weight: bold;
+      }
+      /* Стили для кнопки настроек (шестерёнки) */
+      .settings-button {
+        position: fixed;
+        top: 0.5rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: var(--text-color);
+        z-index: 2000;
+        height: 32px;
+        display: flex;
+        align-items: center;
+      }
+      .settings-panel {
+        position: fixed;
+        top: 3rem;
+        right: 1rem;
+        background-color: var(--card-background);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        padding: 1rem;
+        z-index: 2000;
+        width: 250px;
+      }
+      .settings-panel h3 {
+        margin-top: 0;
+        font-size: 1rem;
+      }
+      .settings-option {
+        margin-bottom: 0.5rem;
+      }
+      .settings-option label {
+        margin-right: 0.5rem;
+        font-size: 0.9rem;
+      }
+      /* Стили для переключателя темы */
+      .switch-input {
+        position: relative;
+        appearance: none;
+        -webkit-appearance: none;
+        width: 40px;
+        height: 20px;
+        background: #ccc;
+        border-radius: 20px;
+        cursor: pointer;
+        margin-right: 8px;
+        vertical-align: middle;
+        transition: background 0.3s;
+        opacity: 1;
+        display: inline-block;
+        border: none;
+        outline: none;
+      }
+
+      .switch-input:checked {
+        background: var(--primary-color);
+      }
+
+      .switch-input::before {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: white;
+        top: 2px;
+        left: 2px;
+        transition: transform 0.3s;
+      }
+
+      .switch-input:checked::before {
+        transform: translateX(20px);
+      }
+
+      .switch-label {
+        vertical-align: middle;
+        margin-left: 8px;
+        display: inline-block;
+        cursor: pointer;
+      }
+    </style>
+  </body>
+</html>

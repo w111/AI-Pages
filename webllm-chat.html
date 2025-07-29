@@ -1,0 +1,1666 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebLLM Chat - Локальный ИИ в браузере</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- 
+    Техническое описание:
+    - WebLLM для локального запуска LLM в браузере
+    - Поддержка Llama 3, Mistral, Phi-3 и других моделей
+    - OpenAI-совместимый API интерфейс
+    - Полностью клиентская реализация без серверов
+    - WebGPU для ускорения вычислений
+    
+    История изменений:
+    2025-01-26: Первоначальная версия WebLLM Chat
+  -->
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary-color: #10a37f;
+        --secondary-color: #19c37d;
+        --bg-color: #0a0a0a;
+        --card-bg: #1a1a1a;
+        --chat-bg: #2a2a2a;
+        --text-color: #ffffff;
+        --text-secondary: #d1d5db;
+        --border-color: #374151;
+        --user-msg-bg: #3b82f6;
+        --ai-msg-bg: #374151;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --error-color: #ef4444;
+      }
+
+      body {
+        font-family:
+          'Segoe UI',
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: linear-gradient(135deg, var(--bg-color) 0%, #1a1a2e 100%);
+        color: var(--text-color);
+        height: 100vh;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      /* App Header in Sidebar */
+      .app-header-section {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .app-title {
+        font-size: 1.4rem;
+        color: white;
+        margin-bottom: 5px;
+        font-weight: 600;
+      }
+
+      .app-title i {
+        margin-right: 8px;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .app-subtitle {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+        margin: 0;
+      }
+
+      .compatibility-warning {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 10px 15px;
+        margin: 10px 20px;
+        border-radius: 8px;
+        border-left: 4px solid var(--warning-color);
+      }
+
+      .requirements-header {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .requirements-header i {
+        transition: transform 0.3s ease;
+      }
+
+      .requirements-header.collapsed i {
+        transform: rotate(-90deg);
+      }
+
+      .requirements-content {
+        max-height: 200px;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+
+      .requirements-content.collapsed {
+        max-height: 0;
+      }
+
+      .main-container {
+        display: flex;
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        width: 300px;
+        background: var(--card-bg);
+        border-right: 1px solid var(--border-color);
+        padding: 15px;
+        overflow-y: auto;
+        min-height: 0;
+      }
+
+      .model-section {
+        margin-bottom: 20px;
+      }
+
+      .section-title {
+        color: var(--primary-color);
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .model-select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-color);
+        font-size: 1rem;
+        margin-bottom: 15px;
+      }
+
+      .model-select option {
+        padding: 8px;
+        background: var(--bg-color);
+        color: var(--text-color);
+      }
+
+      .model-dropdown {
+        position: relative;
+        margin-bottom: 15px;
+      }
+
+      .model-dropdown-button {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-color);
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+      }
+
+      .model-dropdown-button:hover {
+        border-color: var(--primary-color);
+      }
+
+      .model-dropdown-button.open {
+        border-color: var(--primary-color);
+        border-radius: 8px 8px 0 0;
+      }
+
+      .model-dropdown-content {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--bg-color);
+        border: 1px solid var(--primary-color);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 400px;
+        overflow-y: auto;
+        z-index: 100;
+        display: none;
+      }
+
+      .model-dropdown-content.show {
+        display: block;
+      }
+
+      .model-option {
+        padding: 12px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s ease;
+      }
+
+      .model-option:last-child {
+        border-bottom: none;
+      }
+
+      .model-option:hover {
+        background: var(--border-color);
+      }
+
+      .model-option.selected {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .model-option-header {
+        font-weight: 600;
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .model-option-size {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+
+      .model-option-desc {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        line-height: 1.3;
+      }
+
+      .model-option-specs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .model-spec-tag {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        background: var(--chat-bg);
+        border-radius: 3px;
+        color: var(--text-secondary);
+      }
+
+      .status-indicator {
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .status-loading {
+        background: rgba(245, 158, 11, 0.1);
+        border: 1px solid var(--warning-color);
+        color: var(--warning-color);
+      }
+
+      .status-ready {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid var(--success-color);
+        color: var(--success-color);
+      }
+
+      .status-error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid var(--error-color);
+        color: var(--error-color);
+      }
+
+      .progress-container {
+        margin: 15px 0;
+        display: none;
+      }
+
+      .progress-container.show {
+        display: block;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 6px;
+        background: var(--border-color);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 8px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+
+      .progress-text {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        text-align: center;
+      }
+
+      .settings-section {
+        margin-top: 15px;
+      }
+
+      .setting-item {
+        margin-bottom: 12px;
+      }
+
+      .setting-item label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+
+      .setting-input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-color);
+        color: var(--text-color);
+        font-size: 0.9rem;
+      }
+
+      .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--chat-bg);
+        min-height: 0;
+        position: relative;
+      }
+
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 20px 100px 20px;
+        scroll-behavior: smooth;
+      }
+
+      .message {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 12px;
+      }
+
+      .message.user {
+        justify-content: flex-end;
+      }
+
+      .message.user .message-content {
+        background: var(--user-msg-bg);
+        color: white;
+        margin-left: 50px;
+      }
+
+      .message.ai .message-content {
+        background: var(--ai-msg-bg);
+        color: var(--text-color);
+        margin-right: 50px;
+      }
+
+      .message-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+
+      .message.user .message-avatar {
+        background: var(--user-msg-bg);
+        color: white;
+        order: 2;
+      }
+
+      .message.ai .message-avatar {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .message-content {
+        padding: 12px 16px;
+        border-radius: 12px;
+        max-width: 70%;
+        line-height: 1.5;
+        word-wrap: break-word;
+      }
+
+      .message-content pre {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 8px 0;
+      }
+
+      .message-content code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+      }
+
+      .chat-input-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 20px;
+        border-top: 1px solid var(--border-color);
+        background: var(--card-bg);
+        z-index: 10;
+      }
+
+      .chat-input-wrapper {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+
+      .chat-input {
+        flex: 1;
+        min-height: 50px;
+        max-height: 150px;
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 25px;
+        background: var(--bg-color);
+        color: var(--text-color);
+        font-size: 1rem;
+        resize: none;
+        overflow-y: auto;
+      }
+
+      .chat-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+      }
+
+      .send-button {
+        width: 50px;
+        height: 50px;
+        border: none;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+      }
+
+      .send-button:hover:not(:disabled) {
+        background: var(--secondary-color);
+        transform: scale(1.05);
+      }
+
+      .send-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .typing-indicator {
+        margin-bottom: 20px;
+        display: none;
+      }
+
+      .typing-indicator.show {
+        display: flex;
+        gap: 12px;
+      }
+
+      .typing-content {
+        background: var(--ai-msg-bg);
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-right: 50px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .typing-dots {
+        display: flex;
+        gap: 4px;
+      }
+
+      .typing-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+        animation: typingAnimation 1.4s infinite;
+      }
+
+      .typing-dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .typing-dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes typingAnimation {
+        0%,
+        60%,
+        100% {
+          opacity: 0.3;
+        }
+        30% {
+          opacity: 1;
+        }
+      }
+
+      .welcome-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-secondary);
+      }
+
+      .welcome-message i {
+        font-size: 3rem;
+        color: var(--primary-color);
+        margin-bottom: 20px;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .action-btn {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-color);
+        color: var(--text-color);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+      }
+
+      .action-btn:hover {
+        background: var(--border-color);
+      }
+
+      .action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .requirements-btn {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--warning-color);
+        border-radius: 6px;
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning-color);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+        margin-top: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .requirements-btn:hover {
+        background: rgba(245, 158, 11, 0.2);
+      }
+
+      /* Accordion Styles */
+      .accordion-item {
+        margin-bottom: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .accordion-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 15px;
+        background: var(--chat-bg);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-bottom: 1px solid transparent;
+      }
+
+      .accordion-header:hover {
+        background: var(--border-color);
+      }
+
+      .accordion-header.active {
+        border-bottom-color: var(--border-color);
+      }
+
+      .accordion-header .section-title {
+        margin: 0;
+        flex: 1;
+      }
+
+      .accordion-icon {
+        transition: transform 0.3s ease;
+        color: var(--text-secondary);
+      }
+
+      .accordion-header.active .accordion-icon {
+        transform: rotate(180deg);
+      }
+
+      .accordion-content {
+        padding: 15px;
+        background: var(--bg-color);
+        max-height: 1000px;
+        overflow: hidden;
+        transition:
+          max-height 0.3s ease,
+          padding 0.3s ease;
+      }
+
+      .accordion-content.collapsed {
+        max-height: 0;
+        padding: 0 15px;
+      }
+
+      /* System message styles */
+      .message.system-message {
+        opacity: 0.9;
+      }
+
+      .message.system-message .message-content {
+        background: linear-gradient(135deg, var(--primary-color), #667eea);
+        color: white;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-right: 0;
+      }
+
+      .message.system-message .message-avatar {
+        background: linear-gradient(135deg, var(--primary-color), #667eea);
+        color: white;
+      }
+
+      .requirements-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .requirements-modal.show {
+        display: flex;
+      }
+
+      .requirements-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 25px;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        position: relative;
+      }
+
+      .requirements-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 1.5rem;
+        padding: 5px;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+      }
+
+      .requirements-close:hover {
+        background: var(--bg-color);
+        color: var(--text-color);
+      }
+
+      .requirements-title {
+        color: var(--primary-color);
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .requirements-list {
+        margin: 15px 0 0 20px;
+      }
+
+      .requirements-list li {
+        margin-bottom: 10px;
+        color: var(--text-color);
+      }
+
+      .tech-note {
+        background: var(--bg-color);
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        border-left: 4px solid var(--primary-color);
+      }
+
+      @media (max-width: 768px) {
+        .main-container {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          max-height: 180px;
+          border-right: none;
+          border-bottom: 1px solid var(--border-color);
+          padding: 10px;
+          overflow-y: auto;
+          flex-shrink: 0;
+        }
+
+        .chat-messages {
+          padding: 15px 15px 120px 15px;
+        }
+
+        .chat-input-container {
+          padding: 15px;
+        }
+
+        .message-content {
+          max-width: 85%;
+        }
+
+        .header {
+          padding: 10px 20px;
+          flex-shrink: 0;
+        }
+
+        .header h1 {
+          font-size: 1.8rem;
+          margin-bottom: 2px;
+        }
+
+        .header p {
+          font-size: 1rem;
+        }
+
+        .compatibility-warning {
+          margin: 5px 10px;
+          padding: 8px 12px;
+        }
+
+        .model-section {
+          margin-bottom: 15px;
+        }
+
+        .setting-item {
+          margin-bottom: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="sidebar">
+        <!-- App Header -->
+        <div class="app-header-section">
+          <h2 class="app-title">
+            <i class="fas fa-robot"></i>
+            WebLLM Chat
+          </h2>
+          <p class="app-subtitle">Локальный ИИ в браузере</p>
+        </div>
+
+        <div class="model-section">
+          <h3 class="section-title">
+            <i class="fas fa-microchip"></i>
+            Выбор модели
+          </h3>
+
+          <div class="model-dropdown" id="modelDropdown">
+            <div class="model-dropdown-button" id="modelDropdownButton">
+              <span id="selectedModelText">Llama-3-8B-Instruct (Рекомендуется)</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="model-dropdown-content" id="modelDropdownContent">
+              <div class="model-option selected" data-model="llama-3-8b">
+                <div class="model-option-header">
+                  <span>Llama-3-8B-Instruct</span>
+                  <span class="model-option-size">4.3GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Мощная модель от Meta. Отличное качество ответов и понимание
+                  контекста.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">6GB VRAM</span>
+                  <span class="model-spec-tag">Высокое качество</span>
+                  <span class="model-spec-tag">Рекомендуется</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="mistral-7b">
+                <div class="model-option-header">
+                  <span>Mistral-7B-Instruct</span>
+                  <span class="model-option-size">3.8GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Быстрая и эффективная модель от Mistral AI. Хороший баланс скорости и
+                  качества.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">5GB VRAM</span>
+                  <span class="model-spec-tag">Быстрая</span>
+                  <span class="model-spec-tag">Высокое качество</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="phi-3-mini">
+                <div class="model-option-header">
+                  <span>Phi-3-Mini-4K</span>
+                  <span class="model-option-size">2.2GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Компактная модель от Microsoft. Идеальна для быстрых ответов и
+                  небольших задач.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">3GB VRAM</span>
+                  <span class="model-spec-tag">Очень быстрая</span>
+                  <span class="model-spec-tag">Компактная</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="gemma-3n-4b">
+                <div class="model-option-header">
+                  <span>Gemma-3n-4B-Instruct</span>
+                  <span class="model-option-size">2.5GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Компактная модель Google с адаптивной активацией параметров. 140+
+                  языков.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">3.5GB VRAM</span>
+                  <span class="model-spec-tag">Быстрая</span>
+                  <span class="model-spec-tag">Многоязычная</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="qwen-3-8b">
+                <div class="model-option-header">
+                  <span>Qwen-3-8B-Instruct</span>
+                  <span class="model-option-size">4.5GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Многоязычная модель от Alibaba с отличным пониманием контекста.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">6GB VRAM</span>
+                  <span class="model-spec-tag">Быстрая</span>
+                  <span class="model-spec-tag">Многоязычная</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="demo">
+                <div class="model-option-header">
+                  <span>Демо-режим</span>
+                  <span class="model-option-size">0MB</span>
+                </div>
+                <div class="model-option-desc">
+                  Демонстрационный режим без загрузки модели. Показывает примеры
+                  интерфейса.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">Без загрузки</span>
+                  <span class="model-spec-tag">Мгновенная</span>
+                  <span class="model-spec-tag">Тестирование UI</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="status-indicator" id="statusIndicator">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <span>Инициализация...</span>
+          </div>
+
+          <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Загрузка модели...</div>
+          </div>
+
+          <div class="action-buttons">
+            <button class="action-btn" id="loadModelBtn" onclick="loadSelectedModel()">
+              <i class="fas fa-download"></i> Загрузить
+            </button>
+            <button class="action-btn" id="clearChatBtn" onclick="clearChat()">
+              <i class="fas fa-trash"></i> Очистить
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <!-- Базовые настройки -->
+          <div class="accordion-item">
+            <div class="accordion-header" onclick="toggleAccordion('basicSettings')">
+              <h3 class="section-title">
+                <i class="fas fa-cog"></i>
+                Настройки
+              </h3>
+              <i class="fas fa-chevron-down accordion-icon"></i>
+            </div>
+            <div id="basicSettings" class="accordion-content">
+              <div class="setting-item">
+                <label for="temperature">Temperature (креативность):</label>
+                <input
+                  type="range"
+                  id="temperature"
+                  class="setting-input"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value="0.7"
+                />
+                <small style="color: var(--text-secondary)"
+                  >Текущее: <span id="temperatureValue">0.7</span></small
+                >
+              </div>
+
+              <div class="setting-item">
+                <label for="maxTokens">Максимум токенов:</label>
+                <input
+                  type="range"
+                  id="maxTokens"
+                  class="setting-input"
+                  min="50"
+                  max="2048"
+                  step="50"
+                  value="512"
+                />
+                <small style="color: var(--text-secondary)"
+                  >Текущее: <span id="maxTokensValue">512</span></small
+                >
+              </div>
+
+              <div class="setting-item">
+                <label for="systemPrompt">Системный промпт:</label>
+                <textarea
+                  id="systemPrompt"
+                  class="setting-input"
+                  rows="3"
+                  placeholder="Ты - полезный ИИ-ассистент..."
+                >
+Ты - полезный ИИ-ассистент. Отвечай кратко и по делу.</textarea
+                >
+              </div>
+            </div>
+          </div>
+
+          <button class="requirements-btn" onclick="showRequirements()">
+            <i class="fas fa-info-circle"></i>
+            Системные требования
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-container">
+        <div class="chat-messages" id="chatMessages">
+          <div class="welcome-message" id="welcomeMessage">
+            <i class="fas fa-comments"></i>
+            <h3>Добро пожаловать в WebLLM Chat!</h3>
+            <p>Выберите модель и начните общение с ИИ прямо в браузере</p>
+            <p style="font-size: 0.9rem; margin-top: 10px">
+              🔒 Полная конфиденциальность - все вычисления локально<br />
+              ⚡ Без API-ключей и интернета после загрузки модели<br />
+              🚀 Использует ваш GPU для быстрых ответов
+            </p>
+          </div>
+
+          <div class="typing-indicator" id="typingIndicator">
+            <div class="message-avatar">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div class="typing-content">
+              <span>ИИ печатает</span>
+              <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-container">
+          <div class="chat-input-wrapper">
+            <textarea
+              id="chatInput"
+              class="chat-input"
+              placeholder="Напишите ваше сообщение..."
+              rows="1"
+            ></textarea>
+            <button id="sendButton" class="send-button">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно системных требований -->
+    <div class="requirements-modal" id="requirementsModal">
+      <div class="requirements-content">
+        <button class="requirements-close" onclick="hideRequirements()">
+          <i class="fas fa-times"></i>
+        </button>
+
+        <h2 class="requirements-title">
+          <i class="fas fa-exclamation-triangle"></i>
+          Системные требования
+        </h2>
+
+        <h3 style="color: var(--text-color); margin-bottom: 15px">
+          Минимальные требования:
+        </h3>
+        <ul class="requirements-list">
+          <li>
+            <strong>Браузер:</strong> Chrome 113+ или Edge 113+ с поддержкой WebGPU
+          </li>
+          <li>
+            <strong>GPU:</strong> Минимум 6GB видеопамяти (рекомендуется 8GB+ для
+            больших моделей)
+          </li>
+          <li>
+            <strong>Интернет:</strong> Стабильное соединение для первичной загрузки
+            модели
+          </li>
+          <li><strong>Память:</strong> Минимум 8GB оперативной памяти</li>
+        </ul>
+
+        <h3 style="color: var(--text-color); margin: 20px 0 15px 0">
+          Рекомендуемое оборудование:
+        </h3>
+        <ul class="requirements-list">
+          <li><strong>Apple:</strong> Mac с чипом M1/M2/M3 (любая модель)</li>
+          <li><strong>NVIDIA:</strong> RTX 3070+, RTX 4000+, A100, H100</li>
+          <li><strong>AMD:</strong> RX 6800+, RX 7000+</li>
+          <li><strong>Intel:</strong> Arc A750+</li>
+        </ul>
+
+        <div class="tech-note">
+          <h4 style="color: var(--primary-color); margin-bottom: 10px">
+            <i class="fas fa-microchip"></i> Технические детали:
+          </h4>
+          <p style="margin-bottom: 10px">
+            <strong>WebLLM + WebGPU:</strong> Запуск больших языковых моделей локально в
+            браузере без серверов
+          </p>
+          <p style="margin-bottom: 10px">
+            <strong>Поддерживаемые модели:</strong> Llama-3-8B (~4.3GB), Mistral-7B
+            (~3.8GB), Phi-3-Mini (~2.2GB), Gemma-2B (~1.5GB)
+          </p>
+          <p>
+            <strong>Приватность:</strong> Все вычисления происходят локально, данные не
+            передаются на внешние серверы
+          </p>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center">
+          <button
+            class="action-btn"
+            onclick="hideRequirements()"
+            style="width: auto; padding: 10px 20px"
+          >
+            Понятно
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      // Импорт WebLLM
+      import * as webllm from 'https://esm.run/@mlc-ai/web-llm';
+
+      class WebLLMChat {
+        constructor() {
+          this.engine = null;
+          this.isModelLoading = false;
+          this.currentModel = null;
+          this.conversationHistory = [];
+          this.selectedModelId = 'llama-3-8b'; // По умолчанию выбираем Llama 3
+
+          this.initializeElements();
+          this.setupEventListeners();
+          this.initializeModels();
+          this.checkWebGPUSupport();
+        }
+
+        initializeElements() {
+          this.modelDropdown = document.querySelector('.model-dropdown');
+          this.modelDropdownButton = document.querySelector('.model-dropdown-button');
+          this.modelDropdownContent = document.querySelector('.model-dropdown-content');
+          this.modelOptions = document.querySelectorAll('.model-option');
+
+          this.statusIndicator = document.getElementById('statusIndicator');
+          this.progressContainer = document.getElementById('progressContainer');
+          this.progressFill = document.getElementById('progressFill');
+          this.progressText = document.getElementById('progressText');
+
+          this.chatMessages = document.getElementById('chatMessages');
+          this.welcomeMessage = document.getElementById('welcomeMessage');
+          this.typingIndicator = document.getElementById('typingIndicator');
+          this.chatInput = document.getElementById('chatInput');
+          this.sendButton = document.getElementById('sendButton');
+
+          this.loadModelBtn = document.getElementById('loadModelBtn');
+          this.clearChatBtn = document.getElementById('clearChatBtn');
+
+          this.temperatureSlider = document.getElementById('temperature');
+          this.temperatureValue = document.getElementById('temperatureValue');
+          this.maxTokensSlider = document.getElementById('maxTokens');
+          this.maxTokensValue = document.getElementById('maxTokensValue');
+          this.systemPrompt = document.getElementById('systemPrompt');
+        }
+
+        setupEventListeners() {
+          // Model dropdown event listeners
+          this.modelDropdownButton.addEventListener('click', () =>
+            this.toggleDropdown()
+          );
+          this.modelOptions.forEach(option => {
+            option.addEventListener('click', () => this.selectModel(option));
+          });
+
+          // Закрываем dropdown при клике вне его
+          document.addEventListener('click', e => {
+            if (!this.modelDropdown.contains(e.target)) {
+              this.modelDropdownContent.style.display = 'none';
+            }
+          });
+
+          this.sendButton.addEventListener('click', () => this.sendMessage());
+          this.chatInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              this.sendMessage();
+            }
+          });
+
+          this.temperatureSlider.addEventListener('input', e => {
+            this.temperatureValue.textContent = e.target.value;
+          });
+
+          this.maxTokensSlider.addEventListener('input', e => {
+            this.maxTokensValue.textContent = e.target.value;
+          });
+
+          // Автоматическое изменение размера текстового поля
+          this.chatInput.addEventListener('input', () => {
+            this.chatInput.style.height = 'auto';
+            this.chatInput.style.height =
+              Math.min(this.chatInput.scrollHeight, 150) + 'px';
+          });
+        }
+
+        initializeModels() {
+          this.models = {
+            'llama-3-8b': {
+              id: 'Llama-3-8B-Instruct-q4f32_1-MLC',
+              name: 'Llama-3-8B-Instruct',
+              description:
+                'Мощная модель от Meta. Отличное качество ответов и понимание контекста.',
+              size: '4.3GB',
+              vramRequired: '6GB',
+              speed: 'Средняя',
+              quality: 'Высокое',
+              recommended: true,
+              toolUse: true,
+            },
+            'mistral-7b': {
+              id: 'Mistral-7B-Instruct-v0.3-q4f16_1-MLC',
+              name: 'Mistral-7B-Instruct',
+              description:
+                'Быстрая и эффективная модель от Mistral AI. Хороший баланс скорости и качества.',
+              size: '3.8GB',
+              vramRequired: '5GB',
+              speed: 'Быстрая',
+              quality: 'Высокое',
+              toolUse: true,
+            },
+            'phi-3-mini': {
+              id: 'Phi-3-mini-4k-instruct-q4f16_1-MLC',
+              name: 'Phi-3-Mini-4K',
+              description:
+                'Компактная модель от Microsoft. Идеальна для быстрых ответов и небольших задач.',
+              size: '2.2GB',
+              vramRequired: '3GB',
+              speed: 'Очень быстрая',
+              quality: 'Среднее',
+              toolUse: false,
+            },
+            'gemma-3n-4b': {
+              id: 'gemma-2-2b-it-q4f16_1-MLC',
+              name: 'Gemma-3n-4B-Instruct',
+              description:
+                'Компактная модель Google с адаптивной активацией параметров. Поддержка 140+ языков.',
+              size: '2.5GB',
+              vramRequired: '3.5GB',
+              speed: 'Быстрая',
+              quality: 'Высокое',
+              recommended: true,
+              toolUse: true,
+            },
+            'qwen-3-8b': {
+              id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
+              name: 'Qwen-3-8B-Instruct',
+              description:
+                'Многоязычная модель от Alibaba с отличным пониманием контекста.',
+              size: '4.5GB',
+              vramRequired: '6GB',
+              speed: 'Быстрая',
+              quality: 'Очень высокое',
+              toolUse: true,
+            },
+            demo: {
+              id: null,
+              name: 'Демо-режим',
+              description:
+                'Демонстрационный режим без загрузки модели. Имитирует ответы ИИ.',
+              size: '0MB',
+              vramRequired: '0GB',
+              speed: 'Мгновенная',
+              quality: 'Демо',
+              toolUse: false,
+            },
+          };
+
+          // Показываем информацию о модели по умолчанию
+          this.handleModelChange();
+        }
+
+        async checkWebGPUSupport() {
+          try {
+            if (!navigator.gpu) {
+              this.setStatus(
+                'error',
+                'WebGPU не поддерживается. Используйте Chrome 113+ с включенным WebGPU.'
+              );
+              return;
+            }
+
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+              this.setStatus(
+                'error',
+                'WebGPU адаптер недоступен. Проверьте GPU драйверы.'
+              );
+              return;
+            }
+
+            this.setStatus('ready', 'WebGPU готов! Выберите модель для начала.');
+          } catch (error) {
+            this.setStatus('error', `Ошибка WebGPU: ${error.message}`);
+          }
+        }
+
+        toggleDropdown() {
+          this.modelDropdownContent.style.display =
+            this.modelDropdownContent.style.display === 'block' ? 'none' : 'block';
+        }
+
+        selectModel(option) {
+          const modelId = option.dataset.model;
+          this.selectedModelId = modelId;
+
+          // Обновляем кнопку dropdown - ищем span в model-option-header
+          const modelName = option.querySelector(
+            '.model-option-header span'
+          ).textContent;
+          this.modelDropdownButton.innerHTML = `
+          <span>${modelName}</span>
+          <i class="fas fa-chevron-down"></i>
+        `;
+
+          // Убираем selected класс у всех опций
+          this.modelOptions.forEach(opt => opt.classList.remove('selected'));
+          // Добавляем selected класс к выбранной опции
+          option.classList.add('selected');
+
+          // Закрываем dropdown
+          this.modelDropdownContent.style.display = 'none';
+
+          // Обновляем статус и устанавливаем currentModel
+          const model = this.models[modelId];
+          if (model) {
+            this.setStatus('ready', `Модель ${model.name} выбрана`);
+            this.currentModel = modelId;
+          } else if (modelId === 'demo') {
+            this.setStatus('ready', 'Демо-режим выбран');
+            this.currentModel = 'demo';
+          }
+
+          console.log(`Выбрана модель: ${modelName}`);
+        }
+
+        handleModelChange() {
+          // Этот метод больше не используется с новым dropdown
+          // Оставляем для совместимости
+        }
+
+        async loadSelectedModel() {
+          const modelId = this.selectedModelId || 'demo';
+          const model = this.models[modelId];
+
+          if (!model) return;
+
+          if (modelId === 'demo') {
+            this.currentModel = 'demo';
+            this.setStatus('ready', 'Демо-режим активирован. Можете начать общение!');
+            this.enableChat();
+            return;
+          }
+
+          if (this.isModelLoading) return;
+
+          try {
+            this.isModelLoading = true;
+            this.loadModelBtn.disabled = true;
+            this.setStatus('loading', `Загружаем ${model.name}...`);
+            this.showProgress();
+
+            // Создаем движок WebLLM
+            this.engine = new webllm.MLCEngine();
+
+            // Настраиваем прогресс
+            this.engine.setInitProgressCallback(progress => {
+              this.updateProgress(progress);
+            });
+
+            // Загружаем модель
+            await this.engine.reload(model.id);
+
+            this.currentModel = modelId;
+            this.hideProgress();
+            this.setStatus('ready', `${model.name} загружена! Готов к общению.`);
+            this.enableChat();
+          } catch (error) {
+            console.error('Ошибка загрузки модели:', error);
+            this.hideProgress();
+            this.setStatus('error', `Ошибка загрузки: ${error.message}`);
+
+            // Переключаемся на демо-режим при ошибке
+            setTimeout(() => {
+              this.modelSelect.value = 'demo';
+              this.handleModelChange();
+              this.loadSelectedModel();
+            }, 3000);
+          } finally {
+            this.isModelLoading = false;
+            this.loadModelBtn.disabled = false;
+          }
+        }
+
+        setStatus(type, message) {
+          const icon = {
+            loading: 'fas fa-circle-notch fa-spin',
+            ready: 'fas fa-check-circle',
+            error: 'fas fa-exclamation-triangle',
+          };
+
+          this.statusIndicator.className = `status-indicator status-${type}`;
+          this.statusIndicator.innerHTML = `<i class="${icon[type]}"></i><span>${message}</span>`;
+        }
+
+        showProgress() {
+          this.progressContainer.classList.add('show');
+          this.progressFill.style.width = '0%';
+        }
+
+        hideProgress() {
+          this.progressContainer.classList.remove('show');
+        }
+
+        updateProgress(progress) {
+          if (progress.progress !== undefined) {
+            const percentage = Math.round(progress.progress * 100);
+            this.progressFill.style.width = `${percentage}%`;
+            this.progressText.textContent = `${progress.text || 'Загрузка модели'} - ${percentage}%`;
+          } else {
+            this.progressText.textContent = progress.text || 'Загрузка модели...';
+          }
+        }
+
+        enableChat() {
+          this.chatInput.disabled = false;
+          this.sendButton.disabled = false;
+          this.welcomeMessage.style.display = 'none';
+        }
+
+        async sendMessage() {
+          const message = this.chatInput.value.trim();
+          if (!message || !this.currentModel) return;
+
+          // Добавляем сообщение пользователя
+          this.addMessage('user', message);
+          this.chatInput.value = '';
+          this.chatInput.style.height = 'auto';
+
+          // Показываем индикатор печати
+          this.showTypingIndicator();
+          this.sendButton.disabled = true;
+
+          try {
+            if (this.currentModel === 'demo') {
+              // Демо-режим
+              await this.simulateAIResponse(message);
+            } else {
+              // Реальная модель
+              await this.generateAIResponse(message);
+            }
+          } catch (error) {
+            console.error('Ошибка генерации ответа:', error);
+            this.addMessage('ai', `Извините, произошла ошибка: ${error.message}`);
+          } finally {
+            this.hideTypingIndicator();
+            this.sendButton.disabled = false;
+          }
+        }
+
+        async generateAIResponse(userMessage) {
+          // Добавляем сообщение в историю
+          this.conversationHistory.push({
+            role: 'user',
+            content: userMessage,
+          });
+
+          // Создаем системный промпт
+          let systemPrompt =
+            this.systemPrompt.value ||
+            'Ты - полезный ИИ-ассистент. Отвечай кратко и по делу.';
+
+          // Создаем сообщения для модели
+          const messages = [
+            {
+              role: 'system',
+              content: systemPrompt,
+            },
+            ...this.conversationHistory,
+          ];
+
+          // Готовим параметры запроса
+          const requestParams = {
+            messages: messages,
+            temperature: parseFloat(this.temperatureSlider.value),
+            max_tokens: parseInt(this.maxTokensSlider.value),
+          };
+
+          // Генерируем ответ
+          const response = await this.engine.chat.completions.create(requestParams);
+          const aiResponse = response.choices[0].message.content;
+
+          // Добавляем ответ в историю
+          this.conversationHistory.push({
+            role: 'assistant',
+            content: aiResponse,
+          });
+
+          // Показываем ответ
+          this.addMessage('ai', aiResponse);
+        }
+
+        async simulateAIResponse(userMessage) {
+          // Симуляция задержки
+          await new Promise(resolve =>
+            setTimeout(resolve, 1000 + Math.random() * 2000)
+          );
+
+          // Демо-ответы
+          const demoResponses = [
+            'Это демо-режим WebLLM Chat. Выберите реальную модель для полноценного общения с ИИ!',
+            'Интересный вопрос! В реальном режиме ИИ дал бы развернутый ответ на основе загруженной модели.',
+            'WebLLM позволяет запускать большие языковые модели прямо в браузере. Попробуйте загрузить Llama-3 или Mistral!',
+            'В демо-режиме я могу только показать, как работает интерфейс. Загрузите модель для настоящего ИИ-общения.',
+            'Вы используете демонстрационный режим. Реальная модель ИИ ответила бы намного интереснее!',
+          ];
+
+          const response =
+            demoResponses[Math.floor(Math.random() * demoResponses.length)];
+          this.addMessage('ai', response);
+        }
+
+        addMessage(role, content) {
+          const messageDiv = document.createElement('div');
+          messageDiv.className = `message ${role}`;
+
+          const avatar = document.createElement('div');
+          avatar.className = 'message-avatar';
+
+          // Разные иконки для разных типов сообщений
+          if (role === 'user') {
+            avatar.innerHTML = '<i class="fas fa-user"></i>';
+          } else if (role === 'system') {
+            avatar.innerHTML = '<i class="fas fa-cog"></i>';
+            messageDiv.classList.add('system-message');
+          } else {
+            avatar.innerHTML = '<i class="fas fa-robot"></i>';
+          }
+
+          const messageContent = document.createElement('div');
+          messageContent.className = 'message-content';
+
+          // Обработка markdown-подобного форматирования
+          const formattedContent = this.formatMessage(content);
+          messageContent.innerHTML = formattedContent;
+
+          messageDiv.appendChild(avatar);
+          messageDiv.appendChild(messageContent);
+
+          this.chatMessages.appendChild(messageDiv);
+          this.scrollToBottom();
+        }
+
+        formatMessage(content) {
+          // Простое форматирование для кода и блоков
+          return content
+            .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+        }
+
+        showTypingIndicator() {
+          this.typingIndicator.classList.add('show');
+          this.scrollToBottom();
+        }
+
+        hideTypingIndicator() {
+          this.typingIndicator.classList.remove('show');
+        }
+
+        scrollToBottom() {
+          setTimeout(() => {
+            this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+          }, 100);
+        }
+
+        clearChat() {
+          this.conversationHistory = [];
+          this.chatMessages.innerHTML = '';
+          this.chatMessages.appendChild(this.welcomeMessage);
+          this.chatMessages.appendChild(this.typingIndicator);
+          this.welcomeMessage.style.display = 'block';
+        }
+      }
+
+      // Функции для модального окна системных требований
+      window.showRequirements = function () {
+        const modal = document.getElementById('requirementsModal');
+        modal.classList.add('show');
+      };
+
+      window.hideRequirements = function () {
+        const modal = document.getElementById('requirementsModal');
+        modal.classList.remove('show');
+      };
+
+      // Функция для управления аккордеоном
+      window.toggleAccordion = function (accordionId) {
+        const content = document.getElementById(accordionId);
+        const header = content.previousElementSibling;
+
+        if (content.classList.contains('collapsed')) {
+          content.classList.remove('collapsed');
+          header.classList.add('active');
+        } else {
+          content.classList.add('collapsed');
+          header.classList.remove('active');
+        }
+      };
+
+      // Глобальные функции для кнопок
+      window.loadSelectedModel = function () {
+        window.webLLMChat.loadSelectedModel();
+      };
+
+      window.clearChat = function () {
+        window.webLLMChat.clearChat();
+      };
+
+      // Инициализация приложения
+      document.addEventListener('DOMContentLoaded', () => {
+        window.webLLMChat = new WebLLMChat();
+
+        // Обработчик клика по фону модального окна
+        const modal = document.getElementById('requirementsModal');
+        modal.addEventListener('click', e => {
+          if (e.target === modal) {
+            hideRequirements();
+          }
+        });
+
+        console.log('🤖 WebLLM Chat готов! Выберите модель и начните общение.');
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,730 @@
+<!doctype html>
+<!-- 
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать классическую игру "Морской Бой" в стиле ретро-терминала.
+
+Функциональные требования:
+1. Игровое поле 10x10 для игрока и компьютера
+2. Случайная генерация кораблей на поле
+3. Возможность расстановки кораблей игроком вручную
+4. Визуальный эффект CRT-экрана (зеленый текст на черном фоне)
+5. Индикаторы состояния кораблей
+6. Звуковые эффекты для выстрелов и попаданий
+7. Отображение статистики игры
+8. Система подсчета очков
+9. Режим автоигры, где компьютер сам делает выстрелы
+
+Технические требования:
+1. Использование нативного JavaScript без фреймворков
+2. Адаптивный дизайн для разных устройств
+3. Использование CSS для создания ретро-эффектов
+4. Оптимизация для мобильных устройств
+5. Корректная обработка состояний игры
+6. Использование Web Audio API для звуковых эффектов
+7. Сохранение прогресса игры в localStorage
+8. Поддержка современных браузеров
+-->
+
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Морской Бой - Советский Игровой Автомат</title>
+    <style>
+      body {
+        background-color: #000;
+        color: #00ff00;
+        font-family: 'Courier New', monospace;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 20px;
+      }
+
+      #game-container {
+        border: 2px solid #00ff00;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px #00ff00;
+      }
+
+      #battlefield {
+        display: grid;
+        grid-template-columns: repeat(10, 30px);
+        gap: 2px;
+        margin: 20px 0;
+      }
+
+      .cell {
+        width: 30px;
+        height: 30px;
+        border: 1px solid #00ff00;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: crosshair;
+        transition: all 0.3s;
+      }
+
+      .cell:hover {
+        background-color: rgba(0, 255, 0, 0.2);
+      }
+
+      .hit {
+        background-color: #00ff00;
+        animation: explosion 0.5s;
+      }
+
+      .miss {
+        position: relative;
+      }
+
+      .miss::after {
+        content: '•';
+        color: #00ff00;
+      }
+
+      @keyframes explosion {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.5);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .stats {
+        font-size: 1.2em;
+        margin: 10px 0;
+        text-align: center;
+      }
+
+      button {
+        background-color: #000;
+        color: #00ff00;
+        border: 1px solid #00ff00;
+        padding: 10px 20px;
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        margin: 10px;
+      }
+
+      button:hover {
+        background-color: #00ff00;
+        color: #000;
+      }
+
+      #message {
+        height: 20px;
+        margin: 10px 0;
+        text-align: center;
+      }
+
+      .ship-indicator {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin: 10px 0;
+      }
+
+      .ship {
+        display: flex;
+        gap: 2px;
+      }
+
+      .ship-segment {
+        width: 15px;
+        height: 15px;
+        border: 1px solid #00ff00;
+      }
+
+      .destroyed {
+        background-color: #00ff00;
+      }
+
+      /* CRT эффект */
+      @keyframes scan {
+        0% {
+          background-position: 0 -100vh;
+        }
+        100% {
+          background-position: 0 100vh;
+        }
+      }
+
+      #game-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          0deg,
+          rgba(0, 255, 0, 0.03) 50%,
+          rgba(0, 0, 0, 0.1) 50%
+        );
+        background-size: 100% 4px;
+        animation: scan 10s linear infinite;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container">
+      <h1>МОРСКОЙ БОЙ</h1>
+      <div class="ship-indicator" id="ships"></div>
+      <div class="stats">
+        Попадания: <span id="hits">0</span> | Промахи: <span id="misses">0</span>
+      </div>
+      <div id="battlefield"></div>
+      <div id="message"></div>
+      <button onclick="startNewGame()">НОВАЯ ИГРА</button>
+      <button id="autoplayBtn" onclick="toggleAutoplay()">АВТОИГРА: ВЫКЛ</button>
+    </div>
+
+    <audio
+      id="shot"
+      src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."
+      preload="auto"
+    ></audio>
+    <audio
+      id="hit"
+      src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."
+      preload="auto"
+    ></audio>
+    <audio
+      id="miss"
+      src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."
+      preload="auto"
+    ></audio>
+    <audio
+      id="sunk"
+      src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."
+      preload="auto"
+    ></audio>
+    <audio
+      id="sonar"
+      src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."
+      preload="auto"
+      loop
+    ></audio>
+
+    <script>
+      class Ship {
+        constructor(length) {
+          this.length = length;
+          this.hits = new Array(length).fill(false);
+          this.coordinates = [];
+        }
+
+        isDestroyed() {
+          return this.hits.every(hit => hit);
+        }
+      }
+
+      let gameBoard = [];
+      let ships = [];
+      let hits = 0;
+      let misses = 0;
+      const BOARD_SIZE = 10;
+      let autoplayEnabled = false;
+      let autoplayInterval = null;
+      let availableCells = [];
+      // Переменные для умной стратегии автоигры
+      let lastHitPositions = [];
+      let huntMode = false;
+      let huntDirections = [];
+      let lastDirection = null;
+
+      function createBoard() {
+        const battlefield = document.getElementById('battlefield');
+        battlefield.innerHTML = '';
+
+        for (let i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.id = i;
+          cell.addEventListener('click', handleShot);
+          battlefield.appendChild(cell);
+        }
+      }
+
+      function placeShips() {
+        ships = [];
+        gameBoard = new Array(BOARD_SIZE * BOARD_SIZE).fill(null);
+
+        // Создаем корабли
+        const shipSizes = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+
+        for (const size of shipSizes) {
+          let placed = false;
+          while (!placed) {
+            const horizontal = Math.random() < 0.5;
+            const startX = Math.floor(Math.random() * BOARD_SIZE);
+            const startY = Math.floor(Math.random() * BOARD_SIZE);
+
+            if (canPlaceShip(startX, startY, size, horizontal)) {
+              const ship = new Ship(size);
+              placeShip(ship, startX, startY, horizontal);
+              ships.push(ship);
+              placed = true;
+            }
+          }
+        }
+
+        updateShipIndicators();
+      }
+
+      function canPlaceShip(x, y, length, horizontal) {
+        if (horizontal) {
+          if (x + length > BOARD_SIZE) return false;
+          for (let i = -1; i <= length; i++) {
+            for (let j = -1; j <= 1; j++) {
+              const checkX = x + i;
+              const checkY = y + j;
+              if (
+                checkX >= 0 &&
+                checkX < BOARD_SIZE &&
+                checkY >= 0 &&
+                checkY < BOARD_SIZE &&
+                gameBoard[checkY * BOARD_SIZE + checkX] !== null
+              ) {
+                return false;
+              }
+            }
+          }
+        } else {
+          if (y + length > BOARD_SIZE) return false;
+          for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= length; j++) {
+              const checkX = x + i;
+              const checkY = y + j;
+              if (
+                checkX >= 0 &&
+                checkX < BOARD_SIZE &&
+                checkY >= 0 &&
+                checkY < BOARD_SIZE &&
+                gameBoard[checkY * BOARD_SIZE + checkX] !== null
+              ) {
+                return false;
+              }
+            }
+          }
+        }
+        return true;
+      }
+
+      function placeShip(ship, x, y, horizontal) {
+        for (let i = 0; i < ship.length; i++) {
+          const pos = horizontal ? y * BOARD_SIZE + (x + i) : (y + i) * BOARD_SIZE + x;
+          gameBoard[pos] = ship;
+          ship.coordinates.push(pos);
+        }
+      }
+
+      function handleShot(event) {
+        const cell = event.target;
+        if (cell.classList.contains('hit') || cell.classList.contains('miss')) {
+          return;
+        }
+
+        const position = parseInt(cell.dataset.id);
+        processShot(position, cell);
+      }
+
+      function processShot(position, cell) {
+        if (cell.classList.contains('hit') || cell.classList.contains('miss')) {
+          return false;
+        }
+
+        const ship = gameBoard[position];
+
+        document.getElementById('shot').play();
+
+        if (ship) {
+          cell.classList.add('hit');
+          const shipIndex = ship.coordinates.indexOf(position);
+          ship.hits[shipIndex] = true;
+          hits++;
+
+          if (ship.isDestroyed()) {
+            document.getElementById('sunk').play();
+            showMessage('КОРАБЛЬ ПОТОПЛЕН!');
+            updateShipIndicators();
+
+            // Отмечаем все клетки вокруг потопленного корабля как недоступные
+            markAroundSunkenShip(ship);
+
+            if (ships.every(s => s.isDestroyed())) {
+              showMessage('ПОБЕДА! ВСЕ КОРАБЛИ УНИЧТОЖЕНЫ!');
+              stopAutoplay();
+            }
+          } else {
+            document.getElementById('hit').play();
+            showMessage('ПОПАДАНИЕ!');
+          }
+        } else {
+          cell.classList.add('miss');
+          misses++;
+          document.getElementById('miss').play();
+          showMessage('ПРОМАХ!');
+        }
+
+        updateStats();
+        return true;
+      }
+
+      // Функция для отметки клеток вокруг потопленного корабля
+      function markAroundSunkenShip(ship) {
+        // Для каждой координаты корабля
+        for (const pos of ship.coordinates) {
+          const x = pos % BOARD_SIZE;
+          const y = Math.floor(pos / BOARD_SIZE);
+
+          // Проверяем все соседние клетки (включая диагональные)
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              const newX = x + dx;
+              const newY = y + dy;
+
+              // Проверяем, что координаты в пределах поля
+              if (newX >= 0 && newX < BOARD_SIZE && newY >= 0 && newY < BOARD_SIZE) {
+                const checkPos = newY * BOARD_SIZE + newX;
+                const checkCell = document.querySelector(
+                  `.cell[data-id="${checkPos}"]`
+                );
+
+                // Если клетка не содержит корабль и ещё не помечена как промах
+                if (
+                  !checkCell.classList.contains('hit') &&
+                  !checkCell.classList.contains('miss') &&
+                  (gameBoard[checkPos] === null || !ship.coordinates.includes(checkPos))
+                ) {
+                  // Отмечаем как промах (визуально)
+                  checkCell.classList.add('miss');
+
+                  // Удаляем из доступных для стрельбы
+                  const index = availableCells.indexOf(checkPos);
+                  if (index !== -1) {
+                    availableCells.splice(index, 1);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      function updateStats() {
+        document.getElementById('hits').textContent = hits;
+        document.getElementById('misses').textContent = misses;
+      }
+
+      function showMessage(text) {
+        const message = document.getElementById('message');
+        message.textContent = text;
+        setTimeout(() => (message.textContent = ''), 2000);
+      }
+
+      function updateShipIndicators() {
+        const container = document.getElementById('ships');
+        container.innerHTML = '';
+
+        ships.forEach(ship => {
+          const shipDiv = document.createElement('div');
+          shipDiv.className = 'ship';
+
+          for (let i = 0; i < ship.length; i++) {
+            const segment = document.createElement('div');
+            segment.className = 'ship-segment';
+            if (ship.hits[i]) {
+              segment.classList.add('destroyed');
+            }
+            shipDiv.appendChild(segment);
+          }
+
+          container.appendChild(shipDiv);
+        });
+      }
+
+      function toggleAutoplay() {
+        autoplayEnabled = !autoplayEnabled;
+        const autoplayBtn = document.getElementById('autoplayBtn');
+
+        if (autoplayEnabled) {
+          autoplayBtn.textContent = 'АВТОИГРА: ВКЛ';
+          startAutoplay();
+        } else {
+          autoplayBtn.textContent = 'АВТОИГРА: ВЫКЛ';
+          stopAutoplay();
+        }
+      }
+
+      function startAutoplay() {
+        if (ships.every(s => s.isDestroyed())) {
+          showMessage('СНАЧАЛА НАЧНИТЕ НОВУЮ ИГРУ!');
+          autoplayEnabled = false;
+          document.getElementById('autoplayBtn').textContent = 'АВТОИГРА: ВЫКЛ';
+          return;
+        }
+
+        // Сбрасываем переменные для умной стратегии
+        lastHitPositions = [];
+        huntMode = false;
+        huntDirections = [];
+        lastDirection = null;
+
+        // Инициализируем доступные клетки в шахматном порядке
+        availableCells = [];
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+          if (!cell.classList.contains('hit') && !cell.classList.contains('miss')) {
+            availableCells.push(parseInt(cell.dataset.id));
+          }
+        });
+
+        autoplayInterval = setInterval(makeComputerShot, 500);
+      }
+
+      function stopAutoplay() {
+        clearInterval(autoplayInterval);
+        autoplayInterval = null;
+      }
+
+      function makeComputerShot() {
+        if (availableCells.length === 0 || ships.every(s => s.isDestroyed())) {
+          stopAutoplay();
+          return;
+        }
+
+        let position;
+        const cell = getNextTargetCell();
+        if (cell) {
+          position = parseInt(cell.dataset.id);
+
+          // Удаляем выбранную позицию из доступных
+          const index = availableCells.indexOf(position);
+          if (index !== -1) {
+            availableCells.splice(index, 1);
+          }
+
+          // Обрабатываем выстрел и обновляем стратегию
+          const hitResult = processShot(position, cell);
+
+          // Если попали, обновляем стратегию
+          if (hitResult && cell.classList.contains('hit')) {
+            updateHuntingStrategy(position);
+          }
+        }
+      }
+
+      function getNextTargetCell() {
+        // Если мы в режиме охоты, продолжаем стрелять вокруг предыдущих попаданий
+        if (huntMode && lastHitPositions.length > 0) {
+          return getHuntingTargetCell();
+        }
+
+        // Если нет охоты, используем стратегию шахматного порядка
+        return getChessPatternCell();
+      }
+
+      function getHuntingTargetCell() {
+        const lastHit = lastHitPositions[lastHitPositions.length - 1];
+
+        // Если у нас есть направление поиска, продолжаем в этом направлении
+        if (lastDirection !== null && huntDirections.length > 0) {
+          const direction = lastDirection;
+          const nextPos = getPositionInDirection(lastHit, direction);
+
+          // Проверяем, что позиция валидна и клетка доступна
+          if (isValidPosition(nextPos)) {
+            const cell = document.querySelector(`.cell[data-id="${nextPos}"]`);
+            if (
+              cell &&
+              !cell.classList.contains('hit') &&
+              !cell.classList.contains('miss')
+            ) {
+              return cell;
+            }
+          }
+
+          // Если не удалось продолжить в текущем направлении,
+          // переключаемся на противоположное направление от первого попадания
+          if (lastHitPositions.length > 1) {
+            const oppositeDirection = getOppositeDirection(direction);
+            const firstHit = lastHitPositions[0];
+            const nextPosOpposite = getPositionInDirection(firstHit, oppositeDirection);
+
+            if (isValidPosition(nextPosOpposite)) {
+              const cellOpposite = document.querySelector(
+                `.cell[data-id="${nextPosOpposite}"]`
+              );
+              if (
+                cellOpposite &&
+                !cellOpposite.classList.contains('hit') &&
+                !cellOpposite.classList.contains('miss')
+              ) {
+                lastDirection = oppositeDirection;
+                return cellOpposite;
+              }
+            }
+          }
+        }
+
+        // Если нет определенного направления или не удалось продолжить,
+        // перебираем все возможные направления
+        while (huntDirections.length > 0) {
+          const direction = huntDirections.shift();
+          const nextPos = getPositionInDirection(lastHit, direction);
+
+          if (isValidPosition(nextPos)) {
+            const cell = document.querySelector(`.cell[data-id="${nextPos}"]`);
+            if (
+              cell &&
+              !cell.classList.contains('hit') &&
+              !cell.classList.contains('miss')
+            ) {
+              lastDirection = direction;
+              return cell;
+            }
+          }
+        }
+
+        // Если все направления исчерпаны, сбрасываем режим охоты
+        huntMode = false;
+        lastHitPositions = [];
+        return getChessPatternCell();
+      }
+
+      function getChessPatternCell() {
+        // Здесь мы не меняем код, так как markAroundSunkenShip
+        // уже удаляет нерелевантные клетки из availableCells
+
+        // Приоритезация центральных клеток
+        const prioritizedCells = [...availableCells].sort((a, b) => {
+          const aDistance = getDistanceFromCenter(a);
+          const bDistance = getDistanceFromCenter(b);
+          return aDistance - bDistance;
+        });
+
+        // Шахматный паттерн (через одну клетку)
+        for (const pos of prioritizedCells) {
+          const x = pos % BOARD_SIZE;
+          const y = Math.floor(pos / BOARD_SIZE);
+          // Стреляем только в клетки, где сумма координат чётная (шахматный порядок)
+          if ((x + y) % 2 === 0) {
+            return document.querySelector(`.cell[data-id="${pos}"]`);
+          }
+        }
+
+        // Если не осталось клеток в шахматном порядке, берем любую
+        if (availableCells.length > 0) {
+          const pos = availableCells[0];
+          return document.querySelector(`.cell[data-id="${pos}"]`);
+        }
+
+        return null;
+      }
+
+      function getDistanceFromCenter(position) {
+        const x = position % BOARD_SIZE;
+        const y = Math.floor(position / BOARD_SIZE);
+        const centerX = BOARD_SIZE / 2 - 0.5;
+        const centerY = BOARD_SIZE / 2 - 0.5;
+
+        return Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+      }
+
+      function updateHuntingStrategy(position) {
+        // Включаем режим охоты после первого попадания
+        huntMode = true;
+        lastHitPositions.push(position);
+
+        // Если это первое попадание в корабль, инициализируем направления
+        if (lastHitPositions.length === 1) {
+          huntDirections = ['up', 'right', 'down', 'left'];
+          lastDirection = null;
+        }
+        // Если это второе или последующее попадание, уточняем направление
+        else if (lastHitPositions.length > 1 && lastDirection !== null) {
+          // Очищаем остальные направления, так как мы нашли правильное
+          huntDirections = [lastDirection];
+        }
+      }
+
+      function getPositionInDirection(position, direction) {
+        const x = position % BOARD_SIZE;
+        const y = Math.floor(position / BOARD_SIZE);
+
+        switch (direction) {
+          case 'up':
+            return position - BOARD_SIZE; // вверх
+          case 'right':
+            return position + 1; // вправо
+          case 'down':
+            return position + BOARD_SIZE; // вниз
+          case 'left':
+            return position - 1; // влево
+          default:
+            return position;
+        }
+      }
+
+      function getOppositeDirection(direction) {
+        switch (direction) {
+          case 'up':
+            return 'down';
+          case 'right':
+            return 'left';
+          case 'down':
+            return 'up';
+          case 'left':
+            return 'right';
+          default:
+            return direction;
+        }
+      }
+
+      function isValidPosition(position) {
+        if (position < 0 || position >= BOARD_SIZE * BOARD_SIZE) {
+          return false;
+        }
+
+        const x = position % BOARD_SIZE;
+        const y = Math.floor(position / BOARD_SIZE);
+
+        // Проверяем границы поля
+        if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) {
+          return false;
+        }
+
+        return true;
+      }
+
+      function startNewGame() {
+        hits = 0;
+        misses = 0;
+        updateStats();
+        createBoard();
+        placeShips();
+        showMessage('НОВАЯ ИГРА НАЧАТА!');
+        document.getElementById('sonar').play();
+
+        // Сбрасываем автоигру при новой игре
+        if (autoplayEnabled) {
+          stopAutoplay();
+          startAutoplay();
+        }
+      }
+
+      // Запуск игры
+      window.onload = () => {
+        startNewGame();
+      };
+    </script>
+  </body>
+</html>

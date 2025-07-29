@@ -1,0 +1,419 @@
+<!doctype html>
+<!-- 
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивную карту осадков с возможностью поиска по городам и отображением погодных данных в реальном времени.
+
+Функциональные требования:
+1. Интерактивная карта:
+   - Отображение карты на базе OpenStreetMap через OpenLayers
+   - Слой осадков от OpenWeatherMap с визуальными эффектами
+   - Возможность масштабирования и перемещения по карте
+   - Легенда интенсивности осадков с цветовой кодировкой
+
+2. Поиск и геокодинг:
+   - Поиск городов через Nominatim OpenStreetMap API
+   - Автоматическое центрирование карты на найденном городе
+   - Установка маркера на найденной локации
+   - Сохранение последнего поискового запроса
+
+3. Погодная информация:
+   - Получение данных о текущей погоде через Open-Meteo API
+   - Отображение информации в всплывающем окне:
+     * Интенсивность осадков (мм/ч)
+     * Текущая температура (°C)
+     * Скорость и направление ветра
+   - Кэширование погодных данных для оптимизации
+
+4. Пользовательский интерфейс:
+   - Поле ввода для поиска городов
+   - Автоматическая загрузка последнего просмотренного города
+   - Сохранение уровня масштабирования карты
+   - Адаптивный дизайн для мобильных устройств
+
+Технические требования:
+1. Использование современных веб-технологий:
+   - OpenLayers 7.4.0 для отображения карты
+   - Fetch API для HTTP-запросов
+   - LocalStorage для кэширования и сохранения настроек
+   - CSS фильтры для улучшения визуализации осадков
+
+2. Оптимизация производительности:
+   - Кэширование геокодинга и погодных данных (TTL: 10 минут)
+   - Периодическое обновление визуальных эффектов
+   - Оптимизированные запросы к внешним API
+
+3. Интеграция с внешними сервисами:
+   - OpenWeatherMap API для слоя осадков
+   - Open-Meteo API для погодных данных
+   - Nominatim для геокодинга
+   - OpenStreetMap для базовой карты
+
+4. Визуальные эффекты:
+   - Усиление контрастности и яркости слоя осадков
+   - Эффекты свечения и смешивания для лучшей видимости
+   - Стилизованные всплывающие окна с погодной информацией
+-->
+
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Карта осадков по городу (OpenLayers)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css" />
+    <style>
+      #map {
+        height: 70vh;
+        width: 100%;
+        margin-top: 20px;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: #f4f4f4;
+      }
+      .input-group {
+        display: flex;
+        gap: 10px;
+      }
+      input {
+        padding: 8px;
+        font-size: 1rem;
+        width: 300px;
+      }
+      .attribution-footer {
+        text-align: center;
+        font-size: 0.8em;
+        padding-top: 10px;
+      }
+      .ol-popup {
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        min-width: 200px;
+        font-size: 14px;
+        max-width: 350px;
+        white-space: normal;
+        overflow-x: auto;
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Карта осадков (OpenLayers)</h2>
+    <div class="input-group">
+      <input type="text" id="city" placeholder="Введите город..." autocomplete="off" />
+    </div>
+    <div id="map"></div>
+    <div
+      id="rain-legend"
+      style="
+        position: absolute;
+        bottom: 30px;
+        left: 30px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 6px;
+        padding: 8px 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        font-size: 13px;
+        line-height: 1.4;
+        pointer-events: none;
+        max-width: 220px;
+      "
+    >
+      <b>Легенда осадков (мм/ч):</b><br />
+      <span
+        style="
+          background: #01baff;
+          display: inline-block;
+          width: 24px;
+          height: 10px;
+          border: 1px solid #222;
+        "
+      ></span>
+      0.1–2<br />
+      <span
+        style="
+          background: #0099ff;
+          display: inline-block;
+          width: 24px;
+          height: 10px;
+          border: 1px solid #222;
+        "
+      ></span>
+      2–5<br />
+      <span
+        style="
+          background: #0055ff;
+          display: inline-block;
+          width: 24px;
+          height: 10px;
+          border: 1px solid #222;
+        "
+      ></span>
+      5–10<br />
+      <span
+        style="
+          background: #0000ff;
+          display: inline-block;
+          width: 24px;
+          height: 10px;
+          border: 1px solid #222;
+        "
+      ></span>
+      10–20<br />
+      <span
+        style="
+          background: #7700b3;
+          display: inline-block;
+          width: 24px;
+          height: 10px;
+          border: 1px solid #222;
+        "
+      ></span>
+      20–30<br />
+      <span
+        style="
+          background: #ff00ff;
+          display: inline-block;
+          width: 24px;
+          height: 10px;
+          border: 1px solid #222;
+        "
+      ></span>
+      30–40<br />
+      <span
+        style="
+          background: #ff0000;
+          display: inline-block;
+          width: 24px;
+          height: 10px;
+          border: 1px solid #222;
+        "
+      ></span>
+      40+<br />
+    </div>
+    <div class="attribution-footer">
+      Weather data by <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a> и
+      <a href="https://openweathermap.org/" target="_blank">OpenWeatherMap</a><br />
+      Карта:
+      <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> +
+      <a href="https://openlayers.org/" target="_blank">OpenLayers</a>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
+    <script>
+      // --- Константы ---
+      const CACHE_TTL = 10 * 60 * 1000;
+      const OWM_API_KEY = '8c21cd9f4b6d6f4e2c2e1b072129cc96'; // Получить бесплатно: https://home.openweathermap.org/users/sign_up
+
+      // --- Кеширование ---
+      const cache = {
+        get: function (key) {
+          const item = localStorage.getItem('weather_cache_' + key);
+          if (!item) return null;
+          try {
+            const parsed = JSON.parse(item);
+            if (parsed.timestamp && Date.now() - parsed.timestamp < CACHE_TTL) {
+              return parsed.data;
+            } else {
+              localStorage.removeItem('weather_cache_' + key);
+              return null;
+            }
+          } catch (e) {
+            return null;
+          }
+        },
+        set: function (key, data) {
+          localStorage.setItem(
+            'weather_cache_' + key,
+            JSON.stringify({ timestamp: Date.now(), data })
+          );
+        },
+      };
+
+      // --- Геокодинг ---
+      async function geocodeCity(city) {
+        const cacheKey = 'geo_' + city.toLowerCase().replace(/\s+/g, '_');
+        let geo = cache.get(cacheKey);
+        if (geo) return geo;
+        const resp = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`
+        );
+        const data = await resp.json();
+        if (!data.length) throw new Error('Город не найден');
+        cache.set(cacheKey, data[0]);
+        return data[0];
+      }
+
+      // --- Погода ---
+      async function getWeather(lat, lon) {
+        const cacheKey = `weather_${Math.round(lat * 100) / 100}_${Math.round(lon * 100) / 100}`;
+        let data = cache.get(cacheKey);
+        if (data) return data;
+        const resp = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=precipitation,temperature_2m,windspeed_10m,winddirection_10m&current_weather=true&forecast_days=1`
+        );
+        data = await resp.json();
+        cache.set(cacheKey, data);
+        return data;
+      }
+
+      // --- Сохранение последнего города и зума ---
+      function saveLastCity(city) {
+        localStorage.setItem('precipitation_map_last_city', city);
+      }
+      function getLastCity() {
+        return localStorage.getItem('precipitation_map_last_city');
+      }
+      function saveLastZoom(zoom) {
+        localStorage.setItem('precipitation_map_last_zoom', zoom);
+      }
+      function getLastZoom() {
+        const z = localStorage.getItem('precipitation_map_last_zoom');
+        return z ? parseInt(z, 10) : 10;
+      }
+
+      // --- Инициализация карты ---
+      let map, markerLayer, popupOverlay;
+      function initMap(center) {
+        markerLayer = new ol.layer.Vector({
+          source: new ol.source.Vector(),
+        });
+        // Слой осадков OpenWeatherMap (яркий)
+        const precipLayer = new ol.layer.Tile({
+          source: new ol.source.XYZ({
+            url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
+            crossOrigin: 'anonymous',
+          }),
+          opacity: 1,
+        });
+        // OSM слой
+        const darkLayer = new ol.layer.Tile({
+          source: new ol.source.OSM(),
+        });
+        // Восстанавливаем zoom
+        const lastZoom = getLastZoom();
+        map = new ol.Map({
+          target: 'map',
+          layers: [darkLayer, precipLayer, markerLayer],
+          view: new ol.View({
+            center: ol.proj.fromLonLat(center),
+            zoom: lastZoom,
+          }),
+        });
+        // Сохраняем zoom при изменении
+        map.getView().on('change:zoom', function () {
+          saveLastZoom(map.getView().getZoom());
+        });
+        // Popup
+        popupOverlay = new ol.Overlay({
+          element: document.createElement('div'),
+          positioning: 'bottom-center',
+          stopEvent: false,
+          offset: [0, -20],
+        });
+        popupOverlay.getElement().className = 'ol-popup';
+        map.addOverlay(popupOverlay);
+      }
+
+      // --- Показ города на карте ---
+      async function showCity(city) {
+        if (!city) return;
+        document.getElementById('city').value = city;
+        saveLastCity(city);
+        let geo;
+        try {
+          geo = await geocodeCity(city);
+        } catch (e) {
+          alert('Город не найден!');
+          return;
+        }
+        const lat = parseFloat(geo.lat),
+          lon = parseFloat(geo.lon);
+        if (!map) {
+          initMap([lon, lat]);
+        } else {
+          map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+          // Не меняем zoom, чтобы сохранить пользовательский масштаб
+        }
+        // Маркер
+        const marker = new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
+        });
+        markerLayer.getSource().addFeature(marker);
+        // Погода
+        const weather = await getWeather(lat, lon);
+        const precip =
+          weather &&
+          weather.hourly &&
+          weather.hourly.precipitation &&
+          weather.hourly.precipitation.length > 0
+            ? weather.hourly.precipitation[0]
+            : null;
+        const temp =
+          weather &&
+          weather.current_weather &&
+          typeof weather.current_weather.temperature !== 'undefined'
+            ? weather.current_weather.temperature
+            : null;
+        const wind =
+          weather &&
+          weather.current_weather &&
+          typeof weather.current_weather.windspeed !== 'undefined'
+            ? weather.current_weather.windspeed
+            : null;
+        const windDir =
+          weather &&
+          weather.current_weather &&
+          typeof weather.current_weather.winddirection !== 'undefined'
+            ? weather.current_weather.winddirection
+            : null;
+        // Короткое название города
+        let shortName = geo.display_name.split(',').slice(0, 2).join(', ');
+        // Popup content
+        let html = `<b>${shortName}</b><br>`;
+        html += `<b>Осадки:</b> ${precip !== null ? precip + ' мм/ч' : 'нет данных'}<br>`;
+        html += `<b>Температура:</b> ${temp !== null ? temp + ' °C' : 'нет данных'}<br>`;
+        html += `<b>Ветер:</b> ${wind !== null ? wind + ' км/ч' : 'нет данных'}`;
+        if (windDir !== null) {
+          const dirs = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
+          html += ` (${dirs[Math.round(windDir / 45) % 8]})`;
+        }
+        popupOverlay.getElement().innerHTML = html;
+        popupOverlay.setPosition(ol.proj.fromLonLat([lon, lat]));
+      }
+
+      // --- Обработка ввода ---
+      document.getElementById('city').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+          showCity(this.value.trim());
+        }
+      });
+      document.getElementById('city').addEventListener('blur', function () {
+        if (this.value.trim()) showCity(this.value.trim());
+      });
+
+      // --- Автозагрузка последнего города ---
+      window.addEventListener('DOMContentLoaded', function () {
+        const lastCity = getLastCity() || 'Москва';
+        showCity(lastCity);
+      });
+
+      // --- Усиление яркости и контрастности слоя осадков ---
+      function enhancePrecipitationTiles() {
+        // Найти все img с src, содержащим precipitation_new
+        const imgs = document.querySelectorAll('img[src*="precipitation_new"]');
+        imgs.forEach(img => {
+          img.style.filter =
+            'contrast(5) brightness(2.2) saturate(4) drop-shadow(0 0 8px #00f) drop-shadow(0 0 16px #0ff)';
+          img.style.mixBlendMode = 'lighter';
+        });
+      }
+      // Периодически обновлять фильтр (тайлы могут подгружаться динамически)
+      setInterval(enhancePrecipitationTiles, 1000);
+    </script>
+  </body>
+</html>

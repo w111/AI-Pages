@@ -1,0 +1,3279 @@
+<!doctype html>
+<!--
+====================================================================================
+                        TECHNICAL SPECIFICATION (TS)
+                        Winamp-Style MP3 Visualizer
+====================================================================================
+
+PROJECT OVERVIEW:
+Interactive web-based audio visualizer inspired by Winamp's classic visualization 
+effects. Supports both streaming audio and local MP3 files with multiple real-time 
+visualization modes.
+
+CORE FEATURES:
+1. Audio Input Sources:
+   - Internet radio streams (default: Radio Swiss Jazz)
+   - Local MP3 file upload
+   - Web Audio API integration with cross-origin support
+
+2. Visualization Modes:
+   - Particle Visualizer: 3D particle system with WebGL
+   - Jazz Visualizer: Specialized jazz-themed effects
+   - Spectrum Analyzer: Real-time frequency analysis
+   - Oscilloscope: Waveform display
+
+3. Technical Implementation:
+   - Three.js for 3D graphics and WebGL rendering
+   - Web Audio API for audio processing and analysis
+   - Post-processing effects (Bloom, RGB Shift, Color Correction)
+   - Responsive grid layout (2x2 visualization panels)
+   - Real-time FFT analysis (2048 samples)
+
+4. User Interface:
+   - Retro green-on-black Winamp-style theme
+   - Radio button source selection
+   - Stream URL input with placeholder
+   - File upload interface
+   - Loading indicators and error handling
+
+5. Browser Compatibility:
+   - Modern browsers with Web Audio API support
+   - WebGL-capable devices
+   - Cross-origin audio streaming support
+   - Responsive design for various screen sizes
+
+6. External Dependencies:
+   - Three.js v0.137.0 (3D graphics library)
+   - Various Three.js shaders and post-processing modules
+   - Radio Swiss Jazz stream (http://stream.srg-ssr.ch/m/rsj/aacp_96)
+
+7. Performance Optimizations:
+   - Canvas resizing on window events
+   - Efficient audio context reuse
+   - Error handling for failed streams
+   - Memory management for audio sources
+
+AUTHOR: AI Assistant
+VERSION: 2.0
+LAST UPDATED: 2025
+====================================================================================
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Winamp-Style MP3 Visualizer</title>
+    <!-- Updated Three.js version and additional libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+    <!-- First load shaders, then post-processing -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/shaders/GaussianBlurShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/shaders/RGBShiftShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/shaders/ColorCorrectionShader.js"></script>
+    <!--  FIX: Add missing LuminosityHighPassShader for UnrealBloomPass -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <!-- Then load post-processing modules -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <!-- FIX: Correct typo in RenderPass URL (tree -> three) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <style>
+      body {
+        margin: 0;
+        background-color: #111;
+        color: #0f0;
+        font-family: 'Arial', sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 5px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 98vh;
+      }
+
+      h1 {
+        text-align: center;
+        color: #0f0;
+        text-shadow: 0 0 5px #0f0;
+        margin-bottom: 3px;
+        margin-top: 0;
+        font-size: 18px;
+      }
+
+      .controls {
+        display: flex;
+        margin-bottom: 3px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 3px;
+      }
+
+      .source-selector {
+        display: flex;
+        gap: 15px;
+        margin-right: 15px;
+        flex-wrap: wrap;
+      }
+
+      .source-selector label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      .source-selector input[type='radio'] {
+        margin-right: 3px;
+      }
+
+      .source-inputs {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .source-input {
+        display: none;
+      }
+
+      .source-input.active {
+        display: block;
+      }
+
+      #streamUrl {
+        padding: 3px;
+        background: #222;
+        color: #0f0;
+        border: 1px solid #0f0;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      #audioFileInput {
+        padding: 3px;
+        background: #222;
+        color: #0f0;
+        border: 1px solid #0f0;
+      }
+
+      button {
+        padding: 3px 10px;
+        margin-left: 5px;
+        background: #333;
+        color: #0f0;
+        border: 1px solid #0f0;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #444;
+        box-shadow: 0 0 10px #0f0;
+      }
+
+      .visualizer-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        grid-template-areas:
+          'main jazzviz'
+          'spectrum oscilloscope';
+        grid-gap: 3px;
+        flex: 1;
+        min-height: 300px;
+        max-height: calc(98vh - 80px); /* Subtract header and controls height */
+      }
+
+      .visualizer {
+        background-color: #000;
+        border: 1px solid #0f0;
+        box-shadow: 0 0 15px #0f0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        min-height: 120px;
+      }
+
+      .visualizer.main-viz {
+        grid-area: main;
+      }
+      .visualizer.spectrum {
+        grid-area: spectrum;
+      }
+      .visualizer.oscilloscope {
+        grid-area: oscilloscope;
+      }
+      /* ---> ADDED: Assign new grid area */
+      .visualizer.jazzviz {
+        grid-area: jazzviz;
+      }
+
+      #oscilloscope,
+      #spectrum {
+        width: 100%;
+        height: 100%;
+      }
+      #mainVisualizer {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: none;
+      }
+      #particleEmitter {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      .visualizer-label {
+        color: #0f0;
+        font-size: 11px;
+        padding: 2px 3px;
+        background: rgba(0, 0, 0, 0.7);
+      }
+
+      .visualizer-select {
+        display: flex;
+        margin: 1px 0;
+        justify-content: center;
+      }
+
+      .visualizer-select button {
+        margin-right: 2px;
+        margin-left: 0;
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+
+      .visualizer-select button.active {
+        background: #0f0;
+        color: #000;
+        box-shadow: 0 0 10px #0f0;
+      }
+
+      /* Make visualization container elements fill their space */
+      .visualization-content {
+        flex: 1;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 80px;
+      }
+
+      .visualization-content canvas,
+      .visualization-content div {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .visualization-content canvas[data-engine='three.js'] {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      /* Hide the particle system for now to save space */
+      .visualizer.particles {
+        display: none;
+      }
+
+      .stream-info {
+        font-size: 10px;
+        color: #00aa00;
+        margin-top: 2px;
+      }
+
+      .error-message {
+        color: #ff6666;
+        margin-top: 5px;
+        padding: 3px;
+        border: 1px solid #ff6666;
+        background: rgba(255, 0, 0, 0.1);
+        font-size: 10px;
+      }
+
+      .loading-indicator {
+        display: inline-block;
+        margin-left: 5px;
+        color: #0f0;
+        animation: pulse 1.5s infinite;
+        font-size: 10px;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.3;
+        }
+      }
+
+      /* Стили для мобильных устройств и экранов с ограниченной высотой */
+      @media screen and (max-height: 700px) {
+        h1 {
+          font-size: 16px;
+          margin-bottom: 2px;
+          margin-top: 2px;
+        }
+
+        .controls {
+          margin-bottom: 2px;
+        }
+
+        .stream-info {
+          font-size: 9px;
+          margin-top: 1px;
+        }
+
+        .visualizer-container {
+          min-height: 240px;
+          max-height: calc(98vh - 60px);
+        }
+
+        .visualizer {
+          min-height: 80px;
+        }
+
+        .visualization-content {
+          min-height: 60px;
+        }
+
+        .visualizer-label {
+          font-size: 9px;
+          padding: 1px 2px;
+        }
+      }
+
+      /* Very small screens */
+      @media screen and (max-height: 500px) {
+        .container {
+          height: 100vh;
+          padding: 2px;
+        }
+
+        h1 {
+          font-size: 14px;
+          margin-bottom: 1px;
+          margin-top: 1px;
+        }
+
+        .visualizer-container {
+          min-height: 200px;
+          max-height: calc(100vh - 50px);
+          grid-gap: 2px;
+        }
+
+        .visualizer {
+          min-height: 60px;
+          border-width: 1px;
+        }
+
+        .visualization-content {
+          min-height: 40px;
+        }
+
+        .visualizer-label {
+          font-size: 8px;
+          padding: 1px;
+        }
+
+        .stream-info {
+          font-size: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Winamp-Style MP3 Visualizer</h1>
+      <div class="controls">
+        <div class="source-selector">
+          <label>
+            <input type="radio" name="audio-source" value="stream" checked /> Internet
+            Stream
+          </label>
+          <label>
+            <input type="radio" name="audio-source" value="file" /> MP3 File
+          </label>
+        </div>
+        <div class="source-inputs">
+          <div id="stream-input" class="source-input active">
+            <input
+              type="text"
+              id="streamUrl"
+              value="http://stream.srg-ssr.ch/m/rsj/aacp_96"
+              placeholder="Stream URL"
+            />
+            <div class="stream-info">
+              Default:
+              <a
+                href="https://www.radioswissjazz.ch/en"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Radio Swiss Jazz (quality jazz)</a
+              >
+            </div>
+          </div>
+          <div id="file-input" class="source-input">
+            <input type="file" id="audioFileInput" accept="audio/mp3" />
+          </div>
+        </div>
+        <button id="startVisualization">Start Visualization</button>
+      </div>
+
+      <div class="visualizer-container">
+        <div class="visualizer main-viz">
+          <div class="visualizer-label">Particle Visualizer</div>
+          <div class="visualization-content">
+            <div id="mainVisualizer"></div>
+            <div id="particleEmitter"></div>
+          </div>
+        </div>
+
+        <!--  ADDED: New Jazz Visualizer Container -->
+        <div class="visualizer jazzviz">
+          <div class="visualizer-label">Jazz Visualizer</div>
+          <div class="visualization-content">
+            <div id="jazzVisualizer"></div>
+          </div>
+        </div>
+
+        <div class="visualizer spectrum">
+          <div class="visualizer-label">Spectrum Analyzer</div>
+          <div class="visualization-content">
+            <canvas id="spectrum"></canvas>
+          </div>
+        </div>
+
+        <div class="visualizer oscilloscope">
+          <div class="visualizer-label">Oscilloscope</div>
+          <div class="visualization-content">
+            <canvas id="oscilloscope"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Handle audio source selection
+      document.querySelectorAll('input[name="audio-source"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+          // Hide all source inputs
+          document.querySelectorAll('.source-input').forEach(input => {
+            input.classList.remove('active');
+          });
+
+          // Show selected source input
+          const sourceType = this.value;
+          document.getElementById(sourceType + '-input').classList.add('active');
+        });
+      });
+
+      // Make sure Three.js canvases fill their containers
+      function resizeCanvases() {
+        const visualizationContents = document.querySelectorAll(
+          '.visualization-content'
+        );
+        visualizationContents.forEach(container => {
+          // Handle regular canvas elements
+          const canvases = container.querySelectorAll('canvas');
+          canvases.forEach(canvas => {
+            // Set canvas dimensions to match container
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+          });
+
+          // Handle WebGL/Three.js renderers
+          const threeJsContainers = container.querySelectorAll(
+            '[id^="mainVisualizer"], [id^="particleEmitter"], [id^="jazzVisualizer"]'
+          ); // <-- Added jazzVisualizer
+          threeJsContainers.forEach(threeContainer => {
+            if (threeContainer.renderer) {
+              threeContainer.renderer.setSize(
+                container.offsetWidth,
+                container.offsetHeight
+              );
+              if (threeContainer.camera) {
+                // Update camera aspect ratio
+                threeContainer.camera.aspect =
+                  container.offsetWidth / container.offsetHeight;
+                threeContainer.camera.updateProjectionMatrix();
+              }
+            }
+          });
+        });
+      }
+
+      // Call resize on window resize events
+      window.addEventListener('resize', resizeCanvases);
+      // Also resize on load
+      window.addEventListener('load', resizeCanvases);
+
+      // Global audio context and analyzer for reuse
+      let globalAudioContext = null;
+      let globalAnalyser = null;
+      let globalBufferLength = null;
+      let globalDataArray = null;
+      let globalTimeDataArray = null;
+      let audioSource = null;
+
+      document.getElementById('startVisualization').addEventListener('click', () => {
+        // Get selected audio source
+        const sourceType = document.querySelector(
+          'input[name="audio-source"]:checked'
+        ).value;
+
+        if (sourceType === 'file') {
+          const fileInput = document.getElementById('audioFileInput');
+          if (fileInput.files.length === 0) {
+            alert('Please select an MP3 file.');
+            return;
+          }
+
+          startFileVisualization(fileInput.files[0]);
+        } else if (sourceType === 'stream') {
+          const streamUrl = document.getElementById('streamUrl').value.trim();
+          if (!streamUrl) {
+            alert('Please enter a stream URL.');
+            return;
+          }
+
+          startStreamVisualization(streamUrl);
+        }
+      });
+
+      function setupAudioContext() {
+        // Stop any existing audio
+        if (audioSource) {
+          audioSource.disconnect();
+          audioSource = null;
+        }
+
+        // Create or reuse audio context
+        if (!globalAudioContext) {
+          globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // Create or reuse analyzer
+        if (!globalAnalyser) {
+          globalAnalyser = globalAudioContext.createAnalyser();
+          globalAnalyser.fftSize = 2048;
+          globalBufferLength = globalAnalyser.frequencyBinCount;
+          globalDataArray = new Uint8Array(globalBufferLength);
+          globalTimeDataArray = new Uint8Array(globalBufferLength);
+
+          // Connect analyzer to output
+          globalAnalyser.connect(globalAudioContext.destination);
+        }
+
+        return {
+          audioContext: globalAudioContext,
+          analyser: globalAnalyser,
+          bufferLength: globalBufferLength,
+          dataArray: globalDataArray,
+          timeDataArray: globalTimeDataArray,
+        };
+      }
+
+      function startFileVisualization(audioFile) {
+        const audio = setupAudioContext();
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+          audio.audioContext.decodeAudioData(
+            event.target.result,
+            function (buffer) {
+              // Create and connect audio source
+              audioSource = audio.audioContext.createBufferSource();
+              audioSource.buffer = buffer;
+              audioSource.connect(audio.analyser);
+              audioSource.start();
+
+              // Setup visualizers if not already set up
+              setupVisualizers(
+                audio.analyser,
+                audio.bufferLength,
+                audio.dataArray,
+                audio.timeDataArray
+              );
+            },
+            function (e) {
+              console.log('Error with decoding audio data: ' + e.err);
+              alert('Error decoding audio file.');
+            }
+          );
+        };
+
+        reader.readAsArrayBuffer(audioFile);
+      }
+
+      function startStreamVisualization(streamUrl) {
+        // Clear any previous error messages
+        clearErrorMessages();
+
+        // Show loading indicator
+        const startButton = document.getElementById('startVisualization');
+        startButton.disabled = true;
+        const loadingIndicator = document.createElement('span');
+        loadingIndicator.className = 'loading-indicator';
+        loadingIndicator.textContent = 'Loading stream...';
+        startButton.parentNode.appendChild(loadingIndicator);
+
+        const audio = setupAudioContext();
+
+        // Create new audio element for streaming
+        const audioElement = new Audio();
+        audioElement.crossOrigin = 'anonymous'; // Handle CORS if needed
+        audioElement.src = streamUrl;
+
+        // Create media element source
+        audioSource = audio.audioContext.createMediaElementSource(audioElement);
+        audioSource.connect(audio.analyser);
+
+        audioElement.onerror = function () {
+          console.error('Error loading audio stream');
+          const errorMessage = document.createElement('div');
+          errorMessage.className = 'error-message';
+          errorMessage.textContent =
+            'Failed to load audio stream. Check URL and try again.';
+          document.querySelector('.controls').appendChild(errorMessage);
+          startButton.disabled = false;
+          loadingIndicator.remove();
+          setTimeout(() => {
+            errorMessage.remove();
+          }, 5000);
+        };
+
+        // Play stream
+        audioElement
+          .play()
+          .then(() => {
+            // Setup visualizers if not already set up
+            setupVisualizers(
+              audio.analyser,
+              audio.bufferLength,
+              audio.dataArray,
+              audio.timeDataArray
+            );
+            startButton.disabled = false;
+            loadingIndicator.remove();
+          })
+          .catch(error => {
+            console.error('Error playing stream:', error);
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = 'Stream playback error: ' + error.message;
+            document.querySelector('.controls').appendChild(errorMessage);
+            startButton.disabled = false;
+            loadingIndicator.remove();
+            setTimeout(() => {
+              errorMessage.remove();
+            }, 5000);
+          });
+      }
+
+      function clearErrorMessages() {
+        document.querySelectorAll('.error-message').forEach(msg => msg.remove());
+      }
+
+      // Track if visualizers are already set up
+      let visualizersInitialized = false;
+
+      function setupVisualizers(analyser, bufferLength, dataArray, timeDataArray) {
+        // Setup visualizers
+        if (!visualizersInitialized) {
+          // Setup spectrum analyzer
+          const spectrumCanvas = document.getElementById('spectrum');
+          spectrumCanvas.width = spectrumCanvas.parentElement.offsetWidth;
+          spectrumCanvas.height = spectrumCanvas.parentElement.offsetHeight;
+          const spectrumCtx = spectrumCanvas.getContext('2d');
+
+          // Setup oscilloscope
+          const oscCanvas = document.getElementById('oscilloscope');
+          oscCanvas.width = oscCanvas.parentElement.offsetWidth;
+          oscCanvas.height = oscCanvas.parentElement.offsetHeight;
+          const oscCtx = oscCanvas.getContext('2d');
+
+          // Setup particle emitter only (skip circular bars)
+          setupParticleEmitter(analyser, bufferLength, dataArray);
+
+          // ---> ADDED: Setup the new Jazz visualizer
+          setupJazzVisualizer(analyser, bufferLength, dataArray);
+
+          visualizersInitialized = true;
+
+          // Ensure all canvases are properly sized
+          setTimeout(resizeCanvases, 100);
+
+          // Animation loop
+          function animate() {
+            requestAnimationFrame(animate);
+
+            // Update frequency data
+            analyser.getByteFrequencyData(dataArray);
+
+            // Update time domain data for oscilloscope
+            analyser.getByteTimeDomainData(timeDataArray);
+
+            // Get current canvas sizes
+            const spectrumCanvas = document.getElementById('spectrum');
+            const oscCanvas = document.getElementById('oscilloscope');
+
+            // Draw spectrum analyzer
+            drawSpectrum(
+              spectrumCtx,
+              spectrumCanvas.width,
+              spectrumCanvas.height,
+              dataArray,
+              bufferLength
+            );
+
+            // Draw oscilloscope
+            drawOscilloscope(
+              oscCtx,
+              oscCanvas.width,
+              oscCanvas.height,
+              timeDataArray,
+              bufferLength
+            );
+          }
+
+          animate();
+        }
+      }
+
+      function setupParticleEmitter(analyser, bufferLength, dataArray) {
+        const container = document.getElementById('particleEmitter');
+
+        // Three.js setup с повышенным качеством рендеринга
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          60,
+          container.offsetWidth / container.offsetHeight,
+          0.1,
+          1000
+        );
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: true,
+          precision: 'highp', // Высокая точность рендеринга
+        });
+
+        // Включаем сглаживание и HDR
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+
+        container.appendChild(renderer.domElement);
+
+        // Store renderer and camera for resize handling
+        container.renderer = renderer;
+        container.camera = camera;
+
+        // Добавляем улучшенное освещение для более красивых визуальных эффектов
+        scene.add(new THREE.AmbientLight(0x222222));
+
+        // Основной источник света с мягкими тенями
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        // Добавляем фоновое свечение сцены
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+        // Set camera position
+        camera.position.z = 40;
+
+        // Create emitters
+        const emitters = [];
+        const emitterCount = 5;
+        const frequencyBands = [
+          { min: 0, max: 5, name: 'Sub Bass', color: 0xff0000 }, // Red - Sub bass
+          { min: 5, max: 20, name: 'Bass', color: 0xff8800 }, // Orange - Bass
+          { min: 20, max: 60, name: 'Low Mid', color: 0xffff00 }, // Yellow - Low mid
+          { min: 60, max: 120, name: 'High Mid', color: 0x00ff00 }, // Green - High mid
+          { min: 120, max: 250, name: 'High', color: 0x0088ff }, // Blue - High frequency
+        ];
+
+        // Position emitters in a more spread-out pattern to prevent intersections
+        const emitterPositions = [
+          { x: 0, y: 15, z: 0 }, // Top center
+          { x: -15, y: 0, z: 0 }, // Left
+          { x: 15, y: 0, z: 0 }, // Right
+          { x: 0, y: 0, z: 15 }, // Front
+          { x: 0, y: 0, z: -15 }, // Back
+        ];
+
+        for (let i = 0; i < emitterCount; i++) {
+          const band = frequencyBands[i];
+
+          // Create emitter source - a small sphere with улучшенным материалом
+          const emitterGeometry = new THREE.SphereGeometry(1.5, 24, 24); // Увеличиваем детализацию геометрии
+
+          // Используем более сложный и красивый материал
+          const emitterMaterial = new THREE.MeshPhysicalMaterial({
+            color: band.color,
+            emissive: band.color,
+            emissiveIntensity: 1.0,
+            metalness: 0.2,
+            roughness: 0.1,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.2,
+            reflectivity: 0.5,
+            envMapIntensity: 0.8,
+          });
+
+          const emitter = new THREE.Mesh(emitterGeometry, emitterMaterial);
+
+          // Position emitters using predefined positions to prevent overlapping
+          emitter.position.x = emitterPositions[i].x;
+          emitter.position.y = emitterPositions[i].y;
+          emitter.position.z = emitterPositions[i].z;
+
+          // Добавляем источник света к каждому эмиттеру для более красивого свечения
+          const pointLight = new THREE.PointLight(band.color, 1.0, 20);
+          pointLight.position.set(0, 0, 0);
+          emitter.add(pointLight);
+
+          scene.add(emitter);
+
+          // Store emitter data
+          emitters.push({
+            mesh: emitter,
+            particles: [],
+            frequencyBand: band,
+            particleCount: 0,
+            emitRate: 0,
+            lastEmitTime: 0,
+            initialPosition: {
+              x: emitterPositions[i].x,
+              y: emitterPositions[i].y,
+              z: emitterPositions[i].z,
+            },
+            pointLight: pointLight, // Сохраняем ссылку на источник света
+          });
+        }
+
+        // Particle pool for reuse
+        const particlePool = [];
+        const maxParticles = 3000; // Увеличиваем максимальное количество частиц
+
+        // Pre-create particle geometries and materials
+        const particleGeometry = new THREE.SphereGeometry(0.5, 12, 12); // Улучшаем геометрию частиц
+        const particleMaterials = frequencyBands.map(
+          band =>
+            new THREE.MeshPhysicalMaterial({
+              color: band.color,
+              emissive: band.color,
+              // ---> ENHANCE: Increase base emissive intensity
+              emissiveIntensity: 1.2, // Was 1.0
+              // ---> ENHANCE: Increase shininess properties
+              metalness: 0.3, // Was 0.1
+              roughness: 0.15, // Was 0.3
+              clearcoat: 0.8, // Was 0.5
+              clearcoatRoughness: 0.2, // Added
+              reflectivity: 0.7, // Added
+              transparent: true,
+              opacity: 0.9,
+            })
+        );
+
+        function createParticle(emitterIndex) {
+          const emitter = emitters[emitterIndex];
+
+          // Get current frequency band value for dynamic effects
+          let sum = 0;
+          const count = emitter.frequencyBand.max - emitter.frequencyBand.min;
+          for (let i = emitter.frequencyBand.min; i < emitter.frequencyBand.max; i++) {
+            sum += dataArray[i];
+          }
+          const bandValue = sum / (count * 255); // 0-1 value
+
+          // Skip creation if band value is too low
+          if (bandValue < 0.05) return;
+
+          // Check if we can reuse a particle
+          let particle;
+          if (particlePool.length > 0) {
+            particle = particlePool.pop();
+            particle.material = particleMaterials[emitterIndex].clone(); // Clone for individual color control
+            particle.visible = true;
+            particle.scale.set(1, 1, 1);
+          } else {
+            // Create new particle if pool is empty
+            particle = new THREE.Mesh(
+              particleGeometry,
+              particleMaterials[emitterIndex].clone()
+            );
+            scene.add(particle);
+          }
+
+          // ---> ENHANCE: Modify color based on bandValue for more vibrancy
+          const baseColor = new THREE.Color(frequencyBands[emitterIndex].color);
+          const particleHue =
+            (baseColor.getHSL({ h: 0, s: 0, l: 0 }).h + (Math.random() - 0.5) * 0.1) %
+            1.0;
+          const particleSaturation = Math.min(1.0, 0.8 + bandValue * 0.4); // More saturated
+          const particleLightness = Math.min(1.0, 0.5 + bandValue * 0.5); // Brighter
+          particle.material.color.setHSL(
+            particleHue,
+            particleSaturation,
+            particleLightness
+          );
+          particle.material.emissive.copy(particle.material.color).multiplyScalar(0.8);
+
+          // Adjust particle size based on frequency intensity
+          const sizeScale = 0.5 + bandValue * 2.5; // More dramatic size variation
+          particle.scale.set(sizeScale, sizeScale, sizeScale);
+
+          // Make particles brighter with higher frequency values
+          // ---> ENHANCE: Stronger initial brightness based on bandValue
+          particle.material.emissiveIntensity = 1.0 + bandValue * 2.5; // Was 0.8 + bandValue * 2.0
+
+          // Set initial position to emitter
+          particle.position.copy(emitter.mesh.position);
+
+          // Random velocity direction in 3D space from emitter
+          // Speed increases with band intensity - much more pronounced
+          const speed = 0.1 + bandValue * 0.8;
+          const angle = Math.random() * Math.PI * 2;
+          const elevation = Math.random() * Math.PI * 2;
+
+          const velocity = new THREE.Vector3(
+            Math.cos(angle) * Math.cos(elevation) * speed,
+            Math.sin(elevation) * speed,
+            Math.sin(angle) * Math.cos(elevation) * speed
+          );
+
+          // Add particle to emitter's active particles
+          emitter.particles.push({
+            mesh: particle,
+            velocity: velocity,
+            life: 100 + Math.random() * 150 + bandValue * 200, // Life depends on frequency
+            age: 0,
+            bandValue: bandValue, // Store current band value for reference
+            initialBandValue: bandValue, // Keep track of the intensity at creation time
+            initialColor: particle.material.color.clone(), // Store initial color for pulsing
+          });
+
+          emitter.particleCount++;
+        }
+
+        // Animation function
+        function animateParticleEmitter() {
+          requestAnimationFrame(animateParticleEmitter);
+
+          analyser.getByteFrequencyData(dataArray);
+
+          // Update each emitter
+          emitters.forEach((emitter, emitterIndex) => {
+            // Calculate frequency band value (average of the band range)
+            let sum = 0;
+            const count = emitter.frequencyBand.max - emitter.frequencyBand.min;
+
+            for (
+              let i = emitter.frequencyBand.min;
+              i < emitter.frequencyBand.max;
+              i++
+            ) {
+              sum += dataArray[i];
+            }
+
+            const bandValue = sum / (count * 255); // 0-1 value
+
+            // Scale emitter based on frequency intensity
+            const scale = 1.5 + bandValue * 5; // More dramatic scaling
+            emitter.mesh.scale.set(scale, scale, scale);
+
+            // Make emitters move based on their frequency intensity
+            const displacement = bandValue * 5; // More movement for higher intensity
+            emitter.mesh.position.x =
+              emitter.initialPosition.x +
+              Math.sin(Date.now() * 0.001 + emitterIndex) * displacement;
+            emitter.mesh.position.y =
+              emitter.initialPosition.y +
+              Math.cos(Date.now() * 0.002 + emitterIndex) * displacement;
+            emitter.mesh.position.z =
+              emitter.initialPosition.z +
+              Math.sin(Date.now() * 0.0015 + emitterIndex) * displacement;
+
+            // Set emission rate based on frequency intensity - more responsive
+            emitter.emitRate = Math.floor(bandValue * 25);
+
+            // Make emitters pulsate with color based on frequency
+            const hue = (emitterIndex / emitterCount + bandValue * 0.2) % 1;
+            const saturation = 0.5 + bandValue * 0.5;
+            const brightness = 0.7 + bandValue * 0.3;
+            emitter.mesh.material.color.setHSL(hue, saturation, brightness);
+            emitter.mesh.material.emissive.setHSL(hue, saturation, brightness * 0.7);
+            emitter.mesh.material.emissiveIntensity = 0.7 + bandValue * 2;
+
+            // Emit new particles based on frequency
+            const now = Date.now();
+            if (now - emitter.lastEmitTime > 50) {
+              // Check every 50ms
+              // Only emit particles when frequency is above threshold
+              if (bandValue > 0.1) {
+                // Lower threshold to make more responsive
+                // More particles for higher frequencies
+                const numToEmit = Math.max(1, Math.floor(bandValue * 20));
+
+                for (let i = 0; i < numToEmit; i++) {
+                  if (emitter.particleCount < 600) {
+                    // Increased particle limit per emitter
+                    createParticle(emitterIndex);
+                  }
+                }
+              }
+
+              emitter.lastEmitTime = now;
+            }
+
+            // Update particles
+            for (let i = emitter.particles.length - 1; i >= 0; i--) {
+              const particle = emitter.particles[i];
+
+              // Calculate new frequency band value for this emitter's band
+              let newSum = 0;
+              for (
+                let j = emitter.frequencyBand.min;
+                j < emitter.frequencyBand.max;
+                j++
+              ) {
+                newSum += dataArray[j];
+              }
+              const newBandValue =
+                newSum /
+                ((emitter.frequencyBand.max - emitter.frequencyBand.min) * 255);
+
+              // Change in band value since particle was created
+              const bandValueChange = newBandValue - particle.bandValue;
+              const relativeChange = bandValueChange / (particle.bandValue || 0.1); // Relative intensity change
+
+              // Update stored band value
+              particle.bandValue = newBandValue;
+
+              // Move particle
+              particle.mesh.position.add(particle.velocity);
+
+              // Apply "gravity" or force - less in high frequencies
+              particle.velocity.y -= 0.0005 * (1 - newBandValue * 0.7);
+
+              // Add some random movement to make it more interesting
+              particle.velocity.x += (Math.random() - 0.5) * 0.002;
+              particle.velocity.z += (Math.random() - 0.5) * 0.002;
+
+              // React to frequency changes
+              if (Math.abs(relativeChange) > 0.1) {
+                // Detect significant changes
+                // Stronger reaction for bigger changes
+                const reactionStrength = Math.min(1, Math.abs(relativeChange)) * 0.3;
+
+                // Add a burst of speed in direction of current velocity
+                if (bandValueChange > 0) {
+                  // Frequency increasing
+                  particle.velocity.x *= 1 + reactionStrength;
+                  particle.velocity.y *= 1 + reactionStrength * 1.5; // Extra upward boost
+                  particle.velocity.z *= 1 + reactionStrength;
+
+                  // Flash the particle brighter
+                  // ---> ENHANCE: Make flash more intense
+                  particle.mesh.material.emissiveIntensity = Math.min(
+                    4,
+                    particle.mesh.material.emissiveIntensity + reactionStrength * 1.5
+                  ); // Increased flash intensity and cap
+                } else {
+                  // Frequency decreasing
+                  // Slow down particle slightly
+                  particle.velocity.multiplyScalar(0.95);
+                }
+              }
+
+              // Periodically pulse particles to the beat (subtle effect)
+              if (newBandValue > 0.3 && Math.random() < 0.1) {
+                // Flash effect based on frequency intensity
+                const pulseColor = new THREE.Color().setHSL(
+                  (emitterIndex / emitterCount + newBandValue * 0.3) % 1,
+                  1.0,
+                  0.5 + newBandValue * 0.5
+                );
+                particle.mesh.material.emissive.lerp(pulseColor, 0.3);
+                particle.mesh.material.color.lerp(pulseColor, 0.2);
+
+                // Scale pulse
+                const pulseFactor = 1 + newBandValue * 0.2;
+                particle.mesh.scale.multiplyScalar(pulseFactor);
+              } else {
+                // Gradually return to original color
+                particle.mesh.material.color.lerp(particle.initialColor, 0.05);
+              }
+
+              // Age the particle
+              particle.age++;
+
+              // Fade out as particle ages
+              const lifeRatio = particle.age / particle.life;
+              particle.mesh.material.opacity = 1 - lifeRatio;
+
+              // Scale down as particle ages, but keep minimum size
+              const scale = Math.max(0.5, 1 - lifeRatio * 0.5);
+              particle.mesh.scale.set(scale, scale, scale);
+
+              // Remove dead particles
+              if (particle.age >= particle.life) {
+                // Move to particle pool for reuse
+                particle.mesh.visible = false;
+                particlePool.push(particle.mesh);
+
+                // Remove from active particles
+                emitter.particles.splice(i, 1);
+                emitter.particleCount--;
+              }
+            }
+          });
+
+          // Rotate camera slowly around the scene with vertical movement
+          const time = Date.now() * 0.0001;
+          camera.position.x = Math.sin(time) * 35;
+          camera.position.z = Math.cos(time) * 45;
+          camera.position.y = Math.sin(time * 0.5) * 10; // Add vertical movement
+          camera.lookAt(0, 0, 0);
+
+          renderer.render(scene, camera);
+        }
+
+        animateParticleEmitter();
+      }
+
+      function setupMainVisualizer(analyser, bufferLength, dataArray) {
+        const container = document.getElementById('mainVisualizer');
+
+        // Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          75,
+          container.offsetWidth / container.offsetHeight,
+          0.1,
+          1000
+        );
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        container.appendChild(renderer.domElement);
+
+        // Store renderer and camera for resize handling
+        container.renderer = renderer;
+        container.camera = camera;
+
+        camera.position.z = 30;
+
+        // Create circular bars for frequency visualization
+        const bars = [];
+        const barCount = 64;
+        const radius = 10;
+
+        for (let i = 0; i < barCount; i++) {
+          const angle = (i / barCount) * Math.PI * 2;
+          const geometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+
+          // Create gradient material
+          const hue = i / barCount;
+          const color = new THREE.Color().setHSL(hue, 1, 0.5);
+          const material = new THREE.MeshBasicMaterial({ color });
+
+          const bar = new THREE.Mesh(geometry, material);
+
+          // Store original positions
+          const originalX = Math.cos(angle) * radius;
+          const originalZ = Math.sin(angle) * radius;
+
+          bar.position.x = originalX;
+          bar.position.z = originalZ;
+          bar.rotation.y = angle + Math.PI / 2;
+
+          scene.add(bar);
+          bars.push({
+            mesh: bar,
+            angle,
+            originalX,
+            originalZ,
+          });
+        }
+
+        // Add central sphere
+        const sphereGeometry = new THREE.SphereGeometry(3, 32, 32);
+        const sphereMaterial = new THREE.MeshBasicMaterial({
+          color: 0x00ff00,
+          wireframe: true,
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        scene.add(sphere);
+
+        // Add particle system for "bryzgi" (splashes)
+        const particleCount = 200;
+        const particleGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleColors = new Float32Array(particleCount * 3);
+        const particleVelocities = [];
+        const particleLifetimes = new Float32Array(particleCount);
+        const particleMaxLifetimes = new Float32Array(particleCount);
+
+        // Initialize particles (they'll be inactive initially)
+        for (let i = 0; i < particleCount; i++) {
+          particlePositions[i * 3] = 0;
+          particlePositions[i * 3 + 1] = 0;
+          particlePositions[i * 3 + 2] = 0;
+
+          particleColors[i * 3] = 1; // R
+          particleColors[i * 3 + 1] = 1; // G
+          particleColors[i * 3 + 2] = 1; // B
+
+          particleVelocities.push({
+            x: 0,
+            y: 0,
+            z: 0,
+          });
+
+          particleLifetimes[i] = 0; // Not active
+          particleMaxLifetimes[i] = 30 + Math.random() * 30; // Random lifetime
+        }
+
+        particleGeometry.setAttribute(
+          'position',
+          new THREE.BufferAttribute(particlePositions, 3)
+        );
+        particleGeometry.setAttribute(
+          'color',
+          new THREE.BufferAttribute(particleColors, 3)
+        );
+
+        const particleMaterial = new THREE.PointsMaterial({
+          size: 0.3,
+          vertexColors: true,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          opacity: 0.8,
+        });
+
+        const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particleSystem);
+
+        // Function to emit particles based on frequency intensity
+        function emitParticles(frequencyValue, barIndex) {
+          if (frequencyValue < 0.5) return; // Only emit for strong beats
+
+          const bar = bars[barIndex];
+          const emissionCount = Math.floor(frequencyValue * 5); // More particles for stronger frequencies
+
+          // Try to find inactive particles to reuse
+          let emitted = 0;
+          for (let i = 0; i < particleCount && emitted < emissionCount; i++) {
+            if (particleLifetimes[i] <= 0) {
+              // Reactivate this particle
+              const barPos = bar.mesh.position;
+              const angle = Math.random() * Math.PI * 2;
+              const elevation = Math.random() * Math.PI * 2;
+              const speed = 0.1 + frequencyValue * 0.2;
+
+              // Position at the top of the bar
+              particlePositions[i * 3] = barPos.x;
+              particlePositions[i * 3 + 1] = barPos.y + bar.mesh.scale.y / 2;
+              particlePositions[i * 3 + 2] = barPos.z;
+
+              // Random velocity outward from bar
+              particleVelocities[i] = {
+                x: Math.cos(angle) * Math.cos(elevation) * speed,
+                y: Math.sin(elevation) * speed,
+                z: Math.sin(angle) * Math.cos(elevation) * speed,
+              };
+
+              // Set color based on bar's current color
+              const hue = (barIndex / barCount + frequencyValue * 0.2) % 1;
+              const color = new THREE.Color().setHSL(
+                hue,
+                1,
+                0.5 + frequencyValue * 0.5
+              );
+              particleColors[i * 3] = color.r;
+              particleColors[i * 3 + 1] = color.g;
+              particleColors[i * 3 + 2] = color.b;
+
+              // Set lifetime
+              particleLifetimes[i] = particleMaxLifetimes[i];
+
+              emitted++;
+            }
+          }
+
+          // Mark buffers as needing update
+          particleGeometry.attributes.position.needsUpdate = true;
+          particleGeometry.attributes.color.needsUpdate = true;
+        }
+
+        // Animation function
+        function animateMainVisualizer() {
+          requestAnimationFrame(animateMainVisualizer);
+
+          analyser.getByteFrequencyData(dataArray);
+
+          // Update bars based on frequency data
+          for (let i = 0; i < barCount; i++) {
+            const bar = bars[i];
+            const value = dataArray[i * 2] / 255;
+
+            bar.mesh.scale.y = 1 + value * 15;
+            bar.mesh.position.y = bar.mesh.scale.y / 2 - 0.5;
+
+            // Update color based on intensity
+            const hue = (i / barCount + value * 0.2) % 1;
+            bar.mesh.material.color.setHSL(hue, 1, 0.5 + value * 0.5);
+
+            // Animate position - use original position to prevent drift
+            const pulseRadius = radius + value * 2;
+            bar.mesh.position.x = bar.originalX * (pulseRadius / radius);
+            bar.mesh.position.z = bar.originalZ * (pulseRadius / radius);
+
+            // Emit particles on strong beats
+            if (Math.random() < 0.1) {
+              // Limit emission rate
+              emitParticles(value, i);
+            }
+          }
+
+          // Update particle positions and lifetimes
+          for (let i = 0; i < particleCount; i++) {
+            if (particleLifetimes[i] > 0) {
+              // Update position based on velocity
+              particlePositions[i * 3] += particleVelocities[i].x;
+              particlePositions[i * 3 + 1] += particleVelocities[i].y;
+              particlePositions[i * 3 + 2] += particleVelocities[i].z;
+
+              // Apply "gravity"
+              particleVelocities[i].y -= 0.01;
+
+              // Decrease lifetime
+              particleLifetimes[i]--;
+
+              // Fade out as lifetime decreases
+              const normalizedLife = particleLifetimes[i] / particleMaxLifetimes[i];
+              particleMaterial.opacity = normalizedLife;
+            }
+          }
+
+          // Mark particle positions as needing update
+          particleGeometry.attributes.position.needsUpdate = true;
+
+          // Animate sphere
+          const bassValue = dataArray[0] / 255;
+          sphere.scale.set(1 + bassValue, 1 + bassValue, 1 + bassValue);
+          sphere.rotation.x += 0.01;
+          sphere.rotation.y += 0.01;
+          sphere.material.color.setHSL((Date.now() % 3000) / 3000, 1, 0.5);
+
+          renderer.render(scene, camera);
+        }
+
+        animateMainVisualizer();
+      }
+
+      function setupParticleSystem(analyser, bufferLength, dataArray) {
+        const container = document.getElementById('particles');
+
+        // Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          75,
+          container.offsetWidth / container.offsetHeight,
+          0.1,
+          1000
+        );
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        container.appendChild(renderer.domElement);
+
+        camera.position.z = 30;
+
+        // Create particle system
+        const particleCount = 1000;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const sizes = new Float32Array(particleCount);
+
+        for (let i = 0; i < particleCount; i++) {
+          // Position particles in a sphere
+          const radius = 15 * Math.random();
+          const theta = Math.random() * 2 * Math.PI;
+          const phi = Math.acos(2 * Math.random() - 1);
+
+          positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+          positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+          positions[i * 3 + 2] = radius * Math.cos(phi);
+
+          // Random colors
+          colors[i * 3] = Math.random();
+          colors[i * 3 + 1] = Math.random();
+          colors[i * 3 + 2] = Math.random();
+
+          // Random sizes
+          sizes[i] = Math.random() * 2;
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        particles.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        // Create particle material with custom shader for glow effect
+        const particleMaterial = new THREE.PointsMaterial({
+          size: 0.5,
+          vertexColors: true,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        // Animation function
+        function animateParticles() {
+          requestAnimationFrame(animateParticles);
+
+          analyser.getByteFrequencyData(dataArray);
+
+          // Calculate average frequency value for overall intensity
+          let sum = 0;
+          for (let i = 0; i < 32; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / 32 / 255;
+
+          // Update particle positions and colors
+          for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            const x = positions[i3];
+            const y = positions[i3 + 1];
+            const z = positions[i3 + 2];
+
+            // Get frequency value for this particle
+            const freqIndex = i % 64;
+            const value = dataArray[freqIndex] / 255;
+
+            // Pulsate based on frequency
+            const scale = 1 + value * 0.3;
+            positions[i3] = x * scale;
+            positions[i3 + 1] = y * scale;
+            positions[i3 + 2] = z * scale;
+
+            // Update color based on frequency and time
+            const hue = (Date.now() * 0.0001 + value) % 1;
+            const color = new THREE.Color().setHSL(hue, 1, 0.5 + value * 0.5);
+            colors[i3] = color.r;
+            colors[i3 + 1] = color.g;
+            colors[i3 + 2] = color.b;
+
+            // Update size
+            sizes[i] = (Math.random() * 0.5 + 0.5) * (1 + value * 2);
+          }
+
+          particles.attributes.position.needsUpdate = true;
+          particles.attributes.color.needsUpdate = true;
+          particles.attributes.size.needsUpdate = true;
+
+          // Rotate particle system
+          particleSystem.rotation.y += 0.002 * (1 + avg);
+          particleSystem.rotation.x += 0.001 * (1 + avg);
+
+          renderer.render(scene, camera);
+        }
+
+        animateParticles();
+      }
+
+      function drawSpectrum(ctx, width, height, dataArray, bufferLength) {
+        // Clear the canvas and ensure it's the right size
+        ctx.canvas.width = width;
+        ctx.canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+
+        // Используем больше частотных полос для более детального спектра
+        const barCount = 128; // Вместо 64
+        const barWidth = width / barCount;
+        let x = 0;
+
+        // Создаем фоновый градиент для всего спектра
+        const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+        bgGradient.addColorStop(0, 'rgba(0, 50, 0, 0.1)');
+        bgGradient.addColorStop(1, 'rgba(0, 30, 0, 0.05)');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, width, height);
+
+        // Добавляем сетку для лучшего восприятия
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+        ctx.lineWidth = 0.5;
+
+        // Горизонтальные линии сетки
+        for (let i = 0; i < height; i += height / 8) {
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(width, i);
+          ctx.stroke();
+        }
+
+        // Вертикальные линии сетки
+        for (let i = 0; i < width; i += width / 16) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, height);
+          ctx.stroke();
+        }
+
+        // Draw bars with improved visuals
+        for (let i = 0; i < barCount; i++) {
+          // Используем логарифмическое распределение для лучшего отображения частот
+          const dataIndex = Math.floor(
+            Math.pow(i / barCount, 1.5) * (bufferLength / 4)
+          );
+          const value = dataArray[dataIndex] / 255.0;
+
+          // Добавляем небольшую сглаживающую инерцию для более плавного отображения
+          const barHeight = value * height * 0.95;
+
+          // Создаем более сложный градиент для каждой полосы
+          const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
+
+          // Базовый цвет зависит от частоты и громкости
+          const hue = ((i * 360) / barCount) % 360;
+          const saturation = 90 + value * 10;
+          const brightness = 40 + value * 60;
+
+          gradient.addColorStop(0, `hsl(${hue}, ${saturation}%, ${brightness / 2}%)`);
+          gradient.addColorStop(0.5, `hsl(${hue}, ${saturation}%, ${brightness}%)`);
+          gradient.addColorStop(
+            1,
+            `hsl(${(hue + 30) % 360}, ${saturation}%, ${brightness + 10}%)`
+          );
+
+          ctx.fillStyle = gradient;
+
+          // Рисуем скругленные верхушки полос
+          const barTop = height - barHeight;
+          const halfBar = barWidth / 2;
+
+          // Основная часть полосы
+          ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+
+          // Добавляем блик на верхушке полосы
+          if (barHeight > 5) {
+            const glowGradient = ctx.createRadialGradient(
+              x + halfBar,
+              barTop,
+              0,
+              x + halfBar,
+              barTop,
+              barWidth
+            );
+            glowGradient.addColorStop(0, `hsla(${hue}, 100%, 90%, 0.8)`);
+            glowGradient.addColorStop(1, `hsla(${hue}, 100%, 90%, 0)`);
+
+            ctx.fillStyle = glowGradient;
+            ctx.fillRect(x, barTop - 3, barWidth - 1, 6);
+          }
+
+          x += barWidth;
+        }
+
+        // Добавляем эффект послесвечения (мягкое размытие)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function drawOscilloscope(ctx, width, height, dataArray, bufferLength) {
+        // Clear the canvas and ensure it's the right size
+        ctx.canvas.width = width;
+        ctx.canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+
+        // Добавляем фоновый градиент
+        const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+        bgGradient.addColorStop(0, 'rgba(0, 20, 0, 0.1)');
+        bgGradient.addColorStop(0.5, 'rgba(0, 40, 0, 0.05)');
+        bgGradient.addColorStop(1, 'rgba(0, 20, 0, 0.1)');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, width, height);
+
+        // Добавляем сетку
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+        ctx.lineWidth = 0.5;
+
+        // Горизонтальные линии сетки
+        for (let i = 0; i < height; i += height / 8) {
+          ctx.beginPath();
+          ctx.moveTo(0, i);
+          ctx.lineTo(width, i);
+          ctx.stroke();
+        }
+
+        // Вертикальные линии сетки
+        for (let i = 0; i < width; i += width / 16) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, height);
+          ctx.stroke();
+        }
+
+        // Draw center line
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+
+        // Используем кривую Безье для более плавного отображения осциллографа
+        ctx.beginPath();
+
+        // Создаем градиент для линии осциллографа
+        const lineGradient = ctx.createLinearGradient(0, 0, width, 0);
+        lineGradient.addColorStop(0, '#00ff00');
+        lineGradient.addColorStop(0.5, '#88ff88');
+        lineGradient.addColorStop(1, '#00ff00');
+
+        ctx.strokeStyle = lineGradient;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#00ff00';
+        ctx.shadowBlur = 8;
+
+        // Улучшенная кривая с большим количеством точек
+        const sliceWidth = width / (bufferLength / 2);
+        let x = 0;
+
+        // Первая точка
+        let y = ((dataArray[0] / 128.0) * height) / 2;
+        ctx.moveTo(x, y);
+
+        // Используем каждую вторую точку для кривой Безье
+        for (let i = 2; i < bufferLength - 2; i += 2) {
+          const y1 = ((dataArray[i] / 128.0) * height) / 2;
+          const y2 = ((dataArray[i + 2] / 128.0) * height) / 2;
+          const xc = x + sliceWidth;
+
+          // Интерполяция для более плавной кривой
+          ctx.quadraticCurveTo(x, y1, xc, (y1 + y2) / 2);
+          x = xc;
+        }
+
+        ctx.stroke();
+
+        // Добавляем блики вдоль линии
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(150, 255, 150, 0.5)';
+        ctx.stroke();
+
+        // Восстанавливаем режим наложения
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.shadowBlur = 0;
+      }
+
+      function setup3DWaveform(analyser, bufferLength, dataArray) {
+        const container = document.getElementById('waveform3d');
+
+        // Улучшенный Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          60,
+          container.offsetWidth / container.offsetHeight,
+          0.1,
+          1000
+        );
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
+
+        // Store renderer and camera for resize handling
+        container.renderer = renderer;
+        container.camera = camera;
+
+        // Create a more dramatic scene with starfield background
+        createStarfield(scene, 2000); // Увеличиваем количество звезд
+
+        // Add atmospheric fog
+        scene.fog = new THREE.FogExp2(0x000011, 0.002);
+
+        // Add lighting для более драматичного эффекта
+        const ambientLight = new THREE.AmbientLight(0x111122);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xaaccff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        // Добавляем движущиеся прожекторы для создания динамической подсветки сцены
+        const spotLight1 = new THREE.SpotLight(0x0088ff, 2, 100, Math.PI / 6, 0.5, 1);
+        spotLight1.position.set(40, 30, 20);
+        scene.add(spotLight1);
+
+        const spotLight2 = new THREE.SpotLight(0x00ff88, 2, 100, Math.PI / 6, 0.5, 1);
+        spotLight2.position.set(-40, 20, -20);
+        scene.add(spotLight2);
+
+        // Point light that changes color with music - делаем более интенсивным
+        const pointLight = new THREE.PointLight(0x00ffaa, 2, 150);
+        pointLight.position.set(0, 10, 0);
+        scene.add(pointLight);
+
+        // Set camera position
+        camera.position.set(0, 30, 70);
+        camera.lookAt(0, 0, 0);
+
+        // Create complex 3D terrain-like waveform
+        const terrainWidth = 80;
+        const terrainDepth = 80;
+        // ---> Increase resolution for a smoother surface
+        const terrainResolution = 120; // Was 80
+
+        const terrainGeometry = new THREE.PlaneGeometry(
+          terrainWidth,
+          terrainDepth,
+          terrainResolution,
+          terrainResolution
+        );
+
+        // Rotate to be horizontal
+        terrainGeometry.rotateX(-Math.PI / 2);
+
+        // Create shader material for advanced effects
+        const terrainMaterial = new THREE.ShaderMaterial({
+          uniforms: {
+            time: { value: 0 },
+            colorMultiplier: { value: 0.5 },
+            baseColor: { value: new THREE.Color(0x00ff00) },
+          },
+          vertexShader: `
+                    uniform float time;
+                    varying vec2 vUv;
+                    varying float vElevation;
+                    
+                    void main() {
+                        vUv = uv;
+                        vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+                        modelPosition.y += sin(modelPosition.x * 0.1 + time) * 2.0;
+                        modelPosition.y += sin(modelPosition.z * 0.1 + time * 0.5) * 2.0;
+                        vElevation = modelPosition.y;
+                        
+                        gl_Position = projectionMatrix * viewMatrix * modelPosition;
+                    }
+                `,
+          fragmentShader: `
+                    uniform float colorMultiplier;
+                    uniform vec3 baseColor;
+                    varying vec2 vUv;
+                    varying float vElevation;
+                    
+                    void main() {
+                        float elevation = vElevation * 0.05;
+                        vec3 color = mix(
+                            vec3(0.0, 0.0, 0.5),  // Dark blue for valleys
+                            baseColor,             // Base color for peaks
+                            elevation + 0.5
+                        );
+                        
+                        // Add glow on ridges
+                        if (elevation > 0.3) {
+                            color += vec3(1.0, 1.0, 0.5) * (elevation - 0.3) * 2.0;
+                        }
+                        
+                        // Adjust brightness by our music-reactive multiplier
+                        color *= colorMultiplier;
+                        
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `,
+          wireframe: false,
+        });
+
+        const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrain.position.y = -5;
+        scene.add(terrain);
+
+        // Add wireframe overlay for additional effect
+        const wireframeMaterial = new THREE.MeshBasicMaterial({
+          color: 0x00ff00,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.1,
+        });
+
+        const wireframe = new THREE.Mesh(terrainGeometry.clone(), wireframeMaterial);
+        wireframe.position.copy(terrain.position);
+        wireframe.position.y += 0.1; // Slightly above the main terrain
+        scene.add(wireframe);
+
+        // Create floating energy orbs
+        const orbs = [];
+        const orbCount = 10;
+
+        for (let i = 0; i < orbCount; i++) {
+          const orbGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+          const orbMaterial = new THREE.MeshPhongMaterial({
+            color: new THREE.Color().setHSL(i / orbCount, 1, 0.5),
+            emissive: new THREE.Color().setHSL(i / orbCount, 1, 0.5),
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.9,
+          });
+
+          const orb = new THREE.Mesh(orbGeometry, orbMaterial);
+
+          // Random positions
+          orb.position.x = (Math.random() - 0.5) * 60;
+          orb.position.y = 5 + Math.random() * 15;
+          orb.position.z = (Math.random() - 0.5) * 60;
+
+          scene.add(orb);
+
+          // Store additional properties for animation
+          orbs.push({
+            mesh: orb,
+            originalY: orb.position.y,
+            xSpeed: (Math.random() - 0.5) * 0.1,
+            ySpeed: (Math.random() - 0.5) * 0.05,
+            zSpeed: (Math.random() - 0.5) * 0.1,
+            freqIndex: Math.floor(Math.random() * 32), // Assign frequency band
+          });
+        }
+
+        // Add energy beams
+        const beams = [];
+        const beamCount = 5;
+
+        for (let i = 0; i < beamCount; i++) {
+          const beamGeometry = new THREE.CylinderGeometry(0.1, 0.1, 40, 8, 1, true);
+
+          // Rotate to be horizontal
+          beamGeometry.rotateX(Math.PI / 2);
+
+          const beamMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+              time: { value: 0 },
+              color: { value: new THREE.Color().setHSL(i / beamCount, 1, 0.5) },
+            },
+            vertexShader: `
+                        uniform float time;
+                        varying vec2 vUv;
+                        
+                        void main() {
+                            vUv = uv;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+            fragmentShader: `
+                        uniform float time;
+                        uniform vec3 color;
+                        varying vec2 vUv;
+                        
+                        void main() {
+                            float intensity = sin(vUv.y * 20.0 + time * 5.0) * 0.5 + 0.5;
+                            intensity *= sin(vUv.x * 6.28 + time) * 0.5 + 0.5;
+                            vec3 glowColor = color * intensity;
+                            gl_FragColor = vec4(glowColor, intensity * 0.8);
+                        }
+                    `,
+            transparent: true,
+            side: THREE.DoubleSide,
+          });
+
+          const beam = new THREE.Mesh(beamGeometry, beamMaterial);
+
+          // Position beams at random angles
+          beam.position.set(0, 15, 0);
+          beam.rotation.y = (i / beamCount) * Math.PI * 2;
+          beam.rotation.z = Math.random() * Math.PI * 0.1;
+
+          scene.add(beam);
+
+          beams.push({
+            mesh: beam,
+            material: beamMaterial,
+            rotationSpeed: (Math.random() - 0.5) * 0.01,
+          });
+        }
+
+        // Create neural network-like connections
+        const synapses = [];
+        const points = [];
+
+        // Generate random points in 3D space
+        for (let i = 0; i < 20; i++) {
+          points.push(
+            new THREE.Vector3(
+              (Math.random() - 0.5) * 40,
+              Math.random() * 30,
+              (Math.random() - 0.5) * 40
+            )
+          );
+        }
+
+        // Create connections between points
+        for (let i = 0; i < points.length; i++) {
+          for (let j = i + 1; j < points.length; j++) {
+            // Only connect some points
+            if (Math.random() > 0.7) continue;
+
+            const start = points[i];
+            const end = points[j];
+
+            // Calculate distance
+            const distance = start.distanceTo(end);
+
+            // Skip if too far apart
+            if (distance > 25) continue;
+
+            // Create line geometry
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+
+            // Create material with glow effect
+            const lineMaterial = new THREE.LineBasicMaterial({
+              color: new THREE.Color().setHSL(Math.random(), 0.8, 0.5),
+              transparent: true,
+              opacity: 0.3 + Math.random() * 0.3,
+            });
+
+            const line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+
+            // Add pulse effect along line
+            const pulseGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+            const pulseMaterial = new THREE.MeshBasicMaterial({
+              color: 0xffffff,
+              transparent: true,
+              opacity: 0.8,
+            });
+
+            const pulse = new THREE.Mesh(pulseGeometry, pulseMaterial);
+            scene.add(pulse);
+
+            // Store for animation
+            synapses.push({
+              line: line,
+              pulse: pulse,
+              start: start.clone(),
+              end: end.clone(),
+              progress: Math.random(), // Start at random position
+              speed: 0.01 + Math.random() * 0.03,
+              direction: Math.random() > 0.5 ? 1 : -1,
+            });
+          }
+        }
+
+        // Create starfield
+        function createStarfield(scene, count) {
+          const starsGeometry = new THREE.BufferGeometry();
+          const positions = new Float32Array(count * 3);
+          const colors = new Float32Array(count * 3);
+          const sizes = new Float32Array(count);
+
+          for (let i = 0; i < count; i++) {
+            // Random positions far away
+            const radius = 50 + Math.random() * 150;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+
+            positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+            positions[i * 3 + 2] = radius * Math.cos(phi);
+
+            // Random colors
+            const starColor = new THREE.Color().setHSL(Math.random(), 0.2, 0.8);
+            colors[i * 3] = starColor.r;
+            colors[i * 3 + 1] = starColor.g;
+            colors[i * 3 + 2] = starColor.b;
+
+            // Random sizes
+            sizes[i] = Math.random() * 2;
+          }
+
+          starsGeometry.setAttribute(
+            'position',
+            new THREE.BufferAttribute(positions, 3)
+          );
+          starsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+          starsGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+          const starsMaterial = new THREE.PointsMaterial({
+            size: 0.5,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+          });
+
+          const starField = new THREE.Points(starsGeometry, starsMaterial);
+          scene.add(starField);
+
+          return starField;
+        }
+
+        // Animation function
+        function animate3DWaveform() {
+          requestAnimationFrame(animate3DWaveform);
+
+          // Update audio data
+          analyser.getByteFrequencyData(dataArray);
+
+          // Calculate average values for different frequency ranges
+          const bassBand = getAverageFrequency(dataArray, 0, 8);
+          const midBand = getAverageFrequency(dataArray, 8, 24);
+          const highBand = getAverageFrequency(dataArray, 24, 64);
+
+          // Update time for shader
+          const time = Date.now() * 0.001;
+          terrainMaterial.uniforms.time.value = time;
+
+          // Adjust terrain based on music
+          const positions = terrainGeometry.attributes.position.array;
+
+          for (let i = 0; i < positions.length; i += 3) {
+            const x = positions[i];
+            const z = positions[i + 2];
+
+            // Getting frequency value for this vertex position
+            const xIndex = Math.floor(Math.abs(((x / terrainWidth) * 0.5 + 0.5) * 32));
+            const zIndex = Math.floor(Math.abs(((z / terrainDepth) * 0.5 + 0.5) * 32));
+
+            const frequencyIndex = Math.min(63, xIndex + zIndex);
+            const frequencyValue = dataArray[frequencyIndex] / 255;
+
+            // Combine with wave patterns
+            let height = Math.sin(x * 0.1 + time) * Math.sin(z * 0.1 + time * 0.5);
+
+            // Add music reactivity
+            height += frequencyValue * 10;
+
+            // Update the y position (height)
+            positions[i + 1] = height;
+          }
+
+          // Update geometry
+          terrainGeometry.attributes.position.needsUpdate = true;
+          wireframe.geometry.attributes.position.array = positions;
+          wireframe.geometry.attributes.position.needsUpdate = true;
+
+          // Update the color intensity based on music
+          terrainMaterial.uniforms.colorMultiplier.value = 0.5 + bassBand * 2;
+
+          // Update base color with frequency
+          const hue = (time * 0.05) % 1.0;
+          const saturation = 0.5 + midBand * 0.5;
+          const brightness = 0.3 + highBand * 0.7;
+          terrainMaterial.uniforms.baseColor.value.setHSL(hue, saturation, brightness);
+
+          // Update point light color and intensity
+          pointLight.color.setHSL((time * 0.1) % 1.0, 1, 0.5);
+          pointLight.intensity = 1 + bassBand * 5;
+
+          // Animate orbs
+          orbs.forEach(orb => {
+            // Use assigned frequency to control orb
+            const frequencyValue = dataArray[orb.freqIndex] / 255;
+
+            // Move around
+            orb.mesh.position.x += orb.xSpeed;
+            orb.mesh.position.y =
+              orb.originalY + Math.sin(time + orb.mesh.position.x * 0.1) * 3;
+            orb.mesh.position.z += orb.zSpeed;
+
+            // Change speed with audio
+            orb.xSpeed *= 1 + (frequencyValue - 0.5) * 0.01;
+            orb.zSpeed *= 1 + (frequencyValue - 0.5) * 0.01;
+
+            // Keep within bounds
+            if (Math.abs(orb.mesh.position.x) > 30) orb.xSpeed *= -1;
+            if (Math.abs(orb.mesh.position.z) > 30) orb.zSpeed *= -1;
+
+            // Scale with music
+            const scale = 0.5 + frequencyValue * 1.5;
+            orb.mesh.scale.set(scale, scale, scale);
+
+            // Glow effect
+            orb.mesh.material.emissiveIntensity = 0.5 + frequencyValue * 2;
+
+            // Pulse color and opacity
+            const orbHue = (orb.freqIndex / 32 + time * 0.1) % 1;
+            const orbColor = new THREE.Color().setHSL(
+              orbHue,
+              1,
+              0.5 + frequencyValue * 0.5
+            );
+            orb.mesh.material.color.copy(orbColor);
+            orb.mesh.material.emissive.copy(orbColor);
+            orb.mesh.material.opacity = 0.5 + frequencyValue * 0.5;
+          });
+
+          // Animate beams
+          beams.forEach((beam, index) => {
+            // Use different frequency bands for each beam
+            const freqIndex = Math.floor((index * 64) / beamCount);
+            const freqValue = dataArray[freqIndex] / 255;
+
+            // Update shader time
+            beam.material.uniforms.time.value = time;
+
+            // Rotate beam
+            beam.mesh.rotation.y += beam.rotationSpeed;
+
+            // Update beam color with music
+            const beamHue = (index / beamCount + time * 0.1) % 1;
+            beam.material.uniforms.color.value.setHSL(
+              beamHue,
+              1,
+              0.5 + freqValue * 0.5
+            );
+          });
+
+          // Animate neural network synapses
+          synapses.forEach(synapse => {
+            // Update pulse position
+            synapse.progress += synapse.speed * synapse.direction;
+
+            // Reverse direction at endpoints
+            if (synapse.progress >= 1 || synapse.progress <= 0) {
+              synapse.direction *= -1;
+            }
+
+            // Clamp progress between 0 and 1
+            synapse.progress = Math.max(0, Math.min(1, synapse.progress));
+
+            // Position pulse along line
+            synapse.pulse.position.lerpVectors(
+              synapse.start,
+              synapse.end,
+              synapse.progress
+            );
+
+            // Scale pulse with bass
+            const pulseScale = 0.3 + bassBand * 0.5;
+            synapse.pulse.scale.set(pulseScale, pulseScale, pulseScale);
+
+            // Make line glow with music
+            synapse.line.material.opacity = 0.3 + midBand * 0.5;
+          });
+
+          // Camera movement
+          camera.position.x = Math.sin(time * 0.1) * 60;
+          camera.position.z = Math.cos(time * 0.1) * 60;
+          camera.position.y = 20 + Math.sin(time * 0.05) * 10;
+          camera.lookAt(0, 0, 0);
+
+          renderer.render(scene, camera);
+        }
+
+        // Helper function to get average frequency in a range
+        function getAverageFrequency(dataArray, startIndex, endIndex) {
+          let sum = 0;
+          for (let i = startIndex; i < endIndex; i++) {
+            sum += dataArray[i];
+          }
+          return sum / ((endIndex - startIndex) * 255);
+        }
+
+        animate3DWaveform();
+      }
+
+      let dataArray, bufferLength, timeDataArray, analyser;
+      let canvas, context;
+      let oscilloscope3DScene, oscilloscope3DCamera, oscilloscope3DRenderer;
+      let particleEmitter,
+        emitters = [];
+
+      // Глобальные переменные для 3D Music Sheet
+      let musicSheetScene, staff, clef, staffZPosition;
+      let notePool = [],
+        activeNotes = [];
+      let stars, ambientLight, directionalLight, spotlights;
+      let composer, bloomPass, pointLight; // Добавляем глобальные переменные для эффектов
+
+      function setup3DMusicSheet(analyser, bufferLength, dataArray, timeDataArray) {
+        const container = document.getElementById('musicsheet3d');
+
+        // Three.js setup
+        const scene = new THREE.Scene();
+        // ---> NEW: Assign to global scope immediately
+        musicSheetScene = scene;
+        const camera = new THREE.PerspectiveCamera(
+          70,
+          container.offsetWidth / container.offsetHeight,
+          0.1,
+          1000
+        );
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
+
+        // Store renderer and camera for resize handling
+        container.renderer = renderer;
+        container.camera = camera;
+
+        // Создаем глобальные переменные для пост-обработки
+        // let composer, bloomPass;
+
+        // Инициализируем пост-обработку если доступна
+        try {
+          if (
+            typeof THREE.EffectComposer !== 'undefined' &&
+            typeof THREE.RenderPass !== 'undefined' &&
+            typeof THREE.CopyShader !== 'undefined'
+          ) {
+            // Создаем композер для эффектов пост-обработки
+            composer = new THREE.EffectComposer(renderer);
+
+            // Базовый пасс рендера
+            const renderPass = new THREE.RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            // Bloom эффект для свечения ярких объектов
+            if (typeof THREE.UnrealBloomPass !== 'undefined') {
+              try {
+                // ---> OPTIMIZE: Disable UnrealBloomPass entirely as it's likely causing slowdown
+                // bloomPass = new THREE.UnrealBloomPass(
+                //     new THREE.Vector2(container.offsetWidth, container.offsetHeight),
+                //     0.5,    // сила (was 0.8)
+                //     0.5,    // радиус
+                //     0.2     // порог
+                // );
+                // composer.addPass(bloomPass);
+              } catch (err) {
+                console.error('UnrealBloomPass error:', err);
+              }
+            }
+
+            // Добавляем другие эффекты при наличии
+            if (typeof THREE.ShaderPass !== 'undefined') {
+              // Цветокоррекция для более насыщенных цветов
+              if (typeof THREE.ColorCorrectionShader !== 'undefined') {
+                // ---> OPTIMIZE: Disable ColorCorrectionPass
+                // try {
+                //     const colorCorrectionPass = new THREE.ShaderPass(THREE.ColorCorrectionShader);
+                //     colorCorrectionPass.uniforms.powRGB.value = new THREE.Vector3(1.1, 1.1, 1.2);
+                //     colorCorrectionPass.uniforms.mulRGB.value = new THREE.Vector3(1.2, 1.2, 1.2);
+                //     composer.addPass(colorCorrectionPass);
+                // } catch (err) {
+                //     console.error("ColorCorrectionShader error:", err);
+                // }
+              }
+
+              // Хроматическая аберрация для более интересного эффекта
+              if (typeof THREE.RGBShiftShader !== 'undefined') {
+                // ---> OPTIMIZE: Disable RGBShiftPass
+                // try {
+                //     const rgbShiftPass = new THREE.ShaderPass(THREE.RGBShiftShader);
+                //     rgbShiftPass.uniforms.amount.value = 0.0015;
+                //     composer.addPass(rgbShiftPass);
+                // } catch (err) {
+                //     console.error("RGBShiftShader error:", err);
+                // }
+              }
+
+              // Финальный копирующий пасс
+              const copyPass = new THREE.ShaderPass(THREE.CopyShader);
+              copyPass.renderToScreen = true;
+              composer.addPass(copyPass);
+            }
+          } else {
+            console.warn('Three.js post-processing libraries unavailable');
+          }
+        } catch (err) {
+          console.error('Post-processing initialization error:', err);
+          composer = null;
+          bloomPass = null;
+        }
+
+        // Create starry background
+        scene.background = new THREE.Color(0x000005);
+        // ---> OPTIMIZE: Reduce star count
+        stars = createStars(500); // Was 1000
+        scene.add(stars);
+
+        // Add ambient light
+        // ---> NEW: Assign to global scope immediately
+        ambientLight = new THREE.AmbientLight(0x333333);
+        scene.add(ambientLight);
+
+        // Add directional light
+        // ---> NEW: Assign to global scope immediately
+        directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(-1, 2, 4);
+        scene.add(directionalLight);
+
+        // Add spot light for dramatic effect
+        const spotLight = new THREE.SpotLight(0x00ff00, 2);
+        spotLight.position.set(0, 30, 0);
+        spotLight.angle = Math.PI / 6;
+        spotLight.penumbra = 0.1;
+        spotLight.decay = 1;
+        spotLight.distance = 200;
+        scene.add(spotLight);
+
+        // Добавляем несколько прожекторов для динамического освещения
+        // ---> NEW: Assign to global scope immediately
+        spotlights = [];
+
+        // Основное освещение сцены
+        // ---> NEW: Assign to global scope immediately
+        pointLight = new THREE.PointLight(0x00ffaa, 1, 100);
+        pointLight.position.set(0, 10, 0);
+        scene.add(pointLight);
+
+        // Создаем 4 прожектора с разными цветами
+        const colors = [0x00ff88, 0x0088ff, 0xff00aa, 0xffaa00];
+        for (let i = 0; i < 4; i++) {
+          const spotlight = new THREE.SpotLight(colors[i], 1.5);
+          spotlight.position.set(
+            Math.sin((i * Math.PI) / 2) * 20,
+            Math.cos((i * Math.PI) / 2) * 20,
+            0
+          );
+          spotlight.angle = Math.PI / 8;
+          spotlight.penumbra = 0.2;
+          spotlight.decay = 1.5;
+          spotlight.distance = 100;
+
+          // Цель для прожектора - смотрит на центр сцены
+          const target = new THREE.Object3D();
+          target.position.set(0, 0, 0);
+          scene.add(target);
+          spotlight.target = target;
+
+          scene.add(spotlight);
+          spotlights.push(spotlight);
+        }
+
+        // Сохраняем ссылки на элементы для анимации
+        // spotlights = spotlights;
+        // pointLight = pointLight;
+        // ambientLight = ambientLight;
+        // directionalLight = directionalLight;
+
+        // Set up camera
+        camera.position.set(0, 0, -20);
+        camera.lookAt(0, 0, -50);
+
+        // Create music staff lines (5 horizontal lines)
+        const staffGroup = new THREE.Group();
+        const staffLength = 5000; // Очень длинный нотный стан, уходящий в бесконечность
+        const staffDepth = 2000;
+
+        // Staff lines - улучшаем материал и добавляем свечение
+        for (let i = 0; i < 5; i++) {
+          const lineGeometry = new THREE.BoxGeometry(staffLength, 0.2, 0.2);
+
+          // Создаем более продвинутый материал для линий нотного стана
+          const lineMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x00ff66,
+            emissive: 0x007733,
+            emissiveIntensity: 0.8,
+            metalness: 0.5,
+            roughness: 0.2,
+            clearcoat: 0.3,
+            reflectivity: 1.0,
+          });
+
+          const line = new THREE.Mesh(lineGeometry, lineMaterial);
+          line.position.y = i * 2 - 4; // Space the lines evenly, centered vertically
+          line.position.z = -staffDepth / 2; // Center the staff
+          line.position.x = 0; // Center horizontally
+
+          // Добавляем свечение линий
+          const lineGlow = new THREE.PointLight(0x00ff88, 0.1, 5);
+          lineGlow.position.set(0, 0, 0);
+          line.add(lineGlow);
+
+          staffGroup.add(line);
+        }
+
+        // Add vertical bar lines
+        const barCount = 100; // Больше вертикальных линий для эффекта бесконечности
+        const barSpacing = staffLength / barCount;
+
+        for (let i = 0; i < barCount; i++) {
+          const barGeometry = new THREE.BoxGeometry(0.2, 8.2, 0.2);
+          const barMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x00ff44,
+            emissive: 0x005522,
+            emissiveIntensity: 0.5,
+            metalness: 0.4,
+            roughness: 0.3,
+            reflectivity: 0.8,
+          });
+
+          const bar = new THREE.Mesh(barGeometry, barMaterial);
+          bar.position.y = 0; // Centered vertically
+          bar.position.z = -staffDepth / 2 + i * barSpacing - staffLength / 2;
+
+          staffGroup.add(bar);
+        }
+
+        scene.add(staffGroup);
+
+        // Create note factory
+        // ---> REMOVE: Redundant global assignments (already done above)
+        // const notePool = [];
+        // const activeNotes = [];
+        const maxNotes = 50; // Was 100
+
+        // Pre-create reusable note objects
+        for (let i = 0; i < maxNotes; i++) {
+          const note = createNote();
+          note.visible = false;
+          scene.add(note);
+          notePool.push(note);
+        }
+
+        function createNote() {
+          const noteGroup = new THREE.Group();
+
+          // Create note head (sphere) с улучшенной геометрией
+          const headGeometry = new THREE.SphereGeometry(0.8, 24, 24); // Slightly reduced segments
+          // ---> OPTIMIZE: Use MeshPhongMaterial instead of MeshPhysicalMaterial
+          const headMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            emissive: 0xaaaaaa,
+            emissiveIntensity: 0.7,
+            // Remove PhysicalMaterial properties
+            // metalness: 0.4,
+            // roughness: 0.2,
+            // clearcoat: 0.9,
+            // clearcoatRoughness: 0.1,
+            // reflectivity: 1.0,
+            // envMapIntensity: 1.0
+            specular: 0x555555, // Add some shininess for Phong
+            shininess: 50,
+          });
+
+          const head = new THREE.Mesh(headGeometry, headMaterial);
+          noteGroup.add(head);
+
+          // Create note stem с более сложной и красивой формой
+          const stemGeometry = new THREE.CylinderGeometry(0.1, 0.12, 3, 12, 1, false); // Reduced segments
+          // ---> OPTIMIZE: Use MeshPhongMaterial
+          const stemMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            emissive: 0x888888,
+            emissiveIntensity: 0.5,
+            // Remove PhysicalMaterial properties
+            // metalness: 0.4,
+            // roughness: 0.3,
+            // clearcoat: 0.7,
+            // reflectivity: 0.9
+            specular: 0x333333,
+            shininess: 30,
+          });
+
+          const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+          stem.position.y = 1.5;
+          stem.position.x = 0.6;
+
+          // Добавляем флажок к ноте для более законченного вида
+          const flagShape = new THREE.Shape();
+
+          // Создаем красивую форму флажка
+          flagShape.moveTo(0, 0);
+          flagShape.bezierCurveTo(0.2, 0.4, 0.5, 0.5, 0.7, 0.3);
+          flagShape.bezierCurveTo(0.9, 0.1, 0.8, -0.2, 0.5, -0.3);
+          flagShape.bezierCurveTo(0.2, -0.4, 0, -0.2, 0, 0);
+
+          const extrudeSettings = {
+            steps: 1,
+            depth: 0.05,
+            bevelEnabled: true,
+            bevelThickness: 0.02,
+            bevelSize: 0.02,
+            bevelOffset: 0,
+            bevelSegments: 2, // Reduced segments
+          };
+
+          const flagGeometry = new THREE.ExtrudeGeometry(flagShape, extrudeSettings);
+
+          // ---> OPTIMIZE: Use MeshPhongMaterial
+          const flagMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            emissive: 0xaaaaaa,
+            emissiveIntensity: 0.5,
+            // Remove PhysicalMaterial properties
+            // metalness: 0.3,
+            // roughness: 0.2,
+            // clearcoat: 0.7,
+            side: THREE.DoubleSide,
+            specular: 0x444444,
+            shininess: 40,
+          });
+
+          const flag = new THREE.Mesh(flagGeometry, flagMaterial);
+          flag.position.set(0, 2.8, 0);
+          flag.rotation.y = Math.PI / 2;
+          stem.add(flag);
+
+          noteGroup.add(stem);
+
+          // Добавляем свечение к ноте
+          const noteLight = new THREE.PointLight(0xffffff, 0.5, 3);
+          noteLight.isLight = true; // Добавляем метку для идентификации света
+          noteGroup.add(noteLight);
+
+          // Добавляем дополнительный блик для эффекта сверкания
+          const sparkleGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+          const sparkleMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+          });
+
+          const sparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
+          sparkle.position.set(0.3, 0.3, 0.3);
+          head.add(sparkle);
+
+          return noteGroup;
+        }
+
+        // Add a note to the scene
+        function addNote(frequency, intensity) {
+          if (notePool.length === 0) return null;
+
+          // ---> DEBUG: Log note creation
+          console.log(
+            `Adding note - Freq: ${frequency.toFixed(2)}, Intensity: ${intensity.toFixed(2)}, Pool size: ${notePool.length}`
+          );
+
+          const note = notePool.pop();
+          note.visible = true;
+
+          // Scale based on intensity - увеличим размер для лучшей видимости
+          const scale = 0.8 + intensity * 2.0;
+          note.scale.set(scale, scale, scale);
+
+          // Position based on frequency (higher frequencies = higher notes)
+          const normalizedFreq = Math.min(1, frequency / 32);
+
+          // Распределяем ноты круговым образом вокруг пути движения
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 8 + Math.random() * 8; // Варьируем расстояние от центра
+
+          note.position.x = Math.cos(angle) * radius;
+          note.position.y = -4 + normalizedFreq * 12; // Распределяем по высоте в соответствии с частотой
+
+          // Place notes ahead of the camera along the flight path
+          // ---> FIX: Place notes a consistent distance ahead of the camera
+          note.position.z = camera.position.z - 100; // Place 100 units ahead
+
+          // Color based on frequency/intensity - более яркие цвета
+          const hue = normalizedFreq;
+          const saturation = 0.9 + intensity * 0.1;
+          const lightness = 0.6 + intensity * 0.4;
+
+          const color = new THREE.Color().setHSL(hue, saturation, lightness);
+
+          // ---> FIX: Clone materials for head and stem and flag them
+          note.children.forEach(child => {
+            // note is the noteGroup (note.mesh was incorrect here before)
+            if (child.isMesh && child.material && !child.material.__isClonedForNote) {
+              // Clone only if not already cloned
+              child.material = child.material.clone();
+              child.material.color.copy(color); // Set initial color
+              child.material.emissive.copy(color).multiplyScalar(0.8); // Set initial emissive
+              child.material.__isClonedForNote = true; // Add flag
+            } else if (
+              child.isMesh &&
+              child.material &&
+              child.material.__isClonedForNote
+            ) {
+              // If already cloned, just update colors
+              child.material.color.copy(color);
+              child.material.emissive.copy(color).multiplyScalar(0.8);
+            }
+            // Note: We don't need to clone the light's color, it will be set in animate
+          });
+
+          // Add active note data
+          activeNotes.push({
+            mesh: note, // mesh property refers to the noteGroup
+            speed: 0.3 + intensity * 0.5,
+            lifespan: 200, // Увеличиваем время жизни ноты
+            age: 0,
+            initialColor: color.clone(), // Store initial color for animation reference
+            rotationSpeed: (Math.random() - 0.5) * 0.02, // Добавляем случайное вращение
+          });
+
+          return note;
+        }
+
+        // Add musical clef
+        const clefGroup = new THREE.Group();
+
+        // Treble clef (simplified as spiral)
+        const trebleClefPoints = [];
+        for (let i = 0; i < 2 * Math.PI * 2; i += 0.1) {
+          const radius = 1.5 - i * 0.1;
+          if (radius < 0.2) break;
+
+          trebleClefPoints.push(
+            new THREE.Vector3(radius * Math.cos(i), i * 0.5 - 2, 0)
+          );
+        }
+
+        const clefGeometry = new THREE.BufferGeometry().setFromPoints(trebleClefPoints);
+        const clefMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff });
+        const trebleClef = new THREE.Line(clefGeometry, clefMaterial);
+
+        trebleClef.position.x = -20;
+        // ---> FIX: Use the correct variable for initial Z position
+        trebleClef.position.z = staffZPosition; // Use staffZPosition instead of -staffDepth / 2
+        trebleClef.scale.set(1.5, 1.5, 1.5);
+
+        // ---> NEW: Assign to global scope immediately
+        clef = clefGroup;
+        clefGroup.add(trebleClef);
+        scene.add(clefGroup);
+
+        // Create frequency analyzer visualization
+        const analyzerGroup = new THREE.Group();
+        const freqBars = [];
+        const freqBarCount = 16;
+
+        for (let i = 0; i < freqBarCount; i++) {
+          const barGeometry = new THREE.BoxGeometry(1, 1, 0.5);
+          const barMaterial = new THREE.MeshPhongMaterial({
+            color: new THREE.Color().setHSL(i / freqBarCount, 1, 0.5),
+            emissive: new THREE.Color().setHSL(i / freqBarCount, 1, 0.2),
+          });
+
+          const bar = new THREE.Mesh(barGeometry, barMaterial);
+          bar.position.x = (i - freqBarCount / 2) * 1.5;
+          bar.position.z = -25;
+          bar.position.y = -15;
+
+          analyzerGroup.add(bar);
+          freqBars.push(bar);
+        }
+
+        scene.add(analyzerGroup);
+
+        // Create stars for background - больше звезд для эффекта потока
+        function createStars(count) {
+          const starsGeometry = new THREE.BufferGeometry();
+          const starPositions = new Float32Array(count * 3);
+          const starColors = new Float32Array(count * 3);
+          const starSizes = new Float32Array(count);
+
+          for (let i = 0; i < count; i++) {
+            const i3 = i * 3;
+            // Распределяем звезды в форме туннеля вдоль пути движения
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 30 + Math.random() * 70;
+            const depth = (Math.random() - 0.5) * 2000;
+
+            starPositions[i3] = Math.cos(angle) * radius;
+            starPositions[i3 + 1] = Math.sin(angle) * radius;
+            starPositions[i3 + 2] = depth;
+
+            // Случайные цвета со смещением в голубой и зелени
+            const hue = 0.4 + Math.random() * 0.4; // оттенки от голубого до зеленого
+            const brightness = 0.7 + Math.random() * 0.3;
+            const color = new THREE.Color().setHSL(hue, 0.8, brightness);
+
+            starColors[i3] = color.r;
+            starColors[i3 + 1] = color.g;
+            starColors[i3 + 2] = color.b;
+
+            // Разные размеры звезд
+            starSizes[i] = 0.5 + Math.random() * 1.5;
+          }
+
+          starsGeometry.setAttribute(
+            'position',
+            new THREE.BufferAttribute(starPositions, 3)
+          );
+          starsGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+          starsGeometry.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+
+          const starsMaterial = new THREE.PointsMaterial({
+            size: 1.0,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+          });
+
+          const stars = new THREE.Points(starsGeometry, starsMaterial);
+
+          // Сохраняем позиции для анимации
+          stars.userData = {
+            positions: starPositions,
+            sizes: starSizes,
+            geometry: starsGeometry,
+          };
+
+          return stars;
+        }
+
+        // Add glowing particle trails
+        const trailsGroup = new THREE.Group();
+        const trailParticles = [];
+        // ---> OPTIMIZE: Reduce trail particle count further
+        const trailParticleCount = 75; // Was 150
+
+        const trailGeometry = new THREE.BufferGeometry();
+        const trailPositions = new Float32Array(trailParticleCount * 3);
+        const trailColors = new Float32Array(trailParticleCount * 3);
+        const trailSizes = new Float32Array(trailParticleCount);
+
+        for (let i = 0; i < trailParticleCount; i++) {
+          const i3 = i * 3;
+          // Initialize offscreen
+          trailPositions[i3] = 0;
+          trailPositions[i3 + 1] = 0;
+          trailPositions[i3 + 2] = 1000; // Far away initially
+
+          // Set colors
+          trailColors[i3] = 1;
+          trailColors[i3 + 1] = 1;
+          trailColors[i3 + 2] = 1;
+
+          // Set sizes
+          trailSizes[i] = Math.random() * 2 + 0.5;
+
+          // Store additional data for animation
+          trailParticles.push({
+            active: false,
+            velocity: new THREE.Vector3(0, 0, 0),
+            lifespan: 30 + Math.random() * 50,
+            age: 0,
+          });
+        }
+
+        trailGeometry.setAttribute(
+          'position',
+          new THREE.BufferAttribute(trailPositions, 3)
+        );
+        trailGeometry.setAttribute('color', new THREE.BufferAttribute(trailColors, 3));
+        trailGeometry.setAttribute('size', new THREE.BufferAttribute(trailSizes, 1));
+
+        const trailMaterial = new THREE.PointsMaterial({
+          size: 1,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.6,
+          blending: THREE.AdditiveBlending,
+        });
+
+        const trails = new THREE.Points(trailGeometry, trailMaterial);
+        trailsGroup.add(trails);
+        scene.add(trailsGroup);
+
+        // Animation loop
+        function animate() {
+          requestAnimationFrame(animate);
+
+          // Get audio data
+          analyser.getByteFrequencyData(dataArray);
+          // Don't use timeDataArray here since it wasn't passed to this function
+
+          // Calculate average values for different frequency ranges
+          const bassAvg = getAverageRange(dataArray, 0, 8) / 255;
+          const midAvg = getAverageRange(dataArray, 8, 24) / 255;
+          const highAvg = getAverageRange(dataArray, 24, 64) / 255;
+
+          // ---> DEBUG: Log average frequency values
+          if (Math.random() < 0.01) {
+            // Log occasionally to avoid flooding console
+            console.log(
+              `Audio Averages - Bass: ${bassAvg.toFixed(2)}, Mid: ${midAvg.toFixed(2)}, High: ${highAvg.toFixed(2)}`
+            );
+          }
+
+          // Breathe with the music - make staff pulse
+          staffGroup.scale.y = 1 + bassAvg * 0.2;
+
+          // Update frequency analyzer bars
+          for (let i = 0; i < freqBarCount; i++) {
+            const freqIndex = Math.floor(i * (dataArray.length / freqBarCount));
+            const value = dataArray[freqIndex] / 255;
+
+            freqBars[i].scale.y = 1 + value * 10;
+            freqBars[i].position.y = -15 + value * 5;
+
+            // Update color with intensity
+            freqBars[i].material.emissiveIntensity = 0.2 + value * 0.8;
+          }
+
+          // Move camera through the staff
+          const time = Date.now() * 0.001;
+
+          // Make camera fly along the staff, going through the notes
+          camera.position.z = ((-time * 15) % 4000) - 20; // Более быстрое непрерывное движение вперед
+          camera.position.x = Math.sin(time * 0.3) * 5; // Легкое перемещение в стороны
+          camera.position.y = 0 + Math.sin(time * 0.2) * 2; // Небольшие перемещения вверх-вниз
+
+          // Look slightly ahead along the path with some natural head movement
+          const lookAtZ = camera.position.z - 50; // Смотрим дальше вперед
+          const lookAtX = camera.position.x + Math.sin(time * 0.5) * 2; // Легкий взгляд по сторонам
+          const lookAtY = camera.position.y + Math.cos(time * 0.3) * 0.5; // Легкий взгляд вверх-вниз
+          camera.lookAt(lookAtX, lookAtY, lookAtZ);
+
+          // Spin clef for fun
+          // ---> FIX: Check if clef exists before using it
+          if (clef) {
+            clef.rotation.y = time * 0.5;
+            // Keep clef visible by moving it with the camera
+            clef.position.z = camera.position.z - 50;
+          }
+
+          // Управляем интенсивностью света в зависимости от музыки
+          if (pointLight) {
+            pointLight.intensity = 1 + bassAvg * 4;
+          }
+
+          // Анимируем прожекторы для создания более динамичного освещения
+          // ---> FIX: Use the spotlights array correctly
+          if (spotlights && spotlights.length > 0) {
+            spotlights.forEach((spotlightInstance, index) => {
+              spotlightInstance.position.x =
+                Math.sin(time * 0.3 + (index * Math.PI) / 2) * 50;
+              spotlightInstance.position.z =
+                Math.cos(time * 0.2 + (index * Math.PI) / 2) * 50;
+              spotlightInstance.intensity = 1 + midAvg * 3; // Example: use midAvg
+            });
+          }
+          // ---> REMOVE: Old spotlight logic referencing spotLight1/spotLight2
+          /*
+                spotLight1.position.x = Math.sin(time * 0.3) * 50;
+                spotLight1.position.z = Math.cos(time * 0.2) * 50;
+                spotLight1.intensity = 1 + midAvg * 3;
+                
+                spotLight2.position.x = -Math.sin(time * 0.2) * 50;
+                spotLight2.position.z = -Math.cos(time * 0.3) * 50;
+                spotLight2.intensity = 1 + highAvg * 3;
+                */
+
+          // Generate new notes based on audio - увеличиваем генерацию нот
+          if (Math.random() < 0.2) {
+            // Увеличиваем шанс создания нот
+            // Create different types of notes based on frequency bands
+            // ---> OPTIMIZE: Slightly increase thresholds again
+            if (bassAvg > 0.18) {
+              // Was 0.15
+              const bass1 = Math.floor(Math.random() * 8);
+              addNote(bass1, bassAvg);
+            }
+
+            if (midAvg > 0.18) {
+              // Was 0.15
+              const mid1 = 8 + Math.floor(Math.random() * 16);
+              addNote(mid1, midAvg);
+            }
+
+            if (highAvg > 0.12) {
+              // Was 0.10
+              const high1 = 24 + Math.floor(Math.random() * 40);
+              addNote(high1, highAvg);
+            }
+          }
+
+          // ---> DEBUG: Log active note count
+          if (Math.random() < 0.01) {
+            // Log occasionally
+            console.log(`Active notes: ${activeNotes.length}`);
+          }
+
+          // Update active notes
+          for (let i = activeNotes.length - 1; i >= 0; i--) {
+            const note = activeNotes[i];
+
+            // Ноты не двигаются, мы летим сквозь них
+
+            // Вращаем ноты для дополнительного эффекта
+            note.mesh.rotation.y += note.rotationSpeed;
+            note.mesh.rotation.x += note.rotationSpeed * 0.5;
+
+            // Пульсация нот в соответствии с музыкой
+            if (bassAvg > 0.4) {
+              const pulseScale = 1.0 + bassAvg * 0.2;
+              note.mesh.scale.set(pulseScale, pulseScale, pulseScale);
+            }
+
+            // Изменение цвета в соответствии с музыкой
+            const colorShift = (time * 0.1) % 1;
+            const noteColor = note.initialColor.clone();
+            noteColor.offsetHSL(colorShift * bassAvg * 0.2, 0, 0);
+
+            // ---> FIX: Correctly find and update note components
+            let noteLight = null;
+
+            // Update materials and find the light
+            note.mesh.children.forEach(child => {
+              if (child.isMesh && child.material && child.material.__isClonedForNote) {
+                // Update head and stem materials if flagged
+                child.material.emissiveIntensity = 0.5 + bassAvg;
+                // Optionally update material color too if needed (already done in addNote, but could lerp here)
+                // child.material.color.lerp(noteColor, 0.1);
+                // child.material.emissive.lerp(noteColor.clone().multiplyScalar(0.8), 0.1);
+              } else if (child.isLight) {
+                // Find the actual PointLight
+                noteLight = child;
+              }
+            });
+
+            // Делаем свечение нот ярче при сильных басах
+            if (noteLight) {
+              // Check if light was found
+              noteLight.intensity = 0.3 + bassAvg * 0.7;
+              // Меняем цвет свечения
+              noteLight.color.copy(noteColor); // Now this should work
+            }
+
+            // Age the note
+            note.age++;
+
+            // Generate trail particles
+            if (Math.random() < 0.2) {
+              // Увеличиваем количество частиц в следе
+              emitTrailParticle(
+                note.mesh.position,
+                note.mesh.children[0].material.color
+              );
+            }
+
+            // Remove if too old or if camera has passed them
+            // ---> FIX: Use camera.position.z directly
+            if (
+              note.age > note.lifespan ||
+              note.mesh.position.z > camera.position.z + 40
+            ) {
+              // Recycle the note
+              note.mesh.visible = false;
+              notePool.push(note.mesh);
+              activeNotes.splice(i, 1);
+            }
+          }
+
+          // Update trail particles
+          const positions = trailGeometry.attributes.position.array;
+          const colors = trailGeometry.attributes.color.array;
+
+          for (let i = 0; i < trailParticleCount; i++) {
+            const i3 = i * 3;
+            const particle = trailParticles[i];
+
+            if (particle.active) {
+              // Move according to velocity
+              positions[i3] += particle.velocity.x;
+              positions[i3 + 1] += particle.velocity.y;
+              positions[i3 + 2] += particle.velocity.z;
+
+              // Add some gravity effect
+              particle.velocity.y -= 0.01;
+
+              // Age
+              particle.age++;
+
+              // Fade out as they age
+              const lifeRatio = particle.age / particle.lifespan;
+              const fadeFactor = 1 - lifeRatio;
+
+              colors[i3] *= fadeFactor;
+              colors[i3 + 1] *= fadeFactor;
+              colors[i3 + 2] *= fadeFactor;
+
+              // Deactivate if too old
+              if (particle.age >= particle.lifespan) {
+                particle.active = false;
+                positions[i3 + 2] = 1000; // Move far away
+              }
+            }
+          }
+
+          trailGeometry.attributes.position.needsUpdate = true;
+          trailGeometry.attributes.color.needsUpdate = true;
+
+          // Animate stars for flowing effect
+          const starPositions = stars.userData.positions;
+          for (let i = 0; i < starPositions.length; i += 3) {
+            // Move stars along Z-axis to create flowing effect
+            starPositions[i + 2] += bassAvg * 2 + 0.5; // Скорость движения зависит от баса
+
+            // Если звезда ушла далеко позади, возвращаем ее вперед
+            if (starPositions[i + 2] > camera.position.z + 100) {
+              // Создаем новую звезду впереди
+              const angle = Math.random() * Math.PI * 2;
+              const radius = 30 + Math.random() * 70;
+              starPositions[i] = Math.cos(angle) * radius;
+              starPositions[i + 1] = Math.sin(angle) * radius;
+              starPositions[i + 2] = camera.position.z - 1000 - Math.random() * 1000;
+            }
+          }
+          stars.userData.geometry.attributes.position.needsUpdate = true;
+
+          // Рендеринг с эффектами пост-обработки если они доступны
+          if (typeof THREE.EffectComposer !== 'undefined' && composer) {
+            if (typeof bloomPass !== 'undefined') {
+              // ---> OPTIMIZE: Also reduce bloom strength update based on bass
+              // bloomPass.strength = 0.4 + bassAvg * 1.0; // Was 0.5 + bassAvg * 1.5; // Disabled bloom
+              // bloomPass.radius = 0.5 + averageVolume * 0.5; // Using bassAvg instead of averageVolume
+              // bloomPass.threshold = Math.max(0.1, 0.2 - averageVolume * 0.15); // Using bassAvg
+            }
+            composer.render();
+          } else {
+            renderer.render(scene, camera);
+          }
+        }
+
+        // Create trail particle from note
+        function emitTrailParticle(position, color) {
+          // Find an inactive particle
+          for (let i = 0; i < trailParticleCount; i++) {
+            if (!trailParticles[i].active) {
+              const i3 = i * 3;
+              const particle = trailParticles[i];
+
+              // Activate
+              particle.active = true;
+              particle.age = 0;
+
+              // Position at the note with небольшим случайным смещением
+              trailPositions[i3] = position.x + (Math.random() - 0.5) * 1.0;
+              trailPositions[i3 + 1] = position.y + (Math.random() - 0.5) * 1.0;
+              trailPositions[i3 + 2] = position.z + (Math.random() - 0.5) * 1.0;
+
+              // Скорость следования за потоком
+              const speed = 0.2 + Math.random() * 0.3;
+
+              // Set random velocity - направляем частицы назад по движению камеры
+              particle.velocity.set(
+                (Math.random() - 0.5) * 0.1,
+                (Math.random() - 0.5) * 0.1,
+                speed // Частицы двигаются в том же направлении, что и камера
+              );
+
+              // Увеличиваем яркость следов
+              const brightColor = color.clone().multiplyScalar(1.5);
+              trailColors[i3] = brightColor.r;
+              trailColors[i3 + 1] = brightColor.g;
+              trailColors[i3 + 2] = brightColor.b;
+
+              // Устанавливаем случайный размер частиц
+              trailSizes[i] = 0.5 + Math.random() * 1.5;
+
+              // Увеличиваем время жизни
+              particle.lifespan = 30 + Math.random() * 70;
+
+              break;
+            }
+          }
+
+          trailGeometry.attributes.position.needsUpdate = true;
+          trailGeometry.attributes.color.needsUpdate = true;
+          trailGeometry.attributes.size.needsUpdate = true;
+        }
+
+        // Helper for getting average from a range of frequencies
+        function getAverageRange(array, start, end) {
+          let sum = 0;
+          for (let i = start; i < end; i++) {
+            sum += array[i];
+          }
+          return sum / (end - start);
+        }
+
+        // Start animation loop
+        animate();
+
+        // Add fog for depth perception
+        scene.fog = new THREE.FogExp2(0x000005, 0.005);
+
+        // ---> REMOVE: Redundant global assignments (already done above or not needed)
+        // musicSheetScene = scene;
+
+        // ---> REMOVE: Redundant call to removed function
+        // animate3DMusicSheet();
+      }
+
+      // ---> REMOVE: The entire standalone animate3DMusicSheet function
+      /*
+        function animate3DMusicSheet() {
+            const container = document.getElementById('musicsheet3d');
+            // ... all the code from the old animate3DMusicSheet function ...
+            requestAnimationFrame(animate3DMusicSheet);
+        }
+        */
+
+      // ---> ADDED: New function for Jazz Visualizer
+      function setupJazzVisualizer(analyser, bufferLength, dataArray) {
+        const container = document.getElementById('jazzVisualizer');
+        if (!container) return;
+
+        // Basic Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          60,
+          container.offsetWidth / container.offsetHeight,
+          0.1,
+          1000
+        );
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        container.appendChild(renderer.domElement);
+
+        // Store for resizing
+        container.renderer = renderer;
+        container.camera = camera;
+
+        // Lighting
+        scene.add(new THREE.AmbientLight(0x404060)); // Soft cool ambient
+        const dirLight = new THREE.DirectionalLight(0xffddaa, 0.7);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        camera.position.set(0, 0, 30);
+        camera.lookAt(0, 0, 0);
+
+        // Define ribbon colors and frequency associations
+        const ribbonData = [
+          { color: 0xffcc00, freqStart: 0, freqEnd: 5, name: 'Bass' }, // Gold for Bass
+          { color: 0xcc0033, freqStart: 5, freqEnd: 40, name: 'Mid' }, // Deep Red for Mid
+          { color: 0x0033cc, freqStart: 40, freqEnd: 100, name: 'High' }, // Dark Blue for High
+        ];
+
+        const ribbons = [];
+        const ribbonSegments = 100; // Controls smoothness of the curve
+        const tubeRadius = 0.5;
+        const tubeRadialSegments = 8;
+
+        ribbonData.forEach((data, index) => {
+          // Create a path for the tube
+          const points = [];
+          for (let i = 0; i <= ribbonSegments; i++) {
+            const x = (i / ribbonSegments - 0.5) * 30; // Spread along X
+            points.push(new THREE.Vector3(x, 0, 0)); // Initial flat line
+          }
+          const path = new THREE.CatmullRomCurve3(points);
+
+          // Create the tube geometry
+          const geometry = new THREE.TubeGeometry(
+            path,
+            ribbonSegments,
+            tubeRadius,
+            tubeRadialSegments,
+            false
+          );
+
+          // Create material
+          const material = new THREE.MeshPhongMaterial({
+            color: data.color,
+            emissive: new THREE.Color(data.color).multiplyScalar(0.3),
+            specular: 0xaaaaaa,
+            shininess: 60,
+            side: THREE.DoubleSide,
+          });
+
+          const tubeMesh = new THREE.Mesh(geometry, material);
+          // Offset each ribbon vertically
+          tubeMesh.position.y = (index - 1) * 4; // Center the middle ribbon
+          scene.add(tubeMesh);
+
+          ribbons.push({
+            mesh: tubeMesh,
+            path: path,
+            freqStart: data.freqStart,
+            freqEnd: data.freqEnd,
+            baseColor: new THREE.Color(data.color),
+          });
+        });
+
+        // Animation loop
+        function animateJazz() {
+          requestAnimationFrame(animateJazz);
+
+          analyser.getByteFrequencyData(dataArray);
+          const time = Date.now() * 0.001;
+
+          ribbons.forEach(ribbon => {
+            // Calculate average frequency for this ribbon's range
+            let sum = 0;
+            const count = ribbon.freqEnd - ribbon.freqStart;
+            if (count > 0) {
+              for (let i = ribbon.freqStart; i < ribbon.freqEnd; i++) {
+                // Ensure index is within bounds of dataArray
+                if (i < bufferLength) {
+                  sum += dataArray[i];
+                }
+              }
+            }
+            const avgFreq = count > 0 ? sum / count / 255.0 : 0; // Normalized 0-1
+
+            // Update ribbon path points based on audio and time
+            const points = ribbon.path.points;
+            for (let i = 0; i < points.length; i++) {
+              const point = points[i];
+              // Undulate based on time and position
+              const yOffset = Math.sin(point.x * 0.2 + time) * 2;
+              // Add audio reaction - more height for stronger signal
+              const audioHeight = avgFreq * 8;
+              point.y = yOffset + audioHeight;
+              // Add subtle Z movement based on audio
+              point.z = avgFreq * 3 * Math.sin(point.x * 0.1 + time * 0.5);
+            }
+
+            // Update the geometry from the modified path
+            const newGeometry = new THREE.TubeGeometry(
+              ribbon.path,
+              ribbonSegments,
+              tubeRadius,
+              tubeRadialSegments,
+              false
+            );
+            ribbon.mesh.geometry.dispose(); // Dispose old geometry
+            ribbon.mesh.geometry = newGeometry;
+            ribbon.mesh.geometry.verticesNeedUpdate = true; // Not strictly needed for TubeGeometry update this way, but good practice
+
+            // Update color intensity based on audio
+            const intensity = 0.3 + avgFreq * 0.7; // Base emissive + audio boost
+            ribbon.mesh.material.emissive
+              .copy(ribbon.baseColor)
+              .multiplyScalar(intensity);
+            // Maybe pulse the main color slightly
+            ribbon.mesh.material.color
+              .copy(ribbon.baseColor)
+              .lerp(new THREE.Color(0xffffff), avgFreq * 0.1);
+          });
+
+          // Subtle scene rotation
+          scene.rotation.y = time * 0.05;
+
+          renderer.render(scene, camera);
+        }
+
+        animateJazz();
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+# Browser automation & E2E тестирование
+playwright==1.54.0
+
+# Python тестирование
+pytest==8.4.1
+pytest-asyncio==1.1.0 
+pytest-xdist==3.8.0
+pytest-cov==6.2.1
+pytest-html==4.1.1
+
+# Качество кода
+flake8==7.3.0
+black==25.1.0

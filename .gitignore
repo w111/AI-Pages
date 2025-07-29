@@ -1,0 +1,31 @@
+# IDE files
+.idea/
+.specstory/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Node modules
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results
+test-results/
+.pytest_cache/
+playwright-report/
+
+# Temporary files
+*.tmp
+*.temp
+*.log

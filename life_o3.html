@@ -1,0 +1,211 @@
+<!doctype html>
+<!-- 
+  Техническое задание: Игра "Жизнь" Конвея
+
+  1. Функциональные требования:
+     - Визуализация клеточного автомата на HTML Canvas
+     - Автоматическая адаптация под размер окна браузера
+     - Случайное заполнение поля (кнопка Random Fill)
+     - Возможность паузы/продолжения симуляции
+     - Ручное редактирование состояния клеток кликом
+     - Подсчет и отображение FPS в консоли
+
+  2. Технические характеристики:
+     - Размер клетки: 1x1 пиксель
+     - Оптимизированное хранение данных через Uint8Array
+     - Быстрая отрисовка через прямую манипуляцию ImageData
+     - Торроидальная топология поля (края соединяются)
+
+  3. Правила игры:
+     - Клетка оживает, если имеет ровно 3 живых соседа
+     - Клетка выживает, если имеет 2 или 3 живых соседа
+     - В остальных случаях клетка умирает или остается мертвой
+
+  4. Оптимизации производительности:
+     - Использование Uint8Array вместо обычных массивов
+     - Прямая манипуляция пикселями через ImageData
+     - Торроидальная топология без проверки границ
+     - Мониторинг производительности через FPS
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Conway's Game of Life with Random Fill</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #f0f0f0;
+        overflow: hidden;
+        font-family: sans-serif;
+      }
+      canvas {
+        display: block;
+        background-color: #ffffff;
+      }
+      /* Стили для кнопки "Random Fill" */
+      #resetButton {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        padding: 8px 16px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #resetButton:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="resetButton">Random Fill</button>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+      // Получение canvas и контекста
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+
+      // Функция для установки размера canvas под окно браузера
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Основные параметры игры
+      const cellSize = 1; // Размер одной клетки в пикселях
+      let cols = Math.floor(canvas.width / cellSize); // Количество столбцов
+      let rows = Math.floor(canvas.height / cellSize); // Количество строк
+
+      // Создание двумерных массивов для хранения состояний клеток
+      let grid = []; // Текущее поколение
+      let nextGrid = []; // Следующее поколение
+
+      // Оптимизация хранения данных
+      function createGrids() {
+        cols = Math.floor(canvas.width / cellSize);
+        rows = Math.floor(canvas.height / cellSize);
+        const size = rows * cols;
+        grid = new Uint8Array(size);
+        nextGrid = new Uint8Array(size);
+
+        // Случайное заполнение
+        for (let i = 0; i < size; i++) {
+          grid[i] = Math.random() < 0.5 ? 1 : 0;
+        }
+      }
+      createGrids();
+
+      // Добавление параметров состояния
+      let isRunning = true; // Флаг работы симуляции
+      let generation = 0; // Счётчик поколений
+
+      // Оптимизированная отрисовка через ImageData
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const data = imageData.data;
+
+      function drawGrid() {
+        for (let i = 0; i < rows; i++) {
+          for (let j = 0; j < cols; j++) {
+            const pos = (i * canvas.width + j) * 4;
+            const value = grid[i * cols + j] * 255;
+            data[pos] = value; // R
+            data[pos + 1] = value; // G
+            data[pos + 2] = value; // B
+            data[pos + 3] = 255; // A
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+      }
+
+      // Оптимизированный подсчет соседей
+      function updateGrid() {
+        for (let i = 0; i < rows; i++) {
+          for (let j = 0; j < cols; j++) {
+            const idx = i * cols + j;
+            let sum = 0;
+
+            // Подсчет соседей без проверки границ (торроидальная топология)
+            const im = ((i - 1 + rows) % rows) * cols;
+            const ip = ((i + 1) % rows) * cols;
+            const jm = (j - 1 + cols) % cols;
+            const jp = (j + 1) % cols;
+
+            sum =
+              grid[im + jm] +
+              grid[im + j] +
+              grid[im + jp] +
+              grid[i * cols + jm] +
+              grid[i * cols + jp] +
+              grid[ip + jm] +
+              grid[ip + j] +
+              grid[ip + jp];
+
+            nextGrid[idx] = sum === 3 || (sum === 2 && grid[idx]) ? 1 : 0;
+          }
+        }
+        [grid, nextGrid] = [nextGrid, grid];
+      }
+
+      // Добавление счетчика FPS
+      let frameCount = 0;
+      let lastFpsUpdate = 0;
+      let currentFps = 0;
+
+      function updateFPS(currentTime) {
+        frameCount++;
+        if (currentTime - lastFpsUpdate > 1000) {
+          currentFps = frameCount;
+          frameCount = 0;
+          lastFpsUpdate = currentTime;
+          console.log(`FPS: ${currentFps}`);
+        }
+      }
+
+      function gameLoop(currentTime) {
+        if (isRunning) {
+          drawGrid();
+          updateGrid();
+          generation++;
+          updateFPS(currentTime);
+        }
+        requestAnimationFrame(gameLoop);
+      }
+      gameLoop();
+
+      // По клику по кнопке "Random Fill" пересоздаём случайную сетку
+      document.getElementById('resetButton').addEventListener('click', function () {
+        createGrids();
+        drawGrid();
+      });
+
+      // Дополнительно: переключение состояния ячейки при клике по canvas
+      canvas.addEventListener('click', function (event) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const j = Math.floor(x / cellSize);
+        const i = Math.floor(y / cellSize);
+        if (i >= 0 && i < rows && j >= 0 && j < cols) {
+          grid[i * cols + j] = grid[i * cols + j] ? 0 : 1;
+          drawGrid();
+        }
+      });
+
+      // Добавление кнопки паузы
+      const pauseButton = document.createElement('button');
+      pauseButton.textContent = 'Пауза';
+      pauseButton.style.left = '120px'; // Позиционирование правее кнопки Random Fill
+      document.body.appendChild(pauseButton);
+
+      pauseButton.addEventListener('click', function () {
+        isRunning = !isRunning;
+        pauseButton.textContent = isRunning ? 'Пауза' : 'Продолжить';
+      });
+    </script>
+  </body>
+</html>

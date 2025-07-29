@@ -1,0 +1,37 @@
+# HTML files with complex embedded scripts
+*.html
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Test results
+test-results/
+playwright-report*/
+.pytest_cache/
+
+# Environment
+venv/
+.env*
+
+# Git
+.git/
+
+# Minified files
+*.min.js
+*.min.css
+
+# Temporary files
+*.tmp
+*.temp
+
+# Cache
+.cache/
+.eslintcache
+
+# OS
+.DS_Store
+Thumbs.db 
