@@ -201,10 +201,12 @@ jobs:
     name: 🚀 Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: [test, lighthouse, security]
-    if: >
-      github.ref == 'refs/heads/main' &&
-      github.event_name == 'push' &&
-      github.repository == 'w111/AI-Pages'
+    # ВРЕМЕННО ОТКЛЮЧЕНО: GitHub Pages не настроен
+    if: false # Изменить на основное условие после настройки Pages
+    # if: >
+    #   github.ref == 'refs/heads/main' &&
+    #   github.event_name == 'push' &&
+    #   github.repository == 'w111/AI-Pages'
 
     # Специальные разрешения для GitHub Pages
     permissions:
