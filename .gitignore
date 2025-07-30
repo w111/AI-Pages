@@ -6,6 +6,9 @@
 .cursor/
 .cursor*
 
+# Configuration bundles
+web-bundles/
+
 # Python cache
 __pycache__/
 *.py[cod]
