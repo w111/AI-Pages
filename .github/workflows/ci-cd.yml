@@ -262,11 +262,14 @@ jobs:
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
+        timeout-minutes: 10
 
       - name: 🎉 Deployment Success
         run: |
           echo "✅ Successfully deployed to GitHub Pages!"
           echo "🌐 Site URL: ${{ steps.deployment.outputs.page_url }}"
+          echo "📅 Deployment ID: ${{ steps.deployment.outputs.deployment_id }}"
+          echo "📋 Run ID: ${{ github.run_id }}"
 
   # ========================
   # ЭТАП 6: УВЕДОМЛЕНИЯ И ОТЧЕТЫ
