@@ -114,7 +114,7 @@ jobs:
           PLAYWRIGHT_BROWSER: ${{ matrix.browser }}
 
       - name: 📊 Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: test-results-${{ matrix.browser }}
@@ -159,7 +159,7 @@ jobs:
             ${{ github.event.head_commit.timestamp }}
 
       - name: 📊 Upload Lighthouse results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lighthouse-results
@@ -190,12 +190,12 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: 🔒 CodeQL Analysis
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: javascript
 
       - name: 🔒 Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
 
   # ========================
   # ЭТАП 5: ДЕПЛОЙ В GITHUB PAGES
@@ -235,7 +235,7 @@ jobs:
         run: npm install
 
       - name: 🔧 Setup Pages
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v4
 
       - name: 📁 Prepare deployment artifacts
         run: |
@@ -258,13 +258,13 @@ jobs:
           ls -la deployment/
 
       - name: 📤 Upload Pages artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: "./deployment"
 
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v3
 
       - name: 🎉 Deployment Success
         run: |
