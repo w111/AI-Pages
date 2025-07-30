@@ -62,7 +62,7 @@
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{html,css,json,md}": [
+    "*.{html,css,json,md,yml,yaml}": [
       "prettier --write"
     ],
     "*.py": [
@@ -70,6 +70,10 @@
     ],
     "playwright*.config.js": [
       "eslint --fix"
+    ],
+    ".github/workflows/*.yml": [
+      "yamllint",
+      "prettier --write"
     ]
   },
   "devDependencies": {
