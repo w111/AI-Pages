@@ -107,11 +107,8 @@ jobs:
 
       - name: 🧪 Run Python tests (${{ matrix.display_name }})
         run: >
-          python3 -m pytest -c pytest-ci.ini
+          venv/bin/python -m pytest -c pytest-ci.ini
           tests/test_index_page_async.py -v
-          --browser-name=${{ matrix.browser }}
-        env:
-          PLAYWRIGHT_BROWSER: ${{ matrix.browser }}
 
       - name: 📊 Upload test results
         uses: actions/upload-artifact@v4
