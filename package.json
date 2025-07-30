@@ -38,7 +38,7 @@
     "lint:css": "if find . -name '*.css' -type f -not -path './node_modules/*' -not -path './venv/*' | grep -q .; then stylelint **/*.css; else echo 'ℹ️ No CSS files found to lint'; fi",
     "lint:css:fix": "if find . -name '*.css' -type f -not -path './node_modules/*' -not -path './venv/*' | grep -q .; then stylelint **/*.css --fix; else echo 'ℹ️ No CSS files found to fix'; fi",
     "lint:json": "jsonlint *.json",
-    "lint:yaml": "venv/bin/python -m yamllint .github/workflows/*.yml",
+    "lint:yaml": "python3 -m yamllint .github/workflows/*.yml",
     "lint:md": "markdownlint *.md docs/*.md",
     "lint:md:fix": "markdownlint *.md docs/*.md --fix",
     "lint:ci": "npm run lint:js && npm run lint:py && npm run lint:html && npm run lint:css && npm run lint:json && npm run lint:yaml",
