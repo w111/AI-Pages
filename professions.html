@@ -55,9 +55,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.min.js" 
-            integrity="sha512-L0Shl7nXXzIlBSUUPpxrokqq4ojqgZFQQOTIfhKMq0Z23/fTg6wZznOhWqGOiW3D3B1vKTY1YrDfTTCJnw5Q6Q==" 
-            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous" defer></script>
     <style>
       body {
         margin: 0;
@@ -171,7 +169,7 @@
       }
       .settings-button {
         position: fixed;
-        top: 20px;
+        top: 80px;
         right: 20px;
         font-size: 24px;
         color: var(--primary-color);
@@ -184,7 +182,7 @@
         justify-content: center;
         cursor: pointer;
         box-shadow: var(--card-shadow);
-        z-index: 100;
+        z-index: 1000;
         transition: transform 0.3s ease;
         border: none;
         opacity: 1 !important;
@@ -749,6 +747,14 @@
       }
 
       @media (max-width: 768px) {
+        .settings-button {
+          top: 15px;
+          right: 15px;
+          width: 36px;
+          height: 36px;
+          font-size: 20px;
+        }
+
         .vacancies-content {
           padding: 0 10px;
         }
@@ -1081,6 +1087,11 @@
     </style>
   </head>
   <body>
+    <!-- Перемещаем кнопку настроек в основной контейнер -->
+    <button class="settings-button" id="settingsButton">
+      <i class="fas fa-cog"></i>
+    </button>
+    
     <div class="container">
       <div class="profession-list" id="professionList">
         <div class="filter-container">
@@ -1102,9 +1113,6 @@
             <a href="#" class="search-all-link" id="searchAllLink" target="_blank"
               >Посмотреть на hh.ru</a
             >
-            <button class="settings-button" id="settingsButton">
-              <i class="fas fa-cog"></i>
-            </button>
           </div>
         </div>
         <div class="salary-chart-container">
@@ -1184,8 +1192,18 @@
 
         try {
           const savedSettings = JSON.parse(localStorage.getItem('settings'));
-          return { ...defaultSettings, ...savedSettings };
+          // Проверяем общую тему из главной страницы
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark') {
+            defaultSettings.darkTheme = true;
+          }
+          return { ...defaultSettings, ...savedSettings, darkTheme: savedTheme === 'dark' };
         } catch (e) {
+          // Проверяем тему даже если настройки не сохранены
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark') {
+            defaultSettings.darkTheme = true;
+          }
           return defaultSettings;
         }
       };
@@ -1287,8 +1305,17 @@
           }
         };
 
-        // Добавляем функцию применения темы
+        // Добавляем функцию применения темы (совместимо с главной страницей)
         const applyTheme = isDark => {
+          if (isDark) {
+            document.body.classList.add('dark-theme');
+            localStorage.setItem('theme', 'dark');
+          } else {
+            document.body.classList.remove('dark-theme');
+            localStorage.setItem('theme', 'light');
+          }
+          
+          // Сохраняем также в старом формате для совместимости
           document.documentElement.setAttribute(
             'data-theme',
             isDark ? 'dark' : 'light'
@@ -1298,7 +1325,11 @@
         // Загрузка списка профессий
         const loadProfessions = async () => {
           try {
-            const response = await fetch('https://api.hh.ru/professional_roles');
+            const response = await fetch('https://api.hh.ru/professional_roles', {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+              }
+            });
             const data = await response.json();
 
             // Получаем все профессии и удаляем дубликаты
@@ -1451,7 +1482,11 @@
             }
 
             // Загружаем вакансии
-            const response = await fetch(`https://api.hh.ru/vacancies?${params}`);
+            const response = await fetch(`https://api.hh.ru/vacancies?${params}`, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+              }
+            });
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -1686,7 +1721,11 @@
       // Обновляем функцию загрузки регионов
       const loadAreas = async () => {
         try {
-          const response = await fetch('https://api.hh.ru/areas/113'); // Получаем регионы России
+                      const response = await fetch('https://api.hh.ru/areas/113', {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+              }
+            }); // Получаем регионы России
           const data = await response.json();
 
           // Преобразуем и сортируем регионы
@@ -1838,7 +1877,22 @@
       };
 
       // Обновляем функцию отрисовки графика зарплат
-      const renderSalaryChart = vacancies => {
+      const renderSalaryChart = (vacancies, attempt = 0) => {
+        // Проверяем доступность Chart.js с повторными попытками (максимум 20 попыток = 2 секунды)
+        if (typeof Chart === 'undefined') {
+          if (attempt < 20) {
+            console.warn(`Chart.js еще не загружен, попытка ${attempt + 1}/20...`);
+            setTimeout(() => renderSalaryChart(vacancies, attempt + 1), 100);
+            return;
+          } else {
+            console.error('Chart.js не удалось загрузить после 20 попыток, график будет пропущен');
+            // Скрываем контейнер графика если Chart.js не загрузился
+            const chartContainer = document.querySelector('.salary-chart-container');
+            if (chartContainer) chartContainer.style.display = 'none';
+            return;
+          }
+        }
+
         const ctx = document.getElementById('salaryChart').getContext('2d');
 
         // Очищаем предыдущий график, если он существует

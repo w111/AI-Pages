@@ -126,7 +126,7 @@
 
 ### Component Templates Library
 
-**10 готовых UI компонентов для AI агентов:**
+**11 готовых UI компонентов для AI агентов:**
 
 1. **App Container** - основной контейнер с header/main/footer
 2. **Button System** - primary/secondary/danger кнопки
@@ -138,8 +138,164 @@
 8. **Navigation Tabs** - табы для переключения контента
 9. **Loading Spinner** - анимация загрузки
 10. **Alert Messages** - уведомления и сообщения
+11. **Theme System** - стандартная система переключения темы
 
 **Принципы:** Copy-paste ready, self-contained HTML+CSS+JS, responsive, WCAG 2.1
+
+#### Стандартная система тем
+
+**Общий стандарт для всех страниц проекта:**
+
+**CSS переменные:**
+```css
+:root {
+  --bg-color: #f4f4f4;
+  --text-color: #333;
+  --input-bg: #fff;
+  --input-border: #ccc;
+}
+
+body.dark-theme {
+  --bg-color: #1a1a1a;
+  --text-color: #e0e0e0;
+  --input-bg: #2d2d2d;
+  --input-border: #555;
+}
+```
+
+**HTML структура:**
+```html
+<!-- Кнопка настроек (фиксированная позиция) -->
+<div class="settings-button" title="Настройки" tabindex="0">
+  <i class="fas fa-cog"></i>
+</div>
+
+<!-- Модальное окно настроек -->
+<div class="settings-modal" id="settingsModal" role="dialog" aria-labelledby="settingsTitle" aria-modal="true">
+  <h3 class="settings-title" id="settingsTitle">
+    <i class="fas fa-sliders-h"></i> Настройки
+  </h3>
+  <div class="settings-option">
+    <label for="themeSwitch">
+      <i class="fas fa-moon"></i> Темная тема
+    </label>
+    <label class="toggle-switch">
+      <input type="checkbox" id="themeSwitch">
+      <span class="slider"></span>
+    </label>
+  </div>
+</div>
+```
+
+**Централизованная система настроек (aiPagesSettings):**
+
+```javascript
+// Библиотека aiPagesSettings - единая точка управления настройками
+window.aiPagesSettings = {
+  // Дефолтные значения настроек
+  defaults: {
+    theme: 'light',
+    language: 'ru',
+    view: 'grid'
+  },
+  
+  // Получить значение настройки
+  get(key) {
+    const value = localStorage.getItem(key);
+    return value !== null ? value : this.defaults[key];
+  },
+  
+  // Установить значение настройки с автоприменением
+  set(key, value) {
+    localStorage.setItem(key, value);
+    if (key === 'theme') {
+      this.applyTheme();
+    } else if (key === 'language') {
+      this.applyLanguage();
+    }
+  },
+  
+  // Применить тему через data-theme атрибут
+  applyTheme() {
+    const theme = this.get('theme');
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // Синхронизация UI элементов
+    const themeSwitch = document.getElementById('themeSwitch');
+    if (themeSwitch) {
+      themeSwitch.checked = theme === 'dark';
+    }
+  },
+  
+  // Миграция с устаревших ключей localStorage
+  migrate() {
+    const oldTheme = localStorage.getItem('settings.darkTheme');
+    if (oldTheme === 'true' && !localStorage.getItem('theme')) {
+      localStorage.setItem('theme', 'dark');
+      localStorage.removeItem('settings.darkTheme');
+    }
+    
+    const audioTheme = localStorage.getItem('audioguide-theme');
+    if (audioTheme && !localStorage.getItem('theme')) {
+      localStorage.setItem('theme', audioTheme);
+      localStorage.removeItem('audioguide-theme');
+    }
+  },
+  
+  // Инициализация
+  init() {
+    this.migrate();
+    this.applyTheme();
+    this.applyLanguage();
+  }
+};
+
+// Инициализация при загрузке
+window.aiPagesSettings.init();
+
+// Обработчик переключения темы
+document.getElementById('themeSwitch').addEventListener('change', () => {
+  const theme = document.getElementById('themeSwitch').checked ? 'dark' : 'light';
+  window.aiPagesSettings.set('theme', theme);
+});
+```
+
+**Ключевые особенности новой системы:**
+
+- **Централизованное управление**: Единая библиотека `aiPagesSettings` на всех страницах
+- **Автоматическая синхронизация**: Изменения на одной странице мгновенно применяются везде
+- **data-theme подход**: CSS переменные через `[data-theme="dark"]` селекторы вместо `body.dark`
+- **Automatic migration**: Совместимость со старыми ключами `localStorage`
+- **Единый API**: `get()`, `set()`, `applyTheme()`, `init()` методы
+- **Framework агностик**: Работает с Vanilla JS, React, любыми компонентами
+
+**Поддерживаемые страницы:**
+
+- ✅ `index.html` - Главная навигационная страница (checkbox переключатель)
+- ✅ `audio_guide.html` - Аудиогид с миграцией из `audioguide-theme`
+- ✅ `professions.html` - Каталог профессий с миграцией из `settings.darkTheme`
+- ✅ `python_editor.html` - Python редактор с React компонентом
+- ✅ `python_editor_gradio.html` - Gradio версия Python редактора
+- ✅ `react_news.html` - React приложение с кастомной интеграцией
+- ✅ `webllm-chat.html` - WebLLM чат с темной темой по умолчанию
+- ✅ `web-stable-diffusion.html` - Stable Diffusion с темной темой по умолчанию
+- ✅ `precipitation_map.html` - Карта осадков OpenLayers с миграцией со старой системы
+
+**Архитектурные паттерны:**
+
+- **Micro-frontend подход**: Каждый HTML файл полностью автономен
+- **Shared state через localStorage**: Общие настройки между приложениями  
+- **Progressive enhancement**: Graceful degradation при отсутствии библиотеки
+- **Consistent UX**: Единые стили кнопок и модальных окон настроек
+
+**Требования:**
+
+- Автоматическая синхронизация через централизованную библиотеку `aiPagesSettings`
+- Кнопка настроек всегда видна (fixed position) с едиными стилями
+- Плавные переходы через CSS transitions
+- Поддержка мобильных устройств
+- Миграция с устаревших ключей `localStorage` без потери данных
+- Единообразные FontAwesome иконки на всех страницах
 
 ### Development Principles
 

@@ -54,7 +54,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>News Feed</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <style>
       /* Определение CSS-переменных для основных цветов и стилей (светлая тема по умолчанию) */
       :root {
@@ -293,25 +292,17 @@
       /* Стили для кнопки настроек (шестерёнки) */
       .settings-button {
         position: fixed;
-        top: 20px;
-        right: 20px;
-        font-size: 24px;
-        color: var(--primary-color);
-        background-color: var(--card-background);
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
+        top: 0.5rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: var(--text-color);
+        z-index: 2000;
+        height: 32px;
         display: flex;
         align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        z-index: 100;
-        transition: transform 0.3s ease;
-        border: none;
-      }
-      .settings-button:hover {
-        transform: rotate(45deg);
       }
       /* Стили для переключателей (свичеров) */
       .switch-input {
@@ -922,7 +913,7 @@
               ref={settingsButtonRef}
               onClick={() => setShowSettings(!showSettings)}
             >
-              <i className="fas fa-cog"></i>
+              ⚙
             </button>
             {/* Панель настроек отображается по клику */}
             {showSettings && (
@@ -1307,6 +1298,21 @@
       .accordion-item-source.active {
         color: var(--active-color);
         font-weight: bold;
+      }
+      /* Стили для кнопки настроек (шестерёнки) */
+      .settings-button {
+        position: fixed;
+        top: 0.5rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: var(--text-color);
+        z-index: 2000;
+        height: 32px;
+        display: flex;
+        align-items: center;
       }
       .settings-panel {
         position: fixed;

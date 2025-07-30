@@ -706,242 +706,265 @@
     </style>
   </head>
   <body>
-    <div class="main-container">
-      <!-- Боковая панель настроек -->
-      <div class="sidebar">
-        <!-- Заголовок приложения -->
-        <div class="app-header-section">
-          <div class="app-title">
-            <i class="fas fa-magic"></i>
-            Web Stable Diffusion
-          </div>
-          <p class="app-subtitle">Генерация изображений в браузере</p>
-        </div>
+    <!-- Кнопка настроек -->
+    <div class="settings-button" title="Настройки" tabindex="0">
+      <i class="fas fa-cog"></i>
+    </div>
 
-        <!-- Статус WebGPU -->
-        <div class="webgpu-status" id="webgpuStatus">
-          <i class="fas fa-spinner fa-spin"></i> Проверка совместимости WebGPU...
-        </div>
-
-        <!-- Прогресс загрузки модели -->
-        <div class="model-loading-progress" id="modelLoadingProgress">
-          <div class="model-progress-header">
-            <div class="model-progress-icon">
-              <i class="fas fa-download"></i>
-            </div>
-            <div class="model-progress-title">Загрузка модели ИИ</div>
-          </div>
-          
-          <div class="model-progress-bar">
-            <div class="model-progress-fill" id="modelProgressFill"></div>
-          </div>
-          
-          <div class="model-progress-text" id="modelProgressText">
-            Подготовка к загрузке...
-          </div>
-          <div class="model-progress-details" id="modelProgressDetails">
-            Инициализация системы
-          </div>
-          
-          <div class="model-progress-stats" id="modelProgressStats" style="display: none;">
-            <div class="progress-stat">
-              <span class="progress-stat-value" id="progressFiles">0/0</span>
-              <span class="progress-stat-label">Файлы</span>
-            </div>
-            <div class="progress-stat">
-              <span class="progress-stat-value" id="progressSpeed">0 MB/с</span>
-              <span class="progress-stat-label">Скорость</span>
-            </div>
-            <div class="progress-stat">
-              <span class="progress-stat-value" id="progressETA">-- мин</span>
-              <span class="progress-stat-label">Осталось</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Выбор модели -->
-        <div class="model-section">
-          <div class="section-title">
-            <i class="fas fa-brain"></i>
-            Модель
-          </div>
-          <select id="modelSelect" class="model-select">
-            <option value="janus-1.3b">
-              Janus-1.3B (WASM - Рекомендуется) - 1.5GB
-            </option>
-            <option value="janus-webgpu">
-              Janus-1.3B (WebGPU - Экспериментальная) - 1.5GB
-            </option>
-            <option value="demo">Демо-режим (без загрузки)</option>
-          </select>
-          <small class="model-hint">
-            WASM версия рекомендуется для лучшей совместимости.
-          </small>
-        </div>
-
-        <!-- Информация о модели -->
-        <div class="model-info" id="modelInfo">
-          <h4 id="modelTitle">Информация о модели</h4>
-          <p id="modelDescription">Выберите модель для отображения информации</p>
-          <div class="model-specs" id="modelSpecs">
-            <!-- Спецификации модели будут добавлены динамически -->
-          </div>
-        </div>
-
-        <!-- Пресеты -->
-        <div class="preset-section">
-          <div class="section-title">
-            <i class="fas fa-palette"></i>
-            Быстрые пресеты
-          </div>
-          <div class="preset-buttons">
-            <button class="preset-btn" data-preset="wallpaper">
-              <i class="fas fa-image"></i> Обои
-            </button>
-            <button class="preset-btn" data-preset="avatar">
-              <i class="fas fa-user-circle"></i> Аватар
-            </button>
-            <button class="preset-btn" data-preset="meme">
-              <i class="fas fa-laugh"></i> Мем
-            </button>
-          </div>
-        </div>
-
-        <!-- Настройки генерации -->
-        <form id="generationForm">
-          <div class="settings-section">
-            <div class="section-title">
-              <i class="fas fa-sliders-h"></i>
-              Настройки
-            </div>
-
-            <div class="form-group">
-              <label for="prompt">Описание изображения:</label>
-              <textarea
-                id="prompt"
-                placeholder="Опишите, что вы хотите создать..."
-                required
-              ></textarea>
-            </div>
-
-            <div class="form-group">
-              <label for="negativePrompt">Негативный prompt:</label>
-              <textarea
-                id="negativePrompt"
-                placeholder="Что не должно быть на изображении..."
-              ></textarea>
-            </div>
-
-            <div class="form-group">
-              <label for="steps"
-                >Количество шагов: <span id="stepsValue">20</span></label
-              >
-              <input
-                type="range"
-                id="steps"
-                class="range-input"
-                min="10"
-                max="50"
-                value="20"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="guidance"
-                >Guidance Scale: <span id="guidanceValue">7.5</span></label
-              >
-              <input
-                type="range"
-                id="guidance"
-                class="range-input"
-                min="1"
-                max="20"
-                step="0.5"
-                value="7.5"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="width">Размер изображения:</label>
-              <div class="size-controls">
-                <select id="width">
-                  <option value="512">512px</option>
-                  <option value="768">768px</option>
-                  <option value="1024">1024px</option>
-                </select>
-                <span class="size-separator">×</span>
-                <select id="height">
-                  <option value="512">512px</option>
-                  <option value="768">768px</option>
-                  <option value="1024">1024px</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Прогресс генерации -->
-            <div class="progress-container" id="progressContainer">
-              <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-              </div>
-              <div class="progress-text" id="progressText">
-                Генерация изображения...
-              </div>
-            </div>
-
-            <button type="submit" class="generate-btn" id="generateBtn">
-              <i class="fas fa-magic"></i>
-              Сгенерировать изображение
-            </button>
-          </div>
-        </form>
-
-        <!-- Системные требования -->
-        <div class="requirements-section">
-          <div class="requirements-header" onclick="toggleRequirements()">
-            <i class="fas fa-chevron-down" id="requirementsIcon"></i>
-            <span>Системные требования</span>
-          </div>
-          <div class="requirements-content collapsed" id="requirementsContent">
-            <ul>
-              <li>Chrome 113+ или Edge 113+ с поддержкой WebGPU</li>
-              <li>GPU с минимум 4GB видеопамяти (рекомендуется 6GB+)</li>
-              <li>Стабильное интернет-соединение для загрузки модели (~1.5GB)</li>
-              <li>Лучшая производительность: Mac M1/M2, RTX 3060+, RTX 4000+</li>
-            </ul>
-            <p class="tech-info">
-              <strong>Технология:</strong> Transformers.js + модель Janus-1.3B
-            </p>
-          </div>
-        </div>
+    <!-- Модальное окно настроек -->
+    <div class="settings-modal" id="settingsModal" role="dialog" aria-labelledby="settingsTitle" aria-modal="true">
+      <h3 class="settings-title" id="settingsTitle">
+        <i class="fas fa-sliders-h"></i> Настройки
+      </h3>
+      <div class="settings-option">
+        <label for="themeSwitch">
+          <i class="fas fa-moon"></i> Темная тема
+        </label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="themeSwitch">
+          <span class="slider"></span>
+        </label>
       </div>
+    </div>
 
-      <!-- Разделитель с возможностью изменения размера -->
-      <div class="resizer" id="resizer"></div>
-
-      <!-- Основная область с результатом -->
-      <div class="main-content">
-        <div class="result-section">
-          <div class="result-header">
-            <h2 class="section-title">
-              <i class="fas fa-image"></i>
-              Результат генерации
-            </h2>
+    <div class="container">
+      <div class="main-container">
+        <!-- Боковая панель настроек -->
+        <div class="sidebar">
+          <!-- Заголовок приложения -->
+          <div class="app-header-section">
+            <div class="app-title">
+              <i class="fas fa-magic"></i>
+              Web Stable Diffusion
+            </div>
+            <p class="app-subtitle">Генерация изображений в браузере</p>
           </div>
 
-          <div class="result-container" id="resultContainer">
-            <div class="result-placeholder" id="resultPlaceholder">
-              <i class="fas fa-magic fa-3x"></i>
-              <p>Здесь появится сгенерированное изображение</p>
-              <small>Настройте параметры слева и нажмите "Сгенерировать"</small>
+          <!-- Статус WebGPU -->
+          <div class="webgpu-status" id="webgpuStatus">
+            <i class="fas fa-spinner fa-spin"></i> Проверка совместимости WebGPU...
+          </div>
+
+          <!-- Прогресс загрузки модели -->
+          <div class="model-loading-progress" id="modelLoadingProgress">
+            <div class="model-progress-header">
+              <div class="model-progress-icon">
+                <i class="fas fa-download"></i>
+              </div>
+              <div class="model-progress-title">Загрузка модели ИИ</div>
             </div>
-            <img class="result-image" id="resultImage" alt="Generated image" />
-            <div class="result-actions">
-              <button class="download-btn" id="downloadBtn">
-                <i class="fas fa-download"></i> Скачать
+            
+            <div class="model-progress-bar">
+              <div class="model-progress-fill" id="modelProgressFill"></div>
+            </div>
+            
+            <div class="model-progress-text" id="modelProgressText">
+              Подготовка к загрузке...
+            </div>
+            <div class="model-progress-details" id="modelProgressDetails">
+              Инициализация системы
+            </div>
+            
+            <div class="model-progress-stats" id="modelProgressStats" style="display: none;">
+              <div class="progress-stat">
+                <span class="progress-stat-value" id="progressFiles">0/0</span>
+                <span class="progress-stat-label">Файлы</span>
+              </div>
+              <div class="progress-stat">
+                <span class="progress-stat-value" id="progressSpeed">0 MB/с</span>
+                <span class="progress-stat-label">Скорость</span>
+              </div>
+              <div class="progress-stat">
+                <span class="progress-stat-value" id="progressETA">-- мин</span>
+                <span class="progress-stat-label">Осталось</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Выбор модели -->
+          <div class="model-section">
+            <div class="section-title">
+              <i class="fas fa-brain"></i>
+              Модель
+            </div>
+            <select id="modelSelect" class="model-select">
+              <option value="janus-1.3b">
+                Janus-1.3B (WASM - Рекомендуется) - 1.5GB
+              </option>
+              <option value="janus-webgpu">
+                Janus-1.3B (WebGPU - Экспериментальная) - 1.5GB
+              </option>
+              <option value="demo">Демо-режим (без загрузки)</option>
+            </select>
+            <small class="model-hint">
+              WASM версия рекомендуется для лучшей совместимости.
+            </small>
+          </div>
+
+          <!-- Информация о модели -->
+          <div class="model-info" id="modelInfo">
+            <h4 id="modelTitle">Информация о модели</h4>
+            <p id="modelDescription">Выберите модель для отображения информации</p>
+            <div class="model-specs" id="modelSpecs">
+              <!-- Спецификации модели будут добавлены динамически -->
+            </div>
+          </div>
+
+          <!-- Пресеты -->
+          <div class="preset-section">
+            <div class="section-title">
+              <i class="fas fa-palette"></i>
+              Быстрые пресеты
+            </div>
+            <div class="preset-buttons">
+              <button class="preset-btn" data-preset="wallpaper">
+                <i class="fas fa-image"></i> Обои
               </button>
-              <button class="share-btn" id="shareBtn">
-                <i class="fas fa-share"></i> Поделиться
+              <button class="preset-btn" data-preset="avatar">
+                <i class="fas fa-user-circle"></i> Аватар
               </button>
+              <button class="preset-btn" data-preset="meme">
+                <i class="fas fa-laugh"></i> Мем
+              </button>
+            </div>
+          </div>
+
+          <!-- Настройки генерации -->
+          <form id="generationForm">
+            <div class="settings-section">
+              <div class="section-title">
+                <i class="fas fa-sliders-h"></i>
+                Настройки
+              </div>
+
+              <div class="form-group">
+                <label for="prompt">Описание изображения:</label>
+                <textarea
+                  id="prompt"
+                  placeholder="Опишите, что вы хотите создать..."
+                  required
+                ></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="negativePrompt">Негативный prompt:</label>
+                <textarea
+                  id="negativePrompt"
+                  placeholder="Что не должно быть на изображении..."
+                ></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="steps"
+                  >Количество шагов: <span id="stepsValue">20</span></label
+                >
+                <input
+                  type="range"
+                  id="steps"
+                  class="range-input"
+                  min="10"
+                  max="50"
+                  value="20"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="guidance"
+                  >Guidance Scale: <span id="guidanceValue">7.5</span></label
+                >
+                <input
+                  type="range"
+                  id="guidance"
+                  class="range-input"
+                  min="1"
+                  max="20"
+                  step="0.5"
+                  value="7.5"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="width">Размер изображения:</label>
+                <div class="size-controls">
+                  <select id="width">
+                    <option value="512">512px</option>
+                    <option value="768">768px</option>
+                    <option value="1024">1024px</option>
+                  </select>
+                  <span class="size-separator">×</span>
+                  <select id="height">
+                    <option value="512">512px</option>
+                    <option value="768">768px</option>
+                    <option value="1024">1024px</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Прогресс генерации -->
+              <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                  <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">
+                  Генерация изображения...
+                </div>
+              </div>
+
+              <button type="submit" class="generate-btn" id="generateBtn">
+                <i class="fas fa-magic"></i>
+                Сгенерировать изображение
+              </button>
+            </div>
+          </form>
+
+          <!-- Системные требования -->
+          <div class="requirements-section">
+            <div class="requirements-header" onclick="toggleRequirements()">
+              <i class="fas fa-chevron-down" id="requirementsIcon"></i>
+              <span>Системные требования</span>
+            </div>
+            <div class="requirements-content collapsed" id="requirementsContent">
+              <ul>
+                <li>Chrome 113+ или Edge 113+ с поддержкой WebGPU</li>
+                <li>GPU с минимум 4GB видеопамяти (рекомендуется 6GB+)</li>
+                <li>Стабильное интернет-соединение для загрузки модели (~1.5GB)</li>
+                <li>Лучшая производительность: Mac M1/M2, RTX 3060+, RTX 4000+</li>
+              </ul>
+              <p class="tech-info">
+                <strong>Технология:</strong> Transformers.js + модель Janus-1.3B
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Разделитель с возможностью изменения размера -->
+        <div class="resizer" id="resizer"></div>
+
+        <!-- Основная область с результатом -->
+        <div class="main-content">
+          <div class="result-section">
+            <div class="result-header">
+              <h2 class="section-title">
+                <i class="fas fa-image"></i>
+                Результат генерации
+              </h2>
+            </div>
+
+            <div class="result-container" id="resultContainer">
+              <div class="result-placeholder" id="resultPlaceholder">
+                <i class="fas fa-magic fa-3x"></i>
+                <p>Здесь появится сгенерированное изображение</p>
+                <small>Настройте параметры слева и нажмите "Сгенерировать"</small>
+              </div>
+              <img class="result-image" id="resultImage" alt="Generated image" />
+              <div class="result-actions">
+                <button class="download-btn" id="downloadBtn">
+                  <i class="fas fa-download"></i> Скачать
+                </button>
+                <button class="share-btn" id="shareBtn">
+                  <i class="fas fa-share"></i> Поделиться
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -949,6 +972,58 @@
     </div>
 
     <script>
+      // Централизованная библиотека настроек aiPagesSettings
+      window.aiPagesSettings = {
+        // Дефолтные значения настроек (для Stable Diffusion темная тема по умолчанию)
+        defaults: {
+          theme: 'dark',
+          language: 'ru',
+          view: 'grid'
+        },
+        
+        // Получить значение настройки
+        get(key) {
+          const value = localStorage.getItem(key);
+          return value !== null ? value : this.defaults[key];
+        },
+        
+        // Установить значение настройки
+        set(key, value) {
+          localStorage.setItem(key, value);
+          
+          // Автоматически применяем изменения
+          if (key === 'theme') {
+            this.applyTheme();
+          } else if (key === 'language') {
+            this.applyLanguage();
+          }
+        },
+        
+        // Применить тему
+        applyTheme() {
+          const theme = this.get('theme');
+          document.documentElement.setAttribute('data-theme', theme);
+          
+          // Обновляем checkbox если он есть
+          const themeSwitch = document.getElementById('themeSwitch');
+          if (themeSwitch) {
+            themeSwitch.checked = theme === 'dark';
+          }
+        },
+        
+        // Применить язык
+        applyLanguage() {
+          const language = this.get('language');
+          document.documentElement.setAttribute('lang', language);
+        },
+        
+        // Инициализация
+        init() {
+          this.applyTheme();
+          this.applyLanguage();
+        }
+      };
+
       class WebStableDiffusionPlayground {
         constructor() {
           this.initializeElements();
@@ -2102,6 +2177,39 @@
       }
 
       document.addEventListener('DOMContentLoaded', () => {
+        // Инициализируем настройки
+        window.aiPagesSettings.init();
+        
+        // Обработчики для кнопки настроек
+        const settingsButton = document.querySelector('.settings-button');
+        const settingsModal = document.getElementById('settingsModal');
+        const themeSwitch = document.getElementById('themeSwitch');
+        
+        // Клик по кнопке настроек
+        settingsButton.addEventListener('click', () => {
+          settingsModal.classList.toggle('show');
+        });
+        
+        // Закрытие модала по клику на фон
+        settingsModal.addEventListener('click', (e) => {
+          if (e.target === settingsModal) {
+            settingsModal.classList.remove('show');
+          }
+        });
+        
+        // Переключение темы
+        themeSwitch.addEventListener('change', () => {
+          const theme = themeSwitch.checked ? 'dark' : 'light';
+          window.aiPagesSettings.set('theme', theme);
+        });
+        
+        // Закрытие по Escape
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && settingsModal.classList.contains('show')) {
+            settingsModal.classList.remove('show');
+          }
+        });
+        
         const playground = new WebStableDiffusionPlayground();
 
         // Делаем доступным в глобальной области для тестирования
