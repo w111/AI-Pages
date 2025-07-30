@@ -107,7 +107,7 @@ jobs:
 
       - name: 🧪 Run Python tests (${{ matrix.display_name }})
         run: >
-          venv/bin/python -m pytest -c pytest-ci.ini
+          python -m pytest -c pytest-ci.ini
           tests/test_index_page_async.py -v
 
       - name: 📊 Upload test results
