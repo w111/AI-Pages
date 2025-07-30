@@ -102,10 +102,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ai-pages/html-examples"
+    "url": "https://github.com/w111/AI-Pages"
   },
   "bugs": {
-    "url": "https://github.com/ai-pages/html-examples/issues"
+    "url": "https://github.com/w111/AI-Pages/issues"
   },
-  "homepage": "https://ai-pages.github.io/html-examples/"
+  "homepage": "https://w111.github.io/AI-Pages/"
 }
