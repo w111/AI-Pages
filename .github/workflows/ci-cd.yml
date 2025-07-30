@@ -234,6 +234,15 @@ jobs:
       - name: 🔧 Setup Pages
         uses: actions/configure-pages@v4
 
+      - name: 🔍 Debug Pages Configuration
+        run: |
+          echo "🔍 Debugging GitHub Pages setup..."
+          echo "Repository: ${{ github.repository }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "SHA: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+
       - name: 📁 Prepare deployment artifacts
         run: |
           # Создаем директорию для артефактов
@@ -258,6 +267,17 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./deployment"
+
+      - name: 🔍 Pre-deployment Check
+        run: |
+          echo "🔍 Pre-deployment diagnostics..."
+          echo "Current working directory: $(pwd)"
+          echo "Deployment directory contents:"
+          ls -la deployment/ || echo "❌ Deployment directory not found"
+          echo "GitHub context:"
+          echo "  Repository: ${{ github.repository }}"
+          echo "  Actor: ${{ github.actor }}"
+          echo "  Token permissions: pages=${{ github.token && 'available' || 'missing' }}"
 
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
