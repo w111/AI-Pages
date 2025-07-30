@@ -290,20 +290,20 @@ jobs:
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Lighthouse | ${{ needs.lighthouse.result }} |" >>
+          echo "| Lighthouse | ${{ needs.lighthouse.result }} |" >> \
             $GITHUB_STEP_SUMMARY
-          echo "| Security | ${{ needs.security.result }} |" >>
+          echo "| Security | ${{ needs.security.result }} |" >> \
             $GITHUB_STEP_SUMMARY
           echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ **Deployment completed successfully!**" >>
+            echo "✅ **Deployment completed successfully!**" >> \
               $GITHUB_STEP_SUMMARY
             OWNER="${{ github.repository_owner }}"
             REPO="${{ github.event.repository.name }}"
             SITE_URL="https://$OWNER.github.io/$REPO"
             echo "🌐 **Live site:** $SITE_URL" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Deployment failed. Check the logs above.**" >>
+            echo "❌ **Deployment failed. Check the logs above.**" >> \
               $GITHUB_STEP_SUMMARY
           fi
