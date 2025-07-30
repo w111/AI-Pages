@@ -53,7 +53,7 @@ export default defineConfig({
   webServer: {
     command: 'python3 -m http.server 5500',
     port: 5500,
-    reuseExistingServer: false, // Всегда перезапускаем в CI
+    reuseExistingServer: true, // Переиспользуем существующий сервер в CI
     timeout: 60 * 1000, // 60 сек на запуск в медленном CI
   },
 });
