@@ -12,7 +12,7 @@ test('Анимация при наведении на карточку', async (
     return {
       boxShadow: computed.boxShadow,
       transform: computed.transform,
-      transition: computed.transition
+      transition: computed.transition,
     };
   });
 
@@ -30,7 +30,7 @@ test('Анимация при наведении на карточку', async (
     const computed = getComputedStyle(el);
     return {
       boxShadow: computed.boxShadow,
-      transform: computed.transform
+      transform: computed.transform,
     };
   });
 

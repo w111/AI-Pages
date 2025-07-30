@@ -33,11 +33,11 @@
     ]
   },
   "ignoreFiles": [
-    "node_modules/**/*", 
-    "venv/**/*", 
-    "env/**/*", 
+    "node_modules/**/*",
+    "venv/**/*",
+    "env/**/*",
     "ENV/**/*",
-    "test-results/**/*", 
+    "test-results/**/*",
     "playwright-report*/**/*",
     ".pytest_cache/**/*",
     ".idea/**/*",

@@ -24,7 +24,7 @@ test('Сохранение языка после перезагрузки', asyn
 
 test('Смена языка меняет все основные тексты на странице', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.goto(`${baseURL}/index.html`);
   await page.getByTitle('Настройки').click();

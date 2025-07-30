@@ -12,7 +12,7 @@ test('Фокусировка по Tab доходит до настроек', asy
 // Проверка видимых индикаторов фокуса
 test('Видимые индикаторы фокуса для интерактивных элементов', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.goto(`${baseURL}/index.html`);
 
@@ -69,7 +69,7 @@ test('Достаточная контрастность текста в темн
 // Проверка ARIA-атрибутов
 test('Корректные ARIA-атрибуты для интерактивных элементов', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.goto(`${baseURL}/index.html`);
 

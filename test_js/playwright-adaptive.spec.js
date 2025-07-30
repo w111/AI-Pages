@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // Мобильные разрешения
 test('Карточки в одну колонку на мобильном разрешении 375px', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(`${baseURL}/index.html`);
@@ -17,7 +17,7 @@ test('Карточки в одну колонку на мобильном раз
 
 test('Карточки в одну колонку на мобильном разрешении 360px', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await page.goto(`${baseURL}/index.html`);
@@ -30,7 +30,7 @@ test('Карточки в одну колонку на мобильном раз
 
 test('Контент читабелен без горизонтального скролла на 320px', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto(`${baseURL}/index.html`);
@@ -41,7 +41,7 @@ test('Контент читабелен без горизонтального с
 // Планшетные разрешения
 test('Карточки в 2-3 колонки на планшетном разрешении 768px', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto(`${baseURL}/index.html`);
@@ -54,7 +54,7 @@ test('Карточки в 2-3 колонки на планшетном разр�
 
 test('Планшетное разрешение 1024px оптимально использует пространство', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto(`${baseURL}/index.html`);

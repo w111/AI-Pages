@@ -31,10 +31,13 @@ export default [
       'no-var': 'error',
 
       // Метрики качества кода
-      'complexity': ['error', { max: 10 }], // Цикломатическая сложность < 10
-      'max-depth': ['error', 4],            // Глубина вложенности < 4
-      'max-lines-per-function': ['error', { max: 20, skipBlankLines: true, skipComments: true }], // Длина функций < 20 строк
-      'max-params': ['error', 4],           // Количество параметров < 4
+      complexity: ['error', { max: 10 }], // Цикломатическая сложность < 10
+      'max-depth': ['error', 4], // Глубина вложенности < 4
+      'max-lines-per-function': [
+        'error',
+        { max: 20, skipBlankLines: true, skipComments: true },
+      ], // Длина функций < 20 строк
+      'max-params': ['error', 4], // Количество параметров < 4
 
       // Форматирование (базовые правила)
       indent: ['warn', 2],
@@ -54,10 +57,13 @@ export default [
     },
     rules: {
       ...playwright.configs.recommended.rules,
-      
+
       // Более мягкие правила для тестов
-      'complexity': ['error', { max: 15 }], // Тесты могут быть сложнее
-      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }], // Тесты могут быть длиннее
+      complexity: ['error', { max: 15 }], // Тесты могут быть сложнее
+      'max-lines-per-function': [
+        'error',
+        { max: 50, skipBlankLines: true, skipComments: true },
+      ], // Тесты могут быть длиннее
       'max-params': ['warn', 6], // Больше параметров в тестах допустимо
 
       // Разрешаем console в тестах для отладки
@@ -112,35 +118,35 @@ export default [
       '.idea/**',
       '.specstory/**',
       '.bmad-core/**',
-      
+
       // Из .gitignore - Python cache
       '__pycache__/**',
       '**/*.py[cod]',
       '**/*$py.class',
       '**/*.so',
-      
+
       // Из .gitignore - Virtual environment
       'venv/**',
       'env/**',
       'ENV/**',
-      
+
       // Из .gitignore - Node modules
       'node_modules/**',
-      
+
       // Из .gitignore - OS files
       '.DS_Store',
       'Thumbs.db',
-      
+
       // Из .gitignore - Test results
       'test-results/**',
       '.pytest_cache/**',
       'playwright-report/**',
-      
+
       // Из .gitignore - Temporary files
       '**/*.tmp',
       '**/*.temp',
       '**/*.log',
-      
+
       // Дополнительные исключения
       '.git/**',
       'playwright-report*/**',

@@ -6,7 +6,7 @@ export default defineConfig({
   timeout: 15000,
   expect: {
     // Уменьшаем таймаут ожидания элементов с 5 до 2 секунд
-    timeout: 2000
+    timeout: 2000,
   },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -20,7 +20,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     // Добавляем глобальные таймауты для действий
     actionTimeout: 3000, // Таймаут для действий (click, type, etc.)
-    navigationTimeout: 10000 // Таймаут для навигации
+    navigationTimeout: 10000, // Таймаут для навигации
   },
 
   projects: [
@@ -31,31 +31,31 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         // Дополнительные оптимизации для Chrome
         launchOptions: {
-          args: ['--disable-web-security', '--disable-features=VizDisplayCompositor']
-        }
-      }
+          args: ['--disable-web-security', '--disable-features=VizDisplayCompositor'],
+        },
+      },
     },
 
     // Safari тесты (WebKit engine) - важно для macOS пользователей
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] }
+      use: { ...devices['Desktop Safari'] },
     },
 
     // Мобильные тесты
     {
       name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] }
+      use: { ...devices['Pixel 5'] },
     },
     {
       name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] }
+      use: { ...devices['iPhone 12'] },
     },
 
     // Планшетные тесты
     {
       name: 'iPad',
-      use: { ...devices['iPad Pro'] }
+      use: { ...devices['iPad Pro'] },
     },
 
     // Тесты с различными разрешениями экранов
@@ -63,22 +63,22 @@ export default defineConfig({
       name: 'Desktop 1440p',
       use: {
         ...devices['Desktop Chrome'],
-        viewport: { width: 1440, height: 900 }
-      }
+        viewport: { width: 1440, height: 900 },
+      },
     },
     {
       name: 'Desktop 4K',
       use: {
         ...devices['Desktop Chrome'],
-        viewport: { width: 1920, height: 1080 }
-      }
-    }
+        viewport: { width: 1920, height: 1080 },
+      },
+    },
   ],
 
   webServer: {
     command: 'python3 -m http.server 5500',
     port: 5500,
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000 // 2 минуты на запуск сервера
-  }
+    timeout: 120 * 1000, // 2 минуты на запуск сервера
+  },
 });

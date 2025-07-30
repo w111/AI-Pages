@@ -5,7 +5,7 @@ export default defineConfig({
   testDir: './test_js',
   timeout: 8000,
   expect: {
-    timeout: 1200
+    timeout: 1200,
   },
   fullyParallel: true,
   forbidOnly: false,
@@ -18,7 +18,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
     actionTimeout: 1800,
-    navigationTimeout: 6000
+    navigationTimeout: 6000,
   },
 
   projects: [
@@ -35,11 +35,11 @@ export default defineConfig({
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage', // Экономия памяти
-            '--disable-gpu' // Для максимальной скорости в CI
-          ]
-        }
-      }
-    }
+            '--disable-gpu', // Для максимальной скорости в CI
+          ],
+        },
+      },
+    },
   ],
 
   // Встроенный статический веб-сервер Playwright (самый быстрый!)
@@ -49,6 +49,6 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI, // В CI всегда новый сервер
     timeout: 15 * 1000,
     stdout: 'ignore', // Убираем логи сервера
-    stderr: 'pipe'
-  }
+    stderr: 'pipe',
+  },
 });

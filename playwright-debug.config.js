@@ -6,7 +6,7 @@ export default defineConfig({
   // Очень короткие таймауты для быстрого обнаружения проблем
   timeout: 5000, // 5 секунд на тест
   expect: {
-    timeout: 1000 // 1 секунда на поиск элемента
+    timeout: 1000, // 1 секунда на поиск элемента
   },
   fullyParallel: true, // Включаем параллельность для скорости
   forbidOnly: false, // Разрешаем .only для отладки
@@ -14,7 +14,7 @@ export default defineConfig({
   workers: 2, // 2 воркера для баланса скорости и стабильности
   reporter: [
     ['list'], // Компактный вывод
-    ['html', { open: 'never' }] // HTML отчет без автооткрытия
+    ['html', { open: 'never' }], // HTML отчет без автооткрытия
   ],
   use: {
     baseURL: 'http://127.0.0.1:5500',
@@ -23,7 +23,7 @@ export default defineConfig({
     video: 'off', // Отключаем видео для скорости
     // Очень короткие таймауты для действий
     actionTimeout: 1500, // 1.5 сек для действий
-    navigationTimeout: 5000 // 5 сек для навигации
+    navigationTimeout: 5000, // 5 сек для навигации
   },
 
   projects: [
@@ -38,17 +38,17 @@ export default defineConfig({
             '--disable-web-security',
             '--disable-features=VizDisplayCompositor',
             '--disable-backgrounding-occluded-windows',
-            '--disable-renderer-backgrounding'
-          ]
-        }
-      }
-    }
+            '--disable-renderer-backgrounding',
+          ],
+        },
+      },
+    },
   ],
 
   webServer: {
     command: 'python3 -m http.server 5500',
     port: 5500,
     reuseExistingServer: true, // Переиспользуем сервер
-    timeout: 30 * 1000 // 30 сек на запуск
-  }
+    timeout: 30 * 1000, // 30 сек на запуск
+  },
 });

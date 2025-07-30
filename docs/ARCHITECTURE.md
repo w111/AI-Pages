@@ -174,15 +174,11 @@ body.dark-theme {
 
 <!-- Модальное окно настроек -->
 <div class="settings-modal" id="settingsModal" role="dialog" aria-labelledby="settingsTitle" aria-modal="true">
-  <h3 class="settings-title" id="settingsTitle">
-    <i class="fas fa-sliders-h"></i> Настройки
-  </h3>
+  <h3 class="settings-title" id="settingsTitle"><i class="fas fa-sliders-h"></i> Настройки</h3>
   <div class="settings-option">
-    <label for="themeSwitch">
-      <i class="fas fa-moon"></i> Темная тема
-    </label>
+    <label for="themeSwitch"> <i class="fas fa-moon"></i> Темная тема </label>
     <label class="toggle-switch">
-      <input type="checkbox" id="themeSwitch">
+      <input type="checkbox" id="themeSwitch" />
       <span class="slider"></span>
     </label>
   </div>
@@ -198,15 +194,15 @@ window.aiPagesSettings = {
   defaults: {
     theme: 'light',
     language: 'ru',
-    view: 'grid'
+    view: 'grid',
   },
-  
+
   // Получить значение настройки
   get(key) {
     const value = localStorage.getItem(key);
     return value !== null ? value : this.defaults[key];
   },
-  
+
   // Установить значение настройки с автоприменением
   set(key, value) {
     localStorage.setItem(key, value);
@@ -216,19 +212,19 @@ window.aiPagesSettings = {
       this.applyLanguage();
     }
   },
-  
+
   // Применить тему через data-theme атрибут
   applyTheme() {
     const theme = this.get('theme');
     document.documentElement.setAttribute('data-theme', theme);
-    
+
     // Синхронизация UI элементов
     const themeSwitch = document.getElementById('themeSwitch');
     if (themeSwitch) {
       themeSwitch.checked = theme === 'dark';
     }
   },
-  
+
   // Миграция с устаревших ключей localStorage
   migrate() {
     const oldTheme = localStorage.getItem('settings.darkTheme');
@@ -236,20 +232,20 @@ window.aiPagesSettings = {
       localStorage.setItem('theme', 'dark');
       localStorage.removeItem('settings.darkTheme');
     }
-    
+
     const audioTheme = localStorage.getItem('audioguide-theme');
     if (audioTheme && !localStorage.getItem('theme')) {
       localStorage.setItem('theme', audioTheme);
       localStorage.removeItem('audioguide-theme');
     }
   },
-  
+
   // Инициализация
   init() {
     this.migrate();
     this.applyTheme();
     this.applyLanguage();
-  }
+  },
 };
 
 // Инициализация при загрузке
@@ -286,7 +282,7 @@ document.getElementById('themeSwitch').addEventListener('change', () => {
 **Архитектурные паттерны:**
 
 - **Micro-frontend подход**: Каждый HTML файл полностью автономен
-- **Shared state через localStorage**: Общие настройки между приложениями  
+- **Shared state через localStorage**: Общие настройки между приложениями
 - **Progressive enhancement**: Graceful degradation при отсутствии библиотеки
 - **Consistent UX**: Единые стили кнопок и модальных окон настроек
 

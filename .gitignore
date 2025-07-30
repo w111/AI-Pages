@@ -2,6 +2,9 @@
 .idea/
 .specstory/
 .bmad-core/
+.claude/
+.cursor/
+.cursor*
 
 # Python cache
 __pycache__/

@@ -24,7 +24,7 @@ test('Очистка поиска возвращает все карточки',
 
 test('Поиск по несуществующему запросу скрывает все карточки и категории', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.goto(`${baseURL}/index.html`);
   await page.fill('#cardSearch', 'qwertyuiopasdfgh');

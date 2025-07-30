@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('Клик по заголовку карточки ведёт на нужную страницу', async ({
   page,
-  baseURL
+  baseURL,
 }) => {
   await page.goto(`${baseURL}/index.html`);
   const firstLink = page.locator('.example-card .card-header h3 a').first();
