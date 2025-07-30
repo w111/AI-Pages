@@ -28,6 +28,7 @@ Thumbs.db
 test-results/
 .pytest_cache/
 playwright-report/
+playwright-report-ci/
 
 # Temporary files
 *.tmp
