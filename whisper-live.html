@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Whisper Live - Субтитры в реальном времени | AI Pages</title>
+  <meta name="description" content="Транскрибация речи в реальном времени с помощью Whisper AI прямо в браузере. Идеально для стримеров, докладчиков и создателей контента.">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --primary-color: #6366f1;
+      --secondary-color: #8b5cf6;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --error-color: #ef4444;
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-color: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .header-title i {
+      color: var(--primary-color);
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    /* Main Content */
+    .main-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+
+    /* Status Card */
+    .status-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .status-icon {
+      font-size: 4rem;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .status-icon.recording {
+      color: var(--error-color);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .status-title {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+
+    .status-message {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--bg-color);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border-color);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Transcription Display */
+    .transcription-container {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 800px;
+      background: rgba(30, 41, 59, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .transcription-container.active {
+      display: block;
+    }
+
+    .transcription-text {
+      font-size: 1.2rem;
+      line-height: 1.8;
+      text-align: center;
+    }
+
+    .transcription-current {
+      color: white;
+      font-weight: 500;
+    }
+
+    .transcription-history {
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+
+    /* Settings Panel */
+    .settings-panel {
+      position: fixed;
+      right: -400px;
+      top: 0;
+      width: 400px;
+      height: 100vh;
+      background: var(--card-bg);
+      border-left: 1px solid var(--border-color);
+      padding: 20px;
+      overflow-y: auto;
+      transition: right 0.3s ease;
+      z-index: 1000;
+    }
+
+    .settings-panel.open {
+      right: 0;
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .settings-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text-color);
+    }
+
+    .form-select {
+      width: 100%;
+      padding: 10px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-color);
+      font-size: 1rem;
+    }
+
+    .form-range {
+      width: 100%;
+      height: 6px;
+      background: var(--border-color);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .form-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .form-range::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Loading Animation */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Teleprompter Mode */
+    .teleprompter-mode {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: black;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .teleprompter-mode.active {
+      display: flex;
+    }
+
+    .teleprompter-text {
+      font-size: 3rem;
+      line-height: 1.6;
+      text-align: center;
+      padding: 40px;
+      color: white;
+      max-width: 1200px;
+    }
+
+    .teleprompter-controls {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .settings-panel {
+        width: 100%;
+        right: -100%;
+      }
+      
+      .transcription-container {
+        width: 95%;
+        bottom: 20px;
+      }
+      
+      .status-card {
+        padding: 20px;
+      }
+      
+      .teleprompter-text {
+        font-size: 2rem;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title">
+      <i class="fas fa-closed-captioning"></i>
+      <span>Whisper Live</span>
+    </div>
+    
+    <div class="header-controls">
+      <button class="btn btn-secondary" id="historyBtn">
+        <i class="fas fa-history"></i>
+        <span>История</span>
+      </button>
+      
+      <button class="btn btn-secondary" id="settingsBtn">
+        <i class="fas fa-cog"></i>
+        <span>Настройки</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    <!-- Status Card -->
+    <div class="status-card" id="statusCard">
+      <div class="status-icon" id="statusIcon">
+        <i class="fas fa-microphone-slash"></i>
+      </div>
+      <h2 class="status-title" id="statusTitle">Готов к записи</h2>
+      <p class="status-message" id="statusMessage">
+        Нажмите кнопку ниже, чтобы начать транскрибацию
+      </p>
+      
+      <button class="btn btn-primary" id="startBtn">
+        <i class="fas fa-microphone"></i>
+        <span>Начать запись</span>
+      </button>
+    </div>
+
+    <!-- Model Loading Progress -->
+    <div class="model-loading" id="modelLoading" style="display: none;">
+      <div class="loading-spinner"></div>
+      <p style="margin-top: 10px;">Загрузка модели Whisper...</p>
+    </div>
+  </main>
+
+  <!-- Transcription Display -->
+  <div class="transcription-container" id="transcriptionContainer">
+    <div class="transcription-text">
+      <div class="transcription-history" id="transcriptionHistory"></div>
+      <div class="transcription-current" id="transcriptionCurrent"></div>
+    </div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+      <h3 class="settings-title">Настройки</h3>
+      <button class="close-btn" id="closeSettingsBtn">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="languageSelect">Язык распознавания</label>
+      <select class="form-select" id="languageSelect">
+        <option value="auto">Автоопределение</option>
+        <option value="ru">Русский</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="zh">中文</option>
+        <option value="ja">日本語</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="fontSizeRange">Размер текста</label>
+      <input type="range" class="form-range" id="fontSizeRange" min="14" max="32" value="20">
+      <small class="text-secondary">20px</small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">
+        <input type="checkbox" id="autoTranslateCheck">
+        Автоматический перевод
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">
+        <input type="checkbox" id="teleprompterCheck">
+        Режим телесуфлёра
+      </label>
+    </div>
+  </div>
+
+  <!-- Teleprompter Mode -->
+  <div class="teleprompter-mode" id="teleprompterMode">
+    <div class="teleprompter-text" id="teleprompterText"></div>
+    <div class="teleprompter-controls">
+      <button class="btn btn-secondary" id="exitTeleprompterBtn">
+        <i class="fas fa-times"></i>
+        Выйти
+      </button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module">
+    // Import Transformers.js
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
+    
+    // Configure Transformers.js
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+
+    class WhisperLive {
+      constructor() {
+        this.isRecording = false;
+        this.mediaStream = null;
+        this.audioContext = null;
+        this.transcriber = null;
+        this.transcriptionHistory = [];
+        
+        this.initializeElements();
+        this.attachEventListeners();
+      }
+
+      initializeElements() {
+        // Status elements
+        this.statusCard = document.getElementById('statusCard');
+        this.statusIcon = document.getElementById('statusIcon');
+        this.statusTitle = document.getElementById('statusTitle');
+        this.statusMessage = document.getElementById('statusMessage');
+        
+        // Buttons
+        this.startBtn = document.getElementById('startBtn');
+        this.settingsBtn = document.getElementById('settingsBtn');
+        this.historyBtn = document.getElementById('historyBtn');
+        
+        // Transcription
+        this.transcriptionContainer = document.getElementById('transcriptionContainer');
+        this.transcriptionCurrent = document.getElementById('transcriptionCurrent');
+        this.transcriptionHistory = document.getElementById('transcriptionHistory');
+        
+        // Settings
+        this.settingsPanel = document.getElementById('settingsPanel');
+        this.closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        
+        // Model loading
+        this.modelLoading = document.getElementById('modelLoading');
+      }
+
+      attachEventListeners() {
+        this.startBtn.addEventListener('click', () => this.toggleRecording());
+        this.settingsBtn.addEventListener('click', () => this.openSettings());
+        this.closeSettingsBtn.addEventListener('click', () => this.closeSettings());
+        
+        // Font size adjustment
+        const fontSizeRange = document.getElementById('fontSizeRange');
+        fontSizeRange.addEventListener('input', (e) => {
+          const size = e.target.value;
+          document.querySelector('.transcription-text').style.fontSize = `${size}px`;
+          e.target.nextElementSibling.textContent = `${size}px`;
+        });
+      }
+
+      async toggleRecording() {
+        if (this.isRecording) {
+          this.stopRecording();
+        } else {
+          await this.startRecording();
+        }
+      }
+
+      async startRecording() {
+        try {
+          // Show loading state
+          this.startBtn.disabled = true;
+          this.startBtn.innerHTML = '<span class="loading-spinner"></span> Загрузка...';
+          
+          // Load Whisper model if not loaded
+          if (!this.transcriber) {
+            await this.loadWhisperModel();
+          }
+          
+          // Get microphone access
+          this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            } 
+          });
+          
+          // Update UI
+          this.isRecording = true;
+          this.statusIcon.innerHTML = '<i class="fas fa-microphone"></i>';
+          this.statusIcon.classList.add('recording');
+          this.statusTitle.textContent = 'Идет запись';
+          this.statusMessage.textContent = 'Говорите в микрофон, текст появится ниже';
+          this.startBtn.innerHTML = '<i class="fas fa-stop"></i> Остановить запись';
+          this.startBtn.disabled = false;
+          
+          // Show transcription container
+          this.transcriptionContainer.classList.add('active');
+          
+          // Start audio processing
+          await this.setupAudioProcessing();
+          
+        } catch (error) {
+          console.error('Error starting recording:', error);
+          this.showError('Не удалось получить доступ к микрофону');
+          this.startBtn.disabled = false;
+          this.startBtn.innerHTML = '<i class="fas fa-microphone"></i> Начать запись';
+        }
+      }
+
+      async loadWhisperModel() {
+        this.modelLoading.style.display = 'block';
+        this.statusCard.style.display = 'none';
+        
+        try {
+          // Load Whisper model
+          this.transcriber = await pipeline(
+            'automatic-speech-recognition',
+            'Xenova/whisper-tiny.en' // Using tiny model for speed
+          );
+          
+          this.modelLoading.style.display = 'none';
+          this.statusCard.style.display = 'block';
+          
+        } catch (error) {
+          console.error('Error loading Whisper model:', error);
+          this.showError('Не удалось загрузить модель Whisper');
+          this.modelLoading.style.display = 'none';
+          this.statusCard.style.display = 'block';
+        }
+      }
+
+      async setupAudioProcessing() {
+        // For now, show a demo message
+        // Real implementation would process audio chunks
+        this.transcriptionCurrent.textContent = 'Демо-режим: полная реализация будет добавлена';
+        
+        // Simulate transcription
+        setTimeout(() => {
+          this.addTranscription('Привет! Это демонстрация работы Whisper Live.');
+        }, 2000);
+      }
+
+      stopRecording() {
+        if (this.mediaStream) {
+          this.mediaStream.getTracks().forEach(track => track.stop());
+          this.mediaStream = null;
+        }
+        
+        this.isRecording = false;
+        this.statusIcon.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+        this.statusIcon.classList.remove('recording');
+        this.statusTitle.textContent = 'Запись остановлена';
+        this.statusMessage.textContent = 'Нажмите кнопку, чтобы начать новую запись';
+        this.startBtn.innerHTML = '<i class="fas fa-microphone"></i> Начать запись';
+      }
+
+      addTranscription(text) {
+        this.transcriptionHistory.push({
+          text: text,
+          timestamp: new Date()
+        });
+        
+        // Update history display
+        if (this.transcriptionHistory.length > 3) {
+          const oldText = this.transcriptionHistory[this.transcriptionHistory.length - 4].text;
+          this.transcriptionHistory.textContent = oldText + ' ';
+        }
+        
+        // Update current text
+        this.transcriptionCurrent.textContent = text;
+      }
+
+      openSettings() {
+        this.settingsPanel.classList.add('open');
+      }
+
+      closeSettings() {
+        this.settingsPanel.classList.remove('open');
+      }
+
+      showError(message) {
+        this.statusMessage.textContent = message;
+        this.statusMessage.style.color = 'var(--error-color)';
+      }
+    }
+
+    // Initialize app when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      const app = new WhisperLive();
+      
+      // Show browser compatibility warning if needed
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        app.showError('Ваш браузер не поддерживает захват аудио');
+        app.startBtn.disabled = true;
+      }
+    });
+  </script>
+</body>
+</html>
