@@ -246,6 +246,9 @@ jobs:
           echo "SHA: ${{ github.sha }}"
           echo "Ref: ${{ github.ref }}"
           echo "Event: ${{ github.event_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Job: ${{ github.job }}"
 
       - name: 📁 Prepare deployment artifacts
         run: |
@@ -268,9 +271,16 @@ jobs:
           ls -la deployment/
 
       - name: 📤 Upload Pages artifact
+        id: upload-artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./deployment"
+
+      - name: 🔍 Post-upload diagnostics
+        run: |
+          echo "📤 Artifact upload status..."
+          echo "Artifact ID: ${{ steps.upload-artifact.outputs.artifact-id }}"
+          echo "Artifact URL: ${{ steps.upload-artifact.outputs.artifact-url }}"
 
       - name: 🔍 Pre-deployment Check
         run: |
@@ -283,11 +293,20 @@ jobs:
           echo "  Actor: ${{ github.actor }}"
           token_status="${{ github.token && 'available' || 'missing' }}"
           echo "  Token permissions: pages=$token_status"
+          echo "  Artifact ID from upload: ${{ steps.upload-artifact.outputs.artifact-id }}"
+
+      - name: ⏳ Wait for artifact processing
+        run: |
+          echo "⏳ Waiting 10 seconds for artifact to be processed..."
+          sleep 10
 
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
         timeout-minutes: 10
+        with:
+          # Добавляем retry для повышения надежности
+          error_count: 3
 
       - name: 🎉 Deployment Success
         run: |
