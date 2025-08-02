@@ -293,7 +293,7 @@ jobs:
           echo "  Actor: ${{ github.actor }}"
           token_status="${{ github.token && 'available' || 'missing' }}"
           echo "  Token permissions: pages=$token_status"
-          echo "  Artifact ID from upload: ${{ steps.upload-artifact.outputs.artifact-id }}"
+          echo "  Artifact ID: ${{ steps.upload-artifact.outputs.artifact-id }}"
 
       - name: ⏳ Wait for artifact processing
         run: |
