@@ -765,7 +765,7 @@
               Инициализация системы
             </div>
             
-            <div class="model-progress-stats" id="modelProgressStats" style="display: none;">
+            <div class="model-progress-stats" id="modelProgressStats">
               <div class="progress-stat">
                 <span class="progress-stat-value" id="progressFiles">0/0</span>
                 <span class="progress-stat-label">Файлы</span>
@@ -1589,6 +1589,11 @@
 
         updateModelLoadingProgress(info) {
           if (!info) return;
+
+          // Показываем прогресс-бар если он скрыт
+          if (this.modelLoadingProgress && !this.modelLoadingProgress.classList.contains('show')) {
+            this.modelLoadingProgress.classList.add('show');
+          }
 
           // Инициализируем трекер файлов если его нет
           if (!this.fileTracker) {
