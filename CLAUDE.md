@@ -181,7 +181,8 @@ http-server
 [архитектурой](docs/architecture.md).
 
 для работы с Jira используй инструменты MCP (mcp**mcp-atlassian**\*) для работы с Bitbucket используй инструменты MCP
-(bitbucket) для проверки интерфейса используй MCP (playwright)
+(bitbucket) для проверки интерфейса используй MCP (playwright) используй /.aid индекс проекта для поиска информации
+созданный ai distiller mcp
 
 Для запуск Python используй python3
 
