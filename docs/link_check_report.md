@@ -36,7 +36,7 @@
    - ✅ `pyodide.org` (корректный URL)
 
 6. **README.md** (4 исправления)
-   - ❌ `https://username.github.io/AI-Pages` 
+   - ❌ `https://username.github.io/AI-Pages`
    - ✅ `https://w111.github.io/AI-Pages`
    - ❌ `https://github.com/username/AI-Pages.git` (2 места)
    - ✅ `https://github.com/w111/AI-Pages.git`
