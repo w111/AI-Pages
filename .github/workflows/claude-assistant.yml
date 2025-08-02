@@ -1,0 +1,88 @@
+name: Claude Assistant
+
+# Этот workflow использует официальное приложение Claude для GitHub
+# Установите приложение через: https://github.com/apps/claude-ai
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, edited]
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  claude-respond:
+    runs-on: ubuntu-latest
+    # Запускается только если есть упоминание @claude
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claude')) ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '@claude'))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Для PR checkout нужной ветки
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+
+      - name: Get context
+        id: context
+        run: |
+          echo "event_name=${{ github.event_name }}" >> $GITHUB_OUTPUT
+          echo "repository=${{ github.repository }}" >> $GITHUB_OUTPUT
+
+          # Определяем номер issue/PR
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "body=${{ github.event.comment.body }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "body=${{ github.event.comment.body }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "issues" ]]; then
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "body=${{ github.event.issue.body }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "body=${{ github.event.pull_request.body }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Invoke Claude
+        uses: anthropics/claude-github-action@v1
+        with:
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          request: |
+            Repository: ${{ steps.context.outputs.repository }}
+            Event: ${{ steps.context.outputs.event_name }}
+            Number: ${{ steps.context.outputs.number }}
+
+            User request:
+            ${{ steps.context.outputs.body }}
+
+            Please analyze the request and provide a helpful response.
+            For code analysis, check the repository files.
+            For bugs, suggest fixes.
+            For questions, provide clear explanations.
+
+      - name: Comment response
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const response = '${{ steps.claude.outputs.response }}';
+            const issueNumber = ${{ steps.context.outputs.number }};
+
+            if (response && issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `🤖 **Claude AI Response:**\n\n${response}`
+              });
+            }

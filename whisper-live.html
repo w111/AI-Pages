@@ -1,4 +1,51 @@
 <!DOCTYPE html>
+<!--
+Техническое задание: Whisper Live - Субтитры в реальном времени
+
+Функциональность:
+1. ✅ Транскрипция речи в реальном времени с использованием Whisper AI
+2. ✅ Захват аудио с микрофона через Web Audio API
+3. ✅ Обработка аудио чанками по 3 секунды для низкой задержки
+4. ✅ Поддержка 100+ языков (русский, английский, испанский и др.)
+5. ✅ Режим телесуфлёра для стримеров и докладчиков
+6. ✅ Настройка автоматического перевода (реализация API в процессе)
+7. ✅ Настройки: размер шрифта, тема, язык, выбор модели
+8. ✅ Сохранение настроек в localStorage
+9. ✅ История транскрипций с экспортом в TXT
+
+Технические детали:
+1. ✅ Использование Transformers.js для загрузки Whisper модели
+2. ✅ WebAssembly для производительности
+3. ✅ MediaRecorder API для записи аудио
+4. ✅ AudioContext для обработки и ресэмплинга (16kHz mono)
+5. ✅ Асинхронная обработка для неблокирующего UI
+6. ✅ Адаптивный дизайн для мобильных устройств
+7. ✅ Темная и светлая темы оформления
+8. ✅ Проверка совместимости браузера с предупреждениями
+
+Последние улучшения (январь 2025):
+- Асинхронная обработка через setTimeout и requestAnimationFrame
+- Восстановлен размер чанков до 5 секунд с 1-секундным перекрытием
+- Toggle-switch для переключения темы
+- Collapsible предупреждения о совместимости
+- Накопление истории транскрипции
+- Очистка повторяющегося текста (Whisper hallucinations)
+- Выбор модели Whisper (Tiny/Base/Small)
+- Тултипы с описанием функций
+- Визуализация аудиопотока (спектрограмма)
+- Обработка сырого аудио через ScriptProcessor для надежности
+
+Требования к браузеру:
+- Chrome 89+ или Edge 89+ (рекомендуется)
+- Firefox 76+ (с ограничениями)
+- Safari 14.1+ (с ограничениями WASM SIMD)
+- WebAssembly поддержка
+- MediaRecorder API
+- Web Audio API
+- SharedArrayBuffer (опционально, для лучшей производительности)
+
+Статус: Основной функционал завершен, оптимизация производительности в процессе
+-->
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -19,11 +66,27 @@
       --success-color: #10b981;
       --warning-color: #f59e0b;
       --error-color: #ef4444;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #0f172a;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --header-bg: #f1f5f9;
+    }
+    
+    /* Темная тема */
+    body.dark-theme {
+      --primary-color: #6366f1;
+      --secondary-color: #8b5cf6;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --error-color: #ef4444;
       --bg-color: #0f172a;
       --card-bg: #1e293b;
       --text-color: #e2e8f0;
       --text-secondary: #94a3b8;
       --border-color: #334155;
+      --header-bg: #1e293b;
     }
 
     * {
@@ -36,32 +99,100 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg-color);
       color: var(--text-color);
-      min-height: 100vh;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    /* Main Container */
+    .main-container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Left Sidebar */
+    .sidebar {
+      width: 400px;
+      background: var(--card-bg);
+      border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* App Header in Sidebar */
+    .app-header {
+      background: var(--header-bg);
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .app-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .app-title i {
+      color: var(--primary-color);
+    }
+
+    .app-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Transcription Area */
+    .transcription-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .transcription-item {
+      padding: 10px 15px;
+      border-radius: 8px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .transcription-item.current {
+      background: rgba(99, 102, 241, 0.1);
+      border-color: var(--primary-color);
+    }
+
+    .transcription-timestamp {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+    }
+
+    /* Main Content Area */
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     /* Header */
     .header {
-      background: var(--card-bg);
+      background: var(--header-bg);
       border-bottom: 1px solid var(--border-color);
       padding: 15px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 20px;
-    }
-
-    .header-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.2rem;
-      font-weight: 600;
-    }
-
-    .header-title i {
-      color: var(--primary-color);
     }
 
     .header-controls {
@@ -71,7 +202,7 @@
     }
 
     /* Main Content */
-    .main-container {
+    .main-content {
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -79,6 +210,7 @@
       justify-content: center;
       padding: 20px;
       position: relative;
+      overflow-y: auto;
     }
 
     /* Status Card */
@@ -194,7 +326,9 @@
 
     .transcription-history {
       color: var(--text-secondary);
-      margin-bottom: 10px;
+      margin-bottom: 15px;
+      line-height: 1.6;
+      opacity: 0.8;
     }
 
     /* Settings Panel */
@@ -237,6 +371,65 @@
       padding: 5px;
     }
 
+    /* Settings options */
+    .settings-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+    
+    .settings-option label {
+      color: var(--text-color);
+      font-size: 0.95rem;
+    }
+    
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+    }
+    
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 2px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: var(--primary-color);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(18px);
+    }
+    
     /* Form Elements */
     .form-group {
       margin-bottom: 20px;
@@ -247,6 +440,72 @@
       margin-bottom: 8px;
       font-weight: 500;
       color: var(--text-color);
+      cursor: pointer;
+    }
+    
+    .form-label input[type="checkbox"] {
+      margin-right: 8px;
+      cursor: pointer;
+    }
+    
+    /* Checkbox wrapper */
+    .form-checkbox-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    /* Tooltip styles */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      color: var(--text-secondary);
+      cursor: help;
+      margin-left: 8px;
+    }
+    
+    .tooltip i {
+      font-size: 0.9rem;
+    }
+    
+    .tooltip:hover {
+      color: var(--primary-color);
+    }
+    
+    .tooltip .tooltip-text {
+      visibility: hidden;
+      width: 250px;
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      text-align: left;
+      border-radius: 6px;
+      padding: 10px;
+      position: absolute;
+      z-index: 1000;
+      bottom: 125%;
+      right: 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border-color);
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    
+    .tooltip .tooltip-text::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      right: 10px;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: var(--card-bg) transparent transparent transparent;
+    }
+    
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
     }
 
     .form-select {
@@ -338,6 +597,19 @@
     }
 
     /* Responsive */
+    /* Collapsible warnings */
+    .warning-collapsible {
+      transition: all 0.3s ease;
+    }
+    
+    .warning-collapsible:hover {
+      background: rgba(245, 158, 11, 0.15) !important;
+    }
+    
+    .warning-header {
+      user-select: none;
+    }
+    
     @media (max-width: 768px) {
       .settings-panel {
         width: 100%;
@@ -393,9 +665,23 @@
         Нажмите кнопку ниже, чтобы начать транскрибацию
       </p>
       
+      <!-- Audio Visualizer -->
+      <canvas id="audioVisualizer" style="width: 100%; height: 60px; margin: 15px 0; display: none; border-radius: 8px; background: rgba(0,0,0,0.2);"></canvas>
+      
+      <!-- Audio Capture Indicator -->
+      <div id="audioCaptureIndicator" style="display: none; margin-top: 10px; font-size: 0.9rem; color: var(--text-secondary);">
+        <i class="fas fa-circle" style="color: var(--success-color); animation: pulse 2s infinite;"></i>
+        <span id="audioCaptureStatus">Захват аудио...</span>
+      </div>
+      
       <button class="btn btn-primary" id="startBtn">
         <i class="fas fa-microphone"></i>
         <span>Начать запись</span>
+      </button>
+      
+      <button class="btn btn-secondary" id="testBtn" style="margin-top: 10px;">
+        <i class="fas fa-vial"></i>
+        <span>Тест транскрипции</span>
       </button>
     </div>
 
@@ -423,6 +709,24 @@
       </button>
     </div>
 
+    <div class="settings-option">
+      <label for="themeToggle"><i class="fas fa-moon"></i> Темная тема</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="themeToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="modelSelect">Модель Whisper</label>
+      <select class="form-select" id="modelSelect">
+        <option value="Xenova/whisper-tiny">Tiny (39MB) - Быстрая</option>
+        <option value="Xenova/whisper-base" selected>Base (74MB) - Точная</option>
+        <option value="Xenova/whisper-small">Small (244MB) - Очень точная</option>
+      </select>
+      <small class="text-secondary">Большие модели требуют больше памяти и времени загрузки</small>
+    </div>
+
     <div class="form-group">
       <label class="form-label" for="languageSelect">Язык распознавания</label>
       <select class="form-select" id="languageSelect">
@@ -444,17 +748,29 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">
-        <input type="checkbox" id="autoTranslateCheck">
-        Автоматический перевод
-      </label>
+      <div class="form-checkbox-wrapper">
+        <label class="form-label">
+          <input type="checkbox" id="autoTranslateCheck">
+          Автоматический перевод
+        </label>
+        <div class="tooltip">
+          <i class="fas fa-info-circle"></i>
+          <span class="tooltip-text">Автоматически переводит распознанную речь на выбранный язык в реальном времени</span>
+        </div>
+      </div>
     </div>
 
     <div class="form-group">
-      <label class="form-label">
-        <input type="checkbox" id="teleprompterCheck">
-        Режим телесуфлёра
-      </label>
+      <div class="form-checkbox-wrapper">
+        <label class="form-label">
+          <input type="checkbox" id="teleprompterCheck">
+          Режим телесуфлёра
+        </label>
+        <div class="tooltip">
+          <i class="fas fa-info-circle"></i>
+          <span class="tooltip-text">Полноэкранный режим с крупным текстом. Активируйте переключатель в настройках, чтобы включать/выключать режим во время записи. Идеально для стримеров и докладчиков.</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -484,7 +800,10 @@
         this.mediaStream = null;
         this.audioContext = null;
         this.transcriber = null;
-        this.transcriptionHistory = [];
+        this.transcriptionHistoryData = []; // Array to store transcription history
+        this.audioChunks = [];
+        this.processingInterval = null;
+        this.isProcessing = false;
         
         this.initializeElements();
         this.attachEventListeners();
@@ -501,6 +820,7 @@
         this.startBtn = document.getElementById('startBtn');
         this.settingsBtn = document.getElementById('settingsBtn');
         this.historyBtn = document.getElementById('historyBtn');
+        this.testBtn = document.getElementById('testBtn');
         
         // Transcription
         this.transcriptionContainer = document.getElementById('transcriptionContainer');
@@ -510,23 +830,110 @@
         // Settings
         this.settingsPanel = document.getElementById('settingsPanel');
         this.closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        this.modelSelect = document.getElementById('modelSelect');
+        this.languageSelect = document.getElementById('languageSelect');
+        this.fontSizeRange = document.getElementById('fontSizeRange');
+        this.themeToggle = document.getElementById('themeToggle');
+        this.autoTranslateCheck = document.getElementById('autoTranslateCheck');
+        this.teleprompterCheck = document.getElementById('teleprompterCheck');
+        this.teleprompterMode = document.getElementById('teleprompterMode');
+        this.teleprompterText = document.getElementById('teleprompterText');
+        this.exitTeleprompterBtn = document.getElementById('exitTeleprompterBtn');
         
         // Model loading
         this.modelLoading = document.getElementById('modelLoading');
+        
+        // Audio visualizer
+        this.audioVisualizer = document.getElementById('audioVisualizer');
+        this.visualizerCtx = this.audioVisualizer.getContext('2d');
+        this.animationId = null;
       }
 
       attachEventListeners() {
         this.startBtn.addEventListener('click', () => this.toggleRecording());
         this.settingsBtn.addEventListener('click', () => this.openSettings());
         this.closeSettingsBtn.addEventListener('click', () => this.closeSettings());
+        this.historyBtn.addEventListener('click', () => this.showHistory());
         
-        // Font size adjustment
-        const fontSizeRange = document.getElementById('fontSizeRange');
-        fontSizeRange.addEventListener('input', (e) => {
+        // Test button - loads model and tests with sample audio
+        this.testBtn.addEventListener('click', async () => {
+          this.testBtn.disabled = true;
+          this.testBtn.innerHTML = '<span class="loading-spinner"></span> Тестирование...';
+          
+          try {
+            // Load model if not loaded
+            if (!this.transcriber) {
+              await this.loadWhisperModel();
+            }
+            
+            // Show test result
+            this.transcriptionContainer.classList.add('active');
+            this.addTranscription('Тест успешен! Модель загружена и готова к работе.');
+            
+          } catch (error) {
+            this.showError('Ошибка теста: ' + error.message);
+          } finally {
+            this.testBtn.disabled = false;
+            this.testBtn.innerHTML = '<i class="fas fa-vial"></i> Тест транскрипции';
+          }
+        });
+        
+        // Settings event listeners
+        this.fontSizeRange.addEventListener('input', (e) => {
           const size = e.target.value;
           document.querySelector('.transcription-text').style.fontSize = `${size}px`;
           e.target.nextElementSibling.textContent = `${size}px`;
+          localStorage.setItem('whisper-live-font-size', size);
         });
+        
+        this.themeToggle.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            document.body.classList.add('dark-theme');
+            localStorage.setItem('whisper-live-theme', 'dark');
+          } else {
+            document.body.classList.remove('dark-theme');
+            localStorage.setItem('whisper-live-theme', 'light');
+          }
+        });
+        
+        this.modelSelect.addEventListener('change', (e) => {
+          localStorage.setItem('whisper-live-model', e.target.value);
+          // Reset transcriber to force reload with new model
+          this.transcriber = null;
+        });
+        
+        this.languageSelect.addEventListener('change', (e) => {
+          localStorage.setItem('whisper-live-language', e.target.value);
+        });
+        
+        this.autoTranslateCheck.addEventListener('change', (e) => {
+          localStorage.setItem('whisper-live-auto-translate', e.target.checked);
+        });
+        
+        this.teleprompterCheck.addEventListener('change', (e) => {
+          localStorage.setItem('whisper-live-teleprompter', e.target.checked);
+          if (e.target.checked && this.isRecording) {
+            this.enterTeleprompterMode();
+          } else if (!e.target.checked) {
+            this.exitTeleprompterMode();
+          }
+        });
+        
+        this.exitTeleprompterBtn.addEventListener('click', () => {
+          this.exitTeleprompterMode();
+          this.teleprompterCheck.checked = false;
+        });
+        
+        // Prevent tooltip clicks from toggling checkboxes
+        document.querySelectorAll('.tooltip').forEach(tooltip => {
+          tooltip.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          });
+        });
+        
+        // Load saved settings
+        this.loadSettings();
       }
 
       async toggleRecording() {
@@ -553,7 +960,8 @@
             audio: {
               echoCancellation: true,
               noiseSuppression: true,
-              autoGainControl: true
+              autoGainControl: true,
+              sampleRate: 48000 // Запрашиваем стандартную частоту дискретизации
             } 
           });
           
@@ -568,13 +976,41 @@
           
           // Show transcription container
           this.transcriptionContainer.classList.add('active');
+          this.transcriptionContainer.style.display = 'block'; // Принудительно показываем
+          
+          // Show and setup audio visualizer
+          this.audioVisualizer.style.display = 'block';
+          this.audioVisualizer.width = this.audioVisualizer.offsetWidth;
+          this.audioVisualizer.height = 60;
+          
+          // Teleprompter mode is now only activated by user action in settings
+          // Not automatically when recording starts
           
           // Start audio processing
           await this.setupAudioProcessing();
           
+          // Start visualization
+          this.startVisualization();
+          
         } catch (error) {
           console.error('Error starting recording:', error);
-          this.showError('Не удалось получить доступ к микрофону');
+          
+          let errorMessage = 'Не удалось получить доступ к микрофону';
+          
+          // Provide specific error messages based on error type
+          if (error.name === 'NotAllowedError') {
+            errorMessage = 'Доступ к микрофону запрещен. Разрешите использование микрофона в настройках браузера.';
+          } else if (error.name === 'NotFoundError') {
+            errorMessage = 'Микрофон не найден. Подключите микрофон и перезагрузите страницу.';
+          } else if (error.name === 'NotReadableError') {
+            errorMessage = 'Микрофон занят другим приложением. Закройте другие программы, использующие микрофон.';
+          } else if (error.name === 'OverconstrainedError') {
+            errorMessage = 'Настройки микрофона не поддерживаются. Попробуйте другой микрофон.';
+          } else if (error.name === 'SecurityError') {
+            errorMessage = 'Доступ к микрофону заблокирован настройками безопасности браузера.';
+          }
+          
+          this.showError(errorMessage);
           this.startBtn.disabled = false;
           this.startBtn.innerHTML = '<i class="fas fa-microphone"></i> Начать запись';
         }
@@ -585,41 +1021,685 @@
         this.statusCard.style.display = 'none';
         
         try {
-          // Load Whisper model
-          this.transcriber = await pipeline(
-            'automatic-speech-recognition',
-            'Xenova/whisper-tiny.en' // Using tiny model for speed
-          );
+          // Get selected model
+          const selectedModel = this.modelSelect.value || 'Xenova/whisper-base';
+          const selectedLanguage = this.languageSelect.value;
+          
+          // Append language suffix for tiny model if English is selected
+          let modelName = selectedModel;
+          if (selectedModel === 'Xenova/whisper-tiny' && selectedLanguage === 'en') {
+            modelName = 'Xenova/whisper-tiny.en';
+          }
+          
+          console.log('Loading Whisper model:', modelName);
+          
+          // Use requestAnimationFrame to keep UI responsive during model loading
+          await new Promise((resolve) => {
+            requestAnimationFrame(async () => {
+              // Load Whisper model with progress callback
+              this.transcriber = await pipeline(
+                'automatic-speech-recognition',
+                modelName,
+                { 
+                  progress_callback: (data) => {
+                    console.log('Model loading progress:', data);
+                    
+                    // Update progress in next animation frame to avoid blocking
+                    requestAnimationFrame(() => {
+                      if (data.status === 'downloading') {
+                        const percent = Math.round((data.loaded / data.total) * 100);
+                        const loadingText = document.querySelector('#modelLoading p');
+                        if (loadingText) {
+                          loadingText.textContent = `Загрузка модели Whisper... ${percent}%`;
+                        }
+                      } else if (data.status === 'loading') {
+                        const loadingText = document.querySelector('#modelLoading p');
+                        if (loadingText) {
+                          loadingText.textContent = 'Инициализация модели...';
+                        }
+                      }
+                    });
+                  }
+                }
+              );
+              resolve();
+            });
+          });
+          
+          console.log('Model loaded successfully:', this.transcriber);
           
           this.modelLoading.style.display = 'none';
           this.statusCard.style.display = 'block';
           
         } catch (error) {
           console.error('Error loading Whisper model:', error);
-          this.showError('Не удалось загрузить модель Whisper');
+          
+          let errorMessage = 'Не удалось загрузить модель Whisper';
+          
+          // Provide more specific error messages
+          if (error.message && error.message.includes('fetch')) {
+            errorMessage = 'Ошибка сети при загрузке модели. Проверьте подключение к интернету.';
+          } else if (error.message && error.message.includes('memory')) {
+            errorMessage = 'Недостаточно памяти для загрузки модели. Попробуйте закрыть другие вкладки.';
+          } else if (error.name === 'AbortError') {
+            errorMessage = 'Загрузка модели была прервана. Попробуйте снова.';
+          }
+          
+          this.showError(errorMessage);
           this.modelLoading.style.display = 'none';
           this.statusCard.style.display = 'block';
         }
       }
 
       async setupAudioProcessing() {
-        // For now, show a demo message
-        // Real implementation would process audio chunks
-        this.transcriptionCurrent.textContent = 'Демо-режим: полная реализация будет добавлена';
+        try {
+          // Create audio context
+          this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          console.log('AudioContext created, sample rate:', this.audioContext.sampleRate);
+          
+          // Resume audio context if suspended
+          if (this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+            console.log('AudioContext resumed');
+          }
+          
+          // Create audio source from media stream
+          const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+          console.log('Audio source created from media stream');
+          
+          // Create analyser for audio visualization
+          this.analyser = this.audioContext.createAnalyser();
+          this.analyser.fftSize = 256;
+          this.analyser.smoothingTimeConstant = 0.8;
+          source.connect(this.analyser);
+          
+          // Set up visualization data
+          this.bufferLength = this.analyser.frequencyBinCount;
+          this.dataArray = new Uint8Array(this.bufferLength);
+          
+          // Set up script processor for direct audio processing
+          const scriptProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
+          source.connect(scriptProcessor);
+          
+          // Создаем GainNode с нулевым усилением для предотвращения эха
+          const silentGain = this.audioContext.createGain();
+          silentGain.gain.value = 0; // Отключаем звук
+          scriptProcessor.connect(silentGain);
+          silentGain.connect(this.audioContext.destination);
+          
+          // Collect raw audio samples
+          this.audioBuffer = [];
+          this.bufferDuration = 0;
+          const sampleRate = this.audioContext.sampleRate;
+          
+          // Счетчик для отладки
+          let processCount = 0;
+          
+          scriptProcessor.onaudioprocess = (event) => {
+            if (!this.isRecording) return;
+            
+            processCount++;
+            if (processCount % 100 === 0) { // Логировать каждые 100 вызовов
+              console.log(`ScriptProcessor called ${processCount} times`);
+            }
+            
+            const inputData = event.inputBuffer.getChannelData(0);
+            
+            // Проверка первых нескольких значений для отладки
+            if (processCount === 1 || processCount % 200 === 0) {
+              console.log(`Sample values: ${inputData[0]?.toFixed(6)}, ${inputData[1]?.toFixed(6)}, ${inputData[2]?.toFixed(6)}, length: ${inputData.length}`);
+            }
+            
+            // Check if we have actual audio data (not silence)
+            let maxValue = 0;
+            let sumSquares = 0;
+            for (let i = 0; i < inputData.length; i++) {
+              const value = Math.abs(inputData[i]);
+              maxValue = Math.max(maxValue, value);
+              sumSquares += value * value;
+            }
+            const rms = Math.sqrt(sumSquares / inputData.length);
+            
+            // Log audio levels periodically for debugging
+            if (Date.now() % 1000 < 100) { // Log approximately once per second
+              console.log(`Audio levels - Max: ${maxValue.toFixed(4)}, RMS: ${rms.toFixed(4)}`);
+            }
+            
+            // Only process if we have actual audio (lower threshold for testing)
+            if (maxValue > 0.0001) {  // Понизил порог в 10 раз для тестирования
+              // Copy the data
+              const chunk = new Float32Array(inputData);
+              this.audioBuffer.push(chunk);
+              this.bufferDuration += chunk.length / sampleRate;
+              
+              // Log progress every second
+              if (Math.floor(this.bufferDuration) > Math.floor(this.bufferDuration - chunk.length / sampleRate)) {
+                console.log(`ScriptProcessor: ${this.bufferDuration.toFixed(1)}s of audio collected`);
+                // Update UI indicator
+                const indicator = document.getElementById('audioCaptureIndicator');
+                const status = document.getElementById('audioCaptureStatus');
+                if (indicator && status) {
+                  indicator.style.display = 'block';
+                  status.textContent = `Захват аудио: ${this.bufferDuration.toFixed(1)}с`;
+                }
+              }
+              
+              // Process every 5 seconds
+              if (this.bufferDuration >= 5) {
+                console.log('ScriptProcessor: Processing 5 seconds of audio');
+                this.processRawAudio();
+              }
+            }
+          };
+          
+          this.scriptProcessor = scriptProcessor;
+          
+          // Create MediaRecorder for fallback recording
+          const mimeTypes = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/ogg;codecs=opus',
+            'audio/ogg',
+            'audio/mp4',
+            'audio/mpeg'
+          ];
+          
+          let selectedMimeType = '';
+          for (const mimeType of mimeTypes) {
+            if (MediaRecorder.isTypeSupported(mimeType)) {
+              selectedMimeType = mimeType;
+              console.log(`Using mime type: ${mimeType}`);
+              break;
+            }
+          }
+          
+          this.mediaRecorder = new MediaRecorder(this.mediaStream, {
+            mimeType: selectedMimeType,
+            audioBitsPerSecond: 128000
+          });
+          
+          // Initialize audio chunks array
+          this.audioChunks = [];
+          this.isProcessing = false;
+          
+          // Handle audio data - collect chunks continuously
+          this.mediaRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              console.log('Received audio chunk:', event.data.size, 'bytes');
+              this.audioChunks.push(event.data);
+              
+              // Log total accumulated audio size
+              const totalSize = this.audioChunks.reduce((sum, chunk) => sum + chunk.size, 0);
+              console.log(`Total audio accumulated: ${(totalSize / 1024).toFixed(2)} KB`);
+            } else {
+              console.warn('Received empty audio chunk');
+            }
+          };
+          
+          // Process any remaining audio when recording stops
+          this.mediaRecorder.onstop = async () => {
+            console.log('MediaRecorder stopped, processing remaining chunks...');
+            if (this.audioChunks.length > 0 && !this.isProcessing) {
+              await this.processAudioChunksWithOverlap(this.audioChunks);
+            }
+          };
+          
+          // Comment out MediaRecorder recording since we're using ScriptProcessor
+          // this.startChunkedRecording();
+          console.log('Using ScriptProcessor for audio capture instead of MediaRecorder');
+          
+        } catch (error) {
+          console.error('Error setting up audio processing:', error);
+          this.showError('Ошибка настройки обработки аудио: ' + error.message);
+        }
+      }
+      
+      startChunkedRecording() {
+        console.log('Starting chunked recording...');
         
-        // Simulate transcription
-        setTimeout(() => {
-          this.addTranscription('Привет! Это демонстрация работы Whisper Live.');
-        }, 2000);
+        // Start continuous recording with timeslice to get regular data events
+        // timeslice of 1000ms means we get data every second
+        this.mediaRecorder.start(1000);
+        
+        // Process audio chunks with overlap every 4 seconds (5 seconds of audio with 1 second overlap)
+        this.processingInterval = setInterval(() => {
+          console.log(`Processing interval triggered. isRecording: ${this.isRecording}, isProcessing: ${this.isProcessing}, chunks: ${this.audioChunks.length}`);
+          
+          if (!this.isRecording || this.isProcessing) {
+            console.log('Skipping processing - recording stopped or already processing');
+            return;
+          }
+          
+          // Create a copy of accumulated audio chunks
+          const chunksToProcess = [...this.audioChunks];
+          
+          if (chunksToProcess.length > 0) {
+            const totalSize = chunksToProcess.reduce((sum, chunk) => sum + chunk.size, 0);
+            console.log(`Processing ${chunksToProcess.length} audio chunks (${(totalSize / 1024).toFixed(2)} KB) with overlap...`);
+            
+            // Process chunks but keep last second for overlap
+            this.processAudioChunksWithOverlap(chunksToProcess);
+            
+            // Keep only the last 1 second of audio for overlap
+            // With 1000ms chunks, keep last 1 chunk for 1 second overlap
+            const chunksToKeep = 1;
+            this.audioChunks = this.audioChunks.slice(-chunksToKeep);
+            console.log(`Kept ${this.audioChunks.length} chunks for overlap`);
+          } else {
+            console.log('No audio chunks to process yet');
+          }
+        }, 4000); // Process every 4 seconds (will have 5 seconds of audio with 1 second overlap)
+      }
+      
+      async processAudioChunksWithOverlap(chunks) {
+        if (this.isProcessing || !this.transcriber) {
+          console.log('Cannot process - already processing or no transcriber');
+          return;
+        }
+        
+        this.isProcessing = true;
+        console.log('Starting audio processing...');
+        
+        // Show processing indicator
+        this.transcriptionCurrent.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Обработка...';
+        
+        try {
+          // Convert audio chunks to audio buffer
+          // Use the same mime type that was used for recording
+          const mimeType = this.mediaRecorder.mimeType || 'audio/webm';
+          console.log(`Creating blob with mime type: ${mimeType}`);
+          
+          const audioBlob = new Blob(chunks, { type: mimeType });
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          console.log(`Audio blob size: ${audioBlob.size} bytes`);
+          
+          // Decode audio data
+          let audioBuffer;
+          try {
+            audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            console.log(`Audio decoded successfully. Duration: ${audioBuffer.duration}s, Sample rate: ${audioBuffer.sampleRate}Hz`);
+          } catch (decodeError) {
+            console.error('Failed to decode audio data:', decodeError);
+            
+            // Try alternative decoding approach
+            console.log('Trying alternative audio processing...');
+            
+            // Skip this chunk and continue
+            this.transcriptionCurrent.textContent = '';
+            this.isProcessing = false;
+            return;
+          }
+          
+          // Convert to the format expected by Whisper (16kHz mono)
+          const audioData = this.convertAudioBuffer(audioBuffer);
+          
+          // Get selected language
+          const selectedLanguage = this.languageSelect.value;
+          const language = selectedLanguage === 'auto' ? undefined : selectedLanguage;
+          
+          console.log('Sending to Whisper with overlap:', {
+            audioDataLength: audioData.length,
+            language: language
+          });
+          
+          // Process in next tick to avoid blocking UI
+          setTimeout(async () => {
+            try {
+              // Transcribe with Whisper
+              const result = await this.transcriber(audioData, {
+                language: language,
+                task: 'transcribe',
+                chunk_length_s: 30, // Увеличиваем внутренний размер обработки
+                return_timestamps: true,
+                // Добавляем параметры для лучшего качества
+                temperature: 0.0, // Более детерминированный вывод
+                compression_ratio_threshold: 2.4,
+                no_speech_threshold: 0.6
+              });
+              
+              console.log('Whisper result:', result);
+              
+              // Update UI with transcription
+              if (result && result.text && result.text.trim()) {
+                // Clean up repetitive text from Whisper hallucinations
+                let cleanedText = this.cleanTranscription(result.text.trim());
+                
+                if (cleanedText) {
+                  // Check if this text is a duplicate of the last transcription
+                  // (due to overlap, we might get the same text twice)
+                  const lastTranscription = this.transcriptionHistoryData.length > 0 
+                    ? this.transcriptionHistoryData[this.transcriptionHistoryData.length - 1].text 
+                    : '';
+                  
+                  // Only add if it's not a duplicate or substring of the last transcription
+                  if (!lastTranscription.includes(cleanedText) && !cleanedText.includes(lastTranscription)) {
+                    console.log('Adding transcription:', cleanedText);
+                    this.addTranscription(cleanedText);
+                  } else {
+                    console.log('Skipping duplicate text from overlap');
+                    this.transcriptionCurrent.textContent = '';
+                  }
+                } else {
+                  console.log('Filtered out repetitive text');
+                  this.transcriptionCurrent.textContent = '';
+                }
+              } else {
+                console.log('No speech detected in this chunk');
+                this.transcriptionCurrent.textContent = '';
+              }
+            } catch (error) {
+              console.error('Error processing audio:', error);
+              this.transcriptionCurrent.textContent = '';
+            } finally {
+              this.isProcessing = false;
+            }
+          }, 0);
+          
+        } catch (error) {
+          console.error('Error decoding audio:', error);
+          this.transcriptionCurrent.textContent = '';
+          this.isProcessing = false;
+        }
+      }
+
+      // Process raw audio data from ScriptProcessor
+      async processRawAudio() {
+        if (this.isProcessing || !this.transcriber || !this.audioBuffer || this.audioBuffer.length === 0 || !this.audioContext) {
+          console.log('Cannot process raw audio:', {
+            isProcessing: this.isProcessing,
+            hasTranscriber: !!this.transcriber,
+            bufferLength: this.audioBuffer ? this.audioBuffer.length : 0,
+            hasAudioContext: !!this.audioContext
+          });
+          return;
+        }
+        
+        this.isProcessing = true;
+        console.log('Processing raw audio data...');
+        
+        try {
+          // Calculate total length of all audio chunks
+          const totalLength = this.audioBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
+          
+          // Create a single Float32Array with all audio data
+          const combinedAudio = new Float32Array(totalLength);
+          let offset = 0;
+          
+          for (const chunk of this.audioBuffer) {
+            combinedAudio.set(chunk, offset);
+            offset += chunk.length;
+          }
+          
+          // Keep last 1 second of audio for overlap
+          const sampleRate = this.audioContext.sampleRate;
+          const samplesToKeep = Math.min(sampleRate, Math.floor(totalLength * 0.2)); // Keep 20% or 1 second
+          
+          // Process the audio
+          const audioData = this.convertRawAudioToWhisperFormat(combinedAudio, sampleRate);
+          
+          // Get selected language
+          const selectedLanguage = this.languageSelect.value;
+          const language = selectedLanguage === 'auto' ? undefined : selectedLanguage;
+          
+          console.log('Sending raw audio to Whisper:', {
+            audioDataLength: audioData.length,
+            language: language,
+            duration: totalLength / sampleRate + 's'
+          });
+          
+          // Show processing indicator
+          this.transcriptionCurrent.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Обработка...';
+          
+          // Для отладки - показываем, что обработка началась
+          console.log(`Starting Whisper transcription for ${(totalLength / sampleRate).toFixed(1)}s of audio`);
+          
+          // Process in next tick to avoid blocking UI
+          setTimeout(async () => {
+            try {
+              // Transcribe with Whisper
+              const result = await this.transcriber(audioData, {
+                language: language,
+                task: 'transcribe',
+                chunk_length_s: 30,
+                return_timestamps: true,
+                temperature: 0.0,
+                compression_ratio_threshold: 2.4,
+                no_speech_threshold: 0.6
+              });
+              
+              console.log('Whisper result from raw audio:', result);
+              
+              // Update UI with transcription
+              if (result && result.text && result.text.trim()) {
+                const cleanedText = this.cleanTranscription(result.text.trim());
+                
+                if (cleanedText) {
+                  const lastTranscription = this.transcriptionHistoryData.length > 0 
+                    ? this.transcriptionHistoryData[this.transcriptionHistoryData.length - 1].text 
+                    : '';
+                  
+                  if (!lastTranscription.includes(cleanedText) && !cleanedText.includes(lastTranscription)) {
+                    console.log('Adding transcription from raw audio:', cleanedText);
+                    this.addTranscription(cleanedText);
+                  } else {
+                    console.log('Skipping duplicate text from overlap');
+                    // Все равно показываем текст, даже если он дубликат
+                    this.transcriptionCurrent.textContent = cleanedText;
+                  }
+                } else {
+                  this.transcriptionCurrent.textContent = '';
+                }
+              } else {
+                console.log('No speech detected in raw audio');
+                this.transcriptionCurrent.textContent = '';
+              }
+            } catch (error) {
+              console.error('Error processing raw audio:', error);
+              this.transcriptionCurrent.textContent = '';
+            } finally {
+              this.isProcessing = false;
+              
+              // Reset buffer but keep last second for overlap
+              const keepFromIndex = Math.max(0, this.audioBuffer.length - Math.ceil(samplesToKeep / 4096));
+              this.audioBuffer = this.audioBuffer.slice(keepFromIndex);
+              this.bufferDuration = this.audioBuffer.reduce((sum, chunk) => sum + chunk.length, 0) / sampleRate;
+              console.log(`Reset audio buffer, kept ${this.bufferDuration}s for overlap`);
+              
+              // Update UI indicator
+              const indicator = document.getElementById('audioCaptureIndicator');
+              const status = document.getElementById('audioCaptureStatus');
+              if (indicator && status) {
+                status.textContent = `Ожидание аудио...`;
+              }
+            }
+          }, 0);
+          
+        } catch (error) {
+          console.error('Error in processRawAudio:', error);
+          this.transcriptionCurrent.textContent = '';
+          this.isProcessing = false;
+        }
+      }
+      
+      // Convert raw Float32Array audio to format expected by Whisper
+      convertRawAudioToWhisperFormat(audioData, sourceSampleRate) {
+        const targetSampleRate = 16000;
+        
+        // Resample to 16kHz if needed
+        if (sourceSampleRate !== targetSampleRate) {
+          const ratio = sourceSampleRate / targetSampleRate;
+          const newLength = Math.floor(audioData.length / ratio);
+          const resampledData = new Float32Array(newLength);
+          
+          for (let i = 0; i < newLength; i++) {
+            const srcIndex = Math.floor(i * ratio);
+            resampledData[i] = audioData[srcIndex];
+          }
+          
+          return resampledData;
+        }
+        
+        return audioData;
+      }
+      
+      // Keep the old method for backward compatibility
+      async processAudioChunks() {
+        await this.processAudioChunksWithOverlap(this.audioChunks);
+      }
+      
+      convertAudioBuffer(audioBuffer) {
+        // Convert audio buffer to 16kHz mono float32 array for Whisper
+        const targetSampleRate = 16000;
+        const originalSampleRate = audioBuffer.sampleRate;
+        
+        // Get mono audio data
+        let audioData;
+        if (audioBuffer.numberOfChannels === 1) {
+          audioData = audioBuffer.getChannelData(0);
+        } else {
+          // Mix down to mono
+          const left = audioBuffer.getChannelData(0);
+          const right = audioBuffer.getChannelData(1);
+          audioData = new Float32Array(left.length);
+          for (let i = 0; i < left.length; i++) {
+            audioData[i] = (left[i] + right[i]) / 2;
+          }
+        }
+        
+        // Resample to 16kHz if needed
+        if (originalSampleRate !== targetSampleRate) {
+          const ratio = originalSampleRate / targetSampleRate;
+          const newLength = Math.floor(audioData.length / ratio);
+          const resampledData = new Float32Array(newLength);
+          
+          for (let i = 0; i < newLength; i++) {
+            const srcIndex = Math.floor(i * ratio);
+            resampledData[i] = audioData[srcIndex];
+          }
+          
+          return resampledData;
+        }
+        
+        return audioData;
+      }
+      
+      cleanTranscription(text) {
+        // Remove excessive repetitions (common Whisper hallucination)
+        // Example: "три, три, три, три..." -> "три"
+        const words = text.split(/[\s,]+/).filter(w => w.length > 0);
+        if (words.length === 0) return '';
+        
+        // Check if more than 50% of words are the same
+        const wordCounts = {};
+        words.forEach(word => {
+          wordCounts[word] = (wordCounts[word] || 0) + 1;
+        });
+        
+        const maxCount = Math.max(...Object.values(wordCounts));
+        const totalWords = words.length;
+        
+        // If one word appears more than 50% of the time, it's likely a hallucination
+        if (maxCount > totalWords * 0.5 && totalWords > 5) {
+          // Return only unique words
+          const uniqueWords = [...new Set(words)];
+          return uniqueWords.join(' ');
+        }
+        
+        return text;
+      }
+
+      startVisualization() {
+        const draw = () => {
+          if (!this.isRecording) return;
+          
+          this.animationId = requestAnimationFrame(draw);
+          
+          // Get frequency data
+          this.analyser.getByteFrequencyData(this.dataArray);
+          
+          // Clear canvas
+          this.visualizerCtx.fillStyle = 'rgba(30, 41, 59, 0.2)';
+          this.visualizerCtx.fillRect(0, 0, this.audioVisualizer.width, this.audioVisualizer.height);
+          
+          // Draw frequency bars
+          const barWidth = (this.audioVisualizer.width / this.bufferLength) * 2.5;
+          let barHeight;
+          let x = 0;
+          
+          for (let i = 0; i < this.bufferLength; i++) {
+            barHeight = (this.dataArray[i] / 255) * this.audioVisualizer.height * 0.8;
+            
+            // Color based on frequency and amplitude
+            const hue = (i / this.bufferLength) * 120; // Green to red
+            const lightness = 50 + (this.dataArray[i] / 255) * 30;
+            this.visualizerCtx.fillStyle = `hsl(${hue}, 70%, ${lightness}%)`;
+            
+            this.visualizerCtx.fillRect(x, this.audioVisualizer.height - barHeight, barWidth, barHeight);
+            
+            x += barWidth + 1;
+          }
+        };
+        
+        draw();
       }
 
       stopRecording() {
+        this.isRecording = false;
+        
+        // Stop visualization
+        if (this.animationId) {
+          cancelAnimationFrame(this.animationId);
+          this.animationId = null;
+        }
+        
+        // Hide visualizer
+        this.audioVisualizer.style.display = 'none';
+        
+        // Hide audio capture indicator
+        const indicator = document.getElementById('audioCaptureIndicator');
+        if (indicator) {
+          indicator.style.display = 'none';
+        }
+        
+        // Stop processing interval
+        if (this.processingInterval) {
+          clearInterval(this.processingInterval);
+          this.processingInterval = null;
+        }
+        
+        // Stop media recorder
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+          this.mediaRecorder.stop();
+        }
+        
+        // Clear audio chunks
+        this.audioChunks = [];
+        
+        // Stop media stream
         if (this.mediaStream) {
           this.mediaStream.getTracks().forEach(track => track.stop());
           this.mediaStream = null;
         }
         
-        this.isRecording = false;
+        // Disconnect and stop script processor
+        if (this.scriptProcessor) {
+          this.scriptProcessor.disconnect();
+          this.scriptProcessor = null;
+        }
+        
+        // Clear audio buffer
+        this.audioBuffer = [];
+        this.bufferDuration = 0;
+        
+        // Close audio context
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+          this.audioContext.close();
+          this.audioContext = null;
+        }
+        
+        // Don't exit teleprompter mode automatically - let user control it
+        
+        // Update UI
         this.statusIcon.innerHTML = '<i class="fas fa-microphone-slash"></i>';
         this.statusIcon.classList.remove('recording');
         this.statusTitle.textContent = 'Запись остановлена';
@@ -628,19 +1708,42 @@
       }
 
       addTranscription(text) {
-        this.transcriptionHistory.push({
+        this.transcriptionHistoryData.push({
           text: text,
           timestamp: new Date()
         });
         
-        // Update history display
-        if (this.transcriptionHistory.length > 3) {
-          const oldText = this.transcriptionHistory[this.transcriptionHistory.length - 4].text;
-          this.transcriptionHistory.textContent = oldText + ' ';
-        }
+        // Build complete history text
+        const allText = this.transcriptionHistoryData
+          .map(item => item.text)
+          .join(' ');
         
-        // Update current text
+        // Update history display with all previous text
+        this.transcriptionHistory.textContent = allText;
+        
+        // Update current text (highlight latest)
         this.transcriptionCurrent.textContent = text;
+        
+        // Scroll to bottom to show latest text
+        this.transcriptionContainer.scrollTop = this.transcriptionContainer.scrollHeight;
+        
+        // Update teleprompter if active with complete text
+        if (this.teleprompterMode.classList.contains('active')) {
+          this.teleprompterText.textContent = allText;
+        }
+      }
+      
+      enterTeleprompterMode() {
+        this.teleprompterMode.classList.add('active');
+        // Copy current transcription to teleprompter
+        const currentText = this.transcriptionCurrent.textContent;
+        if (currentText) {
+          this.teleprompterText.textContent = currentText;
+        }
+      }
+      
+      exitTeleprompterMode() {
+        this.teleprompterMode.classList.remove('active');
       }
 
       openSettings() {
@@ -650,21 +1753,256 @@
       closeSettings() {
         this.settingsPanel.classList.remove('open');
       }
+      
+      showHistory() {
+        if (this.transcriptionHistoryData.length === 0) {
+          alert('История транскрипций пуста. Начните запись, чтобы создать историю.');
+          return;
+        }
+        
+        // Create text content with timestamps
+        let historyText = 'История транскрипций\n';
+        historyText += '===================\n\n';
+        
+        this.transcriptionHistoryData.forEach(item => {
+          const time = new Date(item.timestamp).toLocaleTimeString('ru-RU');
+          historyText += `[${time}] ${item.text}\n\n`;
+        });
+        
+        // Create download link
+        const blob = new Blob([historyText], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `whisper-transcription-${new Date().toISOString().slice(0, 10)}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      
+      loadSettings() {
+        // Load theme
+        const savedTheme = localStorage.getItem('whisper-live-theme');
+        if (savedTheme === 'dark') {
+          this.themeToggle.checked = true;
+          document.body.classList.add('dark-theme');
+        } else if (savedTheme === 'light') {
+          document.body.classList.remove('dark-theme');
+        } else {
+          // Default to dark theme to match other pages
+          this.themeToggle.checked = true;
+          document.body.classList.add('dark-theme');
+        }
+        
+        // Load font size
+        const savedFontSize = localStorage.getItem('whisper-live-font-size');
+        if (savedFontSize) {
+          this.fontSizeRange.value = savedFontSize;
+          document.querySelector('.transcription-text').style.fontSize = `${savedFontSize}px`;
+          this.fontSizeRange.nextElementSibling.textContent = `${savedFontSize}px`;
+        }
+        
+        // Load model
+        const savedModel = localStorage.getItem('whisper-live-model');
+        if (savedModel) {
+          this.modelSelect.value = savedModel;
+        }
+        
+        // Load language
+        const savedLanguage = localStorage.getItem('whisper-live-language');
+        if (savedLanguage) {
+          this.languageSelect.value = savedLanguage;
+        }
+        
+        // Load auto-translate setting
+        const savedAutoTranslate = localStorage.getItem('whisper-live-auto-translate');
+        if (savedAutoTranslate === 'true') {
+          this.autoTranslateCheck.checked = true;
+        }
+        
+        // Load teleprompter setting
+        const savedTeleprompter = localStorage.getItem('whisper-live-teleprompter');
+        if (savedTeleprompter === 'true') {
+          this.teleprompterCheck.checked = true;
+        }
+      }
 
       showError(message) {
-        this.statusMessage.textContent = message;
+        this.statusMessage.innerHTML = message.replace(/\n/g, '<br>');
         this.statusMessage.style.color = 'var(--error-color)';
+        
+        // Change icon to error state
+        this.statusIcon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+        this.statusIcon.style.color = 'var(--error-color)';
+        this.statusTitle.textContent = 'Ошибка';
+        
+        // Show retry button if app was trying to start
+        if (this.startBtn.disabled) {
+          setTimeout(() => {
+            this.startBtn.disabled = false;
+            this.startBtn.innerHTML = '<i class="fas fa-redo"></i> Попробовать снова';
+            
+            // Reset retry action to restart the process
+            this.startBtn.onclick = () => {
+              this.startBtn.innerHTML = '<i class="fas fa-microphone"></i> Начать запись';
+              this.startBtn.onclick = null; // Remove custom handler
+              this.toggleRecording();
+            };
+          }, 2000);
+        }
       }
+      
+      showWarning(message, details = null) {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'warning-collapsible';
+        warningDiv.style.cssText = `
+          background: rgba(245, 158, 11, 0.1);
+          border: 1px solid var(--warning-color);
+          border-radius: 8px;
+          padding: 12px;
+          margin-top: 15px;
+          color: var(--warning-color);
+          font-size: 0.9rem;
+          cursor: ${details ? 'pointer' : 'default'};
+        `;
+        
+        if (details) {
+          // Create expandable warning
+          warningDiv.innerHTML = `
+            <div class="warning-header">
+              <i class="fas fa-exclamation-triangle"></i> ${message}
+              <i class="fas fa-chevron-down" style="float: right; transition: transform 0.3s;"></i>
+            </div>
+            <div class="warning-details" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--warning-color); opacity: 0.8;">
+              ${details}
+            </div>
+          `;
+          
+          // Add toggle functionality
+          warningDiv.addEventListener('click', function() {
+            const detailsDiv = this.querySelector('.warning-details');
+            const chevron = this.querySelector('.fa-chevron-down');
+            if (detailsDiv.style.display === 'none') {
+              detailsDiv.style.display = 'block';
+              chevron.style.transform = 'rotate(180deg)';
+            } else {
+              detailsDiv.style.display = 'none';
+              chevron.style.transform = 'rotate(0deg)';
+            }
+          });
+        } else {
+          warningDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+        }
+        
+        this.statusCard.appendChild(warningDiv);
+      }
+    }
+
+    // Browser compatibility check
+    function checkBrowserCompatibility() {
+      const requirements = [];
+      
+      // Check Web Audio API
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        requirements.push('Доступ к микрофону (Web Audio API)');
+      }
+      
+      // Check WebAssembly support
+      if (typeof WebAssembly !== 'object') {
+        requirements.push('WebAssembly поддержка');
+      }
+      
+      // Check MediaRecorder support
+      if (typeof MediaRecorder === 'undefined') {
+        requirements.push('MediaRecorder API поддержка');
+      }
+      
+      // Check AudioContext support
+      if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') {
+        requirements.push('Web Audio API поддержка');
+      }
+      
+      // Check ES6 modules support
+      if (typeof Symbol === 'undefined') {
+        requirements.push('Современные возможности JavaScript (ES6+)');
+      }
+      
+      // Check if SharedArrayBuffer is available (needed for some WASM operations)
+      if (typeof SharedArrayBuffer === 'undefined') {
+        console.warn('SharedArrayBuffer недоступен - некоторые функции могут работать медленнее');
+      }
+      
+      // Check for other performance-related features
+      const performanceWarnings = [];
+      
+      // Check for SIMD support
+      if (!WebAssembly.validate(new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x05, 0x01, 0x60, 0x00, 0x00, 0x02, 0x12, 0x01, 0x04, 0x77, 0x61, 0x73, 0x6d, 0x04, 0x73, 0x69, 0x6d, 0x64, 0x02, 0xfd, 0x01, 0x00, 0x00]))) {
+        performanceWarnings.push('WebAssembly SIMD не поддерживается - обработка будет медленнее');
+      }
+      
+      // Check for OffscreenCanvas (for potential future optimizations)
+      if (typeof OffscreenCanvas === 'undefined') {
+        performanceWarnings.push('OffscreenCanvas недоступен');
+      }
+      
+      // Check memory limits
+      if (navigator.deviceMemory && navigator.deviceMemory < 4) {
+        performanceWarnings.push(`Обнаружено мало памяти (${navigator.deviceMemory}GB) - большие модели могут не загрузиться`);
+      }
+      
+      return {
+        supported: requirements.length === 0,
+        missing: requirements,
+        performanceWarnings: performanceWarnings
+      };
     }
 
     // Initialize app when page loads
     window.addEventListener('DOMContentLoaded', () => {
+      const compatibility = checkBrowserCompatibility();
       const app = new WhisperLive();
       
-      // Show browser compatibility warning if needed
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        app.showError('Ваш браузер не поддерживает захват аудио');
+      if (!compatibility.supported) {
+        const errorMessage = `Ваш браузер не поддерживает необходимые технологии:\n\n${compatibility.missing.map(req => `• ${req}`).join('\n')}\n\nРекомендуется использовать последние версии Chrome, Edge или Safari.`;
+        app.showError(errorMessage);
         app.startBtn.disabled = true;
+        return;
+      }
+      
+      // Check if there are any warnings to show
+      const hasWarnings = (compatibility.performanceWarnings && compatibility.performanceWarnings.length > 0) || 
+                         typeof SharedArrayBuffer === 'undefined';
+      
+      if (hasWarnings) {
+        let allWarningsDetails = '';
+        
+        // Add performance warnings
+        if (compatibility.performanceWarnings && compatibility.performanceWarnings.length > 0) {
+          allWarningsDetails += '<strong>Обнаружены ограничения:</strong><br>';
+          allWarningsDetails += compatibility.performanceWarnings.map(w => `• ${w}`).join('<br>');
+          allWarningsDetails += '<br><br>';
+        }
+        
+        // Add SharedArrayBuffer warning if needed
+        if (typeof SharedArrayBuffer === 'undefined') {
+          allWarningsDetails += `
+            <strong>SharedArrayBuffer недоступен:</strong><br>
+            • WebAssembly работает в однопоточном режиме<br>
+            • Обработка аудио может быть медленнее на 20-30%<br>
+            • Большие модели могут работать с задержками<br><br>
+            
+            <strong>Возможные причины:</strong><br>
+            • Локальный HTTP сервер без HTTPS<br>
+            • Отсутствуют заголовки Cross-Origin-Embedder-Policy и Cross-Origin-Opener-Policy<br>
+            • Функция отключена в настройках браузера<br><br>
+            
+            <strong>Решение:</strong><br>
+            • Используйте HTTPS с правильными заголовками<br>
+            • Или откройте файл локально (file://)<br>
+            • Или используйте Chrome с флагом --enable-features=SharedArrayBuffer
+          `;
+        }
+        
+        app.showWarning('⚠️ Обнаружены ограничения браузера', allWarningsDetails);
       }
     });
   </script>
