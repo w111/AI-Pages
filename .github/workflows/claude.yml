@@ -8,7 +8,6 @@ on:
     types: [opened, assigned, labeled]
   pull_request_review:
     types: [submitted]
-
 jobs:
   claude-response:
     runs-on: ubuntu-latest
