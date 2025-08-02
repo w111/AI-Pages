@@ -1,0 +1,31 @@
+# Файл CODEOWNERS определяет владельцев кода для автоматического назначения ревьюеров
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Владелец всего репозитория по умолчанию
+* @w111
+
+# Документация
+/docs/ @w111
+*.md @w111
+/README.md @w111
+/CLAUDE.md @w111
+
+# Frontend файлы
+*.html @w111
+*.css @w111
+*.js @w111
+
+# Конфигурационные файлы
+/.github/ @w111
+package.json @w111
+package-lock.json @w111
+*.config.js @w111
+
+# Тесты
+/test_js/ @w111
+/tests/ @w111
+pytest.ini @w111
+.htmlhintrc @w111
+
+# CI/CD
+/.github/workflows/ @w111
