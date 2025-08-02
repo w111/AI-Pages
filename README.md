@@ -2,7 +2,7 @@
 
 > Превращаем идеи в код за минуты, а не дни
 
-[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-brightgreen)](https://username.github.io/AI-Pages)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-brightgreen)](https://w111.github.io/AI-Pages)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Playwright-green)](./docs/TESTING.md)
 
@@ -60,7 +60,7 @@
 
 ```bash
 # Клонируйте репозиторий
-git clone https://github.com/username/AI-Pages.git
+git clone https://github.com/w111/AI-Pages.git
 cd AI-Pages
 
 # Запустите локальный сервер
@@ -148,7 +148,7 @@ npm run lint:js:ci        # JavaScript как в GitHub Actions
 **Процесс:**
 
 ```bash
-git clone https://github.com/username/AI-Pages.git
+git clone https://github.com/w111/AI-Pages.git
 cd AI-Pages && npm install && pip install -r requirements.txt
 git checkout -b feature/your-feature
 # Разработка + тесты
@@ -164,9 +164,9 @@ git checkout -b feature/your-feature
 
 ## 📞 Контакты
 
-- **GitHub Issues:** [Создать issue](https://github.com/username/AI-Pages/issues)
+- **GitHub Issues:** [Создать issue](https://github.com/w111/AI-Pages/issues)
 - **Документация:** [docs/](./docs/)
-- **Demo:** [GitHub Pages](https://username.github.io/AI-Pages)
+- **Demo:** [GitHub Pages](https://w111.github.io/AI-Pages)
 
 ---
 
