@@ -1207,9 +1207,15 @@
           try {
             const model_id = currentModel.id;
 
-            // Создаем callback для отслеживания прогресса
+            // Создаем callback для отслеживания прогресса с throttling
+            let lastLogTime = 0;
             const progressCallback = info => {
-              console.log('Progress callback received:', info);
+              const now = Date.now();
+              // Логируем только раз в секунду
+              if (now - lastLogTime > 1000) {
+                console.log('Progress callback received:', info);
+                lastLogTime = now;
+              }
               this.updateModelLoadingProgress(info);
             };
 
@@ -1657,9 +1663,19 @@
               }
 
               // Рассчитываем скорость загрузки
-              const elapsedTime = (Date.now() - this.loadingStartTime) / 1000; // секунды
-              const speedBps = elapsedTime > 0 ? this.fileTracker.totalBytesLoaded / elapsedTime : 0;
-              const speedMBps = speedBps / (1024 * 1024);
+              let speedMBps = 0;
+              
+              // Используем rate из info если доступен
+              if (info.rate && info.rate > 0) {
+                speedMBps = info.rate / (1024 * 1024);
+              } else if (this.loadingStartTime) {
+                // Иначе рассчитываем среднюю скорость
+                const elapsedTime = (Date.now() - this.loadingStartTime) / 1000; // секунды
+                if (elapsedTime > 0 && this.fileTracker.totalBytesLoaded > 0) {
+                  const speedBps = this.fileTracker.totalBytesLoaded / elapsedTime;
+                  speedMBps = speedBps / (1024 * 1024);
+                }
+              }
 
               // Отображаем информацию о текущем файле
               const loadedMB = (info.loaded / 1024 / 1024).toFixed(1);
@@ -1695,10 +1711,13 @@
                 totalProgress
               );
 
-              // Логируем общий прогресс
-              console.log(
-                `Общий прогресс загрузки: ${totalProgress.toFixed(1)}% (файлов: ${this.fileTracker.completedFiles}/${this.fileTracker.totalFiles}), скорость: ${speedMBps.toFixed(1)} MB/с`
-              );
+              // Логируем общий прогресс только периодически
+              if (!this.lastProgressLogTime || Date.now() - this.lastProgressLogTime > 1000) {
+                console.log(
+                  `Общий прогресс загрузки: ${totalProgress.toFixed(1)}% (файлов: ${this.fileTracker.completedFiles}/${this.fileTracker.totalFiles}), скорость: ${speedMBps.toFixed(1)} MB/с`
+                );
+                this.lastProgressLogTime = Date.now();
+              }
             } else {
               this.modelProgressText.textContent = `Подготовка: ${fileName}`;
               this.modelProgressDetails.textContent = 'Инициализация файла...';
