@@ -1,5 +1,6 @@
+---
 name: Claude Assistant
-on:
+"on":
   issue_comment:
     types: [created]
   pull_request_review_comment:
@@ -36,6 +37,7 @@ jobs:
           #   API_URL: https://api.example.com
           # Optional: limit the number of conversation turns
           # max_turns: "5"
-          # Optional: grant additional permissions (requires corresponding GitHub token permissions)
+          # Optional: grant additional permissions
+          # (requires corresponding GitHub token permissions)
           # additional_permissions: |
           #   actions: read
