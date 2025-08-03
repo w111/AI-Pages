@@ -408,7 +408,7 @@ AI Pages использует **архитектуру микро-фронтен
 | **React 18**     | unpkg.com            | cdn.jsdelivr.net     | ❌ Размер 160KB   |
 | **Chart.js**     | cdn.jsdelivr.net     | cdnjs.cloudflare.com | ✅ Возможен 180KB |
 | **Font Awesome** | cdnjs.cloudflare.com | cdn.jsdelivr.net     | ✅ Icons subset   |
-| **Pyodide**      | cdn.jsdelivr.net     | github.io/pyodide    | ❌ Размер 350MB   |
+| **Pyodide**      | cdn.jsdelivr.net     | pyodide.org    | ❌ Размер 350MB   |
 
 **Реализация fallback:**
 
