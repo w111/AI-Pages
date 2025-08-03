@@ -218,7 +218,6 @@ http-server
 
 1. Упомяните `@claude` в issue или pull request
 2. Claude автоматически ответит с анализом или помощью
-3. Подробная документация: `docs/CLAUDE_GITHUB_SETUP.md`
 
 Примеры использования:
 
