@@ -37,3 +37,6 @@ playwright-report-ci/
 *.tmp
 *.temp
 *.log
+
+# Validation scripts
+validate_*.py
