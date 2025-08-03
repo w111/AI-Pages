@@ -39,5 +39,8 @@ jobs:
           # max_turns: "5"
           # Optional: grant additional permissions
           # (requires corresponding GitHub token permissions)
-          # additional_permissions: |
-          #   actions: read
+          additional_permissions: |
+            actions: read
+            contents: write
+            pull-requests: write
+            issues: write
