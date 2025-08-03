@@ -1,8 +1,8 @@
 # Архитектурный документ AI Pages
 
-**Версия:** 2.0  
-**Дата:** Январь 2025  
-**Автор:** Master Architect  
+**Версия:** 2.0
+**Дата:** Январь 2025
+**Автор:** Master Architect
 **Статус:** Консолидированный документ
 
 ---
@@ -12,7 +12,7 @@
 Этот документ описывает полную архитектуру проекта AI Pages - как концептуальную, так и реальное состояние кодовой базы.
 Включает текущие паттерны, технический долг и руководство для AI-driven разработки.
 
-**Тип проекта:** Коллекция самодостаточных HTML-приложений с центральной главной страницей  
+**Тип проекта:** Коллекция самодостаточных HTML-приложений с центральной главной страницей
 **Ключевое ограничение:** Каждый инструмент должен быть полностью самодостаточным в одном HTML файле
 
 ---
@@ -88,9 +88,9 @@
   http-equiv="Content-Security-Policy"
   content="
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+  script-src 'self' 'unsafe-inline' 'unsafe-eval'
     https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com;
-  style-src 'self' 'unsafe-inline' 
+  style-src 'self' 'unsafe-inline'
     https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
   img-src 'self' data: blob: https:;
   connect-src 'self' https: wss:;
@@ -297,8 +297,8 @@ document.getElementById('themeSwitch').addEventListener('change', () => {
 
 ### Development Principles
 
-**SOLID:** Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion  
-**Качество:** DRY (не повторяйся), KISS (делай проще), YAGNI (не добавляй лишнего)  
+**SOLID:** Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
+**Качество:** DRY (не повторяйся), KISS (делай проще), YAGNI (не добавляй лишнего)
 **Clean Code:** Описательные имена, маленькие функции, комментарии объясняют "почему"
 
 **Правила для AI Pages:**
