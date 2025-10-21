@@ -322,6 +322,110 @@ LAST UPDATED: 2025
         }
       }
 
+      /* Стили для планшетов и мобильных устройств в ландшафтной ориентации */
+      @media screen and (max-width: 768px) {
+        .visualizer-container {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto auto auto auto;
+          grid-template-areas:
+            'main'
+            'jazzviz'
+            'spectrum'
+            'oscilloscope';
+          max-height: none;
+        }
+
+        .visualizer {
+          min-height: 200px;
+        }
+
+        .visualization-content {
+          min-height: 150px;
+        }
+
+        .controls {
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .source-selector {
+          margin-right: 0;
+          width: 100%;
+        }
+
+        .source-inputs {
+          width: 100%;
+        }
+
+        button {
+          width: 100%;
+          margin-left: 0;
+        }
+      }
+
+      /* Стили для мобильных устройств в портретной ориентации */
+      @media screen and (max-width: 480px) {
+        .container {
+          padding: 3px;
+          height: auto;
+          min-height: 100vh;
+        }
+
+        h1 {
+          font-size: 16px;
+          margin-bottom: 5px;
+        }
+
+        .visualizer-container {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto auto auto auto;
+          grid-template-areas:
+            'main'
+            'jazzviz'
+            'spectrum'
+            'oscilloscope';
+          grid-gap: 5px;
+          max-height: none;
+        }
+
+        .visualizer {
+          min-height: 250px;
+        }
+
+        .visualization-content {
+          min-height: 200px;
+        }
+
+        .visualizer-label {
+          font-size: 11px;
+          padding: 3px 5px;
+        }
+
+        .source-selector {
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        #streamUrl {
+          font-size: 14px;
+          padding: 8px;
+        }
+
+        #audioFileInput {
+          font-size: 14px;
+          padding: 8px;
+        }
+
+        button {
+          padding: 10px;
+          font-size: 14px;
+        }
+
+        .stream-info {
+          font-size: 11px;
+        }
+      }
+
       /* Стили для мобильных устройств и экранов с ограниченной высотой */
       @media screen and (max-height: 700px) {
         h1 {
