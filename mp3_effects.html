@@ -880,23 +880,55 @@ LAST UPDATED: 2025
       function setupVisualizers(analyser, bufferLength, dataArray, timeDataArray) {
         // Setup visualizers
         if (!visualizersInitialized) {
+          // Detect mobile device
+          const isMobile = window.innerWidth <= 768;
+
           // Setup spectrum analyzer
           const spectrumCanvas = document.getElementById('spectrum');
-          // Ensure we get valid dimensions, fallback to minimum if container not ready
-          const spectrumWidth = spectrumCanvas.parentElement.offsetWidth || 300;
-          const spectrumHeight = spectrumCanvas.parentElement.offsetHeight || 200;
+          const spectrumContainer = spectrumCanvas.parentElement;
+
+          // Get dimensions with multiple fallbacks for mobile reliability
+          let spectrumWidth, spectrumHeight;
+
+          if (isMobile) {
+            // On mobile, use window dimensions with padding
+            spectrumWidth = window.innerWidth - 20; // Account for padding
+            spectrumHeight = 250; // Fixed height for mobile
+            console.log('[MOBILE] Using window-based dimensions for spectrum:', spectrumWidth, 'x', spectrumHeight);
+          } else {
+            // On desktop, use container dimensions with fallback
+            spectrumWidth = spectrumContainer.offsetWidth || spectrumContainer.clientWidth || 300;
+            spectrumHeight = spectrumContainer.offsetHeight || spectrumContainer.clientHeight || 200;
+            console.log('[DESKTOP] Using container dimensions for spectrum:', spectrumWidth, 'x', spectrumHeight);
+          }
+
           spectrumCanvas.width = spectrumWidth;
           spectrumCanvas.height = spectrumHeight;
           const spectrumCtx = spectrumCanvas.getContext('2d');
+          console.log('[SPECTRUM] Canvas initialized to:', spectrumCanvas.width, 'x', spectrumCanvas.height);
 
           // Setup oscilloscope
           const oscCanvas = document.getElementById('oscilloscope');
-          // Ensure we get valid dimensions, fallback to minimum if container not ready
-          const oscWidth = oscCanvas.parentElement.offsetWidth || 300;
-          const oscHeight = oscCanvas.parentElement.offsetHeight || 200;
+          const oscContainer = oscCanvas.parentElement;
+
+          let oscWidth, oscHeight;
+
+          if (isMobile) {
+            // On mobile, use window dimensions with padding
+            oscWidth = window.innerWidth - 20; // Account for padding
+            oscHeight = 250; // Fixed height for mobile
+            console.log('[MOBILE] Using window-based dimensions for oscilloscope:', oscWidth, 'x', oscHeight);
+          } else {
+            // On desktop, use container dimensions with fallback
+            oscWidth = oscContainer.offsetWidth || oscContainer.clientWidth || 300;
+            oscHeight = oscContainer.offsetHeight || oscContainer.clientHeight || 200;
+            console.log('[DESKTOP] Using container dimensions for oscilloscope:', oscWidth, 'x', oscHeight);
+          }
+
           oscCanvas.width = oscWidth;
           oscCanvas.height = oscHeight;
           const oscCtx = oscCanvas.getContext('2d');
+          console.log('[OSCILLOSCOPE] Canvas initialized to:', oscCanvas.width, 'x', oscCanvas.height);
 
           // Setup particle emitter only (skip circular bars)
           setupParticleEmitter(analyser, bufferLength, dataArray);
@@ -921,15 +953,17 @@ LAST UPDATED: 2025
             // Update time domain data for oscilloscope
             analyser.getByteTimeDomainData(timeDataArray);
 
-            // Get current canvas sizes from parent containers
+            // Get current canvas sizes - use actual canvas dimensions
+            // Canvas dimensions should already be set correctly by initialization
             const spectrumCanvas = document.getElementById('spectrum');
             const oscCanvas = document.getElementById('oscilloscope');
 
-            // Use parent container sizes for accurate mobile rendering
-            const spectrumWidth = spectrumCanvas.parentElement.offsetWidth || spectrumCanvas.width;
-            const spectrumHeight = spectrumCanvas.parentElement.offsetHeight || spectrumCanvas.height;
-            const oscWidth = oscCanvas.parentElement.offsetWidth || oscCanvas.width;
-            const oscHeight = oscCanvas.parentElement.offsetHeight || oscCanvas.height;
+            // Use canvas dimensions directly (already set during initialization)
+            // This is more reliable than querying parent container on every frame
+            const spectrumWidth = spectrumCanvas.width || 300;
+            const spectrumHeight = spectrumCanvas.height || 250;
+            const oscWidth = oscCanvas.width || 300;
+            const oscHeight = oscCanvas.height || 250;
 
             // Draw spectrum analyzer
             drawSpectrum(
@@ -1705,6 +1739,13 @@ LAST UPDATED: 2025
         // CRITICAL FIX: Don't reset canvas dimensions on every frame!
         // Resetting canvas.width/height clears the canvas and kills performance
         // Only clear the drawing, don't reset dimensions
+
+        // Safety check: don't draw if dimensions are invalid
+        if (!width || !height || width <= 0 || height <= 0) {
+          console.warn('[SPECTRUM] Invalid dimensions:', width, 'x', height);
+          return;
+        }
+
         ctx.clearRect(0, 0, width, height);
 
         // Используем больше частотных полос для более детального спектра
@@ -1803,6 +1844,13 @@ LAST UPDATED: 2025
         // CRITICAL FIX: Don't reset canvas dimensions on every frame!
         // Resetting canvas.width/height clears the canvas and kills performance
         // Only clear the drawing, don't reset dimensions
+
+        // Safety check: don't draw if dimensions are invalid
+        if (!width || !height || width <= 0 || height <= 0) {
+          console.warn('[OSCILLOSCOPE] Invalid dimensions:', width, 'x', height);
+          return;
+        }
+
         ctx.clearRect(0, 0, width, height);
 
         // Добавляем фоновый градиент
