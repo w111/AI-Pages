@@ -802,14 +802,20 @@ LAST UPDATED: 2025
         if (!visualizersInitialized) {
           // Setup spectrum analyzer
           const spectrumCanvas = document.getElementById('spectrum');
-          spectrumCanvas.width = spectrumCanvas.parentElement.offsetWidth;
-          spectrumCanvas.height = spectrumCanvas.parentElement.offsetHeight;
+          // Ensure we get valid dimensions, fallback to minimum if container not ready
+          const spectrumWidth = spectrumCanvas.parentElement.offsetWidth || 300;
+          const spectrumHeight = spectrumCanvas.parentElement.offsetHeight || 200;
+          spectrumCanvas.width = spectrumWidth;
+          spectrumCanvas.height = spectrumHeight;
           const spectrumCtx = spectrumCanvas.getContext('2d');
 
           // Setup oscilloscope
           const oscCanvas = document.getElementById('oscilloscope');
-          oscCanvas.width = oscCanvas.parentElement.offsetWidth;
-          oscCanvas.height = oscCanvas.parentElement.offsetHeight;
+          // Ensure we get valid dimensions, fallback to minimum if container not ready
+          const oscWidth = oscCanvas.parentElement.offsetWidth || 300;
+          const oscHeight = oscCanvas.parentElement.offsetHeight || 200;
+          oscCanvas.width = oscWidth;
+          oscCanvas.height = oscHeight;
           const oscCtx = oscCanvas.getContext('2d');
 
           // Setup particle emitter only (skip circular bars)
@@ -820,8 +826,10 @@ LAST UPDATED: 2025
 
           visualizersInitialized = true;
 
-          // Ensure all canvases are properly sized
-          setTimeout(resizeCanvases, 100);
+          // Ensure all canvases are properly sized - increased delay for mobile layout
+          setTimeout(resizeCanvases, 300);
+          // Second resize to catch any delayed layout changes
+          setTimeout(resizeCanvases, 1000);
 
           // Animation loop
           function animate() {
@@ -833,15 +841,21 @@ LAST UPDATED: 2025
             // Update time domain data for oscilloscope
             analyser.getByteTimeDomainData(timeDataArray);
 
-            // Get current canvas sizes
+            // Get current canvas sizes from parent containers
             const spectrumCanvas = document.getElementById('spectrum');
             const oscCanvas = document.getElementById('oscilloscope');
+
+            // Use parent container sizes for accurate mobile rendering
+            const spectrumWidth = spectrumCanvas.parentElement.offsetWidth || spectrumCanvas.width;
+            const spectrumHeight = spectrumCanvas.parentElement.offsetHeight || spectrumCanvas.height;
+            const oscWidth = oscCanvas.parentElement.offsetWidth || oscCanvas.width;
+            const oscHeight = oscCanvas.parentElement.offsetHeight || oscCanvas.height;
 
             // Draw spectrum analyzer
             drawSpectrum(
               spectrumCtx,
-              spectrumCanvas.width,
-              spectrumCanvas.height,
+              spectrumWidth,
+              spectrumHeight,
               dataArray,
               bufferLength
             );
@@ -849,8 +863,8 @@ LAST UPDATED: 2025
             // Draw oscilloscope
             drawOscilloscope(
               oscCtx,
-              oscCanvas.width,
-              oscCanvas.height,
+              oscWidth,
+              oscHeight,
               timeDataArray,
               bufferLength
             );
