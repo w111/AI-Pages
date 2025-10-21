@@ -199,6 +199,33 @@ LAST UPDATED: 2025
         flex-direction: column;
         box-sizing: border-box;
         min-height: 120px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .visualizer:hover {
+        box-shadow: 0 0 25px #0f0;
+        border-color: #0ff;
+      }
+
+      /* Fullscreen mode */
+      .visualizer.fullscreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 9999;
+        grid-area: unset;
+        margin: 0;
+        border-width: 2px;
+        box-shadow: 0 0 30px #0f0;
+      }
+
+      .visualizer.fullscreen .visualization-content {
+        min-height: unset;
       }
 
       .visualizer.main-viz {
@@ -241,6 +268,22 @@ LAST UPDATED: 2025
         font-size: 11px;
         padding: 2px 3px;
         background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .visualizer-label::after {
+        content: '⛶';
+        font-size: 14px;
+        opacity: 0.5;
+        margin-left: 5px;
+      }
+
+      .visualizer.fullscreen .visualizer-label::after {
+        content: '⛶';
+        transform: rotate(45deg);
+        display: inline-block;
       }
 
       .visualizer-select {
@@ -337,6 +380,18 @@ LAST UPDATED: 2025
 
         .visualizer {
           min-height: 200px;
+        }
+
+        /* Remove hover effect on mobile */
+        .visualizer:hover {
+          box-shadow: 0 0 15px #0f0;
+          border-color: #0f0;
+        }
+
+        /* Add tap indication */
+        .visualizer:active {
+          box-shadow: 0 0 25px #0f0;
+          border-color: #0ff;
         }
 
         .visualization-content {
@@ -635,6 +690,22 @@ LAST UPDATED: 2025
       window.addEventListener('resize', resizeCanvases);
       // Also resize on load
       window.addEventListener('load', resizeCanvases);
+
+      // Fullscreen toggle functionality
+      document.querySelectorAll('.visualizer').forEach(visualizer => {
+        visualizer.addEventListener('click', function(e) {
+          // Don't trigger on button clicks
+          if (e.target.tagName === 'BUTTON') return;
+
+          // Toggle fullscreen class
+          this.classList.toggle('fullscreen');
+
+          // Trigger resize after a short delay to ensure layout is updated
+          setTimeout(() => {
+            resizeCanvases();
+          }, 100);
+        });
+      });
 
       // Global audio context and analyzer for reuse
       let globalAudioContext = null;
