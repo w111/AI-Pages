@@ -1450,5 +1450,521 @@
         "website_valid": true
       }
     ]
+  },
+  "helsinki": {
+    "name": "Хельсинки",
+    "center": [24.9384, 60.1699],
+    "pois": [
+      {
+        "name": "Успенский собор",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Uspenski_Cathedral_Helsinki.jpg/800px-Uspenski_Cathedral_Helsinki.jpg",
+        "img_valid": true,
+        "text": "Крупнейший православный собор Западной Европы построен в 1868 году архитектором Алексеем Горностаевым. Красный кирпич фасада контрастирует с 13 золотыми куполами, видными из любой точки гавани. Интерьер украшен иконами русских мастеров и мозаиками. Собор стоит на холме Катаянокка и символизирует русское влияние в период, когда Финляндия входила в состав Российской империи.",
+        "addr": "Kanavakatu 1",
+        "map": "https://maps.google.com/?q=60.1686,24.9600",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Успенский_собор_(Хельсинки)",
+        "wikipedia_valid": true,
+        "website": "https://hos.fi/",
+        "website_valid": true
+      },
+      {
+        "name": "Сенатская площадь",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Senate_Square_Helsinki_2.jpg/800px-Senate_Square_Helsinki_2.jpg",
+        "img_valid": true,
+        "text": "Центральная площадь Хельсинки создана архитектором Карлом Энгелем в стиле ампир в 1820-1850 годах. Белоснежный Кафедральный собор возвышается на вершине широкой лестницы из 50 ступеней. На площади стоит памятник императору Александру II, освободившему Финляндию от цензуры и даровавшему собственную валюту. Ежегодно здесь проходят концерты и празднования Дня независимости.",
+        "addr": "Senaatintori",
+        "map": "https://maps.google.com/?q=60.1699,24.9520",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Сенатская_площадь_(Хельсинки)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Крепость Суоменлинна",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Suomenlinna_from_air.jpg/800px-Suomenlinna_from_air.jpg",
+        "img_valid": true,
+        "text": "Морская крепость построена шведами в 1748 году на 6 островах для защиты от русского флота. В 1808 году крепость капитулировала и вошла в состав Российской империи. Бастионы, туннели и казематы сохранились до наших дней. С 1991 года Суоменлинна внесена в список Всемирного наследия ЮНЕСКО. Добраться можно на пароме за 15 минут от Рыночной площади.",
+        "addr": "Suomenlinna",
+        "map": "https://maps.google.com/?q=60.1451,24.9884",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Свеаборг",
+        "wikipedia_valid": true,
+        "website": "https://www.suomenlinna.fi/",
+        "website_valid": true
+      },
+      {
+        "name": "Церковь в скале Темппелиаукио",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Temppeliaukio_Church_interior.jpg/800px-Temppeliaukio_Church_interior.jpg",
+        "img_valid": true,
+        "text": "Лютеранская церковь вырублена в скале в 1969 году архитекторами братьями Суомалайнен. Медный купол диаметром 24 м опирается на стены из необработанного гранита. Акустика считается одной из лучших в Европе, здесь регулярно проходят концерты классической музыки. Церковь посещают 700000 туристов в год, это самая известная достопримечательность современной финской архитектуры.",
+        "addr": "Lutherinkatu 3",
+        "map": "https://maps.google.com/?q=60.1733,24.9252",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Темппелиаукио",
+        "wikipedia_valid": true,
+        "website": "https://www.temppeliaukionkirkko.fi/",
+        "website_valid": true
+      },
+      {
+        "name": "Рыночная площадь Кауппатори",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Market_Square_Helsinki_2005-09-11.jpg/800px-Market_Square_Helsinki_2005-09-11.jpg",
+        "img_valid": true,
+        "text": "Старейший рынок Хельсинки работает с 1889 года на берегу Южной гавани. Торговцы предлагают свежую рыбу, ягоды, овощи, сувениры и традиционные финские деликатесы. От причала отправляются паромы на острова Суоменлинна и Коркеасаари. Оранжевые палатки рыночных рядов стали символом города. Зимой здесь открывается рождественская ярмарка с глинтвейном и пряниками.",
+        "addr": "Kauppatori",
+        "map": "https://maps.google.com/?q=60.1674,24.9496",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Рыночная_площадь_(Хельсинки)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Музей дизайна",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Design_Museum_Helsinki.jpg/800px-Design_Museum_Helsinki.jpg",
+        "img_valid": true,
+        "text": "Музей основан в 1873 году и представляет историю финского дизайна и ремесел. Коллекция включает 75000 объектов: мебель, текстиль, керамику, стекло. Представлены работы Алвара Аалто, Тапио Вирккала, Тимо Сарпанева. Музей размещается в неоренессансном здании 1895 года. Финский дизайн известен функциональностью, минимализмом и связью с природой.",
+        "addr": "Korkeavuorenkatu 23",
+        "map": "https://maps.google.com/?q=60.1624,24.9447",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_дизайна_(Хельсинки)",
+        "wikipedia_valid": true,
+        "website": "https://www.designmuseum.fi/",
+        "website_valid": true
+      },
+      {
+        "name": "Памятник Сибелиусу",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Sibelius_Monument_Helsinki.jpg/800px-Sibelius_Monument_Helsinki.jpg",
+        "img_valid": true,
+        "text": "Абстрактная скульптура создана Эйлой Хилтунен в 1967 году в честь композитора Яна Сибелиуса. Монумент состоит из 600 стальных труб весом 24 тонны, символизирующих звуки органа и шелест леса. Рядом установлен бронзовый профильный портрет композитора. Памятник расположен в парке на берегу залива Тёёлё. Скульптура вызвала споры, но стала одним из символов Хельсинки.",
+        "addr": "Sibeliuksen puisto",
+        "map": "https://maps.google.com/?q=60.1818,24.9123",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Памятник_Сибелиусу_(Хельсинки)",
+        "wikipedia_valid": true
+      }
+    ]
+  },
+  "stockholm": {
+    "name": "Стокгольм",
+    "center": [18.0686, 59.3293],
+    "pois": [
+      {
+        "name": "Гамла Стан",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Stortorget_Stockholm_2016.jpg/800px-Stortorget_Stockholm_2016.jpg",
+        "img_valid": true,
+        "text": "Старый город основан в 13 веке на острове Стадсхольмен. Узкие мощёные улицы и дома охристых оттенков сохранили средневековый облик. Площадь Сторторгет окружена купеческими домами 15-17 веков. Здесь произошла Стокгольмская кровавая баня 1520 года. Самая узкая улица Мортена Тротзига шириной 90 см зажата между оранжевыми стенами. В подвалах работают антикварные лавки и кафе.",
+        "addr": "Gamla Stan",
+        "map": "https://maps.google.com/?q=59.3258,18.0717",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Гамла_Стан",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Королевский дворец",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Stockholm_Palace_from_water.jpg/800px-Stockholm_Palace_from_water.jpg",
+        "img_valid": true,
+        "text": "Резиденция шведских монархов построена в стиле барокко в 1754 году на месте сгоревшего замка Три Короны. Дворец насчитывает 1430 комнат, это один из крупнейших действующих королевских дворцов Европы. Открыты для посещения апартаменты, музей древностей, сокровищница с регалиями, оружейная палата. Ежедневно в 12:15 проходит смена караула под звуки оркестра.",
+        "addr": "Kungliga slottet",
+        "map": "https://maps.google.com/?q=59.3268,18.0717",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Королевский_дворец_(Стокгольм)",
+        "wikipedia_valid": true,
+        "website": "https://www.kungligaslotten.se/",
+        "website_valid": true
+      },
+      {
+        "name": "Музей Васа",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Vasa_from_port_rear_quarter.jpg/800px-Vasa_from_port_rear_quarter.jpg",
+        "img_valid": true,
+        "text": "Единственный в мире сохранившийся корабль 17 века. Галеон Васа затонул в 1628 году в первом плавании из-за конструктивных ошибок. В 1961 году судно подняли со дна и реставрировали. Корабль длиной 69 м украшен 700 скульптурами и сохранился на 95 процентов. Музей посещают 1,5 миллиона человек в год, это самый популярный музей Скандинавии.",
+        "addr": "Galärvarvsvägen 14",
+        "map": "https://maps.google.com/?q=59.3280,18.0916",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Васа_(корабль)",
+        "wikipedia_valid": true,
+        "website": "https://www.vasamuseet.se/",
+        "website_valid": true
+      },
+      {
+        "name": "Ратуша",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Stockholm_City_Hall_2016.jpg/800px-Stockholm_City_Hall_2016.jpg",
+        "img_valid": true,
+        "text": "Здание построено в 1923 году архитектором Рагнаром Эстбергом из 8 миллионов красных кирпичей. Башня высотой 106 м увенчана тремя золотыми коронами, символом Швеции. В Голубом зале проходит банкет Нобелевской премии на 1300 гостей. Золотой зал украшен мозаикой из 18 миллионов стеклянных и золотых плиток. Со смотровой площадки башни открывается панорама 14 островов Стокгольма.",
+        "addr": "Hantverkargatan 1",
+        "map": "https://maps.google.com/?q=59.3275,18.0544",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Стокгольмская_ратуша",
+        "wikipedia_valid": true,
+        "website": "https://stadshuset.stockholm/",
+        "website_valid": true
+      },
+      {
+        "name": "Скансен",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Skansen_entrance.jpg/800px-Skansen_entrance.jpg",
+        "img_valid": true,
+        "text": "Старейший в мире музей под открытым небом основан в 1891 году этнографом Артуром Хазелиусом. На территории 300000 м2 собрано 150 усадеб и мастерских из разных регионов Швеции 18-20 веков. Работают кузница, пекарня, стекольная мастерская. Зоопарк содержит скандинавских животных: лосей, медведей, рысей, тюленей. Здесь празднуют традиционные шведские праздники: Мидсоммар, Люсия, Рождество.",
+        "addr": "Djurgårdsslätten 49-51",
+        "map": "https://maps.google.com/?q=59.3267,18.1032",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Скансен",
+        "wikipedia_valid": true,
+        "website": "https://www.skansen.se/",
+        "website_valid": true
+      },
+      {
+        "name": "Метро Стокгольма",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/T-Centralen_metro_station_Stockholm_2016.jpg/800px-T-Centralen_metro_station_Stockholm_2016.jpg",
+        "img_valid": true,
+        "text": "Самая длинная художественная галерея мира протяжённостью 110 км. Из 100 станций 90 украшены скульптурами, мозаиками, росписями, инсталляциями более 150 художников. Станция Т-Централен расписана синими виноградными лозами на белых сводах. Раадманнсгатан напоминает пещеру с красными сталактитами. Кунгстрэдгорден украшена античными статуями и археологическими находками. Вход на станции бесплатный.",
+        "addr": "T-bana Stockholm",
+        "map": "https://maps.google.com/?q=59.3314,18.0628",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Стокгольмский_метрополитен",
+        "wikipedia_valid": true,
+        "website": "https://sl.se/",
+        "website_valid": true
+      },
+      {
+        "name": "ABBA The Museum",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/ABBA_The_Museum.jpg/800px-ABBA_The_Museum.jpg",
+        "img_valid": true,
+        "text": "Интерактивный музей легендарной группы открылся в 2013 году на острове Юргорден. Коллекция включает сценические костюмы, золотые диски, рукописи песен. Посетители могут спеть караоке с голограммами участников группы, попробовать себя на виртуальной сцене, создать свою обложку альбома. Музей использует технологию дополненной реальности. ABBA продала 400 миллионов пластинок и стала символом шведской поп культуры.",
+        "addr": "Djurgårdsvägen 68",
+        "map": "https://maps.google.com/?q=59.3250,18.0973",
+        "wikipedia": "https://ru.wikipedia.org/wiki/ABBA",
+        "wikipedia_valid": true,
+        "website": "https://abbathemuseum.com/",
+        "website_valid": true
+      }
+    ]
+  },
+  "oslo": {
+    "name": "Осло",
+    "center": [10.7522, 59.9139],
+    "pois": [
+      {
+        "name": "Оперный театр",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Oslo_Opera_House_2008.jpg/800px-Oslo_Opera_House_2008.jpg",
+        "img_valid": true,
+        "text": "Здание построено в 2008 году архитектурным бюро Snøhetta из белого мрамора и стекла. Крыша наклонена под углом 7 градусов, по ней можно подняться к смотровой площадке с видом на фьорд. Конструкция напоминает айсберг, выходящий из воды. Зал на 1364 места отделан дубом и имеет одну из лучших акустик Европы. Оперный театр получил премию Мис ван дер Роэ 2009 года.",
+        "addr": "Kirsten Flagstads plass 1",
+        "map": "https://maps.google.com/?q=59.9075,10.7530",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Оперный_театр_Осло",
+        "wikipedia_valid": true,
+        "website": "https://www.operaen.no/",
+        "website_valid": true
+      },
+      {
+        "name": "Музей кораблей викингов",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Oseberg_ship_Norway.jpg/800px-Oseberg_ship_Norway.jpg",
+        "img_valid": true,
+        "text": "Музей хранит три корабля викингов 9 века, найденных в курганах. Корабль из Осеберга длиной 22 м был погребальной ладьёй королевы. Корабль из Гокстада длиной 24 м пересекал Атлантику. Тюнский корабль сохранился фрагментарно. Экспозиция включает санки, повозки, текстиль, утварь. Корабли датированы методом дендрохронологии. Музей основан в 1926 году и входит в комплекс Музея истории культуры.",
+        "addr": "Huk Aveny 35",
+        "map": "https://maps.google.com/?q=59.9047,10.6837",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_кораблей_викингов",
+        "wikipedia_valid": true,
+        "website": "https://www.khm.uio.no/",
+        "website_valid": true
+      },
+      {
+        "name": "Крепость Акерсхус",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Akershus_Fortress_Oslo.jpg/800px-Akershus_Fortress_Oslo.jpg",
+        "img_valid": true,
+        "text": "Средневековая крепость построена королём Хоконом V в 1299 году для защиты Осло. В 1527 году замок перестроен в ренессансный дворец королём Кристианом IV. Крепость выдержала несколько осад, но ни разу не была взята штурмом. Сейчас здесь размещаются музей Сопротивления и военный музей. В часовне похоронены норвежские короли. Со стен открывается вид на гавань и фьорд.",
+        "addr": "Akershus festning",
+        "map": "https://maps.google.com/?q=59.9077,10.7362",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Акерсхус_(крепость)",
+        "wikipedia_valid": true,
+        "website": "https://www.forsvarsbygg.no/",
+        "website_valid": true
+      },
+      {
+        "name": "Парк скульптур Вигеланда",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Vigeland_Installation_Oslo.jpg/800px-Vigeland_Installation_Oslo.jpg",
+        "img_valid": true,
+        "text": "Крупнейший в мире парк скульптур одного автора создан Густавом Вигеландом в 1907-1942 годах. Территория 320000 м2 включает 212 бронзовых и гранитных скульптур, изображающих человека от рождения до смерти. Центральный Монолит высотой 17 м высечен из цельного гранита и содержит 121 фигуру. Скульптура Гневной мальчик стала символом парка. Ежегодно парк посещают более 1 миллиона человек.",
+        "addr": "Nobels gate 32",
+        "map": "https://maps.google.com/?q=59.9270,10.7003",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Парк_скульптур_Вигеланда",
+        "wikipedia_valid": true,
+        "website": "https://www.vigeland.museum.no/",
+        "website_valid": true
+      },
+      {
+        "name": "Музей Мунка",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Munch_Museum_Oslo_2021.jpg/800px-Munch_Museum_Oslo_2021.jpg",
+        "img_valid": true,
+        "text": "Новое здание музея открылось в 2021 году, это 13-этажная башня высотой 60 м на набережной фьорда. Коллекция включает 28000 работ Эдварда Мунка: картины, графику, скульптуры, фотографии, дневники. Здесь хранятся версии знаменитого Крика и другие шедевры экспрессионизма. Музей оснащён климат контролем и защитой от ультрафиолета. С террасы на крыше открывается панорама Осло и фьорда.",
+        "addr": "Edvard Munchs plass 1",
+        "map": "https://maps.google.com/?q=59.9065,10.7549",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Мунка",
+        "wikipedia_valid": true,
+        "website": "https://www.munchmuseet.no/",
+        "website_valid": true
+      },
+      {
+        "name": "Музей Кон-Тики",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Kon-Tiki_raft_at_Museum.jpg/800px-Kon-Tiki_raft_at_Museum.jpg",
+        "img_valid": true,
+        "text": "Музей посвящён экспедициям норвежского путешественника Тура Хейердала. Главный экспонат – плот Кон Тики из бальсовых брёвен, на котором в 1947 году команда пересекла Тихий океан от Перу до Полинезии за 101 день. Представлены также папирусные лодки Ра и Ра II, использованные для пересечения Атлантики. Экспозиция включает артефакты с острова Пасхи и Мальдив. Музей основан в 1950 году.",
+        "addr": "Bygdøynesveien 36",
+        "map": "https://maps.google.com/?q=59.9036,10.6969",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Кон-Тики",
+        "wikipedia_valid": true,
+        "website": "https://www.kon-tiki.no/",
+        "website_valid": true
+      },
+      {
+        "name": "Хольменколлен",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Holmenkollen_Ski_Jump_2011.jpg/800px-Holmenkollen_Ski_Jump_2011.jpg",
+        "img_valid": true,
+        "text": "Лыжный трамплин построен в 1892 году, реконструирован в 2010 году к чемпионату мира. Высота трамплина 64 м, перепад высот для прыжков 115 м. Музей лыжного спорта основан в 1923 году, это старейший спортивный музей мира. Экспозиция охватывает 4000 лет истории лыж от наскальных рисунков до Олимпиад. Со смотровой площадки виден весь Осло и фьорд. Летом трамплин используют тренирующиеся прыгуны.",
+        "addr": "Kongeveien 5",
+        "map": "https://maps.google.com/?q=59.9653,10.6688",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Хольменколлен",
+        "wikipedia_valid": true,
+        "website": "https://www.holmenkollen.com/",
+        "website_valid": true
+      }
+    ]
+  },
+  "barcelona": {
+    "name": "Барселона",
+    "center": [2.1734, 41.3851],
+    "pois": [
+      {
+        "name": "Саграда Фамилия",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Sagrada_Familia_2021.jpg/800px-Sagrada_Familia_2021.jpg",
+        "img_valid": true,
+        "text": "Храм Святого Семейства проектирует Антонио Гауди с 1882 года. Строительство продолжается до сих пор, окончание планируется к 2026 году. Базилика имеет 18 башен высотой до 172 м, символизирующих апостолов, евангелистов, Деву Марию и Иисуса. Фасады украшены скульптурами, изображающими сцены из жизни Христа. Интерьер напоминает лес из колонн, освещённый цветными витражами. С 2005 года храм включён в список ЮНЕСКО.",
+        "addr": "Carrer de Mallorca, 401",
+        "map": "https://maps.google.com/?q=41.4036,2.1744",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Саграда_Фамилия",
+        "wikipedia_valid": true,
+        "website": "https://sagradafamilia.org/",
+        "website_valid": true
+      },
+      {
+        "name": "Парк Гуэль",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Park_Guell_Barcelona.jpg/800px-Park_Guell_Barcelona.jpg",
+        "img_valid": true,
+        "text": "Парк создан Антонио Гауди в 1900-1914 годах по заказу промышленника Эусебио Гуэля как город сад. Территория 17 гектаров украшена мозаичными скамьями, скульптурами, павильонами из битой керамики. Знаменитая саламандра у входа стала символом Барселоны. Волнистая скамья длиной 110 м покрыта мозаикой из 70 цветов. С террасы открывается панорама города и моря. Парк внесён в список ЮНЕСКО в 1984 году.",
+        "addr": "Carrer d'Olot, s/n",
+        "map": "https://maps.google.com/?q=41.4145,2.1527",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Парк_Гуэль",
+        "wikipedia_valid": true,
+        "website": "https://parkguell.barcelona/",
+        "website_valid": true
+      },
+      {
+        "name": "Дом Бальо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Casa_Batllo_Barcelona.jpg/800px-Casa_Batllo_Barcelona.jpg",
+        "img_valid": true,
+        "text": "Жилой дом перестроен Антонио Гауди в 1904-1906 годах для текстильного магната Жозепа Бальо. Фасад облицован керамикой в сине зелёных тонах, напоминающей чешую дракона. Балконы похожи на маски, крыша изогнута, как спина динозавра. Внутри нет прямых углов, все линии плавные. Цветные витражи меняют оттенки в зависимости от освещения. Дом Бальо включён в список ЮНЕСКО в 2005 году.",
+        "addr": "Passeig de Gràcia, 43",
+        "map": "https://maps.google.com/?q=41.3916,2.1649",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Дом_Бальо",
+        "wikipedia_valid": true,
+        "website": "https://www.casabatllo.es/",
+        "website_valid": true
+      },
+      {
+        "name": "Бульвар Рамбла",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/La_Rambla_Barcelona_2021.jpg/800px-La_Rambla_Barcelona_2021.jpg",
+        "img_valid": true,
+        "text": "Главный пешеходный бульвар Барселоны протяжённостью 1200 м соединяет площадь Каталонии с памятником Колумбу. Вдоль аллеи расположены кафе, киоски с цветами, театр Лисеу, рынок Бокерия. Уличные художники рисуют портреты, живые статуи застывают в позах. Мозаика Жоана Миро украшает тротуар. Рамбла появилась в 18 веке на месте высохшего ручья. Здесь всегда многолюдно с раннего утра до поздней ночи.",
+        "addr": "La Rambla",
+        "map": "https://maps.google.com/?q=41.3818,2.1732",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Рамбла_(Барселона)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Готический квартал",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Gothic_Quarter_Barcelona.jpg/800px-Gothic_Quarter_Barcelona.jpg",
+        "img_valid": true,
+        "text": "Старейший район Барселоны сохранил средневековую планировку с узкими улицами и площадями. Кафедральный собор построен в 13-15 веках в стиле каталонской готики. Королевская площадь окружена пальмами и фонарями работы молодого Гауди. Еврейский квартал Эль Коль помнит общину, жившую здесь до 1391 года. Римские стены 4 века видны на площади Нова. В подземелье сохранились развалины римского города Барсино.",
+        "addr": "Barri Gòtic",
+        "map": "https://maps.google.com/?q=41.3833,2.1769",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Готический_квартал_(Барселона)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Музей Пикассо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Museu_Picasso_Barcelona.jpg/800px-Museu_Picasso_Barcelona.jpg",
+        "img_valid": true,
+        "text": "Музей открылся в 1963 году в пяти готических дворцах 13-14 веков. Коллекция из 4251 работы охватывает все периоды творчества Пабло Пикассо. Особенно полно представлены ранние годы, когда художник жил в Барселоне с 1895 по 1904 год. Серия Менины из 58 картин переосмысливает шедевр Веласкеса. Музей стал первым, посвящённым Пикассо при его жизни, и основан по инициативе друга художника Жауме Сабартеса.",
+        "addr": "Carrer Montcada, 15-23",
+        "map": "https://maps.google.com/?q=41.3851,2.1808",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Пикассо_(Барселона)",
+        "wikipedia_valid": true,
+        "website": "https://www.museupicasso.bcn.cat/",
+        "website_valid": true
+      },
+      {
+        "name": "Камп Ноу",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Camp_Nou_Barcelona.jpg/800px-Camp_Nou_Barcelona.jpg",
+        "img_valid": true,
+        "text": "Домашний стадион ФК Барселона построен в 1957 году вмещает 99354 зрителя, это крупнейший стадион Европы. Музей клуба демонстрирует трофеи, включая 5 Кубков европейских чемпионов. Экскурсия проходит через раздевалки, тоннель выхода на поле, трибуны, пресс центр. Барселона выиграла 27 чемпионатов Испании. Девиз клуба больше чем клуб отражает его роль в каталонской культуре. Планируется реконструкция стадиона до 2026 года.",
+        "addr": "Carrer d'Aristides Maillol, 12",
+        "map": "https://maps.google.com/?q=41.3809,2.1228",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Камп_Ноу",
+        "wikipedia_valid": true,
+        "website": "https://www.fcbarcelona.com/",
+        "website_valid": true
+      }
+    ]
+  },
+  "madrid": {
+    "name": "Мадрид",
+    "center": [-3.7038, 40.4168],
+    "pois": [
+      {
+        "name": "Музей Прадо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Museo_del_Prado_2016.jpg/800px-Museo_del_Prado_2016.jpg",
+        "img_valid": true,
+        "text": "Один из крупнейших художественных музеев мира открылся в 1819 году. Коллекция насчитывает 8000 картин, из которых выставлено 1300. Представлены шедевры Веласкеса, Гойи, Эль Греко, Босха, Тициана, Рубенса. Менины Веласкеса считаются главным сокровищем музея. Чёрные картины Гойи поражают мрачной силой. Сад земных наслаждений Босха завораживает деталями. Музей занимает неоклассическое здание архитектора Хуана де Вильянуэва.",
+        "addr": "Calle de Ruiz de Alarcón, 23",
+        "map": "https://maps.google.com/?q=40.4138,2.8020",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Прадо",
+        "wikipedia_valid": true,
+        "website": "https://www.museodelprado.es/",
+        "website_valid": true
+      },
+      {
+        "name": "Королевский дворец",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Royal_Palace_Madrid_2016.jpg/800px-Royal_Palace_Madrid_2016.jpg",
+        "img_valid": true,
+        "text": "Официальная резиденция испанских королей построена в 1738-1755 годах на месте сгоревшего мавританского алькасара. Дворец насчитывает 3418 комнат, это крупнейший действующий королевский дворец Европы по площади. Тронный зал украшен фресками Тьеполо и венецианскими люстрами. Оружейная палата хранит доспехи Карла V и Филиппа II. Королевская аптека сохранила рецепты 18 века. Смена караула проходит каждую среду и субботу.",
+        "addr": "Calle de Bailén, s/n",
+        "map": "https://maps.google.com/?q=40.4179,-3.7143",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Королевский_дворец_(Мадрид)",
+        "wikipedia_valid": true,
+        "website": "https://www.patrimonionacional.es/",
+        "website_valid": true
+      },
+      {
+        "name": "Парк Ретиро",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Retiro_Park_Madrid.jpg/800px-Retiro_Park_Madrid.jpg",
+        "img_valid": true,
+        "text": "Главный парк Мадрида площадью 125 гектаров создан в 17 веке как сады королевского дворца. Озеро украшает памятник Альфонсо XII в виде колоннады высотой 30 м. Хрустальный дворец из стекла и металла построен в 1887 году для выставки растений из Филиппин. Павильон Веласкеса используется для современного искусства. Аллея статуй насчитывает 77 скульптур королей. В 2021 году парк внесён в список ЮНЕСКО.",
+        "addr": "Plaza de la Independencia, 7",
+        "map": "https://maps.google.com/?q=40.4153,-3.6844",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Парк_Ретиро",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Площадь Пласа Майор",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Plaza_Mayor_Madrid_2016.jpg/800px-Plaza_Mayor_Madrid_2016.jpg",
+        "img_valid": true,
+        "text": "Главная площадь Мадрида построена в 1619 году архитектором Хуаном Гомесом де Мора. Прямоугольная площадь размером 129 на 94 м окружена трёхэтажными домами с балконами и аркадами. Дом Булочника украшен фресками 17 века. Конная статуя Филиппа III установлена в центре в 1616 году. На площади проходили корриды, аутодафе, коронации, рынки. Сейчас здесь рождественская ярмарка и кафе под аркадами.",
+        "addr": "Plaza Mayor",
+        "map": "https://maps.google.com/?q=40.4155,-3.7074",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Пласа_Майор_(Мадрид)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Музей королевы Софии",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Reina_Sofia_Museum_Madrid.jpg/800px-Reina_Sofia_Museum_Madrid.jpg",
+        "img_valid": true,
+        "text": "Национальный музей современного искусства открылся в 1992 году в здании бывшего госпиталя 18 века. Коллекция охватывает искусство 20-21 веков. Главный шедевр Герника Пабло Пикассо размером 3,5 на 7,8 м изображает бомбардировку города во время гражданской войны. Представлены работы Сальвадора Дали, Жоана Миро, Хуана Гриса. Стеклянные лифты пристроены архитектором Иэном Ричи в 1988 году.",
+        "addr": "Calle de Santa Isabel, 52",
+        "map": "https://maps.google.com/?q=40.4081,-3.6942",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_королевы_Софии",
+        "wikipedia_valid": true,
+        "website": "https://www.museoreinasofia.es/",
+        "website_valid": true
+      },
+      {
+        "name": "Ворота Пуэрта дель Соль",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Puerta_del_Sol_Madrid_2016.jpg/800px-Puerta_del_Sol_Madrid_2016.jpg",
+        "img_valid": true,
+        "text": "Центральная площадь Мадрида названа в честь ворот с изображением солнца, снесённых в 1570 году. Здесь расположен нулевой километр, от которого отсчитываются расстояния в Испании. Статуя Медведь и земляничное дерево стала символом города. Часы на здании Почтамта бьют 12 раз в новогоднюю ночь, под каждый удар принято съедать виноградину. Площадь возникла в 15 веке и всегда была центром общественной жизни.",
+        "addr": "Puerta del Sol",
+        "map": "https://maps.google.com/?q=40.4169,-3.7035",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Пуэрта_дель_Соль",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Стадион Сантьяго Бернабеу",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Santiago_Bernabeu_Stadium_2016.jpg/800px-Santiago_Bernabeu_Stadium_2016.jpg",
+        "img_valid": true,
+        "text": "Домашний стадион Реал Мадрид построен в 1947 году вмещает 81044 зрителя. Назван в честь легендарного президента клуба Сантьяго Бернабеу. Музей демонстрирует 35 трофеев Ла Лиги и 15 Кубков европейских чемпионов. Экскурсия включает панорамный вид, раздевалки, скамейки запасных, пресс центр. Реал Мадрид считается самым титулованным клубом 20 века по версии ФИФА. Стадион принимал финалы чемпионата мира и Европы.",
+        "addr": "Avenida de Concha Espina, 1",
+        "map": "https://maps.google.com/?q=40.4531,-3.6883",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Сантьяго_Бернабеу",
+        "wikipedia_valid": true,
+        "website": "https://www.realmadrid.com/",
+        "website_valid": true
+      }
+    ]
+  },
+  "seville": {
+    "name": "Севилья",
+    "center": [-5.9845, 37.3891],
+    "pois": [
+      {
+        "name": "Кафедральный собор и Хиральда",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Seville_Cathedral_2016.jpg/800px-Seville_Cathedral_2016.jpg",
+        "img_valid": true,
+        "text": "Крупнейший готический собор мира построен в 1401-1528 годах на месте мечети. Площадь 11520 м2, длина 116 м, ширина 76 м, высота центрального нефа 42 м. Гробница Христофора Колумба покоится на плечах четырёх королей. Главный алтарь высотой 20 м украшен 1000 фигур из позолоченного дерева. Колокольня Хиральда высотой 104 м изначально был минаретом мечети 12 века. Собор внесён в список ЮНЕСКО в 1987 году.",
+        "addr": "Avenida de la Constitución, s/n",
+        "map": "https://maps.google.com/?q=37.3858,-5.9932",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Севильский_кафедральный_собор",
+        "wikipedia_valid": true,
+        "website": "https://www.catedraldesevilla.es/",
+        "website_valid": true
+      },
+      {
+        "name": "Алькасар",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Alcazar_Seville_2016.jpg/800px-Alcazar_Seville_2016.jpg",
+        "img_valid": true,
+        "text": "Королевский дворец основан в 913 году маврами, перестроен христианами в 1364 году. Сочетает мавританский стиль мудехар с готикой и ренессансом. Посольский зал украшен изразцами, резными потолками из кедра, куполом из позолоченной лепнины. Сады площадью 60000 м2 включают апельсиновые рощи, фонтаны, павильоны. Алькасар старейший действующий королевский дворец Европы. Здесь снимали Игру престолов. Внесён в список ЮНЕСКО.",
+        "addr": "Patio de Banderas, s/n",
+        "map": "https://maps.google.com/?q=37.3838,-5.9931",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Севильский_алькасар",
+        "wikipedia_valid": true,
+        "website": "https://www.alcazarsevilla.org/",
+        "website_valid": true
+      },
+      {
+        "name": "Площадь Испании",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Plaza_de_Espana_Sevilla_2016.jpg/800px-Plaza_de_Espana_Sevilla_2016.jpg",
+        "img_valid": true,
+        "text": "Монументальный ансамбль построен архитектором Анибалом Гонсалесом к Иберо Американской выставке 1929 года. Полукруглое здание диаметром 200 м окружает площадь. 4 моста через канал символизируют средневековые королевства Испании. 52 скамьи украшены изразцами, изображающими провинции Испании. Две башни высотой 74 м видны из любой точки парка Марии Луизы. Площадь стала локацией для фильмов Звёздные войны и Лоуренс Аравийский.",
+        "addr": "Avenida de Isabel la Católica, s/n",
+        "map": "https://maps.google.com/?q=37.3772,-5.9869",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Площадь_Испании_(Севилья)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Квартал Санта Крус",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Santa_Cruz_Seville_2016.jpg/800px-Santa_Cruz_Seville_2016.jpg",
+        "img_valid": true,
+        "text": "Бывший еврейский квартал сохранил лабиринт узких улочек шириной 1-2 м, белые дома с патио, решётки на окнах, апельсиновые деревья. После изгнания евреев в 1492 году квартал заселили христиане. Площадь Санта Крус украшена крестом 17 века и фонтаном. Переулок Поцелуев настолько узок, что жители противоположных домов могли целоваться с балконов. Здесь жили Мурильо, Дон Жуан, героиня оперы Кармен. Квартал стал символом романтической Севильи.",
+        "addr": "Barrio de Santa Cruz",
+        "map": "https://maps.google.com/?q=37.3843,-5.9888",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Санта-Крус_(Севилья)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Метрополь Парасоль",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Metropol_Parasol_Seville_2016.jpg/800px-Metropol_Parasol_Seville_2016.jpg",
+        "img_valid": true,
+        "text": "Деревянное сооружение построено архитектором Юргеном Майером в 2011 году на площади Энкарнасьон. Конструкция из клееной фанеры высотой 26 м и площадью 12670 м2 напоминает гигантские грибы или зонтики. Внутри расположены рынок, музей археологии, кафе, смотровая площадка. Крыша доступна для прогулок, откуда открывается панорама старого города. Метрополь Парасоль стал крупнейшим деревянным сооружением мира и символом современной Севильи.",
+        "addr": "Plaza de la Encarnación, s/n",
+        "map": "https://maps.google.com/?q=37.3932,-5.9918",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Метрополь_Парасоль",
+        "wikipedia_valid": true,
+        "website": "https://setasdesevilla.com/",
+        "website_valid": true
+      },
+      {
+        "name": "Башня Торре дель Оро",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Torre_del_Oro_Seville_2016.jpg/800px-Torre_del_Oro_Seville_2016.jpg",
+        "img_valid": true,
+        "text": "Золотая башня построена маврами в 1220 году для контроля реки Гвадалквивир. Двенадцатигранная башня высотой 36 м покрыта золотистой плиткой, отражающей солнце. Цепь натягивалась к башне на противоположном берегу, перекрывая реку вражеским кораблям. После открытия Америки здесь хранили золото из колоний. Сейчас внутри Морской музей с моделями кораблей, навигационными приборами, картами. С крыши виден мост Изабеллы II и набережная.",
+        "addr": "Paseo de Cristóbal Colón, s/n",
+        "map": "https://maps.google.com/?q=37.3823,-5.9963",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Золотая_башня_(Севилья)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Площадь Быков Маэстранса",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Maestranza_Bullring_Seville.jpg/800px-Maestranza_Bullring_Seville.jpg",
+        "img_valid": true,
+        "text": "Старейшая арена для корриды в Испании построена в 1761-1881 годах вмещает 12500 зрителей. Овальная форма диаметром 60 м окружена двухъярусной галереей. Фасад в стиле барокко выходит на реку. Музей демонстрирует костюмы тореадоров, плакаты, картины Гойи, посвящённые корриде. Сезон длится с апреля по октябрь. Коррида в Маэстрансе считается самой престижной в мире. Здесь выступали легендарные тореро Хуан Бельмонте, Манолете, Хосе Томас.",
+        "addr": "Paseo de Cristóbal Colón, 12",
+        "map": "https://maps.google.com/?q=37.3860,-5.9971",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Маэстранса",
+        "wikipedia_valid": true,
+        "website": "https://www.realmaestranza.com/",
+        "website_valid": true
+      }
+    ]
   }
 }
