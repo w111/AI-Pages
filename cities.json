@@ -1,7 +1,10 @@
 {
   "subotica": {
     "name": "Суботица",
-    "center": [19.6647, 46.0996],
+    "center": [
+      19.6647,
+      46.0996
+    ],
     "pois": [
       {
         "name": "Ратуша City Hall",
@@ -74,12 +77,35 @@
         "map": "https://maps.google.com/?q=46.1010,19.6630",
         "wikipedia": "https://ru.wikipedia.org/wiki/Суботица",
         "wikipedia_valid": true
+      },
+      {
+        "name": "Городской музей",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Gradski_muzej_Subotica.jpg/800px-Gradski_muzej_Subotica.jpg",
+        "img_valid": true,
+        "text": "Музей открыт в 1948 году в здании бывшей ратуши 1730 года постройки. Коллекция насчитывает более 50000 экспонатов по археологии, этнографии и истории города. Особенно ценна коллекция изделий из керамики фабрики Zsolnay. Во дворе музея выставлены римские надгробия и средневековые камни.",
+        "addr": "Адрес Трг Цара Јована Ненада 15",
+        "map": "https://maps.google.com/?q=46.1005,19.6655",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Суботица",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Зоопарк Палич",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Zoo_Palic_entrance.jpg/800px-Zoo_Palic_entrance.jpg",
+        "img_valid": true,
+        "text": "Зоопарк основан в 1950 году на берегу озера Палич. На территории 10 гектаров живут более 300 животных 60 видов. Гордость зоопарка это белые львы и сибирские тигры. Для детей работает контактный зоопарк с козами и кроликами. Летом проводятся ночные экскурсии с фонариками.",
+        "addr": "Адрес Палички пут б.б., Палић",
+        "map": "https://maps.google.com/?q=46.0986,19.7634",
+        "website": "https://www.zoovrtpalic.com",
+        "website_valid": true
       }
     ]
   },
   "palic": {
     "name": "Палич",
-    "center": [19.7589, 46.0953],
+    "center": [
+      19.7589,
+      46.0953
+    ],
     "pois": [
       {
         "name": "Палич Озеро",
@@ -132,12 +158,45 @@
         "wikipedia": "https://ru.wikipedia.org/wiki/Паличское_озеро",
         "img_valid": true,
         "wikipedia_valid": true
+      },
+      {
+        "name": "Женская купальня",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Palic_Women_Beach.jpg/800px-Palic_Women_Beach.jpg",
+        "img_valid": true,
+        "text": "Купальня построена в 1909 году в стиле венгерской сецессии. Деревянные кабинки на сваях уходят в озеро на 50 метров. Крыши покрыты глазурованной черепицей Zsolnay. До 1950 года купальня была только для женщин. Сейчас это популярное место для фотосессий и купания.",
+        "addr": "Адрес Обала доктора Младена Стојановића",
+        "map": "https://maps.google.com/?q=46.0965,19.7603",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Паличское_озеро",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Водонапорная башня",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Palic_Water_Tower.jpg/600px-Palic_Water_Tower.jpg",
+        "img_valid": true,
+        "text": "Башня построена в 1912 году по проекту архитекторов Комора и Якаба. Высота 45 метров, фасад украшен керамикой и майоликой. На вершине смотровая площадка с видом на озеро и окрестности. Башня работала по назначению до 1980 года. Сейчас внутри музей истории водоснабжения.",
+        "addr": "Адрес Палички пут",
+        "map": "https://maps.google.com/?q=46.0947,19.7591",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Паличское_озеро",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Европейский кинофестиваль Палич",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/European_Film_Festival_Palic.jpg/800px-European_Film_Festival_Palic.jpg",
+        "img_valid": true,
+        "text": "Фестиваль проводится ежегодно с 1992 года в июле. Показы проходят в кинотеатре на 500 мест и под открытым небом на берегу озера. В программе европейское кино, которое не вышло в широкий прокат. Главный приз золотая башня по форме водонапорной башни Палича. За время фестиваля город принимает до 50000 гостей.",
+        "addr": "Адрес Обала доктора Младена Стојановића 1",
+        "map": "https://maps.google.com/?q=46.0953,19.7589",
+        "website": "https://www.palicfilmfestival.com",
+        "website_valid": true
       }
     ]
   },
   "belgrade": {
     "name": "Белград",
-    "center": [20.4489, 44.8176],
+    "center": [
+      20.4489,
+      44.8176
+    ],
     "pois": [
       {
         "name": "Калемегдан крепость",
@@ -190,12 +249,49 @@
         "wikipedia": "https://ru.wikipedia.org/wiki/Кнез_Михаилова",
         "img_valid": false,
         "wikipedia_valid": false
+      },
+      {
+        "name": "Храм Святого Саввы",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Temple_of_Saint_Sava%2C_Belgrade.jpg/800px-Temple_of_Saint_Sava%2C_Belgrade.jpg",
+        "img_valid": true,
+        "text": "Один из крупнейших православных храмов мира построен на месте сожжения мощей святого Саввы турками в 1594 году. Строительство началось в 1935 году и продолжается до сих пор. Высота купола 79 метров, вес центрального креста 4 тонны. Внутренняя мозаика площадью 15000 м2 выполнена русскими мастерами.",
+        "addr": "Адрес Крушедолска 2а",
+        "map": "https://maps.google.com/?q=44.7985,20.4686",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Храм_Святого_Саввы_(Белград)",
+        "wikipedia_valid": true,
+        "website": "https://www.hramsvetogsave.rs",
+        "website_valid": true
+      },
+      {
+        "name": "Скадарлия",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Skadarlija_street.jpg/800px-Skadarlija_street.jpg",
+        "img_valid": true,
+        "text": "Богемный квартал Белграда часто сравнивают с парижским Монмартром. Булыжная улица длиной 400 метров застроена домами 19 века. Здесь жили поэты, художники и актеры. Сейчас работают традиционные рестораны кафаны с живой музыкой. По вечерам играют цыганские оркестры.",
+        "addr": "Адрес Скадарска улица",
+        "map": "https://maps.google.com/?q=44.8208,20.4636",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Скадарлия",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Музей Николы Теслы",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Nikola_Tesla_Museum.jpg/800px-Nikola_Tesla_Museum.jpg",
+        "img_valid": true,
+        "text": "Музей открыт в 1952 году в особняке сербского дипломата. Здесь хранится урна с прахом Теслы и более 160000 оригинальных документов. В коллекции личные вещи изобретателя, чертежи, фотографии и модели изобретений. Экскурсоводы демонстрируют работу катушки Теслы и беспроводную передачу электричества.",
+        "addr": "Адрес Крунска 51",
+        "map": "https://maps.google.com/?q=44.8048,20.4686",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Николы_Теслы",
+        "wikipedia_valid": true,
+        "website": "https://www.tesla-museum.org",
+        "website_valid": true
       }
     ]
   },
   "sombor": {
     "name": "Сомбор",
-    "center": [19.1123, 45.7747],
+    "center": [
+      19.1123,
+      45.7747
+    ],
     "pois": [
       {
         "name": "Ратуша Сомбора",
@@ -250,12 +346,35 @@
         "img_valid": true,
         "wikipedia": "https://ru.wikipedia.org/wiki/%D0%9F%D0%B8%D0%B2%D0%BE%D0%B2%D0%B0%D1%80%D0%B5%D0%BD%D0%B8%D0%B5",
         "wikipedia_valid": true
+      },
+      {
+        "name": "Городская ратуша",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/City_Hall_Sombor.jpg/800px-City_Hall_Sombor.jpg",
+        "img_valid": true,
+        "text": "Ратуша построена в 1842 году в стиле классицизма по проекту архитектора Франца Кассано. Здание украшают 8 дорических колонн и фронтон с городским гербом. На башне установлены часы немецкой фирмы Вейле 1883 года. В ратуше заседает городской совет и мэрия.",
+        "addr": "Адрес Трг Цара Лазара 1",
+        "map": "https://maps.google.com/?q=45.7733,19.1122",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Сомбор",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Церковь святого Георгия",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Serbian_Orthodox_Church_Sombor.jpg/800px-Serbian_Orthodox_Church_Sombor.jpg",
+        "img_valid": true,
+        "text": "Сербская православная церковь построена в 1761 1763 годах в стиле барокко. Иконостас работы мастера Арсения Теодоровича покрыт позолотой. В церкви хранятся мощи святого великомученика Феодора Стратилата. Колокольня высотой 45 метров видна из всех районов города.",
+        "addr": "Адрес Трг светог Ђорђа 1",
+        "map": "https://maps.google.com/?q=45.7740,19.1128",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Сомбор",
+        "wikipedia_valid": true
       }
     ]
   },
   "novi-sad": {
     "name": "Нови-Сад",
-    "center": [19.8335, 45.2671],
+    "center": [
+      19.8335,
+      45.2671
+    ],
     "pois": [
       {
         "name": "Петроварадинская крепость",
@@ -306,12 +425,47 @@
         "wikipedia": "https://ru.wikipedia.org/wiki/%D0%A1%D0%B5%D1%80%D0%B1%D1%81%D0%BA%D0%B8%D0%B9_%D0%BD%D0%B0%D1%86%D0%B8%D0%BE%D0%BD%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9_%D1%82%D0%B5%D0%B0%D1%82%D1%80",
         "img_valid": true,
         "wikipedia_valid": true
+      },
+      {
+        "name": "Музей Воеводины",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Museum_of_Vojvodina_-_main_building.jpg/800px-Museum_of_Vojvodina_-_main_building.jpg",
+        "text": "Музей основан в 1847 году и является старейшим культурным учреждением Воеводины. Коллекция насчитывает более 400000 экспонатов, представляющих историю региона от древности до современности. Здание музея построено в стиле неоренессанса и расположено в историческом центре города.",
+        "addr": "Адрес Dunavska 35-37, Novi Sad",
+        "map": "https://maps.google.com/?q=45.2551,19.8451",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Воеводины",
+        "website": "http://www.muzejvojvodine.org.rs",
+        "img_valid": true,
+        "wikipedia_valid": true,
+        "website_valid": true
+      },
+      {
+        "name": "Стратишки виноградники",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Sremski_Karlovci_-_wine_cellars.jpg/800px-Sremski_Karlovci_-_wine_cellars.jpg",
+        "text": "Исторические виноградники на холмах Фрушка Гора известны с римских времен. Здесь производятся знаменитые вина Бермет и Аушброх, которые в 19 веке поставлялись к европейским королевским дворам. Винные подвалы открыты для посещения и дегустаций.",
+        "addr": "Адрес Sremski Karlovci, 21205",
+        "map": "https://maps.google.com/?q=45.2034,19.9420",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Сремски-Карловцы",
+        "img_valid": true,
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Синагога Нови Сада",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Novi_Sad_Synagogue.jpg/800px-Novi_Sad_Synagogue.jpg",
+        "text": "Синагога построена в 1909 году в стиле венгерского модерна архитектором Липотом Баумхорном. Здание отличается красочными майоликовыми орнаментами и уникальными витражами. После реставрации синагога служит культурным центром и концертным залом.",
+        "addr": "Адрес Jevrejska 11, Novi Sad",
+        "map": "https://maps.google.com/?q=45.2558,19.8420",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Синагога_в_Нови-Саде",
+        "img_valid": true,
+        "wikipedia_valid": true
       }
     ]
   },
   "tokyo": {
     "name": "Токио",
-    "center": [139.6917, 35.6895],
+    "center": [
+      139.6917,
+      35.6895
+    ],
     "pois": [
       {
         "name": "Храм Сенсодзи",
@@ -368,12 +522,47 @@
         "wikipedia": "https://ru.wikipedia.org/wiki/Радужный_мост",
         "img_valid": true,
         "wikipedia_valid": true
+      },
+      {
+        "name": "Токийская телебашня",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Tokyo_Tower_2023.jpg/600px-Tokyo_Tower_2023.jpg",
+        "img_valid": true,
+        "text": "Башня высотой 333 метра построена в 1958 году по образцу Эйфелевой башни. Конструкция весит 4000 тонн стали окрашенной в оранжевый и белый цвета. На высоте 150 и 250 метров расположены смотровые площадки с панорамой на Токио и гору Фудзи. У подножия работает аквариум и музей восковых фигур.",
+        "addr": "Адрес 4-2-8 Сиба Коэн, Минато ку, Токио",
+        "map": "https://maps.google.com/?q=35.6586,139.7454",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Токийская_телебашня",
+        "wikipedia_valid": true,
+        "website": "https://www.tokyotower.co.jp",
+        "website_valid": true
+      },
+      {
+        "name": "Рынок Цукидзи",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Tsukiji_fish_market.jpg/800px-Tsukiji_fish_market.jpg",
+        "img_valid": true,
+        "text": "Крупнейший рыбный рынок мира работал с 1935 по 2018 год. Оптовый рынок переехал на остров Тоёсу, но внешний рынок продолжает работать. Здесь торгуют свежей рыбой, морепродуктами, овощами и фруктами. Туристы приходят на завтрак из суши в 5 утра. Атмосфера рынка осталась аутентичной.",
+        "addr": "Адрес 5-2-1 Цукидзи, Тюо ку, Токио",
+        "map": "https://maps.google.com/?q=35.6654,139.7707",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Цукидзи",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Парк Уэно",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ueno_Park_Tokyo.jpg/800px-Ueno_Park_Tokyo.jpg",
+        "img_valid": true,
+        "text": "Парк площадью 53 гектара открыт в 1873 году на территории храма Канъэйдзи. Весной сюда приходят любоваться цветением 1000 сакур. На территории расположены 5 музеев, зоопарк, концертный зал и озеро Синобадзу. В зоопарке живут панды подаренные Китаем.",
+        "addr": "Адрес Уэно Коэн, Тайто ку, Токио",
+        "map": "https://maps.google.com/?q=35.7148,139.7740",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Парк_Уэно",
+        "wikipedia_valid": true
       }
     ]
   },
   "chicago": {
     "name": "Чикаго",
-    "center": [-87.6298, 41.8781],
+    "center": [
+      -87.6298,
+      41.8781
+    ],
     "pois": [
       {
         "name": "Миллениум парк",
@@ -434,12 +623,37 @@
         "img_valid": true,
         "wikipedia_valid": false,
         "website_valid": true
+      },
+      {
+        "name": "Уиллис Тауэр",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Willis_Tower_From_Lake.jpg/600px-Willis_Tower_From_Lake.jpg",
+        "img_valid": true,
+        "text": "Небоскреб высотой 442 метра был самым высоким зданием мира с 1973 по 1998 год. Башня состоит из 9 труб разной высоты. На 103 этаже расположена смотровая площадка Skydeck с стеклянными балконами выступающими на 1.3 метра за фасад. В ясную погоду видимость достигает 80 км.",
+        "addr": "Адрес 233 South Wacker Drive",
+        "map": "https://maps.google.com/?q=41.8789,-87.6359",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Уиллис-тауэр",
+        "wikipedia_valid": true,
+        "website": "https://www.willistower.com",
+        "website_valid": true
+      },
+      {
+        "name": "Миллениум Парк",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Cloud_Gate_%28The_Bean%29.jpg/800px-Cloud_Gate_%28The_Bean%29.jpg",
+        "img_valid": true,
+        "text": "Парк площадью 10 гектаров открыт в 2004 году на месте железнодорожных путей. Главная достопримечательность скульптура Облачные ворота из зеркальной стали весом 100 тонн. Павильон Джея Притцкера вмещает 11000 зрителей на концертах под открытым небом. Зимой работает бесплатный каток.",
+        "addr": "Адрес 201 East Randolph Street",
+        "map": "https://maps.google.com/?q=41.8826,-87.6226",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Миллениум-парк",
+        "wikipedia_valid": true
       }
     ]
   },
   "saint-petersburg": {
     "name": "Санкт-Петербург",
-    "center": [30.3351, 59.9311],
+    "center": [
+      30.3351,
+      59.9311
+    ],
     "pois": [
       {
         "name": "Эрмитаж",
@@ -500,12 +714,49 @@
         "img_valid": true,
         "wikipedia_valid": true,
         "website_valid": true
+      },
+      {
+        "name": "Невский проспект",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Nevsky_Prospekt_SPB.jpg/800px-Nevsky_Prospekt_SPB.jpg",
+        "text": "Главная улица Санкт Петербурга протянулась на 4,5 километра от Адмиралтейства до Александро Невской лавры. Проспект заложен в 1710 годах как часть генерального плана новой столицы. Здесь расположены важнейшие архитектурные памятники, музеи, театры и торговые центры города.",
+        "addr": "Адрес Невский проспект, Санкт-Петербург",
+        "map": "https://maps.google.com/?q=59.9343,30.3351",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Невский_проспект",
+        "img_valid": true,
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Казанский собор",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Kazan_Cathedral_SPB.jpg/800px-Kazan_Cathedral_SPB.jpg",
+        "text": "Кафедральный собор построен в 1801 1811 годах по проекту архитектора Воронихина в стиле ампир. Полукруглая колоннада из 96 колонн обращена к Невскому проспекту. В соборе хранится чудотворная икона Казанской Божией Матери, особо почитаемая в России.",
+        "addr": "Адрес Казанская площадь 2, Санкт-Петербург",
+        "map": "https://maps.google.com/?q=59.9343,30.3249",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Казанский_собор_(Санкт-Петербург)",
+        "website": "https://kazansky-spb.ru",
+        "img_valid": true,
+        "wikipedia_valid": true,
+        "website_valid": true
+      },
+      {
+        "name": "Русский музей",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Mikhailovsky_Palace.jpg/800px-Mikhailovsky_Palace.jpg",
+        "text": "Крупнейший в мире музей русского искусства основан в 1895 году императором Николаем 2. Коллекция размещена в Михайловском дворце и включает более 400000 экспонатов от древнерусских икон до авангарда 20 века. В музее представлены работы Репина, Брюллова, Айвазовского и других великих мастеров.",
+        "addr": "Адрес Инженерная улица 4, Санкт-Петербург",
+        "map": "https://maps.google.com/?q=59.9373,30.3323",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Русский_музей",
+        "website": "https://www.rusmuseum.ru",
+        "img_valid": true,
+        "wikipedia_valid": true,
+        "website_valid": true
       }
     ]
   },
   "buenos-aires": {
     "name": "Буэнос-Айрес",
-    "center": [-58.3816, -34.6037],
+    "center": [
+      -58.3816,
+      -34.6037
+    ],
     "pois": [
       {
         "name": "Район Ла Бока",
@@ -562,12 +813,45 @@
         "img_valid": true,
         "wikipedia_valid": true,
         "website_valid": true
+      },
+      {
+        "name": "Пуэрто Мадеро",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Puerto_Madero_Buenos_Aires.jpg/800px-Puerto_Madero_Buenos_Aires.jpg",
+        "text": "Современный деловой район на месте старых портовых доков полностью реконструирован в 1990 годах. Красные кирпичные склады превращены в элитные рестораны, офисы и апартаменты. Район известен мостом Женщины работы архитектора Калатравы и экологическим заповедником Костанера Сур.",
+        "addr": "Адрес Puerto Madero, Buenos Aires",
+        "map": "https://maps.google.com/?q=-34.6120,-58.3636",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Пуэрто-Мадеро",
+        "img_valid": true,
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Обелиск Буэнос Айреса",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Obelisco_de_Buenos_Aires.jpg/800px-Obelisco_de_Buenos_Aires.jpg",
+        "text": "Символ города высотой 67 метров построен в 1936 году к 400 летию первого основания Буэнос Айреса. Обелиск расположен на площади Республики на пересечении проспектов 9 июля и Корриентес. Монумент стал местом проведения массовых праздников и спортивных торжеств.",
+        "addr": "Адрес Avenida 9 de Julio, Buenos Aires",
+        "map": "https://maps.google.com/?q=-34.6037,-58.3816",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Обелиск_(Буэнос-Айрес)",
+        "img_valid": true,
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Палермские леса",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Bosques_de_Palermo_Buenos_Aires.jpg/800px-Bosques_de_Palermo_Buenos_Aires.jpg",
+        "text": "Крупнейший городской парк площадью 400 гектаров создан в 19 веке на землях диктатора Росаса. Парк включает розарий с 18000 кустов роз, японский сад, планетарий и искусственные озера. Это популярное место отдыха горожан для пикников, велопрогулок и занятий спортом.",
+        "addr": "Адрес Avenida del Libertador, Palermo, Buenos Aires",
+        "map": "https://maps.google.com/?q=-34.5753,-58.4140",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Палермо_(Буэнос-Айрес)",
+        "img_valid": true,
+        "wikipedia_valid": true
       }
     ]
   },
   "istanbul": {
     "name": "Стамбул",
-    "center": [28.9784, 41.0082],
+    "center": [
+      28.9784,
+      41.0082
+    ],
     "pois": [
       {
         "name": "Айя София",
@@ -626,12 +910,47 @@
         "img_valid": true,
         "wikipedia_valid": true,
         "website_valid": true
+      },
+      {
+        "name": "Цистерна Базилика",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Basilica_Cistern_Istanbul.jpg/800px-Basilica_Cistern_Istanbul.jpg",
+        "img_valid": true,
+        "text": "Подземное водохранилище построено в 532 году при императоре Юстиниане. Размеры 145 на 65 метров, высота сводов 9 метров. Воду поддерживают 336 мраморных колонн высотой 8 метров. В основании двух колонн лежат головы Медузы Горгоны привезенные из разрушенных храмов. Цистерна вмещала 80000 кубометров воды.",
+        "addr": "Адрес Alemdar Mahallesi, Yerebatan Caddesi",
+        "map": "https://maps.google.com/?q=41.0084,28.9778",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Цистерна_Базилика",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Галатская башня",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Galata_Tower_2013.jpg/600px-Galata_Tower_2013.jpg",
+        "img_valid": true,
+        "text": "Башня высотой 67 метров построена генуэзцами в 1348 году. Стены толщиной 3.75 метра выдержали множество землетрясений. В османское время здесь была пожарная каланча и обсерватория. На вершине смотровая площадка и ресторан. С террасы открывается вид на Босфор, Золотой Рог и исторический центр.",
+        "addr": "Адрес Bereketzade Mahallesi, Galata Kulesi",
+        "map": "https://maps.google.com/?q=41.0256,28.9744",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Галатская_башня",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Дворец Долмабахче",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Dolmabahce_Palace.jpg/800px-Dolmabahce_Palace.jpg",
+        "img_valid": true,
+        "text": "Дворец построен в 1843 1856 годах на берегу Босфора для султана Абдул Меджида I. Здание длиной 600 метров совмещает барокко, рококо и неоклассицизм. Во дворце 285 комнат, 46 залов и 68 туалетов. В церемониальном зале висит хрустальная люстра весом 4.5 тонны подарок королевы Виктории.",
+        "addr": "Адрес Vişnezade Mahallesi, Dolmabahçe Caddesi",
+        "map": "https://maps.google.com/?q=41.0391,29.0003",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Долмабахче",
+        "wikipedia_valid": true,
+        "website": "https://www.millisaraylar.gov.tr",
+        "website_valid": true
       }
     ]
   },
   "paris": {
     "name": "Париж",
-    "center": [2.3522, 48.8566],
+    "center": [
+      2.3522,
+      48.8566
+    ],
     "pois": [
       {
         "name": "Эйфелева башня",
@@ -690,12 +1009,49 @@
         "wikipedia": "https://ru.wikipedia.org/wiki/Елисейские_поля",
         "img_valid": true,
         "wikipedia_valid": true
+      },
+      {
+        "name": "Собор Парижской Богоматери",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Paris_Notre-Dame.jpg/800px-Paris_Notre-Dame.jpg",
+        "img_valid": true,
+        "text": "Готический собор строился с 1163 по 1345 год на острове Сите. Высота башен 69 метров, длина нефа 130 метров. Три огромных витража розы диаметром 13 метров содержат средневековое стекло. В апреле 2019 года пожар уничтожил шпиль и кровлю. Реставрация продолжается, открытие запланировано на 2024 год.",
+        "addr": "Адрес 6 Parvis Notre-Dame, Place Jean-Paul II",
+        "map": "https://maps.google.com/?q=48.8530,2.3499",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Собор_Парижской_Богоматери",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Триумфальная арка",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Arc_de_Triomphe%2C_Paris_21_October_2010.jpg/800px-Arc_de_Triomphe%2C_Paris_21_October_2010.jpg",
+        "img_valid": true,
+        "text": "Арка высотой 50 метров построена в 1806 1836 годах в честь побед Наполеона. На стенах выгравированы имена 558 генералов и названия 128 сражений. Барельеф Марсельеза Франсуа Рюда считается шедевром французской скульптуры. Под аркой горит Вечный огонь на могиле Неизвестного солдата.",
+        "addr": "Адрес Place Charles de Gaulle",
+        "map": "https://maps.google.com/?q=48.8738,2.2950",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Триумфальная_арка_(Париж)",
+        "wikipedia_valid": true,
+        "website": "https://www.paris-arc-de-triomphe.fr",
+        "website_valid": true
+      },
+      {
+        "name": "Музей Орсе",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Paris_Musee_d%27Orsay_Panorama_2014.jpg/800px-Paris_Musee_d%27Orsay_Panorama_2014.jpg",
+        "img_valid": true,
+        "text": "Музей открыт в 1986 году в здании бывшего железнодорожного вокзала 1900 года постройки. Коллекция охватывает период с 1848 по 1914 год. Здесь собрана крупнейшая коллекция импрессионистов и постимпрессионистов мира работы Моне, Ренуара, Дега, Ван Гога и Сезанна. Ежегодно музей посещают 3.6 миллиона человек.",
+        "addr": "Адрес 1 Rue de la Légion d'Honneur",
+        "map": "https://maps.google.com/?q=48.8600,2.3266",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Орсе",
+        "wikipedia_valid": true,
+        "website": "https://www.musee-orsay.fr",
+        "website_valid": true
       }
     ]
   },
   "budapest": {
     "name": "Будапешт",
-    "center": [19.0402, 47.4979],
+    "center": [
+      19.0402,
+      47.4979
+    ],
     "pois": [
       {
         "name": "Здание парламента",
@@ -754,12 +1110,47 @@
         "img_valid": true,
         "wikipedia_valid": true,
         "website_valid": true
+      },
+      {
+        "name": "Рыбацкий бастион",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Fisherman%27s_Bastion_Budapest.jpg/800px-Fisherman%27s_Bastion_Budapest.jpg",
+        "img_valid": true,
+        "text": "Бастион построен в 1895 1902 годах на Замковой горе в неороманском стиле. Семь башен символизируют семь венгерских племен основавших государство. Название связано с тем, что в Средние века здесь стояли рыбацкие лавки. С террас открывается вид на Дунай, здание парламента и Пешт.",
+        "addr": "Адрес Szentháromság tér",
+        "map": "https://maps.google.com/?q=47.5023,19.0350",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Рыбацкий_бастион",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Термальные купальни Сечени",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Szechenyi_Bath_Budapest.jpg/800px-Szechenyi_Bath_Budapest.jpg",
+        "img_valid": true,
+        "text": "Купальни открыты в 1913 году в стиле необарокко в городском парке Варошлигет. Вода поступает из источника глубиной 1256 метров с температурой 77 градусов. В комплексе 3 открытых и 15 закрытых бассейнов с температурой от 18 до 40 градусов. Термальная вода лечит болезни суставов и нервной системы.",
+        "addr": "Адрес Állatkerti krt. 9-11",
+        "map": "https://maps.google.com/?q=47.5187,19.0816",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Купальни_Сечени",
+        "wikipedia_valid": true,
+        "website": "https://www.szechenyibath.hu",
+        "website_valid": true
+      },
+      {
+        "name": "Центральный рынок",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Budapest_Great_Market_Hall.jpg/800px-Budapest_Great_Market_Hall.jpg",
+        "img_valid": true,
+        "text": "Рынок открыт в 1897 году в здании площадью 10000 м2 с крышей из керамики Zsolnay. На первом этаже торгуют мясом, рыбой, овощами и паприкой всех сортов. На втором этаже сувениры, вышивка и рестораны венгерской кухни. В подвале работает супермаркет. Рынок посещают 100000 человек в неделю.",
+        "addr": "Адрес Vámház krt. 1-3",
+        "map": "https://maps.google.com/?q=47.4874,19.0582",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Центральный_рынок_(Будапешт)",
+        "wikipedia_valid": true
       }
     ]
   },
   "vienna": {
     "name": "Вена",
-    "center": [16.3738, 48.2082],
+    "center": [
+      16.3738,
+      48.2082
+    ],
     "pois": [
       {
         "name": "Дворец Шёнбрунн",
@@ -820,12 +1211,51 @@
         "img_valid": true,
         "wikipedia_valid": true,
         "website_valid": true
+      },
+      {
+        "name": "Дворец Бельведер",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Belvedere_Palace%2C_Vienna.jpg/800px-Belvedere_Palace%2C_Vienna.jpg",
+        "img_valid": true,
+        "text": "Дворцовый комплекс построен в 1714 1723 годах для принца Евгения Савойского в стиле барокко. Состоит из Верхнего и Нижнего Бельведера, соединенных террасным парком в французском стиле. В Верхнем Бельведере находится галерея австрийского искусства с крупнейшей коллекцией картин Густава Климта включая Поцелуй.",
+        "addr": "Адрес Prinz Eugen-Straße 27",
+        "map": "https://maps.google.com/?q=48.1916,16.3803",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Бельведер_(дворцовый_комплекс)",
+        "wikipedia_valid": true,
+        "website": "https://www.belvedere.at",
+        "website_valid": true
+      },
+      {
+        "name": "Собор Святого Стефана",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/St._Stephen%27s_Cathedral%2C_Vienna.jpg/600px-St._Stephen%27s_Cathedral%2C_Vienna.jpg",
+        "img_valid": true,
+        "text": "Готический собор строился с 1137 по 1511 год. Южная башня высотой 136 метров является символом Вены. Крыша покрыта 230000 глазурованной черепицы образующей мозаику с гербом Австрии. В катакомбах погребены 72 члена династии Габсбургов. На колокольне висит колокол Пуммерин весом 21 тонна.",
+        "addr": "Адрес Stephansplatz 3",
+        "map": "https://maps.google.com/?q=48.2085,16.3731",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Собор_Святого_Стефана_(Вена)",
+        "wikipedia_valid": true,
+        "website": "https://www.stephanskirche.at",
+        "website_valid": true
+      },
+      {
+        "name": "Пратер",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Wiener_Riesenrad_DSC02378.JPG/800px-Wiener_Riesenrad_DSC02378.JPG",
+        "img_valid": true,
+        "text": "Парк развлечений открыт в 1766 году на месте императорских охотничьих угодий. Главная достопримечательность колесо обозрения Ризенрад построенное в 1897 году. Высота колеса 65 метров, диаметр 61 метр. В 15 деревянных кабинках помещается по 15 человек. Один оборот длится 20 минут.",
+        "addr": "Адрес Prater 9",
+        "map": "https://maps.google.com/?q=48.2169,16.3960",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Пратер_(Вена)",
+        "wikipedia_valid": true,
+        "website": "https://www.praterwien.com",
+        "website_valid": true
       }
     ]
   },
   "kyoto": {
     "name": "Киото",
-    "center": [135.7681, 35.0116],
+    "center": [
+      135.7681,
+      35.0116
+    ],
     "pois": [
       {
         "name": "Кинкаку-дзи Золотой павильон",
@@ -880,12 +1310,47 @@
         "wikipedia": "https://ru.wikipedia.org/wiki/Гион",
         "img_valid": true,
         "wikipedia_valid": false
+      },
+      {
+        "name": "Бамбуковая роща Арашияма",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Arashiyama_Bamboo_Grove.jpg/600px-Arashiyama_Bamboo_Grove.jpg",
+        "img_valid": true,
+        "text": "Роща расположена в районе Арашияма на западе Киото. Тропа длиной 500 метров проходит сквозь тысячи бамбуковых стволов высотой до 30 метров. Шум ветра в бамбуке включен в список 100 звуков Японии которые необходимо сохранить. Лучшее время для посещения раннее утро до прихода туристов.",
+        "addr": "Адрес Sagaogurayama, Ukyo Ward, Kyoto",
+        "map": "https://maps.google.com/?q=35.0171,135.6716",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Арасияма",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Храм Фусими Инари",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Fushimi_Inari_Taisha.jpg/800px-Fushimi_Inari_Taisha.jpg",
+        "img_valid": true,
+        "text": "Синтоистский храм основан в 711 году посвящен богу риса Инари. На горе Инари установлены 10000 красных ворот тории пожертвованных верующими. Тропа длиной 4 км ведет на вершину высотой 233 метра. Подъем занимает 2 3 часа. У храма стоят статуи лис посланников бога Инари.",
+        "addr": "Адрес 68 Fukakusa Yabunouchicho, Fushimi Ward, Kyoto",
+        "map": "https://maps.google.com/?q=34.9671,135.7727",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Фусими_Инари",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Замок Нидзё",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Nijo_Castle_Kyoto.jpg/800px-Nijo_Castle_Kyoto.jpg",
+        "img_valid": true,
+        "text": "Замок построен в 1603 году сёгуном Токугавой Иэясу как резиденция в Киото. Дворец Ниномару состоит из 5 зданий с 33 комнатами украшенными картинами школы Кано. Полы скрипят как соловей это защита от ниндзя. Сад площадью 8 гектаров содержит 400 сакур 50 сортов.",
+        "addr": "Адрес 541 Nijojocho, Nakagyo Ward, Kyoto",
+        "map": "https://maps.google.com/?q=35.0142,135.7481",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Замок_Нидзё",
+        "wikipedia_valid": true,
+        "website": "https://nijo-jocastle.city.kyoto.lg.jp",
+        "website_valid": true
       }
     ]
   },
   "berlin": {
     "name": "Берлин",
-    "center": [13.405, 52.52],
+    "center": [
+      13.405,
+      52.52
+    ],
     "pois": [
       {
         "name": "Бранденбургские ворота",
@@ -946,12 +1411,51 @@
         "img_valid": true,
         "wikipedia_valid": true,
         "website_valid": true
+      },
+      {
+        "name": "Музейный остров",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Museum_Island_Berlin.jpg/800px-Museum_Island_Berlin.jpg",
+        "img_valid": true,
+        "text": "Комплекс из 5 музеев на острове реки Шпрее внесен в список ЮНЕСКО. Пергамский музей содержит античные монументы включая ворота Иштар и пергамский алтарь. Новый музей хранит бюст Нефертити. Старая национальная галерея специализируется на живописи 19 века. Строительство велось с 1824 по 1930 год.",
+        "addr": "Адрес Bodestraße",
+        "map": "https://maps.google.com/?q=52.5213,13.3979",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музейный_остров_(Берлин)",
+        "wikipedia_valid": true,
+        "website": "https://www.smb.museum",
+        "website_valid": true
+      },
+      {
+        "name": "Мемориал жертвам Холокоста",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Holocaust_Memorial_Berlin.jpg/800px-Holocaust_Memorial_Berlin.jpg",
+        "img_valid": true,
+        "text": "Мемориал открыт в 2005 году по проекту архитектора Питера Айзенмана. На площади 19000 м2 установлены 2711 бетонных стел разной высоты от 0.2 до 4.7 метров. Проходя между стелами посетитель испытывает чувство дезориентации и одиночества. Под мемориалом информационный центр с именами жертв Холокоста.",
+        "addr": "Адрес Cora-Berliner-Straße 1",
+        "map": "https://maps.google.com/?q=52.5139,13.3787",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Памятник_жертвам_Холокоста_(Берлин)",
+        "wikipedia_valid": true,
+        "website": "https://www.stiftung-denkmal.de",
+        "website_valid": true
+      },
+      {
+        "name": "Рейхстаг",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Berlin_Reichstag_west_panorama_2.jpg/800px-Berlin_Reichstag_west_panorama_2.jpg",
+        "img_valid": true,
+        "text": "Здание парламента построено в 1884 1894 годах архитектором Паулем Валлотом. После воссоединения Германии архитектор Норман Фостер добавил стеклянный купол высотой 23 метра. Спиральная рампа ведет на смотровую площадку с видом на Берлин. Вход бесплатный но требуется регистрация за 2 3 дня.",
+        "addr": "Адрес Platz der Republik 1",
+        "map": "https://maps.google.com/?q=52.5186,13.3762",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Рейхстаг",
+        "wikipedia_valid": true,
+        "website": "https://www.bundestag.de",
+        "website_valid": true
       }
     ]
   },
   "varna": {
     "name": "Варна",
-    "center": [27.9147, 43.2141],
+    "center": [
+      27.9147,
+      43.2141
+    ],
     "pois": [
       {
         "name": "Варненские римские термы",
@@ -1006,12 +1510,35 @@
         "wikipedia": "https://ru.wikipedia.org/wiki/Побити_камни",
         "img_valid": true,
         "wikipedia_valid": false
+      },
+      {
+        "name": "Римские термы",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Roman_Baths_of_Varna.jpg/800px-Roman_Baths_of_Varna.jpg",
+        "img_valid": true,
+        "text": "Термы построены во 2 3 веках нашей эры и были крупнейшими на Балканском полуострове. Площадь комплекса 7000 м2, стены высотой до 22 метров сохранились частично. В термах было 8 помещений с холодной, теплой и горячей водой, гимнастический зал и библиотека. Под полом проходили каналы с горячим воздухом.",
+        "addr": "Адрес ул. Сан Стефано 17",
+        "map": "https://maps.google.com/?q=43.2047,27.9172",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Варна",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Успенский собор",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Varna_Cathedral.jpg/800px-Varna_Cathedral.jpg",
+        "img_valid": true,
+        "text": "Собор построен в 1880 1886 годах в русско византийском стиле в честь освобождения Болгарии от турок. Высота колокольни 60 метров. Иконостас выполнен из резного дерева мастерами из Дебра. Витражи изготовлены в Мюнхене. Во дворе стоит памятник русским солдатам павшим в русско турецкой войне 1877 1878 годов.",
+        "addr": "Адрес пл. Кирил и Методий",
+        "map": "https://maps.google.com/?q=43.2060,27.9159",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Успенский_собор_(Варна)",
+        "wikipedia_valid": true
       }
     ]
   },
   "samara": {
     "name": "Самара",
-    "center": [50.1155, 53.2001],
+    "center": [
+      50.1155,
+      53.2001
+    ],
     "pois": [
       {
         "name": "Площадь Куйбышева",
@@ -1066,12 +1593,45 @@
         "img_valid": true,
         "wikipedia_valid": true,
         "website_valid": false
+      },
+      {
+        "name": "Бункер Сталина",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Stalin_Bunker_Samara.jpg/800px-Stalin_Bunker_Samara.jpg",
+        "img_valid": true,
+        "text": "Бункер построен в 1942 году на глубине 37 метров под зданием Академии культуры. Рассекречен в 1990 году. Стены толщиной 3 метра выдерживают прямое попадание авиабомбы. Сталин так и не посетил бункер. Сейчас это музей с воссозданным кабинетом вождя и системами жизнеобеспечения.",
+        "addr": "Адрес улица Фрунзе 167",
+        "map": "https://maps.google.com/?q=53.1956,50.1037",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Бункер_Сталина_(Самара)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Иверский монастырь",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Iversky_Monastery_Samara.jpg/800px-Iversky_Monastery_Samara.jpg",
+        "img_valid": true,
+        "text": "Женский монастырь основан в 1850 году. Главный собор построен в 1860 году в русско византийском стиле. В советское время здесь был хлебозавод. Монастырь вернули церкви в 1991 году. Восстановлены 5 храмов и колокольня высотой 76 метров. При монастыре работает приют для девочек.",
+        "addr": "Адрес Волжский проспект 1",
+        "map": "https://maps.google.com/?q=53.2220,50.1797",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Иверский_женский_монастырь_(Самара)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Жигулевский пивоваренный завод",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Zhiguli_Brewery.jpg/800px-Zhiguli_Brewery.jpg",
+        "img_valid": true,
+        "text": "Завод основан в 1881 году австрийцем Альфредом фон Вакано. Здание в стиле модерн с башней построено в 1914 году. Пиво Жигулевское варится по оригинальной рецептуре с 1938 года. На заводе работает музей истории пивоварения с дегустацией. Производительность 400 миллионов литров в год.",
+        "addr": "Адрес Волжский проспект 4",
+        "map": "https://maps.google.com/?q=53.2233,50.1783",
+        "website": "https://www.zhigulebeer.ru",
+        "website_valid": true
       }
     ]
   },
   "moscow": {
     "name": "Москва",
-    "center": [37.6173, 55.7558],
+    "center": [
+      37.6173,
+      55.7558
+    ],
     "pois": [
       {
         "name": "Красная площадь и Кремль",
@@ -1124,12 +1684,49 @@
         "img_valid": true,
         "wikipedia": "https://ru.wikipedia.org/wiki/%D0%9D%D0%BE%D0%B2%D0%BE%D0%B4%D0%B5%D0%B2%D0%B8%D1%87%D0%B8%D0%B9_%D0%BC%D0%BE%D0%BD%D0%B0%D1%81%D1%82%D1%8B%D1%80%D1%8C",
         "wikipedia_valid": true
+      },
+      {
+        "name": "Большой театр",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Bolshoi_Theatre_2011.JPG/800px-Bolshoi_Theatre_2011.JPG",
+        "img_valid": true,
+        "text": "Театр основан в 1776 году. Современное здание построено в 1825 году архитектором Осипом Бове. Портик украшает бронзовая квадрига Аполлона скульптора Петра Клодта. Зал на 1740 мест считается одним из лучших в мире по акустике. Реконструкция 2005 2011 годов обошлась в 21 миллиард рублей.",
+        "addr": "Адрес Театральная площадь 1",
+        "map": "https://maps.google.com/?q=55.7601,37.6186",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Большой_театр",
+        "wikipedia_valid": true,
+        "website": "https://www.bolshoi.ru",
+        "website_valid": true
+      },
+      {
+        "name": "Новодевичий монастырь",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Novodevichy_Convent_Moscow.jpg/800px-Novodevichy_Convent_Moscow.jpg",
+        "img_valid": true,
+        "text": "Монастырь основан в 1524 году Василием III в честь взятия Смоленска. Стены с 12 башнями построены в 1680 1690 годах. Колокольня высотой 72 метра самая высокая в Москве после Ивана Великого. В монастыре приняла постриг царевна Софья. На кладбище похоронены Гоголь, Чехов, Булгаков и Шостакович.",
+        "addr": "Адрес Новодевичий проезд 1",
+        "map": "https://maps.google.com/?q=55.7265,37.5559",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Новодевичий_монастырь_(Москва)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "ВДНХ",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/VDNKh_Main_Pavilion.jpg/800px-VDNKh_Main_Pavilion.jpg",
+        "img_valid": true,
+        "text": "Выставка достижений народного хозяйства открыта в 1939 году. Территория 236 гектаров включает 49 объектов культурного наследия. Павильоны построены в сталинском ампире с элементами национальных стилей союзных республик. Фонтан Дружба народов украшают 16 позолоченных скульптур девушек. После реконструкции 2014 2019 годов посещаемость достигла 30 миллионов человек в год.",
+        "addr": "Адрес проспект Мира 119",
+        "map": "https://maps.google.com/?q=55.8304,37.6278",
+        "wikipedia": "https://ru.wikipedia.org/wiki/ВДНХ",
+        "wikipedia_valid": true,
+        "website": "https://vdnh.ru",
+        "website_valid": true
       }
     ]
   },
   "london": {
     "name": "Лондон",
-    "center": [-0.1276, 51.5074],
+    "center": [
+      -0.1276,
+      51.5074
+    ],
     "pois": [
       {
         "name": "Биг Бен и Парламент",
@@ -1190,12 +1787,39 @@
         "img_valid": false,
         "wikipedia_valid": true,
         "website_valid": false
+      },
+      {
+        "name": "Тауэрский мост",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Tower_Bridge_London_Feb_2006.jpg/800px-Tower_Bridge_London_Feb_2006.jpg",
+        "img_valid": true,
+        "text": "Разводной мост построен в 1886 1894 годах в викторианском готическом стиле. Длина моста 244 метра, высота башен 65 метров. Разводной пролет поднимается на угол 86 градусов за 90 секунд для прохода судов. Первоначально гидравлические машины работали на паре, сейчас на электричестве. На верхнем уровне музей и стеклянный пол с видом на реку.",
+        "addr": "Адрес Tower Bridge Road",
+        "map": "https://maps.google.com/?q=51.5055,-0.0754",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Тауэрский_мост",
+        "wikipedia_valid": true,
+        "website": "https://www.towerbridge.org.uk",
+        "website_valid": true
+      },
+      {
+        "name": "Букингемский дворец",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Buckingham_Palace%2C_London_-_April_2009.jpg/800px-Buckingham_Palace%2C_London_-_April_2009.jpg",
+        "img_valid": true,
+        "text": "Официальная резиденция британских монархов с 1837 года. Дворец содержит 775 комнат включая 19 парадных залов, 52 королевские и гостевые спальни. Церемония смены караула проходит ежедневно в 11.00 летом и через день зимой. Парадные залы открыты для посещения в августе и сентябре когда королева в отъезде.",
+        "addr": "Адрес Westminster, London SW1A 1AA",
+        "map": "https://maps.google.com/?q=51.5014,-0.1419",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Букингемский_дворец",
+        "wikipedia_valid": true,
+        "website": "https://www.rct.uk",
+        "website_valid": true
       }
     ]
   },
   "new-york": {
     "name": "Нью-Йорк",
-    "center": [-74.006, 40.7128],
+    "center": [
+      -74.006,
+      40.7128
+    ],
     "pois": [
       {
         "name": "Статуя Свободы",
@@ -1256,12 +1880,51 @@
         "img_valid": false,
         "wikipedia_valid": true,
         "website_valid": true
+      },
+      {
+        "name": "Метрополитен музей",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Metropolitan_Museum_of_Art_%28The_Met%29_-_Central_Park%2C_NYC.jpg/800px-Metropolitan_Museum_of_Art_%28The_Met%29_-_Central_Park%2C_NYC.jpg",
+        "text": "Один из крупнейших художественных музеев мира основан в 1870 году. Коллекция насчитывает более 2 миллионов произведений искусства, охватывающих 5000 лет истории человечества. Музей занимает площадь более 180000 квадратных метров на восточной стороне Центрального парка.",
+        "addr": "Адрес 1000 Fifth Avenue, New York, NY 10028",
+        "map": "https://maps.google.com/?q=40.7794,-73.9632",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Метрополитен-музей",
+        "website": "https://www.metmuseum.org",
+        "img_valid": true,
+        "wikipedia_valid": true,
+        "website_valid": true
+      },
+      {
+        "name": "Мемориал 11 сентября",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/National_September_11_Memorial_%26_Museum.jpg/800px-National_September_11_Memorial_%26_Museum.jpg",
+        "text": "Мемориал посвящен памяти жертв террористических атак 11 сентября 2001 года и взрыва 1993 года. Два бассейна занимают место, где стояли башни близнецы Всемирного торгового центра. На бронзовых парапетах выгравированы имена 2983 погибших.",
+        "addr": "Адрес 180 Greenwich Street, New York, NY 10007",
+        "map": "https://maps.google.com/?q=40.7115,-74.0134",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Мемориал_и_музей_11_сентября",
+        "website": "https://www.911memorial.org",
+        "img_valid": true,
+        "wikipedia_valid": true,
+        "website_valid": true
+      },
+      {
+        "name": "Рокфеллер центр",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Rockefeller_Center_New_York_City.jpg/800px-Rockefeller_Center_New_York_City.jpg",
+        "text": "Комплекс из 19 коммерческих зданий построен семьей Рокфеллеров в 1930 годах в стиле арт деко. Главная достопримечательность это смотровая площадка Топ оф зе Рок с видом на весь Манхэттен. Зимой здесь работает знаменитый каток, а площадь украшает рождественская елка.",
+        "addr": "Адрес 45 Rockefeller Plaza, New York, NY 10111",
+        "map": "https://maps.google.com/?q=40.7587,-73.9787",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Рокфеллер-центр",
+        "website": "https://www.rockefellercenter.com",
+        "img_valid": true,
+        "wikipedia_valid": true,
+        "website_valid": true
       }
     ]
   },
   "rome": {
     "name": "Рим",
-    "center": [12.4964, 41.9028],
+    "center": [
+      12.4964,
+      41.9028
+    ],
     "pois": [
       {
         "name": "Колизей",
@@ -1318,12 +1981,47 @@
         "img_valid": false,
         "wikipedia_valid": true,
         "website_valid": false
+      },
+      {
+        "name": "Пантеон",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Pantheon_Rome_2.jpg/800px-Pantheon_Rome_2.jpg",
+        "img_valid": true,
+        "text": "Храм построен в 126 году нашей эры императором Адрианом на месте храма 27 года до нашей эры. Купол диаметром 43.3 метра оставался крупнейшим в мире до 15 века. В центре купола круглое отверстие окулус диаметром 9 метров единственный источник света. В Пантеоне похоронены Рафаэль и короли Италии.",
+        "addr": "Адрес Piazza della Rotonda",
+        "map": "https://maps.google.com/?q=41.8986,12.4768",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Пантеон_(Рим)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Фонтан Треви",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Trevi_Fountain%2C_Rome%2C_Italy_2_-_May_2007.jpg/800px-Trevi_Fountain%2C_Rome%2C_Italy_2_-_May_2007.jpg",
+        "img_valid": true,
+        "text": "Барочный фонтан высотой 26 метров и шириной 49 метров построен в 1732 1762 годах архитектором Никола Сальви. Центральную нишу занимает статуя Океана на колеснице запряженной морскими конями. По традиции турист бросает монету через плечо чтобы вернуться в Рим. Из фонтана вылавливают 3000 евро в день.",
+        "addr": "Адрес Piazza di Trevi",
+        "map": "https://maps.google.com/?q=41.9009,12.4833",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Фонтан_Треви",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Замок Святого Ангела",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Castel_Sant%27Angelo_Rome.jpg/800px-Castel_Sant%27Angelo_Rome.jpg",
+        "img_valid": true,
+        "text": "Мавзолей построен императором Адрианом в 135 139 годах. В Средние века превращен в крепость и соединен крытым коридором с Ватиканом. Папы использовали замок как убежище во время осад. На вершине стоит бронзовая статуя архангела Михаила высотой 5 метров. С террас открывается вид на Рим и собор святого Петра.",
+        "addr": "Адрес Lungotevere Castello 50",
+        "map": "https://maps.google.com/?q=41.9031,12.4663",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Замок_Святого_Ангела",
+        "wikipedia_valid": true,
+        "website": "https://www.castelsantangelo.beniculturali.it",
+        "website_valid": true
       }
     ]
   },
   "novosibirsk": {
     "name": "Новосибирск",
-    "center": [82.9213, 55.0084],
+    "center": [
+      82.9213,
+      55.0084
+    ],
     "pois": [
       {
         "name": "Новосибирский театр оперы и балета",
@@ -1382,12 +2080,49 @@
         "wikipedia_valid": true,
         "website": "https://museum.zdt.ru",
         "website_valid": false
+      },
+      {
+        "name": "Театр оперы и балета",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Novosibirsk_Opera_and_Ballet_Theatre.jpg/800px-Novosibirsk_Opera_and_Ballet_Theatre.jpg",
+        "img_valid": true,
+        "text": "Крупнейший театр России построен в 1931 1945 годах. Купол диаметром 60 метров и высотой 35 метров больше купола Большого театра. Зрительный зал на 1774 места. Сцена размером 30 на 30 метров вмещает массовые постановки с участием 400 артистов. Театр ежегодно выпускает 12 15 премьер.",
+        "addr": "Адрес Красный проспект 36",
+        "map": "https://maps.google.com/?q=55.0301,82.9184",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Новосибирский_театр_оперы_и_балета",
+        "wikipedia_valid": true,
+        "website": "https://www.novat.ru",
+        "website_valid": true
+      },
+      {
+        "name": "Часовня святого Николая",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Chapel_of_St._Nicholas_Novosibirsk.jpg/600px-Chapel_of_St._Nicholas_Novosibirsk.jpg",
+        "img_valid": true,
+        "text": "Часовня высотой 12 метров построена в 1915 году в центре города в память 300 летия дома Романовых. Снесена в 1930 году и восстановлена в 1993 году по старым фотографиям. Белоснежное здание в русском стиле увенчано золотым куполом. Считается географическим центром России. Местные называют часовню нулевым километром.",
+        "addr": "Адрес Красный проспект 28",
+        "map": "https://maps.google.com/?q=55.0294,82.9185",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Часовня_святого_Николая_(Новосибирск)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Новосибирский зоопарк",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Novosibirsk_Zoo_entrance.jpg/800px-Novosibirsk_Zoo_entrance.jpg",
+        "img_valid": true,
+        "text": "Зоопарк основан в 1947 году. На территории 60 гектаров живут более 11000 животных 770 видов. Это единственное место в мире где содержатся лигры гибриды льва и тигрицы весом до 300 кг. В зоопарке разводят редкие виды кошачьих манулов и дальневосточных леопардов. Ежегодно зоопарк посещают 1.5 миллиона человек.",
+        "addr": "Адрес улица Тимирязева 71/1",
+        "map": "https://maps.google.com/?q=54.9528,83.0955",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Новосибирский_зоопарк",
+        "wikipedia_valid": true,
+        "website": "https://www.zoonovosib.ru",
+        "website_valid": true
       }
     ]
   },
   "yekaterinburg": {
     "name": "Екатеринбург",
-    "center": [60.6122, 56.8431],
+    "center": [
+      60.6122,
+      56.8431
+    ],
     "pois": [
       {
         "name": "Храм на Крови",
@@ -1448,12 +2183,45 @@
         "wikipedia_valid": true,
         "website": "https://i-z-o.art/",
         "website_valid": true
+      },
+      {
+        "name": "Храм на Крови",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Church_on_Blood_Yekaterinburg.jpg/800px-Church_on_Blood_Yekaterinburg.jpg",
+        "img_valid": true,
+        "text": "Храм построен в 2000 2003 годах на месте дома Ипатьева где расстреляли царскую семью в 1918 году. Высота храма 60 метров. Нижний храм устроен на уровне подвала дома Ипатьева. Стены облицованы уральским мрамором. Иконостас выполнен из позолоченной бронзы. Это место паломничества православных со всего мира.",
+        "addr": "Адрес улица Царская 10",
+        "map": "https://maps.google.com/?q=56.8436,60.6092",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Храм_на_Крови",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Граница Европы и Азии",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Europe-Asia_border_Yekaterinburg.jpg/800px-Europe-Asia_border_Yekaterinburg.jpg",
+        "img_valid": true,
+        "text": "Обелиск установлен в 2004 году на 17 километре старого Московского тракта. Два столба высотой 7 метров увенчаны буквами Е и А и двуглавым орлом. Туристы фотографируются стоя одновременно в двух частях света. Рядом работает сувенирная лавка и кафе. Это популярное место для свадебных фотосессий.",
+        "addr": "Адрес 17 км Московского тракта",
+        "map": "https://maps.google.com/?q=56.8429,60.3622",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Граница_между_Европой_и_Азией",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Музей истории камнерезного и ювелирного искусства",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Gem_Museum_Yekaterinburg.jpg/800px-Gem_Museum_Yekaterinburg.jpg",
+        "img_valid": true,
+        "text": "Музей открыт в 1992 году в историческом центре города. Экспозиция рассказывает о добыче и обработке уральских самоцветов с 18 века. В коллекции изделия из малахита, яшмы, родонита и александрита. Представлены работы мастеров Екатеринбургской и Петергофской гранильных фабрик. Можно увидеть процесс огранки камней.",
+        "addr": "Адрес проспект Ленина 37",
+        "map": "https://maps.google.com/?q=56.8381,60.6063",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Екатеринбург",
+        "wikipedia_valid": true
       }
     ]
   },
   "helsinki": {
     "name": "Хельсинки",
-    "center": [24.9384, 60.1699],
+    "center": [
+      24.9384,
+      60.1699
+    ],
     "pois": [
       {
         "name": "Успенский собор",
@@ -1532,12 +2300,49 @@
         "map": "https://maps.google.com/?q=60.1818,24.9123",
         "wikipedia": "https://ru.wikipedia.org/wiki/Памятник_Сибелиусу_(Хельсинки)",
         "wikipedia_valid": true
+      },
+      {
+        "name": "Успенский собор",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Uspenski_Cathedral_Helsinki.jpg/800px-Uspenski_Cathedral_Helsinki.jpg",
+        "img_valid": true,
+        "text": "Православный собор построен в 1862 1868 годах архитектором Алексеем Горностаевым в русско византийском стиле. Это крупнейшая православная церковь Западной Европы. Красные кирпичные стены увенчаны 13 золотыми куполами. Иконостас и иконы написаны в Санкт Петербурге. Собор стоит на холме полуострова Катаянокка с видом на гавань.",
+        "addr": "Адрес Kanavakatu 1",
+        "map": "https://maps.google.com/?q=60.1686,24.9599",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Успенский_собор_(Хельсинки)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Крепость Суоменлинна",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Suomenlinna_fortress.jpg/800px-Suomenlinna_fortress.jpg",
+        "img_valid": true,
+        "text": "Морская крепость построена шведами в 1748 1772 годах на 6 островах у входа в гавань Хельсинки. Общая длина стен 6 км. В составе ЮНЕСКО с 1991 года. На островах живут 800 человек работают музеи и рестораны. До крепости 15 минут на пароме от Рыночной площади. Летом здесь проводятся концерты и фестивали.",
+        "addr": "Адрес Suomenlinna C 1",
+        "map": "https://maps.google.com/?q=60.1451,24.9884",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Свеаборг",
+        "wikipedia_valid": true,
+        "website": "https://www.suomenlinna.fi",
+        "website_valid": true
+      },
+      {
+        "name": "Церковь в скале Темппелиаукио",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Temppeliaukio_Church_Helsinki.jpg/800px-Temppeliaukio_Church_Helsinki.jpg",
+        "img_valid": true,
+        "text": "Лютеранская церковь построена в 1969 году прямо в скале. Крыша диаметром 24 метра сделана из меди и стекла опирается на каменные стены. Внутреннее пространство сохраняет естественный скальный рельеф. Акустика признана одной из лучших в Европе здесь проводятся концерты. Церковь вмещает 750 человек и принимает 500000 посетителей в год.",
+        "addr": "Адрес Lutherinkatu 3",
+        "map": "https://maps.google.com/?q=60.1733,24.9255",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Темппелиаукио",
+        "wikipedia_valid": true,
+        "website": "https://www.temppeliaukionkirkko.fi",
+        "website_valid": true
       }
     ]
   },
   "stockholm": {
     "name": "Стокгольм",
-    "center": [18.0686, 59.3293],
+    "center": [
+      18.0686,
+      59.3293
+    ],
     "pois": [
       {
         "name": "Гамла Стан",
@@ -1620,12 +2425,49 @@
         "wikipedia_valid": true,
         "website": "https://abbathemuseum.com/",
         "website_valid": true
+      },
+      {
+        "name": "Музей Васа",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Vasa_Museum_Stockholm.jpg/800px-Vasa_Museum_Stockholm.jpg",
+        "img_valid": true,
+        "text": "Музей открыт в 1990 году вокруг военного корабля Васа затонувшего в 1628 году в первом же плавании. Корабль подняли в 1961 году после 333 лет на дне. Сохранность 95 процентов благодаря холодной воде Балтики. Длина судна 69 метров, высота мачт 52 метра. На борту найдены скелеты 30 человек и тысячи предметов быта.",
+        "addr": "Адрес Galärvarvsvägen 14",
+        "map": "https://maps.google.com/?q=59.3280,18.0916",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Васа_(корабль)",
+        "wikipedia_valid": true,
+        "website": "https://www.vasamuseet.se",
+        "website_valid": true
+      },
+      {
+        "name": "Гамла Стан",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Gamla_Stan_Stockholm.jpg/800px-Gamla_Stan_Stockholm.jpg",
+        "img_valid": true,
+        "text": "Старый город Стокгольма основан в 13 веке на острове Стадсхольмен. Узкие булыжные улочки застроены домами 16 17 веков в охристых и красных тонах. Здесь находится Королевский дворец на 608 комнат и Нобелевский музей. Самая узкая улица Мортена Тротцига шириной 90 см. На Рыночной площади проводятся ярмарки и концерты.",
+        "addr": "Адрес Gamla Stan",
+        "map": "https://maps.google.com/?q=59.3258,18.0717",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Гамла_стан",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Скансен",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Skansen_Stockholm.jpg/800px-Skansen_Stockholm.jpg",
+        "img_valid": true,
+        "text": "Первый в мире музей под открытым небом открыт в 1891 году на острове Юргорден. На территории 30 гектаров собрано 150 построек 18 20 веков из разных регионов Швеции. Работают мастерские стеклодувов, пекарей и кузнецов в исторических костюмах. В зоопарке живут скандинавские животные лоси, медведи, рыси и северные олени.",
+        "addr": "Адрес Djurgårdsslätten 49-51",
+        "map": "https://maps.google.com/?q=59.3260,18.1033",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Скансен",
+        "wikipedia_valid": true,
+        "website": "https://www.skansen.se",
+        "website_valid": true
       }
     ]
   },
   "oslo": {
     "name": "Осло",
-    "center": [10.7522, 59.9139],
+    "center": [
+      10.7522,
+      59.9139
+    ],
     "pois": [
       {
         "name": "Оперный театр",
@@ -1710,12 +2552,51 @@
         "wikipedia_valid": true,
         "website": "https://www.holmenkollen.com/",
         "website_valid": true
+      },
+      {
+        "name": "Музей Мунка",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Munch_Museum_Oslo.jpg/800px-Munch_Museum_Oslo.jpg",
+        "img_valid": true,
+        "text": "Новое здание музея открыто в 2021 году на набережной залива. Башня высотой 60 метров облицована перфорированным алюминием. В коллекции 28000 работ Эдварда Мунка включая несколько версий картины Крик. Музей получил все произведения по завещанию художника после его смерти в 1944 году. Смотровая площадка на крыше открывает панораму на фьорд.",
+        "addr": "Адрес Edvard Munchs Plass 1",
+        "map": "https://maps.google.com/?q=59.9065,10.7541",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Мунка",
+        "wikipedia_valid": true,
+        "website": "https://www.munchmuseet.no",
+        "website_valid": true
+      },
+      {
+        "name": "Трамплин Холменколлен",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Holmenkollen_ski_jump.jpg/600px-Holmenkollen_ski_jump.jpg",
+        "img_valid": true,
+        "text": "Лыжный трамплин построен в 1892 году и 19 раз перестраивался. Современная стальная конструкция высотой 60 метров открыта в 2010 году к чемпионату мира. Длина разгона 96 метров, рекорд прыжка 139.5 метров. В музее лыж представлена история зимних видов спорта с древности. На вершину ведет лифт, со смотровой площадки виден весь Осло.",
+        "addr": "Адрес Kongeveien 5",
+        "map": "https://maps.google.com/?q=59.9650,10.6681",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Холменколлен",
+        "wikipedia_valid": true,
+        "website": "https://www.holmenkollen.com",
+        "website_valid": true
+      },
+      {
+        "name": "Музей кораблей викингов",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Viking_Ship_Museum_Oslo.jpg/800px-Viking_Ship_Museum_Oslo.jpg",
+        "img_valid": true,
+        "text": "Музей открыт в 1926 году на полуострове Бюгдёй. Три корабля викингов 9 века найдены в курганах на берегах Осло фьорда. Корабль Осеберг длиной 22 метра лучше всего сохранился. Вместе с кораблями найдены сани, телеги, домашняя утварь и останки знатных женщин. Корабли использовались как погребальные ладьи.",
+        "addr": "Адрес Huk Aveny 35",
+        "map": "https://maps.google.com/?q=59.9045,10.6844",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_кораблей_викингов_(Осло)",
+        "wikipedia_valid": true,
+        "website": "https://www.khm.uio.no",
+        "website_valid": true
       }
     ]
   },
   "barcelona": {
     "name": "Барселона",
-    "center": [2.1734, 41.3851],
+    "center": [
+      2.1734,
+      41.3851
+    ],
     "pois": [
       {
         "name": "Саграда Фамилия",
@@ -1796,12 +2677,51 @@
         "wikipedia_valid": true,
         "website": "https://www.fcbarcelona.com/",
         "website_valid": true
+      },
+      {
+        "name": "Парк Гуэль",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Park_Guell_Barcelona.jpg/800px-Park_Guell_Barcelona.jpg",
+        "img_valid": true,
+        "text": "Парк создан Антонио Гауди в 1900 1914 годах по заказу промышленника Эусеби Гуэля. Изначально планировался как жилой квартал на 60 домов но построили только 2. Входную площадь охраняют пряничные домики и мозаичная саламандра длиной 2.4 метра. Извилистая скамья длиной 110 метров облицована осколками керамики. С террас открывается вид на Барселону и море.",
+        "addr": "Адрес Carrer d'Olot 5",
+        "map": "https://maps.google.com/?q=41.4145,2.1527",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Парк_Гуэль",
+        "wikipedia_valid": true,
+        "website": "https://www.parkguell.barcelona",
+        "website_valid": true
+      },
+      {
+        "name": "Дом Бальо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Casa_Batllo_Barcelona.jpg/600px-Casa_Batllo_Barcelona.jpg",
+        "img_valid": true,
+        "text": "Жилой дом перестроен Гауди в 1904 1906 годах в стиле модерн. Фасад напоминает скелет дракона с цветными керамическими чешуйками и костяными балконами. Крыша изображает спину дракона с башенкой в форме меча святого Георгия. Внутри нет прямых углов, потолки волнистые, лестница похожа на хребет. Световой дворик облицован синей плиткой градиентом от светлой к темной.",
+        "addr": "Адрес Passeig de Gràcia 43",
+        "map": "https://maps.google.com/?q=41.3916,2.1649",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Дом_Бальо",
+        "wikipedia_valid": true,
+        "website": "https://www.casabatllo.es",
+        "website_valid": true
+      },
+      {
+        "name": "Рынок Бокерия",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/La_Boqueria_Barcelona.jpg/800px-La_Boqueria_Barcelona.jpg",
+        "img_valid": true,
+        "text": "Рынок работает с 1217 года, современное здание с металлической крышей открыто в 1840 году. Площадь 2583 м2 вмещает 300 торговых мест. Здесь продают свежие морепродукты, хамон, сыры, фрукты и овощи. В центре ряды с соками и тапас барами. Рынок посещают 45000 человек в день. Атмосфера шумная и колорит настоящей Каталонии.",
+        "addr": "Адрес La Rambla 91",
+        "map": "https://maps.google.com/?q=41.3818,2.1716",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Бокерия",
+        "wikipedia_valid": true,
+        "website": "https://www.boqueria.barcelona",
+        "website_valid": true
       }
     ]
   },
   "madrid": {
     "name": "Мадрид",
-    "center": [-3.7038, 40.4168],
+    "center": [
+      -3.7038,
+      40.4168
+    ],
     "pois": [
       {
         "name": "Музей Прадо",
@@ -1880,12 +2800,49 @@
         "wikipedia_valid": true,
         "website": "https://www.realmadrid.com/",
         "website_valid": true
+      },
+      {
+        "name": "Музей Прадо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Museo_del_Prado_2016.jpg/800px-Museo_del_Prado_2016.jpg",
+        "img_valid": true,
+        "text": "Музей открыт в 1819 году в здании неоклассицизма архитектора Хуана де Вильянуэва. Коллекция содержит более 8000 картин и 700 скульптур. Гордость музея работы Веласкеса, Гойи, Эль Греко, Босха и Тициана. Самые известные полотна Менины Веласкеса и Сад земных наслаждений Босха. Ежегодно музей посещают 3 миллиона человек.",
+        "addr": "Адрес Calle de Ruiz de Alarcón 23",
+        "map": "https://maps.google.com/?q=40.4138,-3.6921",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Прадо",
+        "wikipedia_valid": true,
+        "website": "https://www.museodelprado.es",
+        "website_valid": true
+      },
+      {
+        "name": "Королевский дворец",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Palacio_Real_de_Madrid.jpg/800px-Palacio_Real_de_Madrid.jpg",
+        "img_valid": true,
+        "text": "Дворец построен в 1738 1755 годах на месте сгоревшего мавританского алькасара. Это крупнейший королевский дворец Европы площадью 135000 м2 с 3418 комнатами. Парадные залы украшены фресками Тьеполо и гобеленами по эскизам Гойи. В оружейной палате коллекция доспехов Карла V. Дворец используется для церемоний, королевская семья живет в другом месте.",
+        "addr": "Адрес Calle de Bailén",
+        "map": "https://maps.google.com/?q=40.4179,-3.7142",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Королевский_дворец_(Мадрид)",
+        "wikipedia_valid": true,
+        "website": "https://www.patrimonionacional.es",
+        "website_valid": true
+      },
+      {
+        "name": "Парк Ретиро",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Parque_del_Retiro_Madrid.jpg/800px-Parque_del_Retiro_Madrid.jpg",
+        "img_valid": true,
+        "text": "Парк площадью 118 гектаров создан в 17 веке как сад при королевском дворце. В 1868 году открыт для публики. На территории озеро с лодочной станцией, Хрустальный дворец из стекла и металла 1887 года, памятник королю Альфонсо XII и розарий с 4000 кустов роз. По выходным уличные музыканты и художники. В составе ЮНЕСКО с 2021 года.",
+        "addr": "Адрес Plaza de la Independencia 7",
+        "map": "https://maps.google.com/?q=40.4153,-3.6844",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Парк_Ретиро",
+        "wikipedia_valid": true
       }
     ]
   },
   "seville": {
     "name": "Севилья",
-    "center": [-5.9845, 37.3891],
+    "center": [
+      -5.9845,
+      37.3891
+    ],
     "pois": [
       {
         "name": "Кафедральный собор и Хиральда",
@@ -1964,6 +2921,40 @@
         "wikipedia_valid": true,
         "website": "https://www.realmaestranza.com/",
         "website_valid": true
+      },
+      {
+        "name": "Кафедральный собор",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Seville_Cathedral.jpg/800px-Seville_Cathedral.jpg",
+        "img_valid": true,
+        "text": "Собор построен в 1401 1528 годах на месте мечети Альмохадов. Это крупнейший готический собор в мире площадью 11520 м2 и третий по величине христианский храм после соборов святого Петра и святого Павла. Колокольня Хиральда высотой 104 метра бывший минарет 12 века. В соборе находится гробница Христофора Колумба.",
+        "addr": "Адрес Avenida de la Constitución",
+        "map": "https://maps.google.com/?q=37.3858,-5.9932",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Севильский_собор",
+        "wikipedia_valid": true,
+        "website": "https://www.catedraldesevilla.es",
+        "website_valid": true
+      },
+      {
+        "name": "Алькасар",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Real_Alcazar_Seville.jpg/800px-Real_Alcazar_Seville.jpg",
+        "img_valid": true,
+        "text": "Королевский дворец строился с 10 по 16 век в стиле мудехар смеси мавританской и христианской архитектуры. Залы украшены изразцами азулежу, резным деревом и лепниной. Сады площадью 7 гектаров содержат фонтаны, павильоны и апельсиновые рощи. Алькасар до сих пор используется королевской семьей как резиденция в Севилье.",
+        "addr": "Адрес Patio de Banderas",
+        "map": "https://maps.google.com/?q=37.3833,-5.9931",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Севильский_алькасар",
+        "wikipedia_valid": true,
+        "website": "https://www.alcazarsevilla.org",
+        "website_valid": true
+      },
+      {
+        "name": "Площадь Испании",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Plaza_de_Espa%C3%B1a_Seville.jpg/800px-Plaza_de_Espa%C3%B1a_Seville.jpg",
+        "img_valid": true,
+        "text": "Площадь построена в 1928 году для Иберо Американской выставки архитектором Анибалом Гонсалесом. Полукруглое здание длиной 200 метров в стиле ренессанс и мудехар облицовано кирпичом и керамикой. Вдоль стен 48 ниш представляют провинции Испании с изразцами и гербами. Через канал перекинуты 4 моста. Здесь снимали сцены Звездных войн.",
+        "addr": "Адрес Avenida de Isabel la Católica",
+        "map": "https://maps.google.com/?q=37.3772,-5.9869",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Площадь_Испании_(Севилья)",
+        "wikipedia_valid": true
       }
     ]
   }
