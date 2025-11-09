@@ -2957,5 +2957,1024 @@
         "wikipedia_valid": true
       }
     ]
+  },
+  "prague": {
+    "name": "Прага",
+    "center": [
+      14.4378,
+      50.0755
+    ],
+    "pois": [
+      {
+        "name": "Карлов мост",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Prague_07-2016_View_from_Lesser_Town_Tower_of_Charles_Bridge_img2.jpg/800px-Prague_07-2016_View_from_Lesser_Town_Tower_of_Charles_Bridge_img2.jpg",
+        "img_valid": true,
+        "text": "Старейший мост Праги построен в 1357 1402 годах при короле Карле IV архитектором Петром Парлержем. Длина моста 516 м, ширина 10 м, покоится на 16 арках. Вдоль парапетов установлены 30 скульптур святых, созданных в 1683 1714 годах. Самая почитаемая статуя святого Яна Непомуцкого с бронзовым барельефом, который блестит от прикосновений туристов. С моста открывается вид на Пражский Град и Влтаву.",
+        "addr": "Адрес Karlův most, Praha 1",
+        "map": "https://maps.google.com/?q=50.0865,14.4114",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Карлов_мост",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Пражский Град",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Prague_Castle.jpg/800px-Prague_Castle.jpg",
+        "img_valid": true,
+        "text": "Крупнейший средневековый замковый комплекс в мире занимает площадь 70000 м2. Основан в 9 веке, служил резиденцией чешских королей, императоров Священной Римской империи, президентов Чехословакии и Чехии. Включает собор святого Вита, Старый королевский дворец, базилику святого Георгия, Золотую улочку с домиками алхимиков. Смена караула происходит каждый час.",
+        "addr": "Адрес Hradčany, Praha 1",
+        "map": "https://maps.google.com/?q=50.0910,14.4016",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Пражский_Град",
+        "wikipedia_valid": true,
+        "website": "https://www.hrad.cz",
+        "website_valid": true
+      },
+      {
+        "name": "Староместская площадь",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Prague_old_town_square_panorama.jpg/800px-Prague_old_town_square_panorama.jpg",
+        "img_valid": true,
+        "text": "Центральная площадь Старого города существует с 12 века. Здесь расположены Тынский храм с готическими башнями, барочная церковь святого Николая, памятник Яну Гусу. Главная достопримечательность Староместская ратуша с астрономическими часами Орлой 1410 года. Каждый час появляются фигуры 12 апостолов, скелет дергает за веревку колокола, а внизу поворачиваются фигуры турка, скупца, франта.",
+        "addr": "Адрес Staroměstské náměstí, Praha 1",
+        "map": "https://maps.google.com/?q=50.0875,14.4211",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Староместская_площадь",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Вацлавская площадь",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Prague_-_Wenceslas_Square.jpg/800px-Prague_-_Wenceslas_Square.jpg",
+        "img_valid": true,
+        "text": "Площадь длиной 750 м и шириной 60 м заложена в 1348 году как конный рынок Нового города. В 1848 году переименована в честь святого Вацлава, покровителя Чехии. В центре установлен памятник святому Вацлаву работы Йозефа Мысльбека. Площадь стала символом чешской государственности, здесь проходили ключевые события Пражской весны 1968 года и Бархатной революции 1989 года.",
+        "addr": "Адрес Václavské náměstí, Praha 1",
+        "map": "https://maps.google.com/?q=50.0813,14.4281",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Вацлавская_площадь",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Йозефов, Еврейский квартал",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Praha_Josefov.jpg/800px-Praha_Josefov.jpg",
+        "img_valid": true,
+        "text": "Еврейский квартал существует с 13 века, назван в честь императора Йозефа II. Сохранилось 6 синагог, в том числе Старонова синагога 1270 года старейшая действующая в Европе. Старое еврейское кладбище основано в 15 веке, содержит около 12000 надгробий на 12 слоях захоронений. Здесь похоронен раввин Лёв, создатель Голема. Еврейский музей хранит 40000 предметов и 100000 книг.",
+        "addr": "Адрес Josefov, Praha 1",
+        "map": "https://maps.google.com/?q=50.0900,14.4180",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Йозефов_(Прага)",
+        "wikipedia_valid": true,
+        "website": "https://www.jewishmuseum.cz",
+        "website_valid": true
+      },
+      {
+        "name": "Танцующий дом",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Dancing_House_in_the_Morning%2C_Prague_-_8559.jpg/800px-Dancing_House_in_the_Morning%2C_Prague_-_8559.jpg",
+        "img_valid": true,
+        "text": "Здание в стиле деконструктивизма построено в 1992 1996 годах архитекторами Владо Милуничем и Фрэнком Гери. Две башни символизируют танцующую пару, прозванную Джинджер и Фред в честь Джинджер Роджерс и Фреда Астера. Стеклянная башня высотой 80 м выглядит как женская фигура в развевающемся платье, а бетонная как партнер в цилиндре. На крыше ресторан с панорамой Праги.",
+        "addr": "Адрес Jiráskovo náměstí 1981/6, Praha 2",
+        "map": "https://maps.google.com/?q=50.0754,14.4142",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Танцующий_дом",
+        "wikipedia_valid": true,
+        "website": "https://www.tancici-dum.cz",
+        "website_valid": true
+      },
+      {
+        "name": "Петршинская башня",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Petrinska_rozhledna.jpg/800px-Petrinska_rozhledna.jpg",
+        "img_valid": true,
+        "text": "Смотровая башня высотой 63,5 м построена в 1891 году по образцу Эйфелевой башни в масштабе 1 к 5. Расположена на холме Петршин высотой 318 м над уровнем моря. На вершину ведут 299 ступеней или лифт. Со смотровой площадки открывается панорама Праги на 360 градусов. Рядом Зеркальный лабиринт и Обсерватория.",
+        "addr": "Адрес Petřínské sady, Praha 1",
+        "map": "https://maps.google.com/?q=50.0838,14.3972",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Петршинская_башня",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Вышеград",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Prague_Vysehrad_from_east.jpg/800px-Prague_Vysehrad_from_east.jpg/800px-Prague_Vysehrad_from_east.jpg",
+        "img_valid": true,
+        "text": "Древняя крепость основана в 10 веке на скале над Влтавой. По легенде здесь княгиня Либуше предсказала славу Праги. Сохранились казематы, ротонда святого Мартина 11 века, базилика святых Петра и Павла с неоготическими шпилями. На Вышеградском кладбище похоронены Антонин Дворжак, Бедржих Сметана, Альфонс Муха и другие деятели чешской культуры. С бастионов вид на Прагу и реку.",
+        "addr": "Адрес V Pevnosti 159/5b, Praha 2",
+        "map": "https://maps.google.com/?q=50.0644,14.4174",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Вышеград",
+        "wikipedia_valid": true,
+        "website": "https://www.praha-vysehrad.cz",
+        "website_valid": true
+      },
+      {
+        "name": "Национальный театр",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Prague_-_National_Theatre.jpg/800px-Prague_-_National_Theatre.jpg",
+        "img_valid": true,
+        "text": "Театр построен в 1868 1881 годах на народные пожертвования как символ чешского национального возрождения. Через 2 месяца после открытия сгорел, но был восстановлен за 2 года. Фасад украшен скульптурами работы Йозефа Мысльбека. Интерьеры расписаны Миколашем Алешем и Франтишеком Женишеком. Золотая крыша весит 40 тонн. Здесь ставят чешскую оперу, балет, драму.",
+        "addr": "Адрес Národní 2, Praha 1",
+        "map": "https://maps.google.com/?q=50.0809,14.4135",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Национальный_театр_(Прага)",
+        "wikipedia_valid": true,
+        "website": "https://www.narodni-divadlo.cz",
+        "website_valid": true
+      },
+      {
+        "name": "Страговский монастырь",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Strahov_Monastery_from_Petrinska_Tower.jpg/800px-Strahov_Monastery_from_Petrinska_Tower.jpg",
+        "img_valid": true,
+        "text": "Премонстрантский монастырь основан в 1143 году. Библиотека монастыря одна из красивейших в мире, содержит 200000 томов. Теологический зал построен в 1671 1679 годах в стиле барокко, украшен фресками и лепниной. Философский зал 1782 1784 годов длиной 32 м вмещает ореховые шкафы высотой 14 м. Потолок расписан фреской Борьба человечества за познание истины. Действует пивоварня с 1400 года.",
+        "addr": "Адрес Strahovské nádvoří 132/1, Praha 1",
+        "map": "https://maps.google.com/?q=50.0868,14.3895",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Страговский_монастырь",
+        "wikipedia_valid": true,
+        "website": "https://www.strahovskyklaster.cz",
+        "website_valid": true
+      }
+    ]
+  },
+  "zagreb": {
+    "name": "Загреб",
+    "center": [
+      15.9819,
+      45.815
+    ],
+    "pois": [
+      {
+        "name": "Кафедральный собор Вознесения Девы Марии",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Zagreb_Cathedral_-_panoramio_%281%29.jpg/800px-Zagreb_Cathedral_-_panoramio_%281%29.jpg",
+        "img_valid": true,
+        "text": "Самое высокое здание Хорватии с неоготическими шпилями высотой 105 м. Собор основан в 1093 году, перестроен после землетрясения 1880 года архитектором Германом Болле. Интерьер украшен витражами, фресками, мраморными алтарями. Сохранилась средневековая сокровищница с реликвиями. На площади перед собором колонна со статуей Девы Марии и 4 золотыми ангелами. Землетрясение 2020 года повредило шпили, идет реставрация.",
+        "addr": "Адрес Kaptol 31, Zagreb",
+        "map": "https://maps.google.com/?q=45.8144,15.9795",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Загребский_собор",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Церковь святого Марка",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Zagreb_St_Marks_Church.jpg/800px-Zagreb_St_Marks_Church.jpg",
+        "img_valid": true,
+        "text": "Церковь 13 века с уникальной черепичной крышей, выложенной гербами Хорватии, Далмации, Славонии и Загреба. Разноцветная черепица образует мозаику площадью 500 м2. Южный портал работы скульпторов Парлержей украшен 15 готическими статуями. Интерьер расписан хорватским художником Йозо Кличковичем. Церковь стоит на площади святого Марка в Верхнем городе, где находятся парламент и правительство.",
+        "addr": "Адрес Trg sv. Marka 5, Zagreb",
+        "map": "https://maps.google.com/?q=45.8166,15.9733",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Церковь_Святого_Марка_(Загреб)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Башня Лотршчак",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Lotrscak_tower.jpg/800px-Lotrscak_tower.jpg",
+        "img_valid": true,
+        "text": "Башня построена в 13 веке как часть городских укреплений для защиты южных ворот. Название происходит от колокола, звонившего перед закрытием ворот латинское campana latrunculorum. С 1877 года каждый день ровно в полдень раздается пушечный выстрел из малокалиберной пушки Грича. Со смотровой площадки на высоте 30 м открывается вид на Нижний город. Внутри галерея и сувенирный магазин.",
+        "addr": "Адрес Tomićeva ul. 9, Zagreb",
+        "map": "https://maps.google.com/?q=45.8156,15.9731",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Башня_Лотршчак",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Каменные ворота",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Stone_Gate_in_Zagreb.jpg/800px-Stone_Gate_in_Zagreb.jpg",
+        "img_valid": true,
+        "text": "Единственные сохранившиеся городские ворота 13 века. В 1731 году пожар уничтожил деревянные дома, но икона Девы Марии осталась невредимой среди пепла. С тех пор ворота стали святыней, внутри часовня с иконой за решеткой. Паломники зажигают свечи и оставляют таблички с благодарностями. Стены увешаны мраморными досками с надписями на разных языках. Ворота соединяют Верхний и Нижний город.",
+        "addr": "Адрес Kamenita ul., Zagreb",
+        "map": "https://maps.google.com/?q=45.8156,15.9764",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Каменные_ворота_(Загреб)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Загребский фуникулер",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Zagreb_Funicular_lower_station.jpg/800px-Zagreb_Funicular_lower_station.jpg",
+        "img_valid": true,
+        "text": "Самый короткий общественный фуникулер в мире длиной всего 66 м. Открыт в 1890 году, первоначально работал на паровой тяге. Соединяет Нижний город с Верхним, преодолевая перепад высот 30,5 м за 64 секунды. Два вагончика синего цвета вмещают по 28 пассажиров. Работает каждые 10 минут с 6 30 утра до 22 00. Признан самым коротким фуникулером по версии Книги рекордов Гиннесса.",
+        "addr": "Адрес Tomićeva ul. 5, Zagreb",
+        "map": "https://maps.google.com/?q=45.8149,15.9740",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Загребский_фуникулёр",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Площадь бана Йосипа Елачича",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Zagreb_Main_Square.jpg/800px-Zagreb_Main_Square.jpg",
+        "img_valid": true,
+        "text": "Центральная площадь Загреба названа в честь хорватского бана национального героя 19 века. Конная статуя Елачича работы скульптора Антуна Фернкорна установлена в 1866 году. В 1947 году коммунисты демонтировали памятник, в 1990 году его вернули, развернув на 180 градусов. Площадь вымощена камнем, окружена зданиями 19 века. Здесь начинаются главные улицы, проходят парады, концерты, новогодние ярмарки.",
+        "addr": "Адрес Trg bana Josipa Jelačića, Zagreb",
+        "map": "https://maps.google.com/?q=45.8131,15.9775",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Площадь_бана_Йосипа_Елачича",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Рынок Долац",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Dolac_Market_Zagreb.jpg/800px-Dolac_Market_Zagreb.jpg",
+        "img_valid": true,
+        "text": "Главный городской рынок работает с 1930 года на террасе над площадью Елачича. Красные зонтики фермеров видны издалека. Продают свежие овощи, фрукты, сыры, мед, цветы. Крестьянки в национальных костюмах предлагают домашние продукты. Под навесами мясные и рыбные ряды. Бронзовая статуя Кумица торговка в платке стала символом рынка. По воскресеньям работает блошиный рынок.",
+        "addr": "Адрес Dolac 9, Zagreb",
+        "map": "https://maps.google.com/?q=45.8142,15.9782",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Долац_(рынок)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Парк Максимир",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Maksimir_Park_Zagreb.jpg/800px-Maksimir_Park_Zagreb.jpg",
+        "img_valid": true,
+        "text": "Старейший общественный парк Юго Восточной Европы заложен в 1794 году епископом Максимилианом Врховцем. Площадь 316 гектаров включает английский пейзажный парк с 5 искусственными озерами, холмами, лугами, лесами. Проложено 18 км дорожек и аллей. В парке дуб возрастом 500 лет, швейцарский домик, павильон Эхо, обсерватория. С 1925 года работает зоопарк с 275 видами животных. Стадион Динамо вмещает 38000 зрителей.",
+        "addr": "Адрес Maksimirski perivoj, Zagreb",
+        "map": "https://maps.google.com/?q=45.8297,16.0186",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Максимир_(парк)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Музей разорванных отношений",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Museum_of_Broken_Relationships_Zagreb.jpg/800px-Museum_of_Broken_Relationships_Zagreb.jpg",
+        "img_valid": true,
+        "text": "Уникальный музей открыт в 2010 году художниками Олинкой Виштицей и Дражена Грубишичем после их расставания. Экспонаты присланы людьми со всего мира, каждый предмет сопровождается историей несостоявшихся отношений. Коллекция включает письма, фотографии, топор для уничтожения мебели бывшего партнера, протез ноги. Музей получил награду Европейский музей года 2011. Филиалы открыты в Лос Анджелесе и Сан Франциско.",
+        "addr": "Адрес Ćirilometodska ul. 2, Zagreb",
+        "map": "https://maps.google.com/?q=45.8165,15.9733",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_разорванных_отношений",
+        "wikipedia_valid": true,
+        "website": "https://brokenships.com",
+        "website_valid": true
+      },
+      {
+        "name": "Кладбище Мирогой",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Mirogoj_Cemetery_Zagreb.jpg/800px-Mirogoj_Cemetery_Zagreb.jpg",
+        "img_valid": true,
+        "text": "Некрополь открыт в 1876 году на месте усадьбы филолога Людевита Гая. Спроектирован архитектором Германом Болле. Главный вход аркады в стиле неоренессанса длиной 500 м с куполами и башнями. Кладбище объединяет католиков, православных, мусульман, иудеев. Похоронены президенты Хорватии Франьо Туджман, писатель Мирослав Крлежа, скульптор Иван Мештрович. Мирогой считается одним из красивейших кладбищ Европы, музей архитектуры под открытым небом.",
+        "addr": "Адрес Aleja Hermana Bollеa 27, Zagreb",
+        "map": "https://maps.google.com/?q=45.8348,15.9645",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Мирогой_(кладбище)",
+        "wikipedia_valid": true
+      }
+    ]
+  },
+  "munich": {
+    "name": "Мюнхен",
+    "center": [
+      11.582,
+      48.1351
+    ],
+    "pois": [
+      {
+        "name": "Мариенплац",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Marienplatz_from_Peterskirche_-_August_2006.jpg/800px-Marienplatz_from_Peterskirche_-_August_2006.jpg",
+        "img_valid": true,
+        "text": "Центральная площадь Мюнхена с 1158 года, названа в честь колонны Девы Марии 1638 года. Новая ратуша построена в 1867 1909 годах в неоготическом стиле, фасад длиной 100 м украшен 85 м башней с курантами Глокеншпиль. Дважды в день в 11 00 и 12 00, летом ещё в 17 00, 32 фигуры в натуральную величину разыгрывают сцены свадьбы герцога Вильгельма V 1568 года и танца бондарей после эпидемии чумы. Представление длится 15 минут.",
+        "addr": "Адрес Marienplatz, München",
+        "map": "https://maps.google.com/?q=48.1374,11.5755",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Мариенплац",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Фрауэнкирхе",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Munich_Frauenkirche_from_Peterskirche.jpg/800px-Munich_Frauenkirche_from_Peterskirche.jpg",
+        "img_valid": true,
+        "text": "Кафедральный собор Пресвятой Девы Марии построен в 1468 1488 годах архитектором Йоргом фон Хальспахом. Две башни высотой 99 м с луковичными куполами видны из любой точки города. Собор вмещает 20000 человек. В полу у входа отпечаток ноги Чертов след, по легенде архитектор заключил сделку с дьяволом. С южной башни смотровая площадка на высоте 85 м. Во время войны собор разрушен, восстановлен к 1994 году.",
+        "addr": "Адрес Frauenplatz 12, München",
+        "map": "https://maps.google.com/?q=48.1386,11.5732",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Фрауэнкирхе_(Мюнхен)",
+        "wikipedia_valid": true,
+        "website": "https://www.muenchner-dom.de",
+        "website_valid": true
+      },
+      {
+        "name": "Резиденция",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Munich_Residenz.jpg/800px-Munich_Residenz.jpg",
+        "img_valid": true,
+        "text": "Городской дворец баварских герцогов, курфюрстов и королей династии Виттельсбахов строился с 1385 по 1920 годы. Комплекс из 10 дворов и 130 залов включает стили ренессанса, барокко, рококо, классицизма. Антиквариум зал 1571 года длиной 69 м с самым большим сводом Европы севернее Альп. Сокровищница хранит короны, драгоценности, реликвии. Театр Кювилье 1751 1755 годов шедевр рококо. Площадь музея 23000 м2.",
+        "addr": "Адрес Residenzstraße 1, München",
+        "map": "https://maps.google.com/?q=48.1407,11.5789",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Резиденция_(Мюнхен)",
+        "wikipedia_valid": true,
+        "website": "https://www.residenz-muenchen.de",
+        "website_valid": true
+      },
+      {
+        "name": "Английский сад",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Englischer_Garten_Panorama.jpg/800px-Englischer_Garten_Panorama.jpg",
+        "img_valid": true,
+        "text": "Один из крупнейших городских парков мира площадью 417 гектаров, больше Центрального парка Нью Йорка. Заложен в 1789 году садовником Фридрихом Людвигом фон Скеллем. Река Айсбах протекает через парк, на искусственной волне серферы катаются круглый год. Китайская башня 1789 1790 годов высотой 25 м копия пагоды в лондонском Кью Гарденс. Летом у башни пивной сад на 7000 мест. Моноптер круглая ротонда на холме с видом на город.",
+        "addr": "Адрес Englischer Garten, München",
+        "map": "https://maps.google.com/?q=48.1642,11.6054",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Английский_сад_(Мюнхен)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Нимфенбург",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Nymphenburg_Palace_Munich.jpg/800px-Nymphenburg_Palace_Munich.jpg",
+        "img_valid": true,
+        "text": "Летняя резиденция Виттельсбахов построена в 1664 1675 годах архитектором Агостино Барелли. Барочный дворец длиной 600 м окружен парком площадью 200 гектаров с каналами, фонтанами, павильонами. Галерея красавиц зал с 36 портретами красивейших женщин Мюнхена кисти Йозефа Штилера. Амалиенбург охотничий павильон 1734 1739 годов жемчужина рококо с Зеркальным залом. В парке Баденбург банный павильон, Пагоденбург чайный домик. Музей карет.",
+        "addr": "Адрес Schloß Nymphenburg 1, München",
+        "map": "https://maps.google.com/?q=48.1584,11.5034",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Нимфенбург_(дворец)",
+        "wikipedia_valid": true,
+        "website": "https://www.schloss-nymphenburg.de",
+        "website_valid": true
+      },
+      {
+        "name": "Хофбройхаус",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Hofbraeuhaus_Muenchen_2010.jpg/800px-Hofbraeuhaus_Muenchen_2010.jpg",
+        "img_valid": true,
+        "text": "Королевская пивоварня основана в 1589 году герцогом Вильгельмом V для обеспечения двора пивом. Нынешнее здание построено в 1897 году. Пивной зал на первом этаже вмещает 1000 человек, на втором этаже зал на 1300 мест с оркестром. Варят пиво сортов Хелл, Дункель, Вайссбир по старинным рецептам. Постоянные посетители имеют именные кружки в сейфовых ячейках. Хофбройхаус символ баварской культуры пива, посещаем 35000 гостей в день.",
+        "addr": "Адрес Platzl 9, München",
+        "map": "https://maps.google.com/?q=48.1375,11.5797",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Хофбройхаус",
+        "wikipedia_valid": true,
+        "website": "https://www.hofbraeuhaus.de",
+        "website_valid": true
+      },
+      {
+        "name": "Альянц Арена",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Allianz_Arena_Pahu.jpg/800px-Allianz_Arena_Pahu.jpg",
+        "img_valid": true,
+        "text": "Футбольный стадион открыт в 2005 году к чемпионату мира 2006 года архитекторами Herzog and de Meuron. Вместимость 75000 зрителей. Уникальный фасад из 2874 воздушных подушек ETFE площадью 260000 м2 подсвечивается красным, синим или белым в зависимости от играющей команды. Домашняя арена клубов Бавария и Мюнхен 1860. Музей Баварии открыт для посещения, экскурсии включают раздевалки, туннель на поле, VIP ложи. Прозвище стадиона Спасательный круг.",
+        "addr": "Адрес Werner-Heisenberg-Allee 25, München",
+        "map": "https://maps.google.com/?q=48.2188,11.6248",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Альянц_Арена",
+        "wikipedia_valid": true,
+        "website": "https://allianz-arena.com",
+        "website_valid": true
+      },
+      {
+        "name": "Виктуалиенмаркт",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Viktualienmarkt_Munich_May_2010.jpg/800px-Viktualienmarkt_Munich_May_2010.jpg",
+        "img_valid": true,
+        "text": "Продуктовый рынок под открытым небом работает с 1807 года на площади 22000 м2. Король Максимилиан I перенес рынок от Мариенплац из за нехватки места. Более 140 лавок и киосков продают свежие фрукты, овощи, мясо, рыбу, сыры, цветы, специи. В центре пивной сад под каштанами на 1000 мест. Установлены фонтаны со статуями народных актеров Карла Валентина, Лизль Карлштадт. Рынок открыт ежедневно кроме воскресенья.",
+        "addr": "Адрес Viktualienmarkt 3, München",
+        "map": "https://maps.google.com/?q=48.1355,11.5763",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Виктуалиенмаркт",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "БМВ Вельт и Музей БМВ",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/BMW_Welt_und_Museum.jpg/800px-BMW_Welt_und_Museum.jpg",
+        "img_valid": true,
+        "text": "БМВ Вельт открыт в 2007 году архитектором Вольфом Приксом как выставочный центр и центр выдачи новых машин. Футуристическое здание площадью 73000 м2 с двойным конусом и стальной крышей. Музей БМВ в здании в форме чаши 1973 года показывает историю марки с 1916 года. Коллекция из 125 автомобилей, мотоциклов, двигателей. Завод БМВ рядом проводит экскурсии по производству. БМВ Вельт посещают 3,5 миллиона человек в год.",
+        "addr": "Адрес Am Olympiapark 2, München",
+        "map": "https://maps.google.com/?q=48.1769,11.5561",
+        "wikipedia": "https://ru.wikipedia.org/wiki/BMW_Welt",
+        "wikipedia_valid": true,
+        "website": "https://www.bmw-welt.com",
+        "website_valid": true
+      },
+      {
+        "name": "Олимпийский парк",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Olympiapark_Munich_aerial.jpg/800px-Olympiapark_Munich_aerial.jpg",
+        "img_valid": true,
+        "text": "Парк построен для летних Олимпийских игр 1972 года архитектором Гюнтером Бенишем. Комплекс площадью 850000 м2 включает стадион на 69000 зрителей, плавательный зал, спортзал. Тентовая крыша из акрилового стекла площадью 74800 м2 имитирует альпийские ландшафты. Олимпийская башня высотой 291 м со смотровой площадкой на высоте 190 м и вращающимся рестораном. Олимпийское озеро искусственный водоем для гребли. Морской аквариум с 33 аквариумами и 4000 рыб.",
+        "addr": "Адрес Spiridon-Louis-Ring 21, München",
+        "map": "https://maps.google.com/?q=48.1744,11.5528",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Олимпийский_парк_(Мюнхен)",
+        "wikipedia_valid": true,
+        "website": "https://www.olympiapark.de",
+        "website_valid": true
+      }
+    ]
+  },
+  "salzburg": {
+    "name": "Зальцбург",
+    "center": [
+      13.055,
+      47.8095
+    ],
+    "pois": [
+      {
+        "name": "Крепость Хоэнзальцбург",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Festung_Hohensalzburg_2014.jpg/800px-Festung_Hohensalzburg_2014.jpg",
+        "img_valid": true,
+        "text": "Одна из крупнейших средневековых крепостей Европы построена в 1077 году архиепископом Гебхардом. Расположена на горе Фестунгсберг на высоте 120 м над городом. Длина стен 250 м, площадь 30000 м2. Фуникулер Фестунгсбан поднимает туристов с 1892 года. В крепости музей марионеток, оружейная палата, княжеские покои с готической печью, башня Реквизитентурм. С террас панорама Зальцбурга и Альп. Летом проводятся концерты.",
+        "addr": "Адрес Mönchsberg 34, Salzburg",
+        "map": "https://maps.google.com/?q=47.7951,13.0478",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Хоэнзальцбург",
+        "wikipedia_valid": true,
+        "website": "https://www.salzburg-burgen.at",
+        "website_valid": true
+      },
+      {
+        "name": "Дом Моцарта, Гетрайдегассе 9",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Mozarts_Geburtshaus%2C_Getreidegasse_9%2C_Salzburg.jpg/800px-Mozarts_Geburtshaus%2C_Getreidegasse_9%2C_Salzburg.jpg",
+        "img_valid": true,
+        "text": "Вольфганг Амадей Моцарт родился в этом доме 27 января 1756 года и жил здесь до 17 лет. Семья занимала квартиру на третьем этаже желтого дома. Музей открыт в 1880 году, хранит скрипку Моцарта, клавикорд, портреты, письма, партитуры. Воссозданы комнаты семьи Моцарт. На первом этаже аптека существует с 1591 года. Улица Гетрайдегассе знаменита кованными вывесками магазинов.",
+        "addr": "Адрес Getreidegasse 9, Salzburg",
+        "map": "https://maps.google.com/?q=47.7999,13.0435",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Дом_Моцарта_(Гетрайдегассе)",
+        "wikipedia_valid": true,
+        "website": "https://www.mozarteum.at",
+        "website_valid": true
+      },
+      {
+        "name": "Резиденцплац и фонтан",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Residenzplatz_Salzburg.jpg/800px-Residenzplatz_Salzburg.jpg",
+        "img_valid": true,
+        "text": "Главная площадь старого города создана в 1587 году архиепископом Вольфом Дитрихом. Фонтан Резиденцбруннен построен в 1658 1661 годах скульптором Томмазо ди Гарона, высота 15 м. Три атланта держат чаши, увенчанные тритонами с дельфинами и конями. Это крупнейший барочный фонтан Центральной Европы. Вокруг площади Новая резиденция с музеем Заттлера и башней Глокеншпиль с 35 колоколами, Старая резиденция архиепископов.",
+        "addr": "Адрес Residenzplatz, Salzburg",
+        "map": "https://maps.google.com/?q=47.7979,13.0477",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Резиденцплац",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Кафедральный собор",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Salzburg_Cathedral_2014.jpg/800px-Salzburg_Cathedral_2014.jpg",
+        "img_valid": true,
+        "text": "Барочный собор построен в 1614 1628 годах архитектором Сантино Солари после пожара 1598 года. Фасад шириной 101 м украшен статуями святых Руперта и Виргилия, апостолов Петра и Павла. Купол высотой 79 м виден из любой точки города. Вместимость 10000 человек. Здесь крестили Моцарта в 1756 году, купель 1321 года сохранилась. Орган насчитывает 4000 труб. В склепе похоронены архиепископы Зальцбурга.",
+        "addr": "Адрес Domplatz 1A, Salzburg",
+        "map": "https://maps.google.com/?q=47.7980,13.0472",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Зальцбургский_собор",
+        "wikipedia_valid": true,
+        "website": "https://www.salzburger-dom.at",
+        "website_valid": true
+      },
+      {
+        "name": "Дворец и сады Мирабель",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Mirabell_Palace_Salzburg.jpg/800px-Mirabell_Palace_Salzburg.jpg",
+        "img_valid": true,
+        "text": "Дворец построен в 1606 году архиепископом Вольфом Дитрихом для возлюбленной Саломеи Альт. Мраморный зал барокко украшен лепниной, здесь играл Моцарт в 6 лет. Сады разбиты в 1690 году с партерами, фонтанами, скульптурами мифологических героев. Сад гномов населен 28 каменными карликами 1715 года. Розарий цветет с мая по октябрь. Из садов вид на крепость Хоэнзальцбург. Здесь снимали Звуки музыки, сцену До ре ми.",
+        "addr": "Адрес Mirabellplatz 4, Salzburg",
+        "map": "https://maps.google.com/?q=47.8053,13.0418",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Мирабель_(дворец)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Аббатство Святого Петра",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Salzburg_Stiftskirche_St._Peter.jpg/800px-Salzburg_Stiftskirche_St._Peter.jpg",
+        "img_valid": true,
+        "text": "Старейший действующий монастырь немецкоязычных стран основан святым Рупертом около 696 года. Церковь перестроена в стиле рококо в 1757 1783 годах. Интерьер украшен лепниной, фресками, мраморными алтарями. В склепе катакомбы раннехристианские пещеры в скале. Кладбище при монастыре старейшее в Зальцбурге, здесь похоронена сестра Моцарта Наннерль. Ресторан Святого Петра работает с 803 года, древнейший в Европе.",
+        "addr": "Адрес Sankt-Peter-Bezirk 1, Salzburg",
+        "map": "https://maps.google.com/?q=47.7977,13.0442",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Аббатство_Святого_Петра_(Зальцбург)",
+        "wikipedia_valid": true,
+        "website": "https://www.stift-stpeter.at",
+        "website_valid": true
+      },
+      {
+        "name": "Дворец Хельбрунн",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Schloss_Hellbrunn_Salzburg_2014.jpg/800px-Schloss_Hellbrunn_Salzburg_2014.jpg",
+        "img_valid": true,
+        "text": "Загородная резиденция архиепископа Маркуса Ситтикуса построена в 1612 1615 годах архитектором Солари. Дворец окружен парком с шутихами потешными фонтанами, неожиданно обливающими гостей. Механический театр 1750 года с 256 движущимися фигурами работает от водяного колеса. Грот Нептуна, водяной орган, стол с фонтанами, охотничий домик. В парке павильон Моннатшлессль, где снимали сцену из Звуков музыки. Зоопарк Зальцбурга расположен у подножия горы.",
+        "addr": "Адрес Fürstenweg 37, Salzburg",
+        "map": "https://maps.google.com/?q=47.7626,13.0606",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Хельбрунн",
+        "wikipedia_valid": true,
+        "website": "https://www.hellbrunn.at",
+        "website_valid": true
+      },
+      {
+        "name": "Гора Унтерсберг",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Untersberg_Gipfel.jpg/800px-Untersberg_Gipfel.jpg",
+        "img_valid": true,
+        "text": "Массив высотой 1853 м на границе Австрии и Германии. Канатная дорога с 1961 года поднимает на вершину за 9 минут, перепад высот 1320 м. С вершины панорама Зальцбурга, Альп, озер. Проложены пешеходные тропы, зимой работают горнолыжные трассы. В горе 400 пещер, в том числе Ширлох глубиной 1100 м. По легенде в Унтерсберге спит император Карл Великий и проснется в день Страшного суда.",
+        "addr": "Адрес St. Leonhard, Grödig",
+        "map": "https://maps.google.com/?q=47.7113,13.0292",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Унтерсберг",
+        "wikipedia_valid": true,
+        "website": "https://www.untersbergbahn.at",
+        "website_valid": true
+      }
+    ]
+  },
+  "milan": {
+    "name": "Милан",
+    "center": [
+      9.19,
+      45.4642
+    ],
+    "pois": [
+      {
+        "name": "Миланский собор Дуомо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Milano_Cathedral_from_Piazza_del_Duomo.jpg/800px-Milano_Cathedral_from_Piazza_del_Duomo.jpg",
+        "img_valid": true,
+        "text": "Кафедральный собор Рождества Девы Марии строился с 1386 по 1965 годы в стиле пламенеющей готики. Третий по величине католический храм в мире длиной 158 м, шириной 92 м, вмещает 40000 человек. Фасад украшен 3400 статуями и 135 шпилями из белого мрамора. Главный шпиль высотой 108,5 м увенчан золотой статуей Мадонны высотой 4 м. На крыше терраса с видом на Милан и Альпы. Внутри витражи 15 19 веков, алтарь, склеп.",
+        "addr": "Адрес Piazza del Duomo, Milano",
+        "map": "https://maps.google.com/?q=45.4641,9.1919",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Миланский_собор",
+        "wikipedia_valid": true,
+        "website": "https://www.duomomilano.it",
+        "website_valid": true
+      },
+      {
+        "name": "Галерея Виктора Эммануила II",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Galleria_Vittorio_Emanuele_II_Interior.jpg/800px-Galleria_Vittorio_Emanuele_II_Interior.jpg",
+        "img_valid": true,
+        "text": "Старейший торговый пассаж Италии построен в 1865 1877 годах архитектором Джузеппе Менгони. Крестообразное здание длиной 196 м и шириной 105 м накрыто стеклянной крышей на стальных арках высотой 47 м. Пол украшен мозаиками с гербами городов Италии. На мозаике герба Турина бык, туристы вращаются на его гениталиях пяткой для удачи. Здесь магазины Prada, Gucci, Louis Vuitton, кафе Кампарино, ресторан Савини. Прозвище гостиная Милана.",
+        "addr": "Адрес Piazza del Duomo, Milano",
+        "map": "https://maps.google.com/?q=45.4659,9.1900",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Галерея_Виктора_Эммануила_II",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Театр Ла Скала",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/La_Scala_interior.jpg/800px-La_Scala_interior.jpg",
+        "img_valid": true,
+        "text": "Оперный театр открыт в 1778 году на месте церкви Санта Мария алла Скала архитектором Джузеппе Пьермарини. Зал вмещает 2030 зрителей на 6 ярусах лож и галерее. Акустика считается идеальной благодаря форме подковы. Сезон открывается 7 декабря в день святого Амвросия покровителя Милана. Здесь ставили премьеры опер Верди, Россини, Беллини, Пуччини. Дирижировали Тосканини, Караян, Муті. Музей хранит костюмы, афиши, портреты, партитуры.",
+        "addr": "Адрес Via Filodrammatici 2, Milano",
+        "map": "https://maps.google.com/?q=45.4674,9.1898",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Ла_Скала",
+        "wikipedia_valid": true,
+        "website": "https://www.teatroallascala.org",
+        "website_valid": true
+      },
+      {
+        "name": "Замок Сфорца",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Castello_Sforzesco_Milano.jpg/800px-Castello_Sforzesco_Milano.jpg/800px-Castello_Sforzesco_Milano.jpg",
+        "img_valid": true,
+        "text": "Крепость построена в 1368 1370 годах как резиденция Висконти, перестроена Франческо Сфорца в 1450 1466 годах. Центральная башня Филарете высотой 70 м восстановлена в 1905 году. Комплекс включает дворы, залы с фресками, Зал деревянного потолка работы Леонардо да Винчи. Музеи замка хранят картины Мантеньи, Беллини, скульптуры Микеланджело, египетскую коллекцию, музыкальные инструменты. Парк Семпионе позади замка площадью 386000 м2 создан в 1888 году.",
+        "addr": "Адрес Piazza Castello, Milano",
+        "map": "https://maps.google.com/?q=45.4702,9.1799",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Замок_Сфорца",
+        "wikipedia_valid": true,
+        "website": "https://www.milanocastello.it",
+        "website_valid": true
+      },
+      {
+        "name": "Санта Мария делле Грацие и Тайная вечеря",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/%C3%9Altima_Cena_-_Da_Vinci_5.jpg/800px-%C3%9Altima_Cena_-_Da_Vinci_5.jpg",
+        "img_valid": true,
+        "text": "Доминиканский монастырь построен в 1463 1497 годах архитектором Гуинифорте Солари, трибуна работы Браманте. В трапезной на стене фреска Леонардо да Винчи Тайная вечеря размером 460 на 880 см, написанная в 1495 1498 годах. Революционная техника сухой фрески вместо классической позволила передать детали, но плохо сохранилась. Реставрация длилась с 1978 по 1999 годы. Осмотр 15 минут, билеты за месяц. Объект ЮНЕСКО с 1980 года.",
+        "addr": "Адрес Piazza di Santa Maria delle Grazie 2, Milano",
+        "map": "https://maps.google.com/?q=45.4659,9.1708",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Тайная_вечеря_(Леонардо_да_Винчи)",
+        "wikipedia_valid": true,
+        "website": "https://cenacolovinciano.org",
+        "website_valid": true
+      },
+      {
+        "name": "Пинакотека Брера",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Pinacoteca_di_Brera_courtyard.jpg/800px-Pinacoteca_di_Brera_courtyard.jpg",
+        "img_valid": true,
+        "text": "Художественная галерея основана в 1776 году Марией Терезией Австрийской во дворце Брера 17 века. Коллекция формировалась из конфискованных церковных ценностей Наполеоном. 38 залов показывают итальянскую живопись 13 20 веков. Шедевры Караваджо, Рафаэля Обручение Девы Марии, Мантеньи Мёртвый Христос, Пьеро делла Франческа, Тинторетто, Веронезе, Беллини. Библиотека насчитывает 1400000 томов. Астрономическая обсерватория действует с 1764 года.",
+        "addr": "Адрес Via Brera 28, Milano",
+        "map": "https://maps.google.com/?q=45.4719,9.1881",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Пинакотека_Брера",
+        "wikipedia_valid": true,
+        "website": "https://pinacotecabrera.org",
+        "website_valid": true
+      },
+      {
+        "name": "Базилика Сант Амброджо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Basilica_di_Sant%27Ambrogio_Milan.jpg/800px-Basilica_di_Sant%27Ambrogio_Milan.jpg",
+        "img_valid": true,
+        "text": "Одна из древнейших церквей Милана основана святым Амвросием в 379 386 годах. Романский облик здание получило в 1080 1128 годах. Атриум окружен аркадами, фасад украшен двумя колокольнями 9 и 12 веков разной высоты. В крипте серебряная рака с мощами святого Амвросия, мучеников Гервасия и Протасия. Золотой алтарь 824 года работы мастера Вольвиния покрыт эмалями и драгоценными камнями. Капелла Сан Витторе с византийскими мозаиками 5 века.",
+        "addr": "Адрес Piazza Sant'Ambrogio 15, Milano",
+        "map": "https://maps.google.com/?q=45.4622,9.1755",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Базилика_Сант-Амброджо",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Навильи, Миланские каналы",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Naviglio_Grande_Milano.jpg/800px-Naviglio_Grande_Milano.jpg",
+        "img_valid": true,
+        "text": "Система каналов создана в 12 19 веках для судоходства, орошения, строительства Дуомо. Навильо Гранде построен в 1177 1257 годах, Навильо Павезе в 1564 1819 годах. В 1930 годах большинство каналов засыпано. Сохранились 2 канала в районе Навильи. Набережные застроены старинными домами, мостами, шлюзами. Район стал богемным кварталом с галереями, антикварными лавками, ресторанами, барами. Каждое последнее воскресенье месяца блошиный рынок.",
+        "addr": "Адрес Naviglio Grande, Milano",
+        "map": "https://maps.google.com/?q=45.4516,9.1727",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Навильи",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Стадион Сан Сиро",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/San_Siro_stadium.jpg/800px-San_Siro_stadium.jpg",
+        "img_valid": true,
+        "text": "Домашняя арена клубов Милан и Интер открыта в 1926 году, реконструирована к чемпионату мира 1990 года архитекторами Раймонди и Хёрчем. Вместимость 75817 зрителей. Название Сан Сиро по району, официальное имя Стадио Джузеппе Меацца в честь легенды Милана и Интера. Красные опоры поддерживают 11 цилиндрических башен высотой 51 м. Музей показывает историю клубов, трофеи, экскурсии включают раздевалки, пресс центр, туннель, скамейки.",
+        "addr": "Адрес Piazzale Angelo Moratti, Milano",
+        "map": "https://maps.google.com/?q=45.4781,9.1240",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Сан-Сиро",
+        "wikipedia_valid": true,
+        "website": "https://www.sansiro.net",
+        "website_valid": true
+      },
+      {
+        "name": "Квартал Брера",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Brera_district_Milan.jpg/800px-Brera_district_Milan.jpg",
+        "img_valid": true,
+        "text": "Исторический квартал художников и интеллектуалов в центре Милана. Улочки вымощены булыжником, дома увиты плющом, балконы утопают в цветах. Здесь галереи современного искусства, мастерские, антикварные магазины, кафе, рестораны, джаз клубы. По вечерам уличные музыканты играют на площадях. Бутики модных дизайнеров соседствуют с винными барами. Каждый третий четверг месяца Ночь Брера, галереи открыты до полуночи.",
+        "addr": "Адрес Quartiere Brera, Milano",
+        "map": "https://maps.google.com/?q=45.4722,9.1875",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Брера_(квартал)",
+        "wikipedia_valid": true
+      }
+    ]
+  },
+  "naples": {
+    "name": "Неаполь",
+    "center": [
+      14.2681,
+      40.8518
+    ],
+    "pois": [
+      {
+        "name": "Национальный археологический музей",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Naples_National_Archaeological_Museum.jpg/800px-Naples_National_Archaeological_Museum.jpg",
+        "img_valid": true,
+        "text": "Один из важнейших археологических музеев мира основан в 1777 году Фердинандом IV во дворце 1585 года. Коллекция Фарнезе содержит античные скульптуры Геркулес Фарнезе, Фарнезский бык, мозаики. Находки из Помпей и Геркуланума включают фрески, статуи, бронзовые изделия, эротическую коллекцию Секретный кабинет. Египетская коллекция третья в Италии. Нумизматический кабинет хранит 200000 монет.",
+        "addr": "Адрес Piazza Museo 19, Napoli",
+        "map": "https://maps.google.com/?q=40.8535,14.2505",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Национальный_археологический_музей_(Неаполь)",
+        "wikipedia_valid": true,
+        "website": "https://www.museoarcheologiconapoli.it",
+        "website_valid": true
+      },
+      {
+        "name": "Везувий",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Vesuvius_from_Pompeii.jpg/800px-Vesuvius_from_Pompeii.jpg",
+        "img_valid": true,
+        "text": "Действующий вулкан высотой 1281 м на берегу Неаполитанского залива. Известен извержением 24 августа 79 года, уничтожившим Помпеи, Геркуланум, Стабии. Последнее извержение произошло в 1944 году. Кратер диаметром 600 м и глубиной 200 м выделяет серные газы. Тропа ведет на вершину за 30 минут. С края кратера панорама Неаполитанского залива, островов Капри, Искья, Прочида. Вулкан под постоянным наблюдением сейсмологов.",
+        "addr": "Адрес Parco Nazionale del Vesuvio, Napoli",
+        "map": "https://maps.google.com/?q=40.8212,14.4264",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Везувий",
+        "wikipedia_valid": true,
+        "website": "https://www.parconazionaledelvesuvio.it",
+        "website_valid": true
+      },
+      {
+        "name": "Помпеи",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Pompeii_Forum.jpg/800px-Pompeii_Forum.jpg",
+        "img_valid": true,
+        "text": "Древнеримский город погребен извержением Везувия 24 августа 79 года, открыт в 1748 году. Раскопано 44 гектара из 66. Сохранились форум, базилика, храмы Юпитера, Аполлона, Весты, термы, амфитеатр на 20000 зрителей, виллы с фресками и мозаиками. Дом Веттиев, Дом Фавна, Вилла Мистерий демонстрируют быт римлян. В гипсовых слепках застыли жертвы извержения. Археологический парк ЮНЕСКО посещают 3 миллиона туристов в год.",
+        "addr": "Адрес Porta Marina, Pompei",
+        "map": "https://maps.google.com/?q=40.7510,14.4894",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Помпеи",
+        "wikipedia_valid": true,
+        "website": "https://www.pompeiisites.org",
+        "website_valid": true
+      },
+      {
+        "name": "Королевский дворец",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Naples_Royal_Palace.jpg/800px-Naples_Royal_Palace.jpg",
+        "img_valid": true,
+        "text": "Дворец построен в 1600 1620 годах архитектором Доменико Фонтана для короля Филиппа III Испанского. Фасад длиной 169 м украшен нишами со статуями 8 королей Неаполя от Рожера II до Витторио Эмануэле II. Парадная лестница ведет в королевские апартаменты с тронным залом, театром, капеллой, галереей гобеленов, фарфоровым кабинетом. Библиотека содержит 200000 томов, в том числе папирусы из Геркуланума. С террасы вид на площадь Плебисцита и залив.",
+        "addr": "Адрес Piazza del Plebiscito 1, Napoli",
+        "map": "https://maps.google.com/?q=40.8364,14.2491",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Королевский_дворец_(Неаполь)",
+        "wikipedia_valid": true,
+        "website": "https://www.coopculture.it",
+        "website_valid": true
+      },
+      {
+        "name": "Кастель дель Ово",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Castel_dell%27Ovo_Naples.jpg/800px-Castel_dell%27Ovo_Naples.jpg",
+        "img_valid": true,
+        "text": "Древнейший замок Неаполя построен в 12 веке норманнами на острове Мегарида в Неаполитанском заливе. Название Яичный замок связано с легендой, что поэт Вергилий заложил в фундамент волшебное яйцо, от целостности которого зависит судьба города. Замок служил крепостью, тюрьмой, резиденцией королей. Башни и стены сложены из туфа. С террас вид на залив, Везувий, остров Капри. Внутри проводятся выставки, концерты.",
+        "addr": "Адрес Via Eldorado 3, Napoli",
+        "map": "https://maps.google.com/?q=40.8282,14.2477",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Кастель_дель_Ово",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Подземный Неаполь",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Napoli_Sotterranea.jpg/800px-Napoli_Sotterranea.jpg",
+        "img_valid": true,
+        "text": "Сеть туннелей, акведуков, цистерн под историческим центром на глубине 40 м. Греки в 4 веке до н.э. добывали туф для строительства, римляне создали акведук. В Средние века колодцы доставляли воду в дома. Во Вторую мировую тоннели служили бомбоубежищами на 200000 человек. Экскурсии проходят через греко римские цистерны, римский театр под жилыми домами, убежища с кроватями и граффити. Протяженность ходов 80 км.",
+        "addr": "Адрес Piazza San Gaetano 68, Napoli",
+        "map": "https://maps.google.com/?q=40.8507,14.2564",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Подземный_Неаполь",
+        "wikipedia_valid": true,
+        "website": "https://www.napolisotterranea.org",
+        "website_valid": true
+      },
+      {
+        "name": "Квартал Спакканаполи",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Spaccanapoli_street_Naples.jpg/800px-Spaccanapoli_street_Naples.jpg",
+        "img_valid": true,
+        "text": "Узкая прямая улица длиной 2 км разрезает исторический центр с запада на восток, повторяя древнеримский декуманус. Название Раскалывающий Неаполь. Вдоль улицы палаццо 16 18 веков, церкви Санта Кьяра с майоликовым клуатром, Джезу Нуово с фасадом из алмазного руста, Сан Доменико Маджоре. Узкие переулки застроены разноцветными домами с бельем на веревках. Ремесленные мастерские, пиццерии, кафе, лавки со сладостями сфольятелла.",
+        "addr": "Адрес Via Benedetto Croce, Napoli",
+        "map": "https://maps.google.com/?q=40.8473,14.2550",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Спакканаполи",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Театр Сан Карло",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Teatro_San_Carlo_Naples.jpg/800px-Teatro_San_Carlo_Naples.jpg",
+        "img_valid": true,
+        "text": "Старейший действующий оперный театр Европы открыт в 1737 году по приказу Карла III архитектором Джованни Антонио Медрано. Зал подкова вмещает 1386 зрителей на 6 ярусах лож. Потолок расписан фреской Аполлон представляет поэтов Гомера, Данте, Шекспира Минервы. Королевская ложа украшена золотом и бархатом. Здесь ставили премьеры опер Россини, Беллини, Доницетти. Акустика считается одной из лучших в мире. Сезон открывается в январе концертом в честь покровителя Неаполя святого Дженнаро.",
+        "addr": "Адрес Via San Carlo 98/F, Napoli",
+        "map": "https://maps.google.com/?q=40.8377,14.2497",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Сан-Карло_(театр)",
+        "wikipedia_valid": true,
+        "website": "https://www.teatrosancarlo.it",
+        "website_valid": true
+      },
+      {
+        "name": "Капелла Сансеверо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Cristo_velato.jpg/800px-Cristo_velato.jpg",
+        "img_valid": true,
+        "text": "Фамильная капелла герцогов ди Сангро построена в 1590 году, перестроена в 1749 1771 годах. Интерьер украшен скульптурами работы Джузеппе Санмартино, Франческо Челебрано, Антонио Коррадини. Шедевр капеллы Христос под покрывалом 1753 года мраморная статуя лежащего Христа, накрытого прозрачной пеленой, вырезанной из цельного блока. В крипте две анатомические машины скелеты мужчины и женщины с системой кровеносных сосудов, созданные алхимиком Раймондо ди Сангро.",
+        "addr": "Адрес Via Francesco de Sanctis 19/21, Napoli",
+        "map": "https://maps.google.com/?q=40.8491,14.2552",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Капелла_Сансеверо",
+        "wikipedia_valid": true,
+        "website": "https://www.museosansevero.it",
+        "website_valid": true
+      },
+      {
+        "name": "Кладбище Фонтанелле",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Cimitero_delle_Fontanelle_Naples.jpg/800px-Cimitero_delle_Fontanelle_Naples.jpg",
+        "img_valid": true,
+        "text": "Оссуарий в туфовой пещере содержит останки около 40000 человек жертв чумы 1656 года и холеры 1836 года. Кости аккуратно уложены вдоль стен, черепа выставлены на полках. В 19 20 веках сложился культ заботы о душах умерших, люди усыновляли черепа, молились за них, украшали ткаными салфетками, цветами. В 1969 году церковь запретила культ. Кладбище открыто для посещения, создает жуткое впечатление катакомб со скелетами.",
+        "addr": "Адрес Via Fontanelle 80, Napoli",
+        "map": "https://maps.google.com/?q=40.8637,14.2425",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Кладбище_Фонтанелле",
+        "wikipedia_valid": true
+      }
+    ]
+  },
+  "catania": {
+    "name": "Катания",
+    "center": [
+      15.0877,
+      37.5079
+    ],
+    "pois": [
+      {
+        "name": "Этна",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Mt_Etna_and_Catania.jpg/800px-Mt_Etna_and_Catania.jpg",
+        "img_valid": true,
+        "text": "Самый высокий действующий вулкан Европы высотой 3357 м на восточном побережье Сицилии. Площадь 1250 км2, диаметр основания 45 км. Извержения происходят каждые несколько месяцев, последнее крупное в 2021 году. Канатная дорога поднимает на высоту 2500 м, дальше джипы до кратеров. На склонах лавовые поля, застывшие потоки, пещеры, виноградники. Парк Этна объект ЮНЕСКО с 2013 года. С вершины вид на Сицилию, Калабрию, Мальту.",
+        "addr": "Адрес Parco dell'Etna, Nicolosi",
+        "map": "https://maps.google.com/?q=37.7510,14.9934",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Этна",
+        "wikipedia_valid": true,
+        "website": "https://www.parcoetna.it",
+        "website_valid": true
+      },
+      {
+        "name": "Пьяцца дель Дуомо",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Piazza_del_Duomo_Catania.jpg/800px-Piazza_del_Duomo_Catania.jpg",
+        "img_valid": true,
+        "text": "Главная площадь Катании реконструирована после землетрясения 1693 года архитектором Джованни Баттиста Ваккарини. В центре фонтан Слона 1736 года символ города, базальтовый слон держит обелиск высотой 3,6 м. Кафедральный собор святой Агаты построен в 1078 1094 годах норманнами, фасад барокко 1711 года. Внутри капелла святой Агаты с серебряным бюстом, мощами мученицы, сокровищницей. Палаццо дельи Элефанти 1696 года ратуша с галереей.",
+        "addr": "Адрес Piazza del Duomo, Catania",
+        "map": "https://maps.google.com/?q=37.5022,15.0876",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Пьяцца_дель_Дуомо_(Катания)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Виа Этнеа",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Via_Etnea_Catania.jpg/800px-Via_Etnea_Catania.jpg",
+        "img_valid": true,
+        "text": "Главная улица Катании длиной 3 км протянулась от Пьяцца дель Дуомо до склонов Этны. Застроена палаццо в стиле сицилийского барокко из черного вулканического камня. Здесь магазины, кафе, рестораны, церкви Санта Агата, Сан Бьяджо, Базилика Колледжата. Улица пешеходная от Пьяцца Стезикоро до Виллы Беллини. По вечерам прогулочный corso, горожане выходят на традиционную прогулку пасседжата. С улицы виден конус Этны.",
+        "addr": "Адрес Via Etnea, Catania",
+        "map": "https://maps.google.com/?q=37.5070,15.0855",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Виа_Этнеа",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Театр Массимо Беллини",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Teatro_Massimo_Bellini_Catania.jpg/800px-Teatro_Massimo_Bellini_Catania.jpg",
+        "img_valid": true,
+        "text": "Оперный театр открыт в 1890 году архитектором Карло Сада в честь композитора Винченцо Беллини, родившегося в Катании. Фасад украшен бюстом Беллини, аллегориями Трагедии и Комедии. Зал вмещает 1200 зрителей на 5 ярусах, потолок расписан фресками сцен из опер Норма, Сомнамбула, Пуритане, Пират. Акустика позволяет слышать шепот на сцене с галерки. Сезон открывается премьерой оперы Беллини.",
+        "addr": "Адрес Via Perrotta 12, Catania",
+        "map": "https://maps.google.com/?q=37.5048,15.0861",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Театр_Массимо_Беллини",
+        "wikipedia_valid": true,
+        "website": "https://www.teatromassimobellini.it",
+        "website_valid": true
+      },
+      {
+        "name": "Замок Урсино",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Castello_Ursino_Catania.jpg/800px-Castello_Ursino_Catania.jpg",
+        "img_valid": true,
+        "text": "Норманнский замок построен в 1239 1250 годах императором Фридрихом II архитектором Риккардо да Лентини. Квадратный план со стороной 50 м, 4 круглые башни по углам, 4 полубашни посередине стен. Стены из черного лавового камня толщиной 2,5 м. Замок стоял на берегу моря, извержение 1669 года отодвинуло береговую линию на 1 км. Внутри Городской музей с археологической коллекцией, картинами, скульптурами, керамикой.",
+        "addr": "Адрес Piazza Federico di Svevia, Catania",
+        "map": "https://maps.google.com/?q=37.5005,15.0859",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Кастелло_Урсино",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Римский театр и Одеон",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Roman_Theatre_Catania.jpg/800px-Roman_Theatre_Catania.jpg",
+        "img_valid": true,
+        "text": "Античный театр построен во 2 веке н.э. из лавового камня и мрамора на месте греческого театра 5 века до н.э. Диаметр 98 м, вместимость 7000 зрителей на 9 рядах. Сохранились орхестра, сцена, коридоры. Рядом Одеон диаметром 60 м на 1500 зрителей для музыкальных выступлений и репетиций. Театры засыпаны лавой извержения 1169 года, откопаны в 18 19 веках. Используются для концертов и спектаклей.",
+        "addr": "Адрес Via Vittorio Emanuele II 266, Catania",
+        "map": "https://maps.google.com/?q=37.5033,15.0842",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Римский_театр_(Катания)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Монастырь бенедиктинцев",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Monastero_dei_Benedettini_Catania.jpg/800px-Monastero_dei_Benedettini_Catania.jpg",
+        "img_valid": true,
+        "text": "Один из крупнейших монастырей Европы основан в 1558 году. Комплекс площадью 40000 м2 включает 2 клуатра, церковь Сан Николо, библиотеку, музей. Западный клуатр 1704 года украшен фресками Джованни Баттиста Пиппи. Восточный клуатр 1758 года окружен аркадами. Церковь Сан Николо 1687 1796 годов третья по величине в Италии, фасад не достроен. Сейчас здание занимает факультет филологии Университета Катании. Объект ЮНЕСКО.",
+        "addr": "Адрес Piazza Dante 32, Catania",
+        "map": "https://maps.google.com/?q=37.5049,15.0825",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Монастырь_бенедиктинцев_(Катания)",
+        "wikipedia_valid": true,
+        "website": "https://www.monasterodeibenedettini.it",
+        "website_valid": true
+      },
+      {
+        "name": "Рыбный рынок",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Fish_Market_Catania.jpg/800px-Fish_Market_Catania.jpg",
+        "img_valid": true,
+        "text": "Ла Пескерия старейший рынок Катании работает с 1700 года ежедневно кроме воскресенья. Расположен за Пьяцца дель Дуомо у фонтана Аменано. Торговцы выкрикивают цены на диалекте, раскладывают на льду меч рыбу, тунца, осьминогов, мидий, креветок. Прилавки украшены лимонами, зеленью. Рынок окружен барами, где готовят морепродукты на гриле. Атмосфера шумная, колоритная, типично сицилийская.",
+        "addr": "Адрес Piazza Alonzo di Benedetto, Catania",
+        "map": "https://maps.google.com/?q=37.5027,15.0880",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Ла_Пескерия",
+        "wikipedia_valid": true
+      }
+    ]
+  },
+  "nice": {
+    "name": "Ницца",
+    "center": [
+      7.2619,
+      43.7102
+    ],
+    "pois": [
+      {
+        "name": "Английская набережная",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Promenade_des_Anglais_Nice.jpg/800px-Promenade_des_Anglais_Nice.jpg",
+        "img_valid": true,
+        "text": "Знаменитая набережная протянулась на 7 км вдоль Бухты Ангелов от аэропорта до порта. Построена в 1820 1830 годах на средства английской общины для прогулок. Вымощена плиткой, обсажена пальмами, установлены синие стулья. Вдоль набережной отели Негреско, Вестминстер, Мередиан, казино Рул, музей Массена. Пляжи галечные с прокатом лежаков. По вечерам прогулки, роликовые коньки, велосипеды. Здесь проходит карнавал, фейерверки, Ironman.",
+        "addr": "Адрес Promenade des Anglais, Nice",
+        "map": "https://maps.google.com/?q=43.6955,7.2663",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Английская_набережная_(Ницца)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Старый город Вье Ницца",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Old_Town_Nice.jpg/800px-Old_Town_Nice.jpg",
+        "img_valid": true,
+        "text": "Исторический центр Ниццы с узкими улочками, разноцветными фасадами, аркадами, площадями. Главная улица Курс Салея барочные дворцы, рынок цветов и антиквариата. Площадь Россетти с собором Святой Репараты и кафе мороженого Феноккьо с 96 вкусами. Улица Паролье магазины, рестораны, галереи. Колокольня Сакре Кёр. Здесь пробуют сокка нутовая лепешка, панбанья сэндвич, писсаладьер луковый пирог.",
+        "addr": "Адрес Vieux Nice, Nice",
+        "map": "https://maps.google.com/?q=43.6964,7.2750",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Старый_город_(Ницца)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Холм Шато",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Castle_Hill_Nice.jpg/800px-Castle_Hill_Nice.jpg",
+        "img_valid": true,
+        "text": "Парк на холме высотой 92 м на месте разрушенной в 1706 году цитадели. Лифт и лестница из 213 ступеней ведут на вершину. Парк площадью 12 гектаров засажен соснами, дубами, платанами. Водопад искусственный каскад высотой 20 м. С террас панорама Ниццы, Бухты Ангелов, порта, Старого города, Английской набережной. Руины собора 11 века, кладбище с захоронениями знаменитостей. Детская площадка, кафе.",
+        "addr": "Адрес Montée Lesage, Nice",
+        "map": "https://maps.google.com/?q=43.6956,7.2808",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Холм_Шато",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Музей Матисса",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Matisse_Museum_Nice.jpg/800px-Matisse_Museum_Nice.jpg",
+        "img_valid": true,
+        "text": "Музей открыт в 1963 году в генуэзской вилле 17 века в районе Симье. Анри Матисс жил в Ницце с 1917 года до смерти в 1954 году. Коллекция включает 68 картин, 236 рисунков, 218 гравюр, 95 скульптур, коллажи, витражи, керамику. Шедевры Натюрморт с гранатами, Голубая обнаженная, серия декупажей. Личные вещи, фотографии, документы. Сад с оливами и кипарисами. Рядом развалины римских терм и арены.",
+        "addr": "Адрес 164 Avenue des Arènes de Cimiez, Nice",
+        "map": "https://maps.google.com/?q=43.7184,7.2709",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Матисса_(Ницца)",
+        "wikipedia_valid": true,
+        "website": "https://www.musee-matisse-nice.org",
+        "website_valid": true
+      },
+      {
+        "name": "Музей Марка Шагала",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Chagall_Museum_Nice.jpg/800px-Chagall_Museum_Nice.jpg",
+        "img_valid": true,
+        "text": "Национальный музей библейского послания открыт в 1973 году по инициативе самого художника. Специально построенное здание архитектором Андре Эрманом окружено садом с оливами, кипарисами, лавандой. Коллекция из 17 больших полотен цикла Библейское послание иллюстрирует Ветхий Завет. Витражи с сюжетами Сотворения мира в концертном зале. Мозаика Пророк Илия. 300 гравюр, литографий, рисунков.",
+        "addr": "Адрес Avenue du Docteur Ménard, Nice",
+        "map": "https://maps.google.com/?q=43.7086,7.2679",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_Марка_Шагала",
+        "wikipedia_valid": true,
+        "website": "https://www.musees-nationaux-alpesmaritimes.fr/chagall",
+        "website_valid": true
+      },
+      {
+        "name": "Площадь Массена",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Place_Massena_Nice.jpg/800px-Place_Massena_Nice.jpg",
+        "img_valid": true,
+        "text": "Центральная площадь Ниццы создана в 1840 1850 годах на месте русла реки Пайон. Окружена зданиями в итальянском стиле с красными фасадами и аркадами. Фонтан Солнца скульптора Жауме Пленса со статуей Аполлона на колонне высотой 7 м. Семь статуй на столбах высотой 10 м символизируют континенты, подсвечиваются цветами. Площадь вымощена черно белой плиткой в шахматный узор. Здесь проходят концерты, карнавалы, празднования.",
+        "addr": "Адрес Place Masséna, Nice",
+        "map": "https://maps.google.com/?q=43.6961,7.2689",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Площадь_Массена",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Собор Святого Николая",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Russian_Orthodox_Cathedral_Nice.jpg/800px-Russian_Orthodox_Cathedral_Nice.jpg",
+        "img_valid": true,
+        "text": "Русская православная церковь построена в 1902 1912 годах архитектором Михаилом Преображенским в византийско русском стиле. Крупнейший православный храм за пределами России. Шесть луковичных куполов покрыты керамической плиткой, высота главного купола 52 м. Фасад украшен майоликой, иконами в киотах. Интерьер расписан фресками, украшен резным иконостасом, паникадилом. Здесь венчался цесаревич Николай II. Собор действующий, проводятся службы.",
+        "addr": "Адрес Avenue Nicolas II, Nice",
+        "map": "https://maps.google.com/?q=43.7056,7.2639",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Собор_Святого_Николая_(Ницца)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Опера де Ницца",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Opera_de_Nice.jpg/800px-Opera_de_Nice.jpg",
+        "img_valid": true,
+        "text": "Оперный театр открыт в 1885 году на месте сгоревшего театра 1826 года архитектором Франсуа Оне. Фасад эклектика с элементами барокко, украшен скульптурами, колоннами, балюстрадой. Зал вместимостью 1150 человек отделан в стиле итальянских театров красный бархат, золото, лепнина. Потолок расписан Эмманюэлем Коста сценами из истории музыки. Акустика превосходная. Репертуар включает оперу, балет, симфонические концерты.",
+        "addr": "Адрес 4-6 Rue Saint-François de Paule, Nice",
+        "map": "https://maps.google.com/?q=43.6962,7.2730",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Опера_де_Ницс",
+        "wikipedia_valid": true,
+        "website": "https://www.opera-nice.org",
+        "website_valid": true
+      },
+      {
+        "name": "Порт Лимпия",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Port_Lympia_Nice.jpg/800px-Port_Lympia_Nice.jpg",
+        "img_valid": true,
+        "text": "Глубоководный порт построен в 1745 1751 годах королем Сардинии Карлом Эммануилом III. Окружен красно желтыми домами в итальянском стиле. Набережные Луба и Рекса вымощены, обсажены пальмами. Пришвартованы яхты, рыбацкие лодки, паромы на Корсику. Набережная застроена ресторанами морской кухни, барами, кафе. Антикварный рынок по субботам. Отсюда отправляются морские экскурсии вдоль Лазурного берега.",
+        "addr": "Адрес Port Lympia, Nice",
+        "map": "https://maps.google.com/?q=43.6951,7.2872",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Порт_Лимпия",
+        "wikipedia_valid": true
+      }
+    ]
+  },
+  "valencia": {
+    "name": "Валенсия",
+    "center": [
+      -0.3763,
+      39.4699
+    ],
+    "pois": [
+      {
+        "name": "Город искусств и наук",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Valencia_City_of_Arts_and_Sciences.jpg/800px-Valencia_City_of_Arts_and_Sciences.jpg",
+        "img_valid": true,
+        "text": "Футуристический комплекс построен в 1996 2005 годах архитектором Сантьяго Калатравой в бывшем русле реки Турия. Площадь 350000 м2. Включает Хемисферик кинотеатр IMAX и планетарий в форме глаза, Музей наук Принсипе Фелипе скелет кита из стекла и бетона, Океанографик океанариум на 45000 морских животных 500 видов, Дворец искусств королевы Софии опера на 4000 зрителей, Умбракле сад, Агора многофункциональный павильон.",
+        "addr": "Адрес Avenida del Professor López Piñero 7, València",
+        "map": "https://maps.google.com/?q=39.4545,-0.3490",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Город_искусств_и_наук",
+        "wikipedia_valid": true,
+        "website": "https://www.cac.es",
+        "website_valid": true
+      },
+      {
+        "name": "Кафедральный собор",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Valencia_Cathedral.jpg/800px-Valencia_Cathedral.jpg",
+        "img_valid": true,
+        "text": "Собор построен в 1262 1356 годах на месте мечети в честь Девы Марии. Объединяет стили готики, барокко, ренессанса, романики. Башня Мигелете высотой 51 м со смотровой площадкой на высоте 50,85 м, 207 ступеней. Капелла Святого Грааля хранит чашу из агата 1 века, почитаемую как Святой Грааль с 1437 года. Музей собора показывает картины Гойи, ван дер Вейдена, серебряную дарохранительницу. Колокольня звонит ежедневно в полдень.",
+        "addr": "Адрес Plaça de l'Almoina, València",
+        "map": "https://maps.google.com/?q=39.4754,-0.3751",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Кафедральный_собор_(Валенсия)",
+        "wikipedia_valid": true,
+        "website": "https://www.catedraldevalencia.es",
+        "website_valid": true
+      },
+      {
+        "name": "Шелковая биржа Лонха де ла Седа",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Lonja_de_la_Seda_Valencia.jpg/800px-Lonja_de_la_Seda_Valencia.jpg",
+        "img_valid": true,
+        "text": "Шедевр валенсийской готики построен в 1482 1533 годах архитектором Пере Компте для торговли шелком. Объект ЮНЕСКО с 1996 года. Зал Колонн вмещал торговцев, потолок высотой 17 м поддерживают 24 витые колонны в форме пальм. Морской консулат украшен деревянным потолком артесонадо с золотой росписью. Башня служила тюрьмой для должников. Внутренний дворик с апельсиновыми деревьями, галереями, горгульями.",
+        "addr": "Адрес Carrer de la Llotja 2, València",
+        "map": "https://maps.google.com/?q=39.4744,-0.3778",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Лонха_де_ла_Седа",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Центральный рынок",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Mercado_Central_Valencia.jpg/800px-Mercado_Central_Valencia.jpg",
+        "img_valid": true,
+        "text": "Один из крупнейших крытых рынков Европы построен в 1914 1928 годах архитекторами Франсеском Гуардией и Алехандро Солером в стиле модернизма. Площадь 8160 м2, купола из стекла и железа, цветные витражи, керамическая мозаика. Более 300 прилавков продают свежие фрукты, овощи, мясо, рыбу, морепродукты, хамон, сыры, специи. Здесь покупают продукты для паэльи. Атмосфера оживленная, ароматы смешиваются.",
+        "addr": "Адрес Plaça de la Ciutat de Bruges, València",
+        "map": "https://maps.google.com/?q=39.4738,-0.3785",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Центральный_рынок_(Валенсия)",
+        "wikipedia_valid": true,
+        "website": "https://www.mercadocentralvalencia.es",
+        "website_valid": true
+      },
+      {
+        "name": "Площадь Девы Марии",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Plaza_de_la_Virgen_Valencia.jpg/800px-Plaza_de_la_Virgen_Valencia.jpg",
+        "img_valid": true,
+        "text": "Центральная площадь Валенсии на месте римского форума. Фонтан Турия изображает реку в виде мужчины, окруженного 8 женщинами символами оросительных каналов. Базилика Девы Марии Отверженных 1652 1667 годов с фреской купола работы Паломино. Апостольский дворец резиденция архиепископа. Дворец Женералитат правительство Валенсии. По четвергам в полдень заседает Водный трибунал 900 летняя традиция разбора споров об орошении.",
+        "addr": "Адрес Plaça de la Verge, València",
+        "map": "https://maps.google.com/?q=39.4757,-0.3748",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Площадь_Девы_Марии_(Валенсия)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Башни Серранос",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Torres_de_Serranos_Valencia.jpg/800px-Torres_de_Serranos_Valencia.jpg",
+        "img_valid": true,
+        "text": "Северные ворота средневековой стены построены в 1392 1398 годах архитектором Пере Балагером в готическом стиле. Две башни высотой 33 м соединены галереей над проездом. Стены толщиной 3,5 м украшены гербами, зубцами, машикулями. Использовались как триумфальная арка, склад пороха, тюрьма для дворян. С террас вид на старый город, парк Турия, собор. Каждый год с башен фейерверком открывается праздник Фальяс.",
+        "addr": "Адрес Plaça dels Furs, València",
+        "map": "https://maps.google.com/?q=39.4792,-0.3765",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Башни_Серранос",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Парк Турия",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Turia_Gardens_Valencia.jpg/800px-Turia_Gardens_Valencia.jpg",
+        "img_valid": true,
+        "text": "Крупнейший городской парк Испании создан в 1986 2008 годах в бывшем русле реки Турия длиной 9 км. После наводнения 1957 года реку отвели в новое русло южнее города. Ландшафтный парк площадью 1100000 м2 пересекает город с запада на восток. Включает сады, фонтаны, спортплощадки, велодорожки, беговые трассы, детские площадки, пруды. Парк соединяет исторический центр с Городом искусств и наук. 18 мостов разных эпох.",
+        "addr": "Адрес Jardín del Turia, València",
+        "map": "https://maps.google.com/?q=39.4750,-0.3650",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Сады_Турии",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Северный вокзал",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Estacion_del_Norte_Valencia.jpg/800px-Estacion_del_Norte_Valencia.jpg",
+        "img_valid": true,
+        "text": "Железнодорожный вокзал построен в 1906 1917 годах архитектором Деметрио Рибесом в стиле валенсийского модернизма. Фасад украшен керамической мозаикой с апельсинами символом региона, надписью Buen Viaje Счастливого пути на 4 языках. Интерьер отделан деревом, витражами, керамикой, фресками. Зал ожидания расписан сценами сельской жизни. Мозаичные панно изображают достопримечательности Валенсии. Вокзал действующий, обслуживает пригородные и дальние поезда.",
+        "addr": "Адрес Carrer de Xàtiva 24, València",
+        "map": "https://maps.google.com/?q=39.4665,-0.3772",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Северный_вокзал_(Валенсия)",
+        "wikipedia_valid": true
+      },
+      {
+        "name": "Музей изящных искусств",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Museum_of_Fine_Arts_Valencia.jpg/800px-Museum_of_Fine_Arts_Valencia.jpg",
+        "img_valid": true,
+        "text": "Второй по значимости художественный музей Испании после Прадо основан в 1837 году в здании духовной семинарии 17 века. Коллекция насчитывает 2000 картин, скульптур с 14 по 20 век. Гордость музея валенсийские примитивы 14 15 веков, работы Хоана де Хоанеса, Риберы, Эспиносы, Веласкеса Автопортрет, Эль Греко, Гойи, Соролья 90 картин. Археологическая коллекция, декоративно прикладное искусство. Вход бесплатный.",
+        "addr": "Адрес Carrer de Sant Pius V 9, València",
+        "map": "https://maps.google.com/?q=39.4807,-0.3693",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Музей_изящных_искусств_(Валенсия)",
+        "wikipedia_valid": true,
+        "website": "https://www.museobellasartesvalencia.gva.es",
+        "website_valid": true
+      },
+      {
+        "name": "Биопарк",
+        "img": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Bioparc_Valencia.jpg/800px-Bioparc_Valencia.jpg",
+        "img_valid": true,
+        "text": "Зоопарк нового поколения открыт в 2008 году площадью 100000 м2 в парке Кабесера. Концепция зооиммерсии животные в естественной среде обитания без видимых барьеров. Представлены экосистемы Африки влажные экваториальные леса, мадагаскарские леса, саванна, африканские водно болотные угодья. Живут слоны, носороги, львы, леопарды, гориллы, шимпанзе, лемуры, жирафы, зебры, бегемоты. Около 4000 животных 250 видов. Приоритет редким и исчезающим видам.",
+        "addr": "Адрес Avenida Pío Baroja 3, València",
+        "map": "https://maps.google.com/?q=39.4818,-0.4107",
+        "wikipedia": "https://ru.wikipedia.org/wiki/Биопарк_(Валенсия)",
+        "wikipedia_valid": true,
+        "website": "https://www.bioparcvalencia.es",
+        "website_valid": true
+      }
+    ]
   }
 }
