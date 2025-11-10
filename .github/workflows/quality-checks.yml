@@ -110,7 +110,7 @@ jobs:
           tests/test_index_page_async.py -v
 
       - name: 📊 Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: test-results-${{ matrix.browser }}
@@ -155,7 +155,7 @@ jobs:
             ${{ github.event.head_commit.timestamp }}
 
       - name: 📊 Upload Lighthouse results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: lighthouse-results
