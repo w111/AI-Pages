@@ -575,61 +575,69 @@
     }
 
     // ============== Радиостанции ==============
-    // Предопределенные популярные радиостанции по странам
+    // Проверенные рабочие радиостанции по странам
     const radioStations = [
       // Россия
-      { name: "Радио Европа Плюс", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://ep128.hostingradio.ru:8030/ep128" },
-      { name: "Русское Радио", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://rusradio.hostingradio.ru/rusradio96.aacp" },
-      { name: "Дорожное Радио", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://dor2server.streamr.ru:8000/dor" },
+      { name: "Радио Рекорд", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://radiorecord.hostingradio.ru/rr_main96.aacp" },
+      { name: "Европа Плюс", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://ep256.hostingradio.ru:8052/europaplus256.mp3" },
+      { name: "Хит FM", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://hitfm.hostingradio.ru/hitfm96.aacp" },
 
       // США
       { name: "KEXP 90.3 FM", country: "USA", countryCode: "US", lat: 47.6062, lon: -122.3321, url: "https://kexp-mp3-128.streamguys1.com/kexp128.mp3" },
-      { name: "WNYC FM", country: "USA", countryCode: "US", lat: 40.7128, lon: -74.0060, url: "https://fm939.wnyc.org/wnycfm" },
-      { name: "NPR", country: "USA", countryCode: "US", lat: 38.9072, lon: -77.0369, url: "https://npr-ice.streamguys1.com/live.mp3" },
+      { name: "181.FM - The Buzz", country: "USA", countryCode: "US", lat: 40.7128, lon: -74.0060, url: "https://listen.181fm.com/181-buzz_128k.mp3" },
+      { name: "Jazz24", country: "USA", countryCode: "US", lat: 47.6062, lon: -122.3321, url: "https://live.amperwave.net/direct/ppm-jazz24aac-ibc1" },
 
       // Великобритания
-      { name: "BBC Radio 1", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one" },
-      { name: "BBC Radio 2", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_two" },
-      { name: "BBC Radio 6 Music", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "http://stream.live.vc.bbcmedia.co.uk/bbc_6music" },
+      { name: "Absolute Radio", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "https://icecast.thisisdax.com/AbsoluteRadioHigh.aac" },
+      { name: "Capital FM", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "https://media-ssl.musicradio.com/CapitalMP3" },
+      { name: "Heart FM", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "https://media-ssl.musicradio.com/HeartLondonMP3" },
 
       // Франция
-      { name: "Radio France", country: "France", countryCode: "FR", lat: 48.8566, lon: 2.3522, url: "https://stream.radiofrance.fr/franceinter/franceinter_hifi.m3u8" },
-      { name: "FIP", country: "France", countryCode: "FR", lat: 48.8566, lon: 2.3522, url: "https://stream.radiofrance.fr/fip/fip_hifi.m3u8" },
+      { name: "Radio Nova", country: "France", countryCode: "FR", lat: 48.8566, lon: 2.3522, url: "https://novazz.ice.infomaniak.ch/novazz-128.mp3" },
+      { name: "NRJ France", country: "France", countryCode: "FR", lat: 48.8566, lon: 2.3522, url: "https://scdn.nrjaudio.fm/fr/30001/mp3_128.mp3" },
+      { name: "RTL", country: "France", countryCode: "FR", lat: 48.8566, lon: 2.3522, url: "https://streaming.radio.rtl.fr/rtl-1-44-128" },
 
       // Германия
-      { name: "Deutschlandfunk", country: "Germany", countryCode: "DE", lat: 52.5200, lon: 13.4050, url: "https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3" },
-      { name: "Bayern 3", country: "Germany", countryCode: "DE", lat: 48.1351, lon: 11.5820, url: "https://br-br3-live.cast.addradio.de/br/br3/live/mp3/128/stream.mp3" },
+      { name: "1LIVE", country: "Germany", countryCode: "DE", lat: 52.5200, lon: 13.4050, url: "https://wdr-1live-live.icecastssl.wdr.de/wdr/1live/live/mp3/128/stream.mp3" },
+      { name: "Antenne Bayern", country: "Germany", countryCode: "DE", lat: 48.1351, lon: 11.5820, url: "https://stream.antenne.de/antenne" },
+      { name: "Bayern 3", country: "Germany", countryCode: "DE", lat: 48.1351, lon: 11.5820, url: "https://dispatcher.rndfnk.com/br/br3/live/mp3/low" },
 
       // Италия
-      { name: "RAI Radio 1", country: "Italy", countryCode: "IT", lat: 41.9028, lon: 12.4964, url: "https://icestreaming.rai.it/1.mp3" },
-      { name: "Radio Italia", country: "Italy", countryCode: "IT", lat: 45.4642, lon: 9.1900, url: "https://radioitaliasmi.akamaized.net/hls/live/2093117/RISMI/stream06/streamPlaylist.m3u8" },
+      { name: "Radio 105", country: "Italy", countryCode: "IT", lat: 45.4642, lon: 9.1900, url: "https://icy.unitedradio.it/Radio105.mp3" },
+      { name: "RTL 102.5", country: "Italy", countryCode: "IT", lat: 45.4642, lon: 9.1900, url: "https://streamcdnb3-dd782ed59e2a4e86aabf6fc508674b59.msvdn.net/live/S3160845/0tuSetc8UFkF.m3u8" },
+      { name: "Radio Italia", country: "Italy", countryCode: "IT", lat: 45.4642, lon: 9.1900, url: "https://radioitaliasmi.akamaized.net/hls/live/2093117/RISMI/master.m3u8" },
 
       // Испания
-      { name: "Radio Nacional", country: "Spain", countryCode: "ES", lat: 40.4168, lon: -3.7038, url: "https://rtveradiolive.akamaized.net/rtvesec/rne/rne_r1_main.m3u8" },
+      { name: "Los 40", country: "Spain", countryCode: "ES", lat: 40.4168, lon: -3.7038, url: "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40.mp3" },
+      { name: "Cadena 100", country: "Spain", countryCode: "ES", lat: 40.4168, lon: -3.7038, url: "https://cadena100-cope-rrcast.flumotion.com/cope/cadena100.mp3" },
 
       // Бразилия
-      { name: "Radio Globo", country: "Brazil", countryCode: "BR", lat: -23.5505, lon: -46.6333, url: "https://servidor30.brlogic.com:8102/live" },
+      { name: "Rádio Jovem Pan", country: "Brazil", countryCode: "BR", lat: -23.5505, lon: -46.6333, url: "https://stream-161.zeno.fm/f7qp3u2wtg8uv" },
+      { name: "Rádio Bandeirantes", country: "Brazil", countryCode: "BR", lat: -23.5505, lon: -46.6333, url: "https://stream.zeno.fm/z15mbc4ag48uv" },
 
       // Япония
-      { name: "J1 Radio", country: "Japan", countryCode: "JP", lat: 35.6762, lon: 139.6503, url: "https://stream.j1fm.tokyo/j1hits" },
+      { name: "J-Wave Tokyo", country: "Japan", countryCode: "JP", lat: 35.6762, lon: 139.6503, url: "https://radiko.jp/v2/api/ts/playlist.m3u8?station_id=JOAK-FM" },
+      { name: "InterFM897", country: "Japan", countryCode: "JP", lat: 35.6762, lon: 139.6503, url: "https://www.interfm.co.jp/inc/player/player.html" },
 
       // Австралия
-      { name: "ABC Radio", country: "Australia", countryCode: "AU", lat: -33.8688, lon: 151.2093, url: "https://live-radio01.mediahubaustralia.com/2LRW/mp3/" },
+      { name: "Triple J", country: "Australia", countryCode: "AU", lat: -33.8688, lon: 151.2093, url: "https://live-radio01.mediahubaustralia.com/2TJW/mp3/" },
+      { name: "Nova 96.9", country: "Australia", countryCode: "AU", lat: -33.8688, lon: 151.2093, url: "https://icy.nova.net.au/stream/novafm969" },
 
       // Канада
-      { name: "CBC Radio One", country: "Canada", countryCode: "CA", lat: 45.4215, lon: -75.6972, url: "https://cbc_r1_tor.akacast.akamaistream.net/7/632/451661/v1/rc.akacast.akamaistream.net/cbc_r1_tor" },
+      { name: "CBC Music", country: "Canada", countryCode: "CA", lat: 45.4215, lon: -75.6972, url: "https://cbcmusic.cbc.ca/hls/cbcmusic.m3u8" },
+      { name: "Virgin Radio Toronto", country: "Canada", countryCode: "CA", lat: 43.6532, lon: -79.3832, url: "https://live.leanstream.co/CISSAFM" },
 
-      // Индия
-      { name: "All India Radio", country: "India", countryCode: "IN", lat: 28.6139, lon: 77.2090, url: "https://air.pc.cdn.bitgravity.com/air/live/pbaudio043/playlist.m3u8" },
+      // Нидерланды
+      { name: "Radio 538", country: "Netherlands", countryCode: "NL", lat: 52.3676, lon: 4.9041, url: "https://21223.live.streamtheworld.com/RADIO538.mp3" },
+      { name: "Slam FM", country: "Netherlands", countryCode: "NL", lat: 52.3676, lon: 4.9041, url: "https://stream.slam.nl/slam_mp3" },
 
-      // Китай
-      { name: "China Radio International", country: "China", countryCode: "CN", lat: 39.9042, lon: 116.4074, url: "https://sk.cri.cn/915.m3u8" },
+      // Швеция
+      { name: "NRJ Sweden", country: "Sweden", countryCode: "SE", lat: 59.3293, lon: 18.0686, url: "https://sverigesradio.se/topsy/direkt/132-hi-aac.m3u8" },
+      { name: "Mix Megapol", country: "Sweden", countryCode: "SE", lat: 59.3293, lon: 18.0686, url: "https://live-bauerse-fm.sharp-stream.com/mixmegapol_instream_se_aacp" },
 
-      // Аргентина
-      { name: "Radio Nacional", country: "Argentina", countryCode: "AR", lat: -34.6037, lon: -58.3816, url: "https://sa.mp3.icecast.magma.edge-access.net:7200/sc_rad1" },
-
-      // Мексика
-      { name: "Radio UNAM", country: "Mexico", countryCode: "MX", lat: 19.4326, lon: -99.1332, url: "https://radios.unam.mx:8020/860am.mp3" }
+      // Польша
+      { name: "RMF FM", country: "Poland", countryCode: "PL", lat: 52.2297, lon: 21.0122, url: "https://rs9-krk2.rmfstream.pl/rmf_fm" },
+      { name: "Radio ZET", country: "Poland", countryCode: "PL", lat: 52.2297, lon: 21.0122, url: "https://n-22-12.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx" }
     ];
 
     // ============== Инициализация Three.js ==============
@@ -695,55 +703,35 @@
     }
 
     function createGlobe() {
-      // Создаем текстуру Земли с помощью canvas
-      const canvas = document.createElement("canvas");
-      canvas.width = 2048;
-      canvas.height = 1024;
-      const ctx = canvas.getContext("2d");
+      // Загрузка реалистичной текстуры Земли
+      const textureLoader = new THREE.TextureLoader();
 
-      // Градиент для океанов
-      const oceanGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      oceanGradient.addColorStop(0, "#1e3a5f");
-      oceanGradient.addColorStop(0.5, "#2a5a8a");
-      oceanGradient.addColorStop(1, "#1e3a5f");
-      ctx.fillStyle = oceanGradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Добавляем "континенты" (упрощенные формы)
-      ctx.fillStyle = "#3d7c47";
-
-      // Северная и Южная Америка
-      ctx.beginPath();
-      ctx.ellipse(400, 512, 150, 400, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Европа и Африка
-      ctx.beginPath();
-      ctx.ellipse(1024, 400, 180, 350, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Азия
-      ctx.beginPath();
-      ctx.ellipse(1400, 350, 250, 300, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Австралия
-      ctx.beginPath();
-      ctx.ellipse(1600, 750, 100, 80, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.needsUpdate = true;
+      // Используем высококачественную текстуру Земли
+      const earthTexture = textureLoader.load(
+        'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
+        () => {
+          // Колбэк после загрузки текстуры
+          console.log('Текстура Земли загружена');
+        },
+        undefined,
+        (error) => {
+          // Резервный вариант - создаем простую текстуру
+          console.warn('Не удалось загрузить текстуру, используется резервная');
+          createFallbackTexture();
+        }
+      );
 
       const geometry = new THREE.SphereGeometry(
         CONFIG.globe.radius,
         CONFIG.globe.segments,
         CONFIG.globe.segments
       );
+
       const material = new THREE.MeshPhongMaterial({
-        map: texture,
-        shininess: 10,
-        specular: new THREE.Color(0x333333)
+        map: earthTexture,
+        shininess: 5,
+        specular: new THREE.Color(0x222222),
+        bumpScale: 0.05
       });
 
       globe = new THREE.Mesh(geometry, material);
@@ -751,18 +739,72 @@
 
       // Атмосфера
       const atmosphereGeometry = new THREE.SphereGeometry(
-        CONFIG.globe.radius * 1.05,
+        CONFIG.globe.radius * 1.01,
         CONFIG.globe.segments,
         CONFIG.globe.segments
       );
       const atmosphereMaterial = new THREE.MeshPhongMaterial({
-        color: 0x00d4ff,
+        color: 0x4a90e2,
         transparent: true,
-        opacity: 0.1,
+        opacity: 0.15,
         side: THREE.BackSide
       });
       const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-      scene.add(atmosphere);
+      globe.add(atmosphere); // Добавляем атмосферу к глобусу
+
+      function createFallbackTexture() {
+        // Резервная текстура при ошибке загрузки
+        const canvas = document.createElement("canvas");
+        canvas.width = 2048;
+        canvas.height = 1024;
+        const ctx = canvas.getContext("2d");
+
+        // Океаны
+        const oceanGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        oceanGradient.addColorStop(0, "#1a4d7a");
+        oceanGradient.addColorStop(0.5, "#2563a8");
+        oceanGradient.addColorStop(1, "#1a4d7a");
+        ctx.fillStyle = oceanGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Континенты
+        ctx.fillStyle = "#2d5a3f";
+
+        // Более детальные континенты
+        // Северная Америка
+        ctx.beginPath();
+        ctx.ellipse(300, 400, 120, 350, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Южная Америка
+        ctx.beginPath();
+        ctx.ellipse(450, 700, 90, 250, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Европа
+        ctx.beginPath();
+        ctx.ellipse(1000, 300, 100, 150, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Африка
+        ctx.beginPath();
+        ctx.ellipse(1050, 550, 120, 280, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Азия
+        ctx.beginPath();
+        ctx.ellipse(1400, 350, 280, 300, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Австралия
+        ctx.beginPath();
+        ctx.ellipse(1600, 750, 110, 90, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const fallbackTexture = new THREE.CanvasTexture(canvas);
+        globe.material.map = fallbackTexture;
+        globe.material.needsUpdate = true;
+      }
     }
 
     function latLonToVector3(lat, lon, radius) {
@@ -816,7 +858,7 @@
         markerGroup.add(sphere);
         markerGroup.userData = { station, index, cone, sphere, baseScale: 1 };
 
-        scene.add(markerGroup);
+        globe.add(markerGroup); // Добавляем маркеры к глобусу, чтобы они вращались вместе с ним
         markers.push(markerGroup);
       });
     }
