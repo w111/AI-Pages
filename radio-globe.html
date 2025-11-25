@@ -1,0 +1,1062 @@
+<!doctype html>
+<!--
+ТЗ:
+1. Создать интерактивный 3D-глобус Земли используя Three.js
+2. Разместить маркеры на глобусе с привязкой к странам
+3. Каждый маркер представляет радиостанцию с возможностью прослушивания
+4. Реализовать интерфейс выбора радиостанций по странам
+5. Воспроизведение радио через HTML5 Audio API
+6. Интерактивное управление:
+   - Вращение глобуса мышью
+   - Зум колесиком мыши
+   - Клик по маркеру для воспроизведения радио
+   - Список радиостанций с поиском и фильтрацией
+7. Визуализация:
+   - Реалистичная текстура Земли
+   - Анимированные маркеры радиостанций
+   - Подсветка активной радиостанции
+   - Атмосферное освещение
+8. UI элементы:
+   - Панель управления воспроизведением
+   - Список радиостанций
+   - Информация о текущей станции
+   - Регулятор громкости
+9. Темная и светлая тема
+10. Многоязычность (русский/английский)
+11. Адаптивный дизайн
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Radio Globe - Радиостанции мира</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-color: #0a0e27;
+      --text-color: #ffffff;
+      --panel-bg: rgba(10, 14, 39, 0.9);
+      --panel-border: rgba(255, 255, 255, 0.1);
+      --accent-color: #00d4ff;
+      --accent-hover: #00a8cc;
+      --marker-color: #ff6b6b;
+      --marker-active: #51cf66;
+    }
+
+    body.light-theme {
+      --bg-color: #f0f4f8;
+      --text-color: #1a1a1a;
+      --panel-bg: rgba(255, 255, 255, 0.95);
+      --panel-border: rgba(0, 0, 0, 0.1);
+      --accent-color: #0066cc;
+      --accent-hover: #0052a3;
+      --marker-color: #e03131;
+      --marker-active: #2b8a3e;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg-color);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-color);
+      transition: background 0.3s ease;
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* Верхняя панель */
+    #top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .logo i {
+      color: var(--accent-color);
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid var(--panel-border);
+      color: var(--text-color);
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+      transform: scale(1.05);
+    }
+
+    /* Боковая панель со станциями */
+    #stations-panel {
+      position: absolute;
+      top: 60px;
+      right: 0;
+      width: 350px;
+      height: calc(100vh - 60px);
+      background: var(--panel-bg);
+      border-left: 1px solid var(--panel-border);
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      z-index: 999;
+      backdrop-filter: blur(10px);
+      overflow-y: auto;
+    }
+
+    #stations-panel.open {
+      transform: translateX(0);
+    }
+
+    .panel-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .panel-header h2 {
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    #search-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      background: var(--bg-color);
+      color: var(--text-color);
+      font-size: 14px;
+    }
+
+    #search-input::placeholder {
+      color: var(--text-color);
+      opacity: 0.5;
+    }
+
+    #country-filter {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      background: var(--bg-color);
+      color: var(--text-color);
+      font-size: 14px;
+    }
+
+    #stations-list {
+      padding: 10px;
+    }
+
+    .station-item {
+      padding: 15px;
+      margin-bottom: 10px;
+      background: var(--bg-color);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .station-item:hover {
+      border-color: var(--accent-color);
+      transform: translateX(-5px);
+    }
+
+    .station-item.active {
+      border-color: var(--marker-active);
+      background: rgba(81, 207, 102, 0.1);
+    }
+
+    .station-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: var(--text-color);
+    }
+
+    .station-country {
+      font-size: 12px;
+      opacity: 0.7;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Панель плеера */
+    #player-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 400px;
+      max-width: 90vw;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 20px;
+      z-index: 999;
+      backdrop-filter: blur(10px);
+      display: none;
+    }
+
+    #player-panel.show {
+      display: block;
+    }
+
+    .player-info {
+      margin-bottom: 15px;
+    }
+
+    .player-station-name {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .player-country {
+      font-size: 14px;
+      opacity: 0.7;
+    }
+
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .play-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .play-btn:hover {
+      background: var(--accent-hover);
+      transform: scale(1.05);
+    }
+
+    .volume-control {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .volume-slider {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--panel-border);
+      -webkit-appearance: none;
+      appearance: none;
+      outline: none;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      cursor: pointer;
+    }
+
+    .volume-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Информационная панель */
+    #info-panel {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 15px;
+      max-width: 300px;
+      z-index: 998;
+      backdrop-filter: blur(10px);
+    }
+
+    #info-panel h3 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: var(--accent-color);
+    }
+
+    #info-panel p {
+      font-size: 14px;
+      line-height: 1.6;
+      opacity: 0.9;
+    }
+
+    /* Loading */
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 1001;
+    }
+
+    .spinner {
+      border: 4px solid var(--panel-border);
+      border-top: 4px solid var(--accent-color);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      #stations-panel {
+        width: 100%;
+      }
+
+      #info-panel {
+        display: none;
+      }
+
+      #player-panel {
+        min-width: auto;
+        width: calc(100% - 40px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p id="loading-text">Загрузка глобуса...</p>
+  </div>
+
+  <!-- Верхняя панель -->
+  <div id="top-bar">
+    <div class="logo">
+      <i class="fas fa-globe-americas"></i>
+      <span id="app-title">Radio Globe</span>
+    </div>
+    <div class="top-controls">
+      <button class="icon-btn" id="list-btn" title="Список станций">
+        <i class="fas fa-list"></i>
+      </button>
+      <label class="toggle-switch">
+        <input type="checkbox" id="theme-toggle">
+        <span class="slider"></span>
+      </label>
+      <button class="icon-btn" id="lang-btn" title="Language">
+        <i class="fas fa-language"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Информационная панель -->
+  <div id="info-panel">
+    <h3 id="info-title">Как использовать</h3>
+    <p id="info-text">
+      • Вращайте глобус мышью<br>
+      • Увеличивайте колесиком<br>
+      • Кликайте на маркеры для прослушивания радио<br>
+      • Используйте панель справа для поиска станций
+    </p>
+  </div>
+
+  <!-- Панель со станциями -->
+  <div id="stations-panel">
+    <div class="panel-header">
+      <h2 id="stations-title">Радиостанции</h2>
+      <input type="text" id="search-input" placeholder="Поиск станций...">
+      <select id="country-filter">
+        <option value="">Все страны</option>
+      </select>
+    </div>
+    <div id="stations-list"></div>
+  </div>
+
+  <!-- Панель плеера -->
+  <div id="player-panel">
+    <div class="player-info">
+      <div class="player-station-name" id="player-station-name">--</div>
+      <div class="player-country" id="player-country">--</div>
+    </div>
+    <div class="player-controls">
+      <button class="play-btn" id="play-btn">
+        <i class="fas fa-play"></i>
+      </button>
+      <div class="volume-control">
+        <i class="fas fa-volume-down"></i>
+        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="70">
+        <i class="fas fa-volume-up"></i>
+      </div>
+    </div>
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+  <script>
+    // ============== Конфигурация ==============
+    const CONFIG = {
+      globe: {
+        radius: 2,
+        segments: 64
+      },
+      camera: {
+        fov: 45,
+        near: 0.1,
+        far: 1000,
+        position: [0, 0, 6]
+      },
+      marker: {
+        size: 0.05,
+        height: 0.15,
+        activeScale: 1.5,
+        pulseSpeed: 2
+      }
+    };
+
+    // ============== Мультиязычность ==============
+    const i18n = {
+      ru: {
+        appTitle: "Radio Globe",
+        loadingText: "Загрузка глобуса...",
+        stationsTitle: "Радиостанции",
+        searchPlaceholder: "Поиск станций...",
+        allCountries: "Все страны",
+        infoTitle: "Как использовать",
+        infoText: "• Вращайте глобус мышью<br>• Увеличивайте колесиком<br>• Кликайте на маркеры для прослушивания радио<br>• Используйте панель справа для поиска станций",
+        noStations: "Станции не найдены",
+        loading: "Загрузка..."
+      },
+      en: {
+        appTitle: "Radio Globe",
+        loadingText: "Loading globe...",
+        stationsTitle: "Radio Stations",
+        searchPlaceholder: "Search stations...",
+        allCountries: "All countries",
+        infoTitle: "How to use",
+        infoText: "• Rotate globe with mouse<br>• Zoom with mouse wheel<br>• Click markers to listen to radio<br>• Use right panel to search stations",
+        noStations: "No stations found",
+        loading: "Loading..."
+      }
+    };
+
+    let currentLang = "ru";
+
+    function t(key) {
+      return i18n[currentLang][key] || key;
+    }
+
+    function updateLanguage() {
+      document.getElementById("app-title").textContent = t("appTitle");
+      document.getElementById("loading-text").textContent = t("loadingText");
+      document.getElementById("stations-title").textContent = t("stationsTitle");
+      document.getElementById("search-input").placeholder = t("searchPlaceholder");
+      document.getElementById("info-title").textContent = t("infoTitle");
+      document.getElementById("info-text").innerHTML = t("infoText");
+
+      const countryFilter = document.getElementById("country-filter");
+      const firstOption = countryFilter.querySelector("option");
+      if (firstOption) {
+        firstOption.textContent = t("allCountries");
+      }
+    }
+
+    // ============== Радиостанции ==============
+    // Предопределенные популярные радиостанции по странам
+    const radioStations = [
+      // Россия
+      { name: "Радио Европа Плюс", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://ep128.hostingradio.ru:8030/ep128" },
+      { name: "Русское Радио", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://rusradio.hostingradio.ru/rusradio96.aacp" },
+      { name: "Дорожное Радио", country: "Russia", countryCode: "RU", lat: 55.7558, lon: 37.6173, url: "https://dor2server.streamr.ru:8000/dor" },
+
+      // США
+      { name: "KEXP 90.3 FM", country: "USA", countryCode: "US", lat: 47.6062, lon: -122.3321, url: "https://kexp-mp3-128.streamguys1.com/kexp128.mp3" },
+      { name: "WNYC FM", country: "USA", countryCode: "US", lat: 40.7128, lon: -74.0060, url: "https://fm939.wnyc.org/wnycfm" },
+      { name: "NPR", country: "USA", countryCode: "US", lat: 38.9072, lon: -77.0369, url: "https://npr-ice.streamguys1.com/live.mp3" },
+
+      // Великобритания
+      { name: "BBC Radio 1", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one" },
+      { name: "BBC Radio 2", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_two" },
+      { name: "BBC Radio 6 Music", country: "UK", countryCode: "GB", lat: 51.5074, lon: -0.1278, url: "http://stream.live.vc.bbcmedia.co.uk/bbc_6music" },
+
+      // Франция
+      { name: "Radio France", country: "France", countryCode: "FR", lat: 48.8566, lon: 2.3522, url: "https://stream.radiofrance.fr/franceinter/franceinter_hifi.m3u8" },
+      { name: "FIP", country: "France", countryCode: "FR", lat: 48.8566, lon: 2.3522, url: "https://stream.radiofrance.fr/fip/fip_hifi.m3u8" },
+
+      // Германия
+      { name: "Deutschlandfunk", country: "Germany", countryCode: "DE", lat: 52.5200, lon: 13.4050, url: "https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3" },
+      { name: "Bayern 3", country: "Germany", countryCode: "DE", lat: 48.1351, lon: 11.5820, url: "https://br-br3-live.cast.addradio.de/br/br3/live/mp3/128/stream.mp3" },
+
+      // Италия
+      { name: "RAI Radio 1", country: "Italy", countryCode: "IT", lat: 41.9028, lon: 12.4964, url: "https://icestreaming.rai.it/1.mp3" },
+      { name: "Radio Italia", country: "Italy", countryCode: "IT", lat: 45.4642, lon: 9.1900, url: "https://radioitaliasmi.akamaized.net/hls/live/2093117/RISMI/stream06/streamPlaylist.m3u8" },
+
+      // Испания
+      { name: "Radio Nacional", country: "Spain", countryCode: "ES", lat: 40.4168, lon: -3.7038, url: "https://rtveradiolive.akamaized.net/rtvesec/rne/rne_r1_main.m3u8" },
+
+      // Бразилия
+      { name: "Radio Globo", country: "Brazil", countryCode: "BR", lat: -23.5505, lon: -46.6333, url: "https://servidor30.brlogic.com:8102/live" },
+
+      // Япония
+      { name: "J1 Radio", country: "Japan", countryCode: "JP", lat: 35.6762, lon: 139.6503, url: "https://stream.j1fm.tokyo/j1hits" },
+
+      // Австралия
+      { name: "ABC Radio", country: "Australia", countryCode: "AU", lat: -33.8688, lon: 151.2093, url: "https://live-radio01.mediahubaustralia.com/2LRW/mp3/" },
+
+      // Канада
+      { name: "CBC Radio One", country: "Canada", countryCode: "CA", lat: 45.4215, lon: -75.6972, url: "https://cbc_r1_tor.akacast.akamaistream.net/7/632/451661/v1/rc.akacast.akamaistream.net/cbc_r1_tor" },
+
+      // Индия
+      { name: "All India Radio", country: "India", countryCode: "IN", lat: 28.6139, lon: 77.2090, url: "https://air.pc.cdn.bitgravity.com/air/live/pbaudio043/playlist.m3u8" },
+
+      // Китай
+      { name: "China Radio International", country: "China", countryCode: "CN", lat: 39.9042, lon: 116.4074, url: "https://sk.cri.cn/915.m3u8" },
+
+      // Аргентина
+      { name: "Radio Nacional", country: "Argentina", countryCode: "AR", lat: -34.6037, lon: -58.3816, url: "https://sa.mp3.icecast.magma.edge-access.net:7200/sc_rad1" },
+
+      // Мексика
+      { name: "Radio UNAM", country: "Mexico", countryCode: "MX", lat: 19.4326, lon: -99.1332, url: "https://radios.unam.mx:8020/860am.mp3" }
+    ];
+
+    // ============== Инициализация Three.js ==============
+    let scene, camera, renderer, globe, markers = [], controls;
+    let isRotating = true;
+    let currentStation = null;
+    let audioElement = null;
+
+    function init() {
+      // Сцена
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0e27);
+
+      // Камера
+      camera = new THREE.PerspectiveCamera(
+        CONFIG.camera.fov,
+        window.innerWidth / window.innerHeight,
+        CONFIG.camera.near,
+        CONFIG.camera.far
+      );
+      camera.position.set(...CONFIG.camera.position);
+
+      // Рендерер
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      document.getElementById("canvas-container").appendChild(renderer.domElement);
+
+      // Освещение
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(5, 3, 5);
+      scene.add(directionalLight);
+
+      const pointLight = new THREE.PointLight(0x00d4ff, 0.5, 100);
+      pointLight.position.set(-5, 5, 5);
+      scene.add(pointLight);
+
+      // Создание глобуса
+      createGlobe();
+
+      // Создание маркеров
+      createMarkers();
+
+      // Настройка управления
+      setupControls();
+
+      // Обработчики событий
+      setupEventListeners();
+
+      // Инициализация UI
+      initUI();
+
+      // Скрыть загрузку
+      setTimeout(() => {
+        document.getElementById("loading").style.display = "none";
+      }, 1000);
+
+      // Запуск анимации
+      animate();
+    }
+
+    function createGlobe() {
+      // Создаем текстуру Земли с помощью canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = 2048;
+      canvas.height = 1024;
+      const ctx = canvas.getContext("2d");
+
+      // Градиент для океанов
+      const oceanGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      oceanGradient.addColorStop(0, "#1e3a5f");
+      oceanGradient.addColorStop(0.5, "#2a5a8a");
+      oceanGradient.addColorStop(1, "#1e3a5f");
+      ctx.fillStyle = oceanGradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Добавляем "континенты" (упрощенные формы)
+      ctx.fillStyle = "#3d7c47";
+
+      // Северная и Южная Америка
+      ctx.beginPath();
+      ctx.ellipse(400, 512, 150, 400, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Европа и Африка
+      ctx.beginPath();
+      ctx.ellipse(1024, 400, 180, 350, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Азия
+      ctx.beginPath();
+      ctx.ellipse(1400, 350, 250, 300, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Австралия
+      ctx.beginPath();
+      ctx.ellipse(1600, 750, 100, 80, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+
+      const geometry = new THREE.SphereGeometry(
+        CONFIG.globe.radius,
+        CONFIG.globe.segments,
+        CONFIG.globe.segments
+      );
+      const material = new THREE.MeshPhongMaterial({
+        map: texture,
+        shininess: 10,
+        specular: new THREE.Color(0x333333)
+      });
+
+      globe = new THREE.Mesh(geometry, material);
+      scene.add(globe);
+
+      // Атмосфера
+      const atmosphereGeometry = new THREE.SphereGeometry(
+        CONFIG.globe.radius * 1.05,
+        CONFIG.globe.segments,
+        CONFIG.globe.segments
+      );
+      const atmosphereMaterial = new THREE.MeshPhongMaterial({
+        color: 0x00d4ff,
+        transparent: true,
+        opacity: 0.1,
+        side: THREE.BackSide
+      });
+      const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+      scene.add(atmosphere);
+    }
+
+    function latLonToVector3(lat, lon, radius) {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (lon + 180) * (Math.PI / 180);
+
+      const x = -(radius * Math.sin(phi) * Math.cos(theta));
+      const z = radius * Math.sin(phi) * Math.sin(theta);
+      const y = radius * Math.cos(phi);
+
+      return new THREE.Vector3(x, y, z);
+    }
+
+    function createMarkers() {
+      radioStations.forEach((station, index) => {
+        // Основание маркера (конус)
+        const coneGeometry = new THREE.ConeGeometry(
+          CONFIG.marker.size,
+          CONFIG.marker.height,
+          8
+        );
+        const coneMaterial = new THREE.MeshPhongMaterial({
+          color: 0xff6b6b,
+          emissive: 0xff6b6b,
+          emissiveIntensity: 0.5
+        });
+        const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+
+        // Светящаяся сфера на вершине
+        const sphereGeometry = new THREE.SphereGeometry(CONFIG.marker.size * 0.7, 16, 16);
+        const sphereMaterial = new THREE.MeshPhongMaterial({
+          color: 0xffffff,
+          emissive: 0xff6b6b,
+          emissiveIntensity: 1
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+        // Позиционирование маркера
+        const position = latLonToVector3(station.lat, station.lon, CONFIG.globe.radius);
+        cone.position.copy(position);
+        cone.lookAt(new THREE.Vector3(0, 0, 0));
+        cone.rotateX(Math.PI);
+
+        const markerHeight = CONFIG.marker.height / 2;
+        const direction = position.clone().normalize();
+        sphere.position.copy(position.clone().add(direction.multiplyScalar(markerHeight)));
+
+        // Группа для маркера
+        const markerGroup = new THREE.Group();
+        markerGroup.add(cone);
+        markerGroup.add(sphere);
+        markerGroup.userData = { station, index, cone, sphere, baseScale: 1 };
+
+        scene.add(markerGroup);
+        markers.push(markerGroup);
+      });
+    }
+
+    function setupControls() {
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+      let rotationVelocity = { x: 0, y: 0 };
+
+      renderer.domElement.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        isRotating = false;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+
+      renderer.domElement.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          const deltaX = e.clientX - previousMousePosition.x;
+          const deltaY = e.clientY - previousMousePosition.y;
+
+          rotationVelocity.x = deltaY * 0.005;
+          rotationVelocity.y = deltaX * 0.005;
+
+          globe.rotation.y += rotationVelocity.y;
+          globe.rotation.x += rotationVelocity.x;
+
+          previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+      });
+
+      renderer.domElement.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
+
+      renderer.domElement.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const delta = e.deltaY * 0.001;
+        camera.position.z = Math.max(3, Math.min(10, camera.position.z + delta));
+      });
+
+      // Клик по маркеру
+      renderer.domElement.addEventListener("click", (e) => {
+        if (isDragging) return;
+
+        const mouse = new THREE.Vector2();
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(
+          markers.flatMap(m => m.children),
+          true
+        );
+
+        if (intersects.length > 0) {
+          const clickedMarker = markers.find(m =>
+            m.children.includes(intersects[0].object)
+          );
+          if (clickedMarker) {
+            playStation(clickedMarker.userData.station);
+          }
+        }
+      });
+    }
+
+    function setupEventListeners() {
+      // Ресайз
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // Переключатель темы
+      document.getElementById("theme-toggle").addEventListener("change", (e) => {
+        document.body.classList.toggle("light-theme", e.target.checked);
+        scene.background = new THREE.Color(e.target.checked ? 0xf0f4f8 : 0x0a0e27);
+      });
+
+      // Переключатель языка
+      document.getElementById("lang-btn").addEventListener("click", () => {
+        currentLang = currentLang === "ru" ? "en" : "ru";
+        updateLanguage();
+      });
+
+      // Кнопка списка станций
+      document.getElementById("list-btn").addEventListener("click", () => {
+        document.getElementById("stations-panel").classList.toggle("open");
+      });
+
+      // Поиск станций
+      document.getElementById("search-input").addEventListener("input", (e) => {
+        filterStations(e.target.value, document.getElementById("country-filter").value);
+      });
+
+      // Фильтр по стране
+      document.getElementById("country-filter").addEventListener("change", (e) => {
+        filterStations(document.getElementById("search-input").value, e.target.value);
+      });
+
+      // Управление плеером
+      document.getElementById("play-btn").addEventListener("click", togglePlay);
+      document.getElementById("volume-slider").addEventListener("input", (e) => {
+        if (audioElement) {
+          audioElement.volume = e.target.value / 100;
+        }
+      });
+    }
+
+    function initUI() {
+      // Заполнение списка станций
+      renderStationsList(radioStations);
+
+      // Заполнение фильтра стран
+      const countries = [...new Set(radioStations.map(s => s.country))].sort();
+      const countryFilter = document.getElementById("country-filter");
+      countries.forEach(country => {
+        const option = document.createElement("option");
+        option.value = country;
+        option.textContent = country;
+        countryFilter.appendChild(option);
+      });
+    }
+
+    function renderStationsList(stations) {
+      const listContainer = document.getElementById("stations-list");
+      listContainer.innerHTML = "";
+
+      if (stations.length === 0) {
+        listContainer.innerHTML = `<p style="padding: 20px; text-align: center; opacity: 0.7;">${t("noStations")}</p>`;
+        return;
+      }
+
+      stations.forEach(station => {
+        const item = document.createElement("div");
+        item.className = "station-item";
+        item.innerHTML = `
+          <div class="station-name">${station.name}</div>
+          <div class="station-country">
+            <i class="fas fa-map-marker-alt"></i>
+            ${station.country}
+          </div>
+        `;
+        item.addEventListener("click", () => playStation(station));
+        listContainer.appendChild(item);
+      });
+    }
+
+    function filterStations(searchTerm, country) {
+      const filtered = radioStations.filter(station => {
+        const matchesSearch = station.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            station.country.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCountry = !country || station.country === country;
+        return matchesSearch && matchesCountry;
+      });
+      renderStationsList(filtered);
+    }
+
+    function playStation(station) {
+      currentStation = station;
+
+      // Обновление UI плеера
+      document.getElementById("player-station-name").textContent = station.name;
+      document.getElementById("player-country").textContent = station.country;
+      document.getElementById("player-panel").classList.add("show");
+
+      // Создание/обновление аудио элемента
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.src = "";
+      }
+
+      audioElement = new Audio(station.url);
+      audioElement.volume = document.getElementById("volume-slider").value / 100;
+      audioElement.crossOrigin = "anonymous";
+
+      // Попытка воспроизведения
+      audioElement.play().catch(error => {
+        console.error("Ошибка воспроизведения:", error);
+        alert("Не удалось воспроизвести эту станцию. Попробуйте другую.");
+      });
+
+      // Обновление иконки плеера
+      document.getElementById("play-btn").innerHTML = '<i class="fas fa-pause"></i>';
+
+      // Подсветка активного маркера
+      markers.forEach(marker => {
+        const isActive = marker.userData.station === station;
+        marker.userData.sphere.material.color.setHex(isActive ? 0x51cf66 : 0xffffff);
+        marker.userData.sphere.material.emissive.setHex(isActive ? 0x51cf66 : 0xff6b6b);
+        marker.userData.cone.material.color.setHex(isActive ? 0x51cf66 : 0xff6b6b);
+        marker.userData.cone.material.emissive.setHex(isActive ? 0x51cf66 : 0xff6b6b);
+      });
+
+      // Обновление активного элемента в списке
+      document.querySelectorAll(".station-item").forEach(item => {
+        item.classList.remove("active");
+        if (item.querySelector(".station-name").textContent === station.name) {
+          item.classList.add("active");
+        }
+      });
+    }
+
+    function togglePlay() {
+      if (!audioElement) return;
+
+      if (audioElement.paused) {
+        audioElement.play();
+        document.getElementById("play-btn").innerHTML = '<i class="fas fa-pause"></i>';
+      } else {
+        audioElement.pause();
+        document.getElementById("play-btn").innerHTML = '<i class="fas fa-play"></i>';
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Автоматическое вращение глобуса
+      if (isRotating) {
+        globe.rotation.y += 0.001;
+      }
+
+      // Анимация маркеров (пульсация)
+      const time = Date.now() * 0.001;
+      markers.forEach((marker, index) => {
+        const scale = 1 + Math.sin(time * CONFIG.marker.pulseSpeed + index * 0.5) * 0.1;
+        marker.userData.sphere.scale.set(scale, scale, scale);
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    // Запуск приложения
+    window.addEventListener("DOMContentLoaded", () => {
+      updateLanguage();
+      init();
+    });
+  </script>
+</body>
+</html>
