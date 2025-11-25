@@ -999,7 +999,7 @@
                             <li>Supports MP3 format</li>
                             <li>Easy integration with web applications</li>
                         </ul>
-                        
+
                         <div class="tech-list">
                             <span class="tech-tag">Three.js</span>
                             <span class="tech-tag">JavaScript</span>
@@ -1009,6 +1009,33 @@
                     </div>
                     <div class="card-footer">
                         <a href="mp3_effects.html" class="view-btn">Try Now</a>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-globe-americas"></i> Radio Globe</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Want to explore radio stations from around the world?</p>
+                        <p>Experience an interactive 3D globe where you can discover and listen to radio stations from different countries. Navigate the globe, click on markers, and enjoy live streaming radio from across the planet.</p>
+                        <ul class="features-list">
+                            <li>Interactive 3D Earth globe with realistic textures</li>
+                            <li>Live radio streaming from multiple countries</li>
+                            <li>Click markers to play radio stations</li>
+                            <li>Search and filter stations by country</li>
+                            <li>Built-in audio player with volume control</li>
+                        </ul>
+
+                        <div class="tech-list">
+                            <span class="tech-tag">Three.js</span>
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">HTML/CSS</span>
+                            <span class="tech-tag">WebGL</span>
+                            <span class="tech-tag">Web Audio API</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="radio-globe.html" class="view-btn">Launch Globe</a>
                     </div>
                 </div>
             </div>
@@ -1349,6 +1376,20 @@
                         limitedOfferTitle: "Попробуйте сейчас", // Translated title
                         limitedOffer: "Загрузите свой MP3 и наблюдайте, как частицы реагируют на вашу музыку!" // Translated text
                     },
+                    radioGlobe: {
+                        title: "Radio Globe",
+                        description: "Испытайте интерактивный 3D-глобус, где вы можете открывать и слушать радиостанции из разных стран. Навигируйте по глобусу, кликайте на маркеры и наслаждайтесь потоковым радио со всей планеты.",
+                        problem: "Хотите исследовать радиостанции со всего мира?",
+                        features: [
+                            "Интерактивный 3D-глобус Земли с реалистичными текстурами",
+                            "Потоковое радио в реальном времени из разных стран",
+                            "Кликайте на маркеры для воспроизведения радиостанций",
+                            "Поиск и фильтрация станций по странам",
+                            "Встроенный аудиоплеер с регулировкой громкости"
+                        ],
+                        limitedOfferTitle: "Возможности",
+                        limitedOffer: "Путешествуйте по миру через радиоволны! Слушайте живое радио из России, США, Европы и других стран."
+                    },
                     // Карты и Геоданные
                     precipitationMap: {
                         title: "Карта Осадков",
@@ -1576,6 +1617,20 @@
                         limitedOfferTitle: "Try Now",
                         limitedOffer: "Upload your MP3 and see the particles react to your music!"
                     },
+                    radioGlobe: {
+                        title: "Radio Globe",
+                        description: "Experience an interactive 3D globe where you can discover and listen to radio stations from different countries. Navigate the globe, click on markers, and enjoy live streaming radio from across the planet.",
+                        problem: "Want to explore radio stations from around the world?",
+                        features: [
+                            "Interactive 3D Earth globe with realistic textures",
+                            "Live radio streaming from multiple countries",
+                            "Click markers to play radio stations",
+                            "Search and filter stations by country",
+                            "Built-in audio player with volume control"
+                        ],
+                        limitedOfferTitle: "Features",
+                        limitedOffer: "Travel the world through radio waves! Listen to live radio from Russia, USA, Europe and other countries."
+                    },
                     // Maps and Geodata
                     precipitationMap: {
                         title: "Precipitation Map",
@@ -1754,6 +1809,7 @@
             if (visualizationsCards.length > 0) {
                 updateCard(visualizationsCards[0], 'threeDBalls', '<i class="fas fa-atom"></i>');
                 if (visualizationsCards.length > 1) updateCard(visualizationsCards[1], 'mp3Visualizer', '<i class="fas fa-tint"></i>');
+                if (visualizationsCards.length > 2) updateCard(visualizationsCards[2], 'radioGlobe', '<i class="fas fa-globe-americas"></i>');
             }
             
             // Пятая категория: Карты и Геоданные
