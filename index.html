@@ -953,9 +953,35 @@
                         <a href="professions.html" class="view-btn">Открыть</a>
                     </div>
                 </div>
+
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-coins"></i> Курсы валют</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Нужен актуальный курс валют для конвертации?</p>
+                        <p>Интерактивное приложение с курсами валют в реальном времени. Конвертер, таблица всех курсов и популярные валюты для быстрого доступа.</p>
+                        <ul class="features-list">
+                            <li>Курсы 170+ валют в реальном времени</li>
+                            <li>Удобный конвертер валют</li>
+                            <li>Поиск и сортировка по валютам</li>
+                            <li>Кэширование данных для быстрой работы</li>
+                            <li>Темная и светлая тема, многоязычность</li>
+                        </ul>
+                        <div class="tech-list">
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">HTML/CSS</span>
+                            <span class="tech-tag">ExchangeRate API</span>
+                            <span class="tech-tag">LocalStorage</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="currency_exchange.html" class="view-btn">Открыть</a>
+                    </div>
+                </div>
             </div>
         </section>
-        
+
         <section class="category">
             <h2><i class="fas fa-cube"></i> 3D Visualizations and Graphics</h2>
             <p class="category-intro">Explore interactive 3D examples and graphics, including MP3 visualizations.</p>
@@ -1348,6 +1374,18 @@
                             "Детальная информация о каждой профессии"
                         ]
                     },
+                    currencyExchange: {
+                        title: "Курсы валют",
+                        description: "Интерактивное приложение с курсами валют в реальном времени. Конвертер, таблица всех курсов и популярные валюты для быстрого доступа.",
+                        problem: "Нужен актуальный курс валют для конвертации?",
+                        features: [
+                            "Курсы 170+ валют в реальном времени",
+                            "Удобный конвертер валют",
+                            "Поиск и сортировка по валютам",
+                            "Кэширование данных для быстрой работы",
+                            "Темная и светлая тема, многоязычность"
+                        ]
+                    },
                     // 3D Visualizations
                     threeDBalls: {
                         title: "3D Balls",
@@ -1589,6 +1627,18 @@
                             "Detailed information about each profession"
                         ]
                     },
+                    currencyExchange: {
+                        title: "Currency Exchange",
+                        description: "Interactive application with real-time currency exchange rates. Converter, rates table, and popular currencies for quick access.",
+                        problem: "Need current exchange rates for currency conversion?",
+                        features: [
+                            "170+ currency rates in real-time",
+                            "Convenient currency converter",
+                            "Search and sort currencies",
+                            "Data caching for fast performance",
+                            "Dark and light themes, multilingual"
+                        ]
+                    },
                     // 3D Visualizations
                     threeDBalls: {
                         title: "3D Balls",
@@ -1802,6 +1852,7 @@
             if (webAppsCards.length > 0) {
                 updateCard(webAppsCards[0], 'reactNews', '<i class="far fa-newspaper"></i>');
                 if (webAppsCards.length > 1) updateCard(webAppsCards[1], 'professions', '<i class="fas fa-briefcase"></i>');
+                if (webAppsCards.length > 2) updateCard(webAppsCards[2], 'currencyExchange', '<i class="fas fa-coins"></i>');
             }
             
             // Четвертая категория: 3D Визуализации
