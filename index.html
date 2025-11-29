@@ -266,6 +266,12 @@
         .container.list-view .card-header {
             min-width: 220px;
             max-width: 220px;
+            max-height: 200px;
+        }
+
+        .container.list-view .card-header {
+            min-width: 200px;
+            max-width: 250px;
             writing-mode: horizontal-tb;
             flex-direction: column;
             justify-content: center;
@@ -321,6 +327,33 @@
         .container.list-view .card-footer .view-btn {
             padding: 0.4rem 1rem;
             font-size: 0.9rem;
+            flex-direction: row;
+            flex-wrap: wrap;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .container.list-view .card-body p {
+            flex: 1 1 300px;
+            margin: 0;
+        }
+
+        .container.list-view .features-list {
+            flex: 1 1 250px;
+            margin: 0;
+        }
+
+        .container.list-view .tech-list {
+            flex: 0 0 100%;
+            margin-top: 0;
+            padding-top: 0.5rem;
+        }
+
+        .container.list-view .card-footer {
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .card-body {
