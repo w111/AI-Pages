@@ -140,8 +140,12 @@
         transition: color 0.3s ease;
       }
 
-      .breadcrumb-item:hover {
+      .breadcrumb-item:hover,
+      .breadcrumb-item:focus {
         color: var(--primary-color);
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+        border-radius: 4px;
       }
 
       .breadcrumb-item.active {
@@ -244,8 +248,11 @@
         border-bottom: none;
       }
 
-      .autocomplete-item:hover {
+      .autocomplete-item:hover,
+      .autocomplete-item:focus {
         background: var(--border-color);
+        outline: 2px solid var(--primary-color);
+        outline-offset: -2px;
       }
 
       .autocomplete-item img {
@@ -280,9 +287,17 @@
         gap: 10px;
       }
 
-      .card:hover {
+      .card:hover,
+      .card:focus {
         transform: translateY(-5px);
         box-shadow: var(--shadow-hover);
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+      }
+
+      .card:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
       }
 
       .card-icon {
@@ -928,18 +943,19 @@
               JSON.stringify({ timestamp: Date.now(), data })
             );
           } catch (e) {
-            // Игнорируем ошибки квоты localStorage
+            // Ошибка квоты localStorage или другая ошибка записи
+            console.warn('Не удалось сохранить данные в localStorage (квота превышена или другая ошибка):', e);
           }
         }
       };
 
       // === API ФУНКЦИИ ===
-      async function fetchAPI(endpoint) {
+      async function fetchAPI(endpoint, signal = null) {
         const cacheKey = endpoint.replace(/[^a-zA-Z0-9]/g, '_');
         let data = cache.get(cacheKey);
         if (data) return data;
 
-        const response = await fetch(`${API_BASE}/${endpoint}`);
+        const response = await fetch(`${API_BASE}/${endpoint}`, { signal });
         if (!response.ok) {
           throw new Error('Ошибка загрузки данных');
         }
@@ -963,8 +979,8 @@
         return data.teams || [];
       }
 
-      async function searchTeams(query) {
-        const data = await fetchAPI(`searchteams.php?t=${encodeURIComponent(query)}`);
+      async function searchTeams(query, signal = null) {
+        const data = await fetchAPI(`searchteams.php?t=${encodeURIComponent(query)}`, signal);
         return data.teams || [];
       }
 
@@ -1120,35 +1136,35 @@
         const socialLinks = [];
         if (team.strWebsite) {
           socialLinks.push(`
-            <a href="https://${team.strWebsite}" target="_blank" class="social-link" title="Веб-сайт">
+            <a href="${createSocialUrl(team.strWebsite)}" target="_blank" class="social-link" title="Веб-сайт">
               <i class="fas fa-globe"></i>
             </a>
           `);
         }
         if (team.strFacebook) {
           socialLinks.push(`
-            <a href="https://${team.strFacebook}" target="_blank" class="social-link" title="Facebook">
+            <a href="${createSocialUrl(team.strFacebook)}" target="_blank" class="social-link" title="Facebook">
               <i class="fab fa-facebook-f"></i>
             </a>
           `);
         }
         if (team.strTwitter) {
           socialLinks.push(`
-            <a href="https://${team.strTwitter}" target="_blank" class="social-link" title="Twitter">
+            <a href="${createSocialUrl(team.strTwitter)}" target="_blank" class="social-link" title="Twitter">
               <i class="fab fa-twitter"></i>
             </a>
           `);
         }
         if (team.strInstagram) {
           socialLinks.push(`
-            <a href="https://${team.strInstagram}" target="_blank" class="social-link" title="Instagram">
+            <a href="${createSocialUrl(team.strInstagram)}" target="_blank" class="social-link" title="Instagram">
               <i class="fab fa-instagram"></i>
             </a>
           `);
         }
         if (team.strYoutube) {
           socialLinks.push(`
-            <a href="https://${team.strYoutube}" target="_blank" class="social-link" title="YouTube">
+            <a href="${createSocialUrl(team.strYoutube)}" target="_blank" class="social-link" title="YouTube">
               <i class="fab fa-youtube"></i>
             </a>
           `);
@@ -1346,6 +1362,7 @@
 
       // === ПОИСК ===
       let searchTimeout = null;
+      let currentSearchController = null;
 
       async function performSearch(query) {
         if (query.length < 2) {
@@ -1353,8 +1370,14 @@
           return;
         }
 
+        // Отменяем предыдущий запрос если он еще выполняется
+        if (currentSearchController) {
+          currentSearchController.abort();
+        }
+        currentSearchController = new AbortController();
+
         try {
-          const teams = await searchTeams(query);
+          const teams = await searchTeams(query, currentSearchController.signal);
           const resultsContainer = document.getElementById('autocompleteResults');
 
           if (!teams || teams.length === 0) {
@@ -1365,9 +1388,9 @@
             `;
           } else {
             resultsContainer.innerHTML = teams.slice(0, 10).map(team => `
-              <div class="autocomplete-item" onclick="selectTeamFromSearch('${team.idTeam}', '${escapeHtml(team.strSport)}', '${escapeHtml(team.strLeague)}')">
+              <div class="autocomplete-item" data-action="selectTeamFromSearch" data-team-id="${team.idTeam}" data-sport="${encodeURIComponent(team.strSport || '')}" data-league="${encodeURIComponent(team.strLeague || '')}" tabindex="0" role="button" aria-label="Выбрать команду ${team.strTeam}">
                 ${team.strBadge
-                  ? `<img src="${team.strBadge}" alt="${team.strTeam}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'">`
+                  ? `<img src="${team.strBadge}" alt="Эмблема команды ${team.strTeam}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'">`
                   : '<i class="fas fa-shield-halved"></i>'
                 }
                 <div>
@@ -1380,15 +1403,34 @@
 
           resultsContainer.classList.add('active');
         } catch (error) {
+          if (error.name === 'AbortError') {
+            // Запрос был отменен, не выводим ошибку
+            return;
+          }
           console.error('Ошибка поиска:', error);
+        } finally {
+          currentSearchController = null;
         }
       }
 
       function selectTeamFromSearch(teamId, sport, league) {
         document.getElementById('autocompleteResults').classList.remove('active');
         document.getElementById('searchInput').value = '';
-        state.currentSport = sport;
-        state.currentLeague = league;
+        
+        if (isValidSport(sport)) {
+          state.currentSport = sport;
+        } else {
+          state.currentSport = null;
+          console.warn('Invalid sport value from search:', sport);
+        }
+        
+        if (isValidLeague(league, sport)) {
+          state.currentLeague = league;
+        } else {
+          state.currentLeague = null;
+          console.warn('Invalid league value from search:', league);
+        }
+        
         selectTeam(teamId);
       }
 
@@ -1400,6 +1442,29 @@
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#039;');
+      }
+
+      // Валидация состояния для безопасной навигации
+      function isValidSport(sport) {
+        return state.sports && state.sports.some(s => s.strSport === sport);
+      }
+
+      function isValidLeague(league, sport) {
+        if (!state.leagues || !sport) return false;
+        // Найти лиги для данного вида спорта
+        const leaguesForSport = state.leagues.filter(l => l.strSport === sport);
+        return leaguesForSport.some(l => l.strLeague === league);
+      }
+
+      // Функция для создания корректного URL социальной сети
+      function createSocialUrl(url, platform) {
+        if (!url) return '';
+        
+        // Убираем протокол если он уже есть
+        const cleanUrl = url.replace(/^https?:\/\//, '').replace(/^www\./, '');
+        
+        // Добавляем протокол
+        return `https://${cleanUrl}`;
       }
 
       // === СИСТЕМА НАСТРОЕК ===
@@ -1464,10 +1529,95 @@
         }
       };
 
+      // === СИСТЕМА СОБЫТИЙ ===
+      function setupEventDelegation() {
+        // Обработчик для всех кликов по элементам с data-action
+        document.addEventListener('click', function(e) {
+          const target = e.target.closest('[data-action]');
+          if (!target) return;
+          
+          const action = target.getAttribute('data-action');
+          handleAction(action, target, e);
+        });
+
+        // Обработчик клавиатуры для доступности
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            const target = e.target;
+            if (target.hasAttribute('data-action')) {
+              e.preventDefault();
+              const action = target.getAttribute('data-action');
+              handleAction(action, target, e);
+            }
+          }
+        });
+
+        // Обработчик для breadcrumb навигации
+        document.getElementById('breadcrumb').addEventListener('click', function(e) {
+          const target = e.target.closest('[data-action]');
+          if (!target) return;
+          
+          const actionCode = decodeURIComponent(target.getAttribute('data-action'));
+          try {
+            eval(actionCode);
+          } catch (error) {
+            console.error('Ошибка выполнения действия breadcrumb:', error);
+          }
+        });
+
+        // Обработчик клавиатуры для breadcrumb
+        document.getElementById('breadcrumb').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            const target = e.target;
+            if (target.hasAttribute('data-action')) {
+              e.preventDefault();
+              const actionCode = decodeURIComponent(target.getAttribute('data-action'));
+              try {
+                eval(actionCode);
+              } catch (error) {
+                console.error('Ошибка выполнения действия breadcrumb:', error);
+              }
+            }
+          }
+        });
+      }
+
+      function handleAction(action, element, event) {
+        switch (action) {
+          case 'selectSport':
+            const sport = decodeURIComponent(element.getAttribute('data-sport'));
+            selectSport(sport);
+            break;
+            
+          case 'selectLeague':
+            const league = decodeURIComponent(element.getAttribute('data-league'));
+            selectLeague(league);
+            break;
+            
+          case 'selectTeam':
+            const teamId = element.getAttribute('data-team-id');
+            selectTeam(teamId);
+            break;
+            
+          case 'selectTeamFromSearch':
+            const searchTeamId = element.getAttribute('data-team-id');
+            const searchSport = decodeURIComponent(element.getAttribute('data-sport') || '');
+            const searchLeague = decodeURIComponent(element.getAttribute('data-league') || '');
+            selectTeamFromSearch(searchTeamId, searchSport, searchLeague);
+            break;
+            
+          default:
+            console.warn('Неизвестное действие:', action);
+        }
+      }
+
       // === ИНИЦИАЛИЗАЦИЯ ===
       document.addEventListener('DOMContentLoaded', function() {
         // Инициализация настроек
         window.aiPagesSettings.init();
+        
+        // Инициализация системы событий
+        setupEventDelegation();
 
         // Элементы
         const searchInput = document.getElementById('searchInput');
