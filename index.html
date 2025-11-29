@@ -47,9 +47,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- Security Headers -->
+    <!-- Security Headers - Note: X-Frame-Options works only via HTTP headers, not meta tags -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https:; font-src 'self' https://cdnjs.cloudflare.com;">
-    <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     
@@ -61,7 +60,6 @@
     <meta property="og:type" content="website">
     
     <!-- Performance Optimization -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style">
     <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
     
     <title>AI Pages- Ускорьте разработку с помощью интерактивных инструментов</title>
@@ -148,11 +146,133 @@
             background-color: var(--primary-color);
             color: white;
             padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        
+
         .card-header h3 {
             margin: 0;
             font-size: 1.3rem;
+            cursor: pointer;
+            flex-grow: 1;
+        }
+
+        .card-header h3:hover {
+            text-decoration: underline;
+        }
+
+        /* Цветовое кодирование категорий */
+        .category-dev-tools .example-card .card-header,
+        [data-category="dev-tools"] .card-header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        }
+
+        .category-games .example-card .card-header,
+        [data-category="games"] .card-header {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        }
+
+        .category-web-apps .example-card .card-header,
+        [data-category="web-apps"] .card-header {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        .category-3d .example-card .card-header,
+        [data-category="3d"] .card-header {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        }
+
+        .category-maps .example-card .card-header,
+        [data-category="maps"] .card-header {
+            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+        }
+
+        /* Превью карточки */
+        .card-preview {
+            width: 100%;
+            height: 150px;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        }
+
+        .card-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .example-card:hover .card-preview img {
+            transform: scale(1.05);
+        }
+
+        .card-preview-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: var(--primary-color);
+            opacity: 0.3;
+        }
+
+        /* Стили для вида списка */
+        .container.list-view .examples-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .container.list-view .example-card {
+            flex-direction: row;
+            height: auto;
+            max-height: 200px;
+        }
+
+        .container.list-view .card-header {
+            min-width: 200px;
+            max-width: 250px;
+            writing-mode: horizontal-tb;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .container.list-view .card-preview {
+            display: none;
+        }
+
+        .container.list-view .card-body {
+            flex-direction: row;
+            flex-wrap: wrap;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .container.list-view .card-body p {
+            flex: 1 1 300px;
+            margin: 0;
+        }
+
+        .container.list-view .features-list {
+            flex: 1 1 250px;
+            margin: 0;
+        }
+
+        .container.list-view .tech-list {
+            flex: 0 0 100%;
+            margin-top: 0;
+            padding-top: 0.5rem;
+        }
+
+        .container.list-view .card-footer {
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .card-body {
@@ -580,7 +700,7 @@
         
         <main role="main">
         
-        <section class="category">
+        <section class="category category-dev-tools">
             <h2><i class="fas fa-tools"></i> Инструменты для разработки</h2>
             <p class="category-intro">Ускорьте процесс разработки в 3-5 раз с помощью готовых инструментов. Забудьте о настройке окружения и сосредоточьтесь на творчестве.</p>
             <div class="examples-grid">
@@ -722,10 +842,35 @@
                         <a href="webllm-chat.html" class="view-btn">Начать общение</a>
                     </div>
                 </div>
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-laptop-code"></i> Python Editor (Gradio Lite)</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите создавать интерактивные Python-приложения?</p>
+                        <p>Редактор Python с интеграцией Gradio Lite. Создавайте интерактивные демо и визуализации данных прямо в браузере без необходимости серверной части.</p>
+                        <ul class="features-list">
+                            <li>Интеграция с Gradio Lite</li>
+                            <li>Создание интерактивных UI</li>
+                            <li>Визуализация с Matplotlib</li>
+                            <li>Поддержка NumPy и Pandas</li>
+                            <li>Работа полностью в браузере</li>
+                        </ul>
+                        <div class="tech-list">
+                            <span class="tech-tag">Gradio Lite</span>
+                            <span class="tech-tag">CodeMirror</span>
+                            <span class="tech-tag">Python</span>
+                            <span class="tech-tag">JavaScript</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="python_editor_gradio.html" class="view-btn">Открыть редактор</a>
+                    </div>
+                </div>
             </div>
         </section>
-        
-        <section class="category">
+
+        <section class="category category-games">
             <h2><i class="fas fa-gamepad"></i> Игры и развлечения</h2>
             <p class="category-intro">Изучайте программирование игр на реальных примерах. Разбирайте код, модифицируйте и создавайте собственные проекты на основе наших шаблонов.</p>
             <div class="examples-grid">
@@ -898,10 +1043,35 @@
                         <a href="tetris.html" class="view-btn">Открыть</a>
                     </div>
                 </div>
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-th"></i> Игра "Жизнь" Конвея</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите понять принципы клеточных автоматов?</p>
+                        <p>Визуализация знаменитого клеточного автомата Конвея. Наблюдайте за эволюцией паттернов, создавайте свои конфигурации кликом мыши и изучайте правила жизни и смерти клеток.</p>
+                        <ul class="features-list">
+                            <li>Оптимизированный рендеринг на Canvas</li>
+                            <li>Интерактивное рисование клеток</li>
+                            <li>Случайное заполнение поля</li>
+                            <li>Пауза и продолжение симуляции</li>
+                            <li>Торроидальная топология поля</li>
+                        </ul>
+                        <div class="tech-list">
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">HTML Canvas</span>
+                            <span class="tech-tag">ImageData API</span>
+                            <span class="tech-tag">Uint8Array</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="life_o3.html" class="view-btn">Запустить симуляцию</a>
+                    </div>
+                </div>
             </div>
         </section>
-        
-        <section class="category">
+
+        <section class="category category-web-apps">
             <h2><i class="fas fa-globe"></i> Веб-приложения</h2>
             <p class="category-intro">Используйте готовые компоненты для создания собственных веб-приложений. Экономьте до 80% времени на разработке.</p>
             <div class="examples-grid">
@@ -980,7 +1150,7 @@
                     </div>
                 </div>
 
-                <div class="example-card">
+                <div class="example-card" data-category="web-apps">
                     <div class="card-header">
                         <h3><i class="fas fa-music"></i> Поиск музыки</h3>
                     </div>
@@ -992,6 +1162,22 @@
                             <li>Фотографии, биографии и топ-треки артистов</li>
                             <li>Музыкальные видео с YouTube</li>
                             <li>Дискография, теги и связанные релизы</li>
+                            <li>Темная и светлая тема</li>
+                        </ul>
+                        <div class="tech-list">
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">HTML/CSS</span>
+                            <span class="tech-tag">MusicBrainz API</span>
+                            <span class="tech-tag">TheAudioDB API</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="music-search.html" class="view-btn">Открыть</a>
+                    </div>
+                </div>
+
+                <div class="example-card" data-category="web-apps">
+                    <div class="card-header">
                         <h3><i class="fas fa-rocket"></i> NASA Explorer</h3>
                     </div>
                     <div class="card-body">
@@ -1003,6 +1189,21 @@
                             <li>Поиск по NASA Image Library</li>
                             <li>Выбор камеры и Sol/даты для марсоходов</li>
                             <li>Темная и светлая тема</li>
+                        </ul>
+                        <div class="tech-list">
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">HTML/CSS</span>
+                            <span class="tech-tag">NASA API</span>
+                            <span class="tech-tag">REST API</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="nasa_explorer.html" class="view-btn">Открыть</a>
+                    </div>
+                </div>
+
+                <div class="example-card" data-category="web-apps">
+                    <div class="card-header">
                         <h3><i class="fas fa-cocktail"></i> Рецепты коктейлей</h3>
                     </div>
                     <div class="card-body">
@@ -1018,18 +1219,6 @@
                         <div class="tech-list">
                             <span class="tech-tag">JavaScript</span>
                             <span class="tech-tag">HTML/CSS</span>
-                            <span class="tech-tag">MusicBrainz API</span>
-                            <span class="tech-tag">TheAudioDB API</span>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <a href="music-search.html" class="view-btn">Открыть</a>
-                            <span class="tech-tag">NASA API</span>
-                            <span class="tech-tag">REST API</span>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <a href="nasa_explorer.html" class="view-btn">Открыть</a>
                             <span class="tech-tag">TheCocktailDB API</span>
                             <span class="tech-tag">LocalStorage</span>
                         </div>
@@ -1041,9 +1230,9 @@
             </div>
         </section>
 
-        <section class="category">
-            <h2><i class="fas fa-cube"></i> 3D Visualizations and Graphics</h2>
-            <p class="category-intro">Explore interactive 3D examples and graphics, including MP3 visualizations.</p>
+        <section class="category category-3d">
+            <h2><i class="fas fa-cube"></i> 3D Визуализации и графика</h2>
+            <p class="category-intro">Интерактивные 3D примеры и графика, включая визуализацию аудио и физические симуляции.</p>
             <div class="examples-grid">
                 <div class="example-card">
                     <div class="card-header">
@@ -1123,10 +1312,35 @@
                         <a href="radio-globe.html" class="view-btn">Launch Globe</a>
                     </div>
                 </div>
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-water"></i> Симуляция жидкости</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите увидеть реалистичную физику жидкости?</p>
+                        <p>Интерактивная 3D симуляция жидкости с падающей каплей. Наблюдайте за реалистичным взаимодействием капли с поверхностью жидкости и управляйте параметрами симуляции.</p>
+                        <ul class="features-list">
+                            <li>Реалистичная физика жидкости</li>
+                            <li>Анимация падающей капли</li>
+                            <li>Интерактивное управление камерой</li>
+                            <li>GLSL шейдеры для эффектов</li>
+                            <li>Адаптивный дизайн</li>
+                        </ul>
+                        <div class="tech-list">
+                            <span class="tech-tag">Three.js</span>
+                            <span class="tech-tag">GLSL</span>
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">WebGL</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="liquid_simulation.html" class="view-btn">Запустить симуляцию</a>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <section class="category">
+        <section class="category category-maps">
             <h2><i class="fas fa-map"></i> Карты и Геоданные</h2>
             <p class="category-intro">Интерактивные карты и визуализация геоданных для анализа пространственной информации.</p>
             <div class="examples-grid">
@@ -1525,6 +1739,21 @@
                             "Фотографии, биографии и топ-треки артистов",
                             "Музыкальные видео с YouTube",
                             "Дискография, теги и связанные релизы",
+                            "Темная и светлая тема"
+                        ]
+                    },
+                    nasaExplorer: {
+                        title: "NASA Explorer",
+                        description: "Интерактивное приложение для исследования космоса с использованием NASA Open APIs. Астрономические фото дня, снимки с марсоходов и поиск по медиатеке NASA.",
+                        problem: "Хотите исследовать космос?",
+                        features: [
+                            "Астрономическое фото дня (APOD)",
+                            "Фотографии с марсоходов NASA",
+                            "Поиск по NASA Image Library",
+                            "Выбор камеры и Sol/даты для марсоходов",
+                            "Темная и светлая тема"
+                        ]
+                    },
                     cocktails: {
                         title: "Рецепты коктейлей",
                         description: "Интерактивный каталог коктейлей с рецептами и ингредиентами. Поиск по названию, фильтрация по категориям, ингредиентам и типу стакана.",
@@ -1625,6 +1854,9 @@
                             "Информация о командах и стадионах",
                             "Поиск команд по названию",
                             "Эмблемы и фото команд",
+                            "Темная и светлая тема"
+                        ]
+                    },
                     populationRace: {
                         title: "Гонка населения",
                         description: "Анимированная диаграмма \"гонка\" показывает динамику изменения населения с 1950 по 2024 год. Переключайтесь между странами и городами, управляйте скоростью и наблюдайте за историческими изменениями.",
@@ -1832,6 +2064,21 @@
                             "Artist photos, biographies and top tracks",
                             "Music videos from YouTube",
                             "Discography, tags and related releases",
+                            "Dark and light themes"
+                        ]
+                    },
+                    nasaExplorer: {
+                        title: "NASA Explorer",
+                        description: "Interactive application for space exploration using NASA Open APIs. Astronomy photo of the day, Mars rover images and NASA media library search.",
+                        problem: "Want to explore space?",
+                        features: [
+                            "Astronomy Picture of the Day (APOD)",
+                            "NASA Mars Rover Photos",
+                            "NASA Image Library Search",
+                            "Camera and Sol/date selection for rovers",
+                            "Dark and light themes"
+                        ]
+                    },
                     cocktails: {
                         title: "Cocktail Recipes",
                         description: "Interactive cocktail catalog with recipes and ingredients. Search by name, filter by categories, ingredients and glass type.",
@@ -1932,6 +2179,9 @@
                             "Team and stadium information",
                             "Search teams by name",
                             "Team badges and photos",
+                            "Dark and light themes"
+                        ]
+                    },
                     populationRace: {
                         title: "Population Race",
                         description: "Animated racing bar chart showing population dynamics from 1950 to 2024. Switch between countries and cities, control playback speed, and observe historical changes.",
