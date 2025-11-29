@@ -1153,6 +1153,33 @@
                         <a href="weather_forecast.html" class="view-btn">Открыть Прогноз</a>
                     </div>
                 </div>
+
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-trophy"></i> Спортивная статистика</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите узнать информацию о любимых спортивных командах и лигах?</p>
+                        <p>Интерактивная страница для просмотра спортивной статистики. Поддерживает выбор вида спорта, просмотр лиг и команд, поиск команд по названию и детальную информацию о каждой команде.</p>
+                        <ul class="features-list">
+                            <li>Все виды спорта и лиги мира</li>
+                            <li>Информация о командах и стадионах</li>
+                            <li>Поиск команд по названию</li>
+                            <li>Эмблемы и фото команд</li>
+                            <li>Темная и светлая тема</li>
+                        </ul>
+
+                        <div class="tech-list">
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">TheSportsDB API</span>
+                            <span class="tech-tag">LocalStorage</span>
+                            <span class="tech-tag">HTML/CSS</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="sports_api.html" class="view-btn">Открыть Статистику</a>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1479,6 +1506,30 @@
                             "Поиск по достопримечательностям",
                             "Адаптивный дизайн для мобильных устройств"
                         ]
+                    },
+                    weatherForecast: {
+                        title: "Прогноз погоды",
+                        description: "Интерактивная страница прогноза погоды с отображением текущих условий и прогноза на 7 дней. Поддерживает поиск по городам, автоопределение местоположения и красивую визуализацию данных.",
+                        problem: "Хотите узнать погоду на неделю для любого города мира?",
+                        features: [
+                            "Текущая погода с подробной информацией",
+                            "Прогноз на 7 дней",
+                            "Поиск по городам и геолокация",
+                            "Иконки погодных условий",
+                            "Темная и светлая тема"
+                        ]
+                    },
+                    sportsApi: {
+                        title: "Спортивная статистика",
+                        description: "Интерактивная страница для просмотра спортивной статистики. Поддерживает выбор вида спорта, просмотр лиг и команд, поиск команд по названию и детальную информацию о каждой команде.",
+                        problem: "Хотите узнать информацию о любимых спортивных командах и лигах?",
+                        features: [
+                            "Все виды спорта и лиги мира",
+                            "Информация о командах и стадионах",
+                            "Поиск команд по названию",
+                            "Эмблемы и фото команд",
+                            "Темная и светлая тема"
+                        ]
                     }
                 }
             },
@@ -1732,11 +1783,35 @@
                             "Search for landmarks",
                             "Adaptive design for mobile devices"
                         ]
+                    },
+                    weatherForecast: {
+                        title: "Weather Forecast",
+                        description: "Interactive weather forecast page showing current conditions and 7-day forecast. Supports city search, automatic location detection and beautiful data visualization.",
+                        problem: "Want to know the weather for any city in the world?",
+                        features: [
+                            "Current weather with detailed information",
+                            "7-day forecast",
+                            "City search and geolocation",
+                            "Weather condition icons",
+                            "Dark and light themes"
+                        ]
+                    },
+                    sportsApi: {
+                        title: "Sports Statistics",
+                        description: "Interactive page for viewing sports statistics. Supports sport type selection, league and team browsing, team search by name and detailed team information.",
+                        problem: "Want to find information about your favorite sports teams and leagues?",
+                        features: [
+                            "All sports and leagues worldwide",
+                            "Team and stadium information",
+                            "Search teams by name",
+                            "Team badges and photos",
+                            "Dark and light themes"
+                        ]
                     }
                 }
             }
         };
-        
+
         // Инициализируем i18n с нашими переводами
         const i18n = I18n.init(translations);
         
@@ -1897,6 +1972,12 @@
             }
             if (mapsCards.length > 1) {
                 updateCard(mapsCards[1], 'audioGuide', '<i class="fas fa-headphones"></i>');
+            }
+            if (mapsCards.length > 2) {
+                updateCard(mapsCards[2], 'weatherForecast', '<i class="fas fa-cloud-sun"></i>');
+            }
+            if (mapsCards.length > 3) {
+                updateCard(mapsCards[3], 'sportsApi', '<i class="fas fa-trophy"></i>');
             }
         }
         
