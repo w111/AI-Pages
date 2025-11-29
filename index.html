@@ -993,6 +993,17 @@
                             <li>Поиск по NASA Image Library</li>
                             <li>Выбор камеры и Sol/даты для марсоходов</li>
                             <li>Темная и светлая тема</li>
+                        <h3><i class="fas fa-cocktail"></i> Рецепты коктейлей</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите приготовить идеальный коктейль?</p>
+                        <p>Интерактивный каталог коктейлей с рецептами и ингредиентами. Поиск по названию, фильтрация по категориям, ингредиентам и типу стакана.</p>
+                        <ul class="features-list">
+                            <li>База из 600+ рецептов коктейлей</li>
+                            <li>Поиск и фильтрация по категориям</li>
+                            <li>Детальные рецепты с ингредиентами</li>
+                            <li>Случайный коктейль дня</li>
+                            <li>Темная и светлая тема, многоязычность</li>
                         </ul>
                         <div class="tech-list">
                             <span class="tech-tag">JavaScript</span>
@@ -1003,6 +1014,12 @@
                     </div>
                     <div class="card-footer">
                         <a href="nasa_explorer.html" class="view-btn">Открыть</a>
+                            <span class="tech-tag">TheCocktailDB API</span>
+                            <span class="tech-tag">LocalStorage</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="cocktails.html" class="view-btn">Открыть</a>
                     </div>
                 </div>
             </div>
@@ -1177,6 +1194,33 @@
                     </div>
                     <div class="card-footer">
                         <a href="weather_forecast.html" class="view-btn">Открыть Прогноз</a>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-bar"></i> Гонка населения</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите увидеть, как менялось население стран и городов?</p>
+                        <p>Анимированная диаграмма "гонка" показывает динамику изменения населения с 1950 по 2024 год. Переключайтесь между странами и городами, управляйте скоростью и наблюдайте за историческими изменениями.</p>
+                        <ul class="features-list">
+                            <li>Анимированные столбцы с плавными переходами</li>
+                            <li>Режимы: страны мира и крупнейшие города</li>
+                            <li>Управление воспроизведением и скоростью</li>
+                            <li>Интерактивная навигация по годам</li>
+                            <li>Темная и светлая тема</li>
+                        </ul>
+
+                        <div class="tech-list">
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">CSS Animations</span>
+                            <span class="tech-tag">HTML/CSS</span>
+                            <span class="tech-tag">i18n</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="population_race.html" class="view-btn">Запустить Гонку</a>
                     </div>
                 </div>
             </div>
@@ -1439,6 +1483,18 @@
                             "Темная и светлая тема, многоязычность"
                         ]
                     },
+                    cocktails: {
+                        title: "Рецепты коктейлей",
+                        description: "Интерактивный каталог коктейлей с рецептами и ингредиентами. Поиск по названию, фильтрация по категориям, ингредиентам и типу стакана.",
+                        problem: "Хотите приготовить идеальный коктейль?",
+                        features: [
+                            "База из 600+ рецептов коктейлей",
+                            "Поиск и фильтрация по категориям",
+                            "Детальные рецепты с ингредиентами",
+                            "Случайный коктейль дня",
+                            "Темная и светлая тема, многоязычность"
+                        ]
+                    },
                     // 3D Visualizations
                     threeDBalls: {
                         title: "3D Balls",
@@ -1504,6 +1560,18 @@
                             "Поддержка множества городов",
                             "Поиск по достопримечательностям",
                             "Адаптивный дизайн для мобильных устройств"
+                        ]
+                    },
+                    populationRace: {
+                        title: "Гонка населения",
+                        description: "Анимированная диаграмма \"гонка\" показывает динамику изменения населения с 1950 по 2024 год. Переключайтесь между странами и городами, управляйте скоростью и наблюдайте за историческими изменениями.",
+                        problem: "Хотите увидеть, как менялось население стран и городов?",
+                        features: [
+                            "Анимированные столбцы с плавными переходами",
+                            "Режимы: страны мира и крупнейшие города",
+                            "Управление воспроизведением и скоростью",
+                            "Интерактивная навигация по годам",
+                            "Темная и светлая тема"
                         ]
                     }
                 }
@@ -1692,6 +1760,18 @@
                             "Dark and light themes, multilingual"
                         ]
                     },
+                    cocktails: {
+                        title: "Cocktail Recipes",
+                        description: "Interactive cocktail catalog with recipes and ingredients. Search by name, filter by categories, ingredients and glass type.",
+                        problem: "Want to make the perfect cocktail?",
+                        features: [
+                            "Database of 600+ cocktail recipes",
+                            "Search and filter by categories",
+                            "Detailed recipes with ingredients",
+                            "Random cocktail of the day",
+                            "Dark and light themes, multilingual"
+                        ]
+                    },
                     // 3D Visualizations
                     threeDBalls: {
                         title: "3D Balls",
@@ -1757,6 +1837,18 @@
                             "Support for multiple cities",
                             "Search for landmarks",
                             "Adaptive design for mobile devices"
+                        ]
+                    },
+                    populationRace: {
+                        title: "Population Race",
+                        description: "Animated racing bar chart showing population dynamics from 1950 to 2024. Switch between countries and cities, control playback speed, and observe historical changes.",
+                        problem: "Want to see how the population of countries and cities has changed?",
+                        features: [
+                            "Animated bars with smooth transitions",
+                            "Modes: world countries and largest cities",
+                            "Playback and speed control",
+                            "Interactive year navigation",
+                            "Dark and light themes"
                         ]
                     }
                 }
