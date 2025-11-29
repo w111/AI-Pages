@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивную страницу поиска фильмов и сериалов с современным дизайном.
+
+Функциональные требования:
+1. Поиск фильмов и сериалов:
+   - Поиск по названию через Free Movie API
+   - Фильтрация по типу (фильмы/сериалы)
+   - Отображение результатов в виде карточек
+
+2. Категории контента:
+   - Популярные фильмы
+   - Популярные сериалы
+   - Новинки
+   - Сейчас смотрят (на основе истории просмотров)
+
+3. Детальная информация:
+   - Модальное окно с полной информацией о фильме
+   - Постер, рейтинг, год, жанры, описание
+   - Актерский состав и режиссер
+
+4. Пользовательский интерфейс:
+   - Современный дизайн в стиле стриминговых сервисов
+   - Темная/светлая тема
+   - Горизонтальные карусели с прокруткой
+   - Адаптивный дизайн
+
+5. Кеширование:
+   - Локальное кеширование результатов поиска
+   - История просмотров в localStorage
+   - TTL кеша 1 час
+
+Технические требования:
+1. Использование Free Movie API (https://imdb.iamidiotareyoutoo.com)
+2. Vanilla JavaScript без фреймворков
+3. CSS Grid и Flexbox для верстки
+4. LocalStorage для кеширования
+5. Fetch API для запросов
+-->
+
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineSearch - Поиск фильмов и сериалов</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-primary: #0d0d0d;
+      --bg-secondary: #1a1a1a;
+      --bg-card: #252525;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0a0;
+      --accent: #e50914;
+      --accent-hover: #ff1a1a;
+      --gradient-start: #e50914;
+      --gradient-end: #b20710;
+      --border-color: #333;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #f5f5f5;
+      --bg-secondary: #ffffff;
+      --bg-card: #ffffff;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666666;
+      --accent: #e50914;
+      --accent-hover: #ff1a1a;
+      --border-color: #e0e0e0;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      padding: 1rem 2rem;
+      background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.3s;
+    }
+
+    [data-theme="light"] .header {
+      background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, transparent 100%);
+    }
+
+    .logo {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo i {
+      -webkit-text-fill-color: var(--accent);
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg-secondary);
+      padding: 0.25rem;
+      border-radius: 50px;
+    }
+
+    .nav-tab {
+      padding: 0.5rem 1.5rem;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 50px;
+      transition: all 0.3s;
+    }
+
+    .nav-tab.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .nav-tab:hover:not(.active) {
+      color: var(--text-primary);
+    }
+
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.3s;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
+      background: var(--accent);
+      color: white;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 8rem 2rem 4rem;
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+    }
+
+    /* Search */
+    .search-container {
+      max-width: 700px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .search-box {
+      display: flex;
+      background: var(--bg-card);
+      border-radius: 50px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      border: 2px solid transparent;
+      transition: border-color 0.3s;
+    }
+
+    .search-box:focus-within {
+      border-color: var(--accent);
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 1.2rem 1.5rem;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      outline: none;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .search-btn {
+      padding: 1.2rem 2rem;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      border: none;
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+
+    .search-btn:hover {
+      opacity: 0.9;
+    }
+
+    .search-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Main Content */
+    .main-content {
+      padding: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 3rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title i {
+      color: var(--accent);
+    }
+
+    .section-nav {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .nav-arrow {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+
+    .nav-arrow:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .nav-arrow:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Carousel */
+    .carousel-wrapper {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .carousel {
+      display: flex;
+      gap: 1rem;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 0.5rem 0;
+    }
+
+    .carousel::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Movie Card */
+    .movie-card {
+      flex: 0 0 200px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+    }
+
+    .movie-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: var(--card-shadow);
+    }
+
+    .movie-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .movie-poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .movie-poster .no-poster {
+      color: var(--text-secondary);
+      font-size: 3rem;
+    }
+
+    .movie-info {
+      padding: 1rem;
+    }
+
+    .movie-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .movie-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .movie-year {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .movie-rating {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      color: #ffc107;
+    }
+
+    .movie-type {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      background: var(--accent);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    /* Search Results Grid */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      transform: scale(0.9);
+      transition: transform 0.3s;
+    }
+
+    .modal-overlay.active .modal {
+      transform: scale(1);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s;
+    }
+
+    .modal-close:hover {
+      background: var(--accent);
+    }
+
+    .modal-poster {
+      width: 100%;
+      height: 400px;
+      object-fit: cover;
+      background: linear-gradient(180deg, transparent 50%, var(--bg-secondary) 100%);
+    }
+
+    .modal-poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .modal-content {
+      padding: 2rem;
+      margin-top: -100px;
+      position: relative;
+    }
+
+    .modal-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .modal-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      color: var(--text-secondary);
+    }
+
+    .modal-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-meta .rating {
+      color: #ffc107;
+    }
+
+    .modal-genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .genre-tag {
+      padding: 0.4rem 0.8rem;
+      background: var(--bg-card);
+      border-radius: 50px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .modal-plot {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .detail-item h4 {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+    }
+
+    .detail-item p {
+      font-size: 0.95rem;
+    }
+
+    /* Quick Search Suggestions */
+    .quick-search {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1.5rem;
+    }
+
+    .quick-tag {
+      padding: 0.5rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 50px;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .quick-tag:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header {
+        padding: 1rem;
+      }
+
+      .logo {
+        font-size: 1.5rem;
+      }
+
+      .nav-tabs {
+        display: none;
+      }
+
+      .mobile-nav {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0 1rem;
+        margin-bottom: 1rem;
+        overflow-x: auto;
+      }
+
+      .hero {
+        padding: 6rem 1rem 2rem;
+      }
+
+      .hero h1 {
+        font-size: 2rem;
+      }
+
+      .search-box {
+        flex-direction: column;
+        border-radius: 16px;
+      }
+
+      .search-input {
+        padding: 1rem;
+      }
+
+      .search-btn {
+        padding: 1rem;
+        border-radius: 0 0 14px 14px;
+      }
+
+      .main-content {
+        padding: 1rem;
+      }
+
+      .movie-card {
+        flex: 0 0 150px;
+      }
+
+      .modal {
+        margin: 0;
+        border-radius: 0;
+        max-height: 100vh;
+      }
+
+      .modal-content {
+        padding: 1rem;
+      }
+
+      .modal-title {
+        font-size: 1.5rem;
+      }
+    }
+
+    /* Mobile Navigation */
+    .mobile-nav {
+      display: none;
+      padding: 0 2rem;
+      margin-top: -2rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-nav {
+        display: flex;
+      }
+    }
+
+    /* History Badge */
+    .history-badge {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      width: 24px;
+      height: 24px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 0.7rem;
+    }
+
+    /* Skeleton Loading */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-secondary) 50%, var(--bg-card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .skeleton-card {
+      flex: 0 0 200px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .skeleton-poster {
+      aspect-ratio: 2/3;
+    }
+
+    .skeleton-info {
+      padding: 1rem;
+    }
+
+    .skeleton-text {
+      height: 1rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .skeleton-text.short {
+      width: 60%;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <i class="fas fa-film"></i>
+      CineSearch
+    </div>
+    <div class="header-controls">
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-filter="all">
+          <i class="fas fa-home"></i> Все
+        </button>
+        <button class="nav-tab" data-filter="movie">
+          <i class="fas fa-video"></i> Фильмы
+        </button>
+        <button class="nav-tab" data-filter="series">
+          <i class="fas fa-tv"></i> Сериалы
+        </button>
+      </nav>
+      <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему">
+        <i class="fas fa-sun"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <h1>Найди свой фильм</h1>
+    <p>Миллионы фильмов и сериалов для вашего просмотра</p>
+
+    <div class="search-container">
+      <div class="search-box">
+        <input
+          type="text"
+          class="search-input"
+          id="searchInput"
+          placeholder="Введите название фильма или сериала..."
+          autocomplete="off"
+        >
+        <button class="search-btn" id="searchBtn">
+          <i class="fas fa-search"></i> Найти
+        </button>
+      </div>
+      <div class="quick-search">
+        <span class="quick-tag" data-query="Marvel">Marvel</span>
+        <span class="quick-tag" data-query="Star Wars">Star Wars</span>
+        <span class="quick-tag" data-query="Harry Potter">Harry Potter</span>
+        <span class="quick-tag" data-query="Game of Thrones">Game of Thrones</span>
+        <span class="quick-tag" data-query="Breaking Bad">Breaking Bad</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mobile Navigation -->
+  <nav class="mobile-nav">
+    <button class="nav-tab active" data-filter="all">Все</button>
+    <button class="nav-tab" data-filter="movie">Фильмы</button>
+    <button class="nav-tab" data-filter="series">Сериалы</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Search Results (hidden by default) -->
+    <section class="section" id="searchResults" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-search"></i>
+          Результаты поиска
+        </h2>
+      </div>
+      <div class="results-grid" id="resultsGrid"></div>
+    </section>
+
+    <!-- Recently Viewed -->
+    <section class="section" id="historySection" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-history"></i>
+          Недавно просмотренные
+        </h2>
+        <div class="section-nav">
+          <button class="nav-arrow" data-carousel="history" data-dir="left">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-arrow" data-carousel="history" data-dir="right">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      <div class="carousel-wrapper">
+        <div class="carousel" id="historyCarousel"></div>
+      </div>
+    </section>
+
+    <!-- Popular Movies -->
+    <section class="section" id="popularMoviesSection">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-fire"></i>
+          Популярные фильмы
+        </h2>
+        <div class="section-nav">
+          <button class="nav-arrow" data-carousel="popularMovies" data-dir="left">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-arrow" data-carousel="popularMovies" data-dir="right">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      <div class="carousel-wrapper">
+        <div class="carousel" id="popularMoviesCarousel"></div>
+      </div>
+    </section>
+
+    <!-- Popular Series -->
+    <section class="section" id="popularSeriesSection">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-star"></i>
+          Популярные сериалы
+        </h2>
+        <div class="section-nav">
+          <button class="nav-arrow" data-carousel="popularSeries" data-dir="left">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-arrow" data-carousel="popularSeries" data-dir="right">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      <div class="carousel-wrapper">
+        <div class="carousel" id="popularSeriesCarousel"></div>
+      </div>
+    </section>
+
+    <!-- Action Movies -->
+    <section class="section" id="actionSection">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-bolt"></i>
+          Боевики
+        </h2>
+        <div class="section-nav">
+          <button class="nav-arrow" data-carousel="action" data-dir="left">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-arrow" data-carousel="action" data-dir="right">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      <div class="carousel-wrapper">
+        <div class="carousel" id="actionCarousel"></div>
+      </div>
+    </section>
+
+    <!-- Sci-Fi -->
+    <section class="section" id="scifiSection">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-rocket"></i>
+          Фантастика
+        </h2>
+        <div class="section-nav">
+          <button class="nav-arrow" data-carousel="scifi" data-dir="left">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="nav-arrow" data-carousel="scifi" data-dir="right">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      <div class="carousel-wrapper">
+        <div class="carousel" id="scifiCarousel"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Movie Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="movieModal">
+      <button class="modal-close" id="modalClose">
+        <i class="fas fa-times"></i>
+      </button>
+      <div class="modal-poster" id="modalPoster"></div>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>
+      Данные предоставлены <a href="https://www.freepublicapis.com/free-movie-api" target="_blank">Free Movie API</a>
+    </p>
+    <p style="margin-top: 0.5rem;">
+      <a href="index.html"><i class="fas fa-arrow-left"></i> Вернуться на главную</a>
+    </p>
+  </footer>
+
+  <script>
+    /**
+     * @description CineSearch - Приложение для поиска фильмов и сериалов
+     * Использует Free Movie API для получения данных
+     */
+
+    // Конфигурация
+    const CONFIG = {
+      API_BASE: "https://imdb.iamidiotareyoutoo.com",
+      CACHE_TTL: 60 * 60 * 1000, // 1 час
+      HISTORY_MAX: 20
+    };
+
+    // Предустановленные запросы для разных секций
+    const PRESET_QUERIES = {
+      popularMovies: ["Avengers", "Batman", "Spider-Man", "Joker", "Inception"],
+      popularSeries: ["Breaking Bad", "Game of Thrones", "Stranger Things", "The Office", "Friends"],
+      action: ["John Wick", "Fast and Furious", "Mission Impossible", "Die Hard", "Mad Max"],
+      scifi: ["Interstellar", "The Matrix", "Blade Runner", "Dune", "Avatar"]
+    };
+
+    // Состояние приложения
+    const state = {
+      currentFilter: "all",
+      searchResults: [],
+      cache: {},
+      history: []
+    };
+
+    /**
+     * @function initCache
+     * @description Инициализация кеша из localStorage
+     */
+    function initCache() {
+      try {
+        const cached = localStorage.getItem("cineSearchCache");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const now = Date.now();
+          // Очищаем устаревшие записи
+          Object.keys(parsed).forEach(key => {
+            if (parsed[key].timestamp && (now - parsed[key].timestamp) < CONFIG.CACHE_TTL) {
+              state.cache[key] = parsed[key];
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Ошибка загрузки кеша:", e);
+      }
+    }
+
+    /**
+     * @function saveCache
+     * @description Сохранение кеша в localStorage
+     */
+    function saveCache() {
+      try {
+        localStorage.setItem("cineSearchCache", JSON.stringify(state.cache));
+      } catch (e) {
+        console.warn("Ошибка сохранения кеша:", e);
+      }
+    }
+
+    /**
+     * @function initHistory
+     * @description Инициализация истории просмотров
+     */
+    function initHistory() {
+      try {
+        const history = localStorage.getItem("cineSearchHistory");
+        if (history) {
+          state.history = JSON.parse(history);
+        }
+      } catch (e) {
+        console.warn("Ошибка загрузки истории:", e);
+      }
+    }
+
+    /**
+     * @function saveHistory
+     * @description Сохранение истории в localStorage
+     */
+    function saveHistory() {
+      try {
+        localStorage.setItem("cineSearchHistory", JSON.stringify(state.history));
+      } catch (e) {
+        console.warn("Ошибка сохранения истории:", e);
+      }
+    }
+
+    /**
+     * @function addToHistory
+     * @description Добавление фильма в историю
+     * @param {Object} movie - Данные фильма
+     */
+    function addToHistory(movie) {
+      // Удаляем если уже есть
+      state.history = state.history.filter(m => m.id !== movie.id);
+      // Добавляем в начало
+      state.history.unshift(movie);
+      // Ограничиваем размер
+      if (state.history.length > CONFIG.HISTORY_MAX) {
+        state.history = state.history.slice(0, CONFIG.HISTORY_MAX);
+      }
+      saveHistory();
+      renderHistory();
+    }
+
+    /**
+     * @function searchMovies
+     * @description Поиск фильмов по запросу
+     * @param {string} query - Поисковый запрос
+     * @returns {Promise<Array>} Массив результатов
+     */
+    async function searchMovies(query) {
+      const cacheKey = `search_${query.toLowerCase()}`;
+
+      // Проверяем кеш
+      if (state.cache[cacheKey] &&
+          (Date.now() - state.cache[cacheKey].timestamp) < CONFIG.CACHE_TTL) {
+        return state.cache[cacheKey].data;
+      }
+
+      try {
+        const response = await fetch(
+          `${CONFIG.API_BASE}/search?q=${encodeURIComponent(query)}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const results = data.description || [];
+
+        // Сохраняем в кеш
+        state.cache[cacheKey] = {
+          data: results,
+          timestamp: Date.now()
+        };
+        saveCache();
+
+        return results;
+      } catch (error) {
+        console.error("Ошибка поиска:", error);
+        return [];
+      }
+    }
+
+    /**
+     * @function getMovieDetails
+     * @description Получение детальной информации о фильме
+     * @param {string} imdbId - IMDB ID фильма
+     * @returns {Promise<Object>} Детали фильма
+     */
+    async function getMovieDetails(imdbId) {
+      const cacheKey = `details_${imdbId}`;
+
+      // Проверяем кеш
+      if (state.cache[cacheKey] &&
+          (Date.now() - state.cache[cacheKey].timestamp) < CONFIG.CACHE_TTL) {
+        return state.cache[cacheKey].data;
+      }
+
+      try {
+        const response = await fetch(
+          `${CONFIG.API_BASE}/search?tt=${imdbId}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Сохраняем в кеш
+        state.cache[cacheKey] = {
+          data: data,
+          timestamp: Date.now()
+        };
+        saveCache();
+
+        return data;
+      } catch (error) {
+        console.error("Ошибка получения деталей:", error);
+        return null;
+      }
+    }
+
+    /**
+     * @function createMovieCard
+     * @description Создание HTML карточки фильма
+     * @param {Object} movie - Данные фильма
+     * @param {boolean} showHistory - Показывать ли бейдж истории
+     * @returns {string} HTML строка
+     */
+    function createMovieCard(movie, showHistory = false) {
+      const poster = movie["#IMG_POSTER"] || movie.poster;
+      const title = movie["#TITLE"] || movie.title;
+      const year = movie["#YEAR"] || movie.year;
+      const imdbId = movie["#IMDB_ID"] || movie.id;
+      const rank = movie["#RANK"];
+      const type = (movie["#TITLE"] || "").toLowerCase().includes("series") ? "series" : "movie";
+
+      return `
+        <div class="movie-card" data-imdb="${imdbId}" data-type="${type}">
+          ${type === "series" ? '<span class="movie-type">Сериал</span>' : ''}
+          ${showHistory ? '<span class="history-badge"><i class="fas fa-clock"></i></span>' : ''}
+          <div class="movie-poster">
+            ${poster
+              ? `<img src="${poster}" alt="${title}" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-film no-poster\\'></i>'">`
+              : '<i class="fas fa-film no-poster"></i>'
+            }
+          </div>
+          <div class="movie-info">
+            <h3 class="movie-title" title="${title}">${title}</h3>
+            <div class="movie-meta">
+              ${year ? `<span class="movie-year"><i class="fas fa-calendar"></i> ${year}</span>` : ''}
+              ${rank ? `<span class="movie-rating"><i class="fas fa-star"></i> #${rank}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * @function createSkeletonCard
+     * @description Создание скелетона для загрузки
+     * @returns {string} HTML строка
+     */
+    function createSkeletonCard() {
+      return `
+        <div class="movie-card skeleton-card">
+          <div class="skeleton skeleton-poster"></div>
+          <div class="skeleton-info">
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text short"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * @function renderCarousel
+     * @description Рендеринг карусели с фильмами
+     * @param {string} carouselId - ID элемента карусели
+     * @param {Array} movies - Массив фильмов
+     * @param {boolean} showHistory - Показывать ли бейдж истории
+     */
+    function renderCarousel(carouselId, movies, showHistory = false) {
+      const carousel = document.getElementById(carouselId);
+      if (!carousel) return;
+
+      if (movies.length === 0) {
+        carousel.innerHTML = `
+          <div class="empty-state" style="width: 100%;">
+            <i class="fas fa-film"></i>
+            <h3>Ничего не найдено</h3>
+          </div>
+        `;
+        return;
+      }
+
+      carousel.innerHTML = movies
+        .filter(movie => filterByType(movie))
+        .map(movie => createMovieCard(movie, showHistory))
+        .join("");
+    }
+
+    /**
+     * @function showSkeletons
+     * @description Показ скелетонов загрузки
+     * @param {string} carouselId - ID карусели
+     * @param {number} count - Количество скелетонов
+     */
+    function showSkeletons(carouselId, count = 6) {
+      const carousel = document.getElementById(carouselId);
+      if (!carousel) return;
+      carousel.innerHTML = Array(count).fill(createSkeletonCard()).join("");
+    }
+
+    /**
+     * @function loadPresetSection
+     * @description Загрузка секции с предустановленными запросами
+     * @param {string} sectionKey - Ключ секции
+     * @param {string} carouselId - ID карусели
+     */
+    async function loadPresetSection(sectionKey, carouselId) {
+      const queries = PRESET_QUERIES[sectionKey];
+      if (!queries) return;
+
+      showSkeletons(carouselId);
+
+      const allResults = [];
+      for (const query of queries) {
+        const results = await searchMovies(query);
+        allResults.push(...results.slice(0, 4));
+      }
+
+      // Удаляем дубликаты
+      const uniqueResults = allResults.filter((movie, index, self) =>
+        index === self.findIndex(m =>
+          (m["#IMDB_ID"] || m.id) === (movie["#IMDB_ID"] || movie.id)
+        )
+      );
+
+      renderCarousel(carouselId, uniqueResults);
+    }
+
+    /**
+     * @function renderHistory
+     * @description Рендеринг секции истории
+     */
+    function renderHistory() {
+      const section = document.getElementById("historySection");
+      const carousel = document.getElementById("historyCarousel");
+
+      if (state.history.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      renderCarousel("historyCarousel", state.history, true);
+    }
+
+    /**
+     * @function filterByType
+     * @description Фильтрация по типу контента
+     * @param {Object} movie - Данные фильма
+     * @returns {boolean} Соответствует ли фильтру
+     */
+    function filterByType(movie) {
+      if (state.currentFilter === "all") return true;
+
+      const title = (movie["#TITLE"] || movie.title || "").toLowerCase();
+      const isSeries = title.includes("series") || title.includes("сериал");
+
+      if (state.currentFilter === "series") return isSeries;
+      if (state.currentFilter === "movie") return !isSeries;
+
+      return true;
+    }
+
+    /**
+     * @function handleSearch
+     * @description Обработка поиска
+     */
+    async function handleSearch() {
+      const input = document.getElementById("searchInput");
+      const query = input.value.trim();
+
+      if (!query) return;
+
+      const resultsSection = document.getElementById("searchResults");
+      const resultsGrid = document.getElementById("resultsGrid");
+
+      resultsSection.style.display = "block";
+      resultsGrid.innerHTML = `
+        <div class="loading" style="grid-column: 1 / -1;">
+          <div class="spinner"></div>
+          <p>Поиск "${query}"...</p>
+        </div>
+      `;
+
+      // Скрываем другие секции
+      document.querySelectorAll(".section:not(#searchResults)").forEach(s => {
+        s.style.display = "none";
+      });
+
+      const results = await searchMovies(query);
+      state.searchResults = results;
+
+      if (results.length === 0) {
+        resultsGrid.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <i class="fas fa-search"></i>
+            <h3>Ничего не найдено</h3>
+            <p>Попробуйте изменить запрос</p>
+          </div>
+        `;
+        return;
+      }
+
+      resultsGrid.innerHTML = results
+        .filter(movie => filterByType(movie))
+        .map(movie => createMovieCard(movie))
+        .join("");
+    }
+
+    /**
+     * @function showMovieModal
+     * @description Показ модального окна с деталями фильма
+     * @param {string} imdbId - IMDB ID
+     */
+    async function showMovieModal(imdbId) {
+      const overlay = document.getElementById("modalOverlay");
+      const posterEl = document.getElementById("modalPoster");
+      const contentEl = document.getElementById("modalContent");
+
+      overlay.classList.add("active");
+      document.body.style.overflow = "hidden";
+
+      posterEl.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+      contentEl.innerHTML = "";
+
+      const details = await getMovieDetails(imdbId);
+
+      if (!details) {
+        contentEl.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Ошибка загрузки</h3>
+            <p>Не удалось получить информацию о фильме</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Добавляем в историю
+      addToHistory({
+        id: imdbId,
+        "#IMDB_ID": imdbId,
+        "#TITLE": details.short?.name || details["#TITLE"] || "Без названия",
+        "#IMG_POSTER": details.short?.image || details["#IMG_POSTER"],
+        "#YEAR": details.short?.datePublished?.split("-")[0] || details["#YEAR"]
+      });
+
+      const short = details.short || {};
+      const main = details.main || {};
+
+      const poster = short.image || details["#IMG_POSTER"];
+      const title = short.name || details["#TITLE"] || "Без названия";
+      const year = short.datePublished?.split("-")[0] || details["#YEAR"];
+      const rating = main.ratingsSummary?.aggregateRating;
+      const votes = main.ratingsSummary?.voteCount;
+      const runtime = main.runtime?.displayableProperty?.value?.plainText;
+      const plot = short.description || main.plot?.plotText?.plainText;
+      const genres = short.genre || [];
+      const actors = main.cast?.edges?.slice(0, 5).map(e => e.node?.name?.nameText?.text) || [];
+      const directors = main.directors?.slice(0, 2).map(d => d.credits?.[0]?.name?.nameText?.text) || [];
+
+      posterEl.innerHTML = poster
+        ? `<img src="${poster}" alt="${title}">`
+        : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg-card);">
+            <i class="fas fa-film" style="font-size:4rem;color:var(--text-secondary);"></i>
+           </div>`;
+
+      contentEl.innerHTML = `
+        <h2 class="modal-title">${title}</h2>
+        <div class="modal-meta">
+          ${year ? `<span><i class="fas fa-calendar"></i> ${year}</span>` : ''}
+          ${rating ? `<span class="rating"><i class="fas fa-star"></i> ${rating.toFixed(1)}</span>` : ''}
+          ${votes ? `<span><i class="fas fa-users"></i> ${formatNumber(votes)} голосов</span>` : ''}
+          ${runtime ? `<span><i class="fas fa-clock"></i> ${runtime}</span>` : ''}
+        </div>
+        ${genres.length ? `
+          <div class="modal-genres">
+            ${genres.map(g => `<span class="genre-tag">${g}</span>`).join("")}
+          </div>
+        ` : ''}
+        ${plot ? `<p class="modal-plot">${plot}</p>` : ''}
+        <div class="modal-details">
+          ${actors.length ? `
+            <div class="detail-item">
+              <h4>В главных ролях</h4>
+              <p>${actors.join(", ")}</p>
+            </div>
+          ` : ''}
+          ${directors.length ? `
+            <div class="detail-item">
+              <h4>Режиссер</h4>
+              <p>${directors.join(", ")}</p>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    /**
+     * @function hideMovieModal
+     * @description Скрытие модального окна
+     */
+    function hideMovieModal() {
+      const overlay = document.getElementById("modalOverlay");
+      overlay.classList.remove("active");
+      document.body.style.overflow = "";
+    }
+
+    /**
+     * @function formatNumber
+     * @description Форматирование числа
+     * @param {number} num - Число
+     * @returns {string} Отформатированная строка
+     */
+    function formatNumber(num) {
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+      if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+      return num.toString();
+    }
+
+    /**
+     * @function scrollCarousel
+     * @description Прокрутка карусели
+     * @param {string} carouselId - ID карусели
+     * @param {string} direction - Направление (left/right)
+     */
+    function scrollCarousel(carouselId, direction) {
+      const carousel = document.getElementById(carouselId + "Carousel");
+      if (!carousel) return;
+
+      const scrollAmount = 600;
+      carousel.scrollBy({
+        left: direction === "right" ? scrollAmount : -scrollAmount,
+        behavior: "smooth"
+      });
+    }
+
+    /**
+     * @function clearSearchAndShowAll
+     * @description Очистка поиска и показ всех секций
+     */
+    function clearSearchAndShowAll() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("searchResults").style.display = "none";
+      document.querySelectorAll(".section:not(#searchResults)").forEach(s => {
+        s.style.display = "block";
+      });
+      // Скрываем историю если пустая
+      if (state.history.length === 0) {
+        document.getElementById("historySection").style.display = "none";
+      }
+    }
+
+    /**
+     * @function toggleTheme
+     * @description Переключение темы
+     */
+    function toggleTheme() {
+      const body = document.body;
+      const btn = document.getElementById("themeToggle");
+      const isDark = !body.hasAttribute("data-theme");
+
+      if (isDark) {
+        body.setAttribute("data-theme", "light");
+        btn.innerHTML = '<i class="fas fa-moon"></i>';
+        localStorage.setItem("cineSearchTheme", "light");
+      } else {
+        body.removeAttribute("data-theme");
+        btn.innerHTML = '<i class="fas fa-sun"></i>';
+        localStorage.setItem("cineSearchTheme", "dark");
+      }
+    }
+
+    /**
+     * @function initTheme
+     * @description Инициализация темы
+     */
+    function initTheme() {
+      const saved = localStorage.getItem("cineSearchTheme");
+      const btn = document.getElementById("themeToggle");
+
+      if (saved === "light") {
+        document.body.setAttribute("data-theme", "light");
+        btn.innerHTML = '<i class="fas fa-moon"></i>';
+      }
+    }
+
+    /**
+     * @function init
+     * @description Инициализация приложения
+     */
+    async function init() {
+      initCache();
+      initHistory();
+      initTheme();
+
+      // Event listeners
+      document.getElementById("searchBtn").addEventListener("click", handleSearch);
+      document.getElementById("searchInput").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleSearch();
+      });
+
+      document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+
+      document.getElementById("modalClose").addEventListener("click", hideMovieModal);
+      document.getElementById("modalOverlay").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) hideMovieModal();
+      });
+
+      // Tab navigation
+      document.querySelectorAll(".nav-tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
+          tab.classList.add("active");
+
+          // Sync mobile and desktop tabs
+          const filter = tab.dataset.filter;
+          document.querySelectorAll(`[data-filter="${filter}"]`).forEach(t => {
+            t.classList.add("active");
+          });
+
+          state.currentFilter = filter;
+
+          // Re-render if in search results
+          if (state.searchResults.length > 0) {
+            const resultsGrid = document.getElementById("resultsGrid");
+            resultsGrid.innerHTML = state.searchResults
+              .filter(movie => filterByType(movie))
+              .map(movie => createMovieCard(movie))
+              .join("");
+          }
+        });
+      });
+
+      // Quick search tags
+      document.querySelectorAll(".quick-tag").forEach(tag => {
+        tag.addEventListener("click", () => {
+          document.getElementById("searchInput").value = tag.dataset.query;
+          handleSearch();
+        });
+      });
+
+      // Carousel navigation
+      document.querySelectorAll(".nav-arrow").forEach(arrow => {
+        arrow.addEventListener("click", () => {
+          scrollCarousel(arrow.dataset.carousel, arrow.dataset.dir);
+        });
+      });
+
+      // Movie card clicks
+      document.addEventListener("click", (e) => {
+        const card = e.target.closest(".movie-card");
+        if (card) {
+          showMovieModal(card.dataset.imdb);
+        }
+      });
+
+      // Escape key to close modal
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          hideMovieModal();
+        }
+      });
+
+      // Logo click to reset
+      document.querySelector(".logo").addEventListener("click", clearSearchAndShowAll);
+
+      // Render history
+      renderHistory();
+
+      // Load preset sections
+      await Promise.all([
+        loadPresetSection("popularMovies", "popularMoviesCarousel"),
+        loadPresetSection("popularSeries", "popularSeriesCarousel"),
+        loadPresetSection("action", "actionCarousel"),
+        loadPresetSection("scifi", "scifiCarousel")
+      ]);
+    }
+
+    // Start
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
