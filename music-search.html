@@ -1,0 +1,2624 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивную страницу поиска по музыкальной базе данных.
+
+Функциональные требования:
+1. Поиск по различным сущностям (MusicBrainz API):
+   - Артисты (artist)
+   - Альбомы (release-group)
+   - Треки (recording)
+   - Лейблы (label)
+   - События (event)
+   - Инструменты (instrument)
+   - Регионы, места, серии, произведения
+
+2. Детальный просмотр:
+   - Информация об артисте с его альбомами
+   - Информация об альбоме с треками
+   - Информация о треке
+
+3. Расширенные данные об артистах (TheAudioDB API):
+   - Фотографии и баннеры артистов
+   - Биографии на русском и английском языках
+   - Топ-10 треков артиста
+   - Музыкальные видео с YouTube
+   - Жанры и стили
+   - Ссылки на социальные сети
+
+4. Пользовательский интерфейс:
+   - Темная и светлая тема
+   - Многоязычность (русский/английский)
+   - Адаптивный дизайн
+   - Пагинация результатов
+
+Технические требования:
+1. Использование MusicBrainz API (musicbrainz.org/ws/2)
+2. Использование TheAudioDB API (theaudiodb.com/api)
+3. Vanilla JavaScript без фреймворков
+4. Кэширование настроек в localStorage
+5. Адаптивный CSS с Flexbox и Grid
+6. Соблюдение rate limit MusicBrainz API (1 запрос в секунду)
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Поиск музыки | Music Search</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-color: #f0f4f8;
+      --text-color: #1a202c;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --primary-color: #805ad5;
+      --primary-hover: #6b46c1;
+      --secondary-color: #718096;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e0;
+      --success-color: #38a169;
+      --warning-color: #d69e2e;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --tag-bg: #e9d8fd;
+      --tag-color: #553c9a;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #1a202c;
+      --text-color: #e2e8f0;
+      --card-bg: #2d3748;
+      --border-color: #4a5568;
+      --primary-color: #b794f4;
+      --primary-hover: #9f7aea;
+      --secondary-color: #a0aec0;
+      --input-bg: #2d3748;
+      --input-border: #4a5568;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+      --tag-bg: #44337a;
+      --tag-color: #d6bcfa;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      color: var(--primary-color);
+    }
+
+    h1 i {
+      margin-right: 10px;
+    }
+
+    .subtitle {
+      color: var(--secondary-color);
+      font-size: 1.1rem;
+    }
+
+    /* Settings button */
+    .settings-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--primary-color);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease, background-color 0.3s ease;
+      z-index: 1000;
+    }
+
+    .settings-button:hover {
+      transform: rotate(45deg);
+    }
+
+    /* Settings modal */
+    .settings-modal {
+      display: none;
+      position: fixed;
+      top: 75px;
+      right: 20px;
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-lg);
+      z-index: 999;
+      min-width: 250px;
+      border: 1px solid var(--border-color);
+    }
+
+    .settings-modal.show {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .settings-title {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .settings-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    .settings-option label {
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 26px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    /* Search section */
+    .search-section {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+      margin-bottom: 25px;
+    }
+
+    .search-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .search-input-wrapper {
+      flex: 1;
+      min-width: 250px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 14px 45px 14px 15px;
+      border: 2px solid var(--input-border);
+      border-radius: 8px;
+      font-size: 1rem;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      transition: border-color 0.3s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    .search-btn {
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+
+    .search-btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .entity-select {
+      padding: 14px 15px;
+      border: 2px solid var(--input-border);
+      border-radius: 8px;
+      font-size: 1rem;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      min-width: 180px;
+      cursor: pointer;
+    }
+
+    .entity-select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 10px 18px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      background-color: transparent;
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .tab-btn.active {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    /* Results section */
+    .results-section {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+      min-height: 300px;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .results-title {
+      font-size: 1.3rem;
+      color: var(--primary-color);
+    }
+
+    .results-count {
+      color: var(--secondary-color);
+      font-size: 0.95rem;
+    }
+
+    /* Grid for results */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    /* Result card */
+    .result-card {
+      background-color: var(--bg-color);
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .result-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+      border-color: var(--primary-color);
+    }
+
+    .result-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      margin-bottom: 12px;
+    }
+
+    .result-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .result-info {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .result-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--text-color);
+      word-wrap: break-word;
+    }
+
+    .result-type {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+      text-transform: capitalize;
+    }
+
+    .result-details {
+      font-size: 0.9rem;
+      color: var(--secondary-color);
+      margin-bottom: 10px;
+    }
+
+    .result-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .result-tag {
+      background-color: var(--tag-bg);
+      color: var(--tag-color);
+      padding: 3px 10px;
+      border-radius: 15px;
+      font-size: 0.8rem;
+    }
+
+    /* Detail view */
+    .detail-view {
+      display: none;
+    }
+
+    .detail-view.active {
+      display: block;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 25px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+
+    .detail-icon {
+      width: 120px;
+      height: 120px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 3rem;
+      flex-shrink: 0;
+    }
+
+    .detail-info {
+      flex: 1;
+    }
+
+    .detail-name {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .detail-meta {
+      color: var(--secondary-color);
+      margin-bottom: 15px;
+    }
+
+    .detail-meta span {
+      margin-right: 20px;
+    }
+
+    .detail-meta i {
+      margin-right: 6px;
+    }
+
+    .back-btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      transition: background-color 0.3s ease;
+    }
+
+    .back-btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    /* Tracks/Albums list */
+    .list-section {
+      margin-top: 25px;
+    }
+
+    .list-title {
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .list-item {
+      background-color: var(--bg-color);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .list-item:hover {
+      border-color: var(--primary-color);
+      background-color: var(--card-bg);
+    }
+
+    .list-item-number {
+      width: 30px;
+      height: 30px;
+      background-color: var(--primary-color);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .list-item-info {
+      flex: 1;
+    }
+
+    .list-item-name {
+      font-weight: 500;
+      margin-bottom: 3px;
+    }
+
+    .list-item-meta {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+    }
+
+    .list-item-duration {
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 25px;
+      flex-wrap: wrap;
+    }
+
+    .pagination-btn {
+      padding: 10px 18px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      background-color: transparent;
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination-info {
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: var(--secondary-color);
+    }
+
+    .loading i {
+      font-size: 3rem;
+      animation: spin 1s linear infinite;
+      color: var(--primary-color);
+    }
+
+    .loading-text {
+      margin-top: 15px;
+      font-size: 1.1rem;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px;
+      color: var(--secondary-color);
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 15px;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+
+    .empty-state p {
+      font-size: 1rem;
+    }
+
+    /* Error state */
+    .error-state {
+      text-align: center;
+      padding: 40px;
+      color: #e53e3e;
+    }
+
+    .error-state i {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+
+    .retry-btn {
+      margin-top: 15px;
+      padding: 10px 25px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .retry-btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    /* Links */
+    .external-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .external-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-color);
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .search-row {
+        flex-direction: column;
+      }
+
+      .entity-select {
+        width: 100%;
+      }
+
+      .detail-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .detail-name {
+        font-size: 1.5rem;
+      }
+
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Rate limit indicator */
+    .rate-limit-indicator {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: var(--card-bg);
+      padding: 10px 15px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+      display: none;
+      border: 1px solid var(--border-color);
+    }
+
+    .rate-limit-indicator.active {
+      display: block;
+    }
+
+    .rate-limit-indicator i {
+      margin-right: 8px;
+      color: var(--warning-color);
+    }
+
+    /* Info box */
+    .info-box {
+      background-color: var(--tag-bg);
+      border-radius: 8px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .info-box i {
+      color: var(--primary-color);
+      font-size: 1.2rem;
+      margin-top: 2px;
+    }
+
+    .info-box-content {
+      flex: 1;
+    }
+
+    .info-box-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .info-box-text {
+      font-size: 0.9rem;
+      color: var(--secondary-color);
+    }
+
+    /* Artist image */
+    .detail-image {
+      width: 150px;
+      height: 150px;
+      border-radius: 12px;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: var(--shadow);
+    }
+
+    .detail-banner {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    /* Biography */
+    .biography {
+      background-color: var(--bg-color);
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .biography-title {
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .biography-text {
+      line-height: 1.8;
+      color: var(--text-color);
+    }
+
+    .biography-text.collapsed {
+      max-height: 150px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .biography-text.collapsed::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50px;
+      background: linear-gradient(transparent, var(--bg-color));
+    }
+
+    .read-more-btn {
+      background: none;
+      border: none;
+      color: var(--primary-color);
+      cursor: pointer;
+      font-size: 0.95rem;
+      padding: 8px 0;
+      margin-top: 10px;
+    }
+
+    .read-more-btn:hover {
+      text-decoration: underline;
+    }
+
+    /* Top tracks with play */
+    .top-track-item {
+      background-color: var(--bg-color);
+      border-radius: 8px;
+      padding: 12px 15px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.3s ease;
+    }
+
+    .top-track-item:hover {
+      border-color: var(--primary-color);
+      background-color: var(--card-bg);
+    }
+
+    .track-number {
+      width: 28px;
+      height: 28px;
+      background-color: var(--primary-color);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .track-info {
+      flex: 1;
+    }
+
+    .track-name {
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .track-album {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+    }
+
+    .track-duration {
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+    }
+
+    /* Music videos grid */
+    .videos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .video-card {
+      background-color: var(--bg-color);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .video-card:hover {
+      border-color: var(--primary-color);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+    }
+
+    .video-thumbnail {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      background-color: var(--border-color);
+    }
+
+    .video-info {
+      padding: 12px;
+    }
+
+    .video-title {
+      font-weight: 500;
+      margin-bottom: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .video-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .video-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Social links */
+    .social-links {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .social-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background-color: var(--bg-color);
+      border-radius: 20px;
+      color: var(--text-color);
+      text-decoration: none;
+      font-size: 0.9rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .social-link:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .social-link i {
+      font-size: 1rem;
+    }
+
+    /* Genre/Style tags */
+    .genre-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .genre-tag {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+      color: white;
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.85rem;
+    }
+
+    /* Loading spinner for sections */
+    .section-loading {
+      text-align: center;
+      padding: 30px;
+      color: var(--secondary-color);
+    }
+
+    .section-loading i {
+      font-size: 1.5rem;
+      animation: spin 1s linear infinite;
+      color: var(--primary-color);
+    }
+
+    @media (max-width: 768px) {
+      .detail-image {
+        width: 100px;
+        height: 100px;
+      }
+
+      .videos-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Settings button -->
+  <button class="settings-button" id="settingsButton" aria-label="Settings">
+    <i class="fas fa-cog"></i>
+  </button>
+
+  <!-- Settings modal -->
+  <div class="settings-modal" id="settingsModal">
+    <h3 class="settings-title" data-i18n="settings">Настройки</h3>
+    <div class="settings-option">
+      <label for="themeSwitch" data-i18n="darkTheme">Темная тема</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="themeSwitch">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="settings-option">
+      <label for="langSwitch" data-i18n="english">English</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="langSwitch">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Rate limit indicator -->
+  <div class="rate-limit-indicator" id="rateLimitIndicator">
+    <i class="fas fa-clock"></i>
+    <span data-i18n="rateLimit">Ожидание API...</span>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1><i class="fas fa-music"></i><span data-i18n="title">Поиск музыки</span></h1>
+      <p class="subtitle" data-i18n="subtitle">Исследуйте музыкальную базу данных MusicBrainz</p>
+    </header>
+
+    <!-- Search section -->
+    <div class="search-section">
+      <div class="search-form">
+        <div class="search-row">
+          <div class="search-input-wrapper">
+            <input type="text" class="search-input" id="searchInput"
+                   data-i18n-placeholder="searchPlaceholder"
+                   placeholder="Введите название артиста, альбома или трека...">
+            <button class="search-btn" id="searchBtn" aria-label="Search">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          <select class="entity-select" id="entitySelect">
+            <option value="artist" data-i18n-option="artists">Артисты</option>
+            <option value="release-group" data-i18n-option="albums">Альбомы</option>
+            <option value="recording" data-i18n-option="tracks">Треки</option>
+            <option value="label" data-i18n-option="labels">Лейблы</option>
+            <option value="work" data-i18n-option="works">Произведения</option>
+            <option value="event" data-i18n-option="events">События</option>
+            <option value="instrument" data-i18n-option="instruments">Инструменты</option>
+            <option value="area" data-i18n-option="areas">Регионы</option>
+            <option value="place" data-i18n-option="places">Места</option>
+            <option value="series" data-i18n-option="series">Серии</option>
+          </select>
+        </div>
+        <div class="tabs" id="quickTabs">
+          <button class="tab-btn active" data-entity="artist">
+            <i class="fas fa-user"></i> <span data-i18n="artists">Артисты</span>
+          </button>
+          <button class="tab-btn" data-entity="release-group">
+            <i class="fas fa-compact-disc"></i> <span data-i18n="albums">Альбомы</span>
+          </button>
+          <button class="tab-btn" data-entity="recording">
+            <i class="fas fa-music"></i> <span data-i18n="tracks">Треки</span>
+          </button>
+          <button class="tab-btn" data-entity="label">
+            <i class="fas fa-building"></i> <span data-i18n="labels">Лейблы</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results section -->
+    <div class="results-section">
+      <!-- Search results view -->
+      <div id="searchResults">
+        <div class="empty-state" id="emptyState">
+          <i class="fas fa-search"></i>
+          <h3 data-i18n="startSearch">Начните поиск</h3>
+          <p data-i18n="startSearchDesc">Введите название артиста, альбома или трека для поиска</p>
+        </div>
+        <div class="loading" id="loadingState" style="display: none;">
+          <i class="fas fa-spinner"></i>
+          <p class="loading-text" data-i18n="loading">Загрузка...</p>
+        </div>
+        <div class="error-state" id="errorState" style="display: none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p data-i18n="errorMessage">Произошла ошибка при загрузке данных</p>
+          <button class="retry-btn" id="retryBtn">
+            <i class="fas fa-redo"></i> <span data-i18n="retry">Повторить</span>
+          </button>
+        </div>
+        <div id="resultsContainer" style="display: none;">
+          <div class="results-header">
+            <h2 class="results-title" id="resultsTitle">Результаты</h2>
+            <span class="results-count" id="resultsCount"></span>
+          </div>
+          <div class="results-grid" id="resultsGrid"></div>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+
+      <!-- Detail view -->
+      <div class="detail-view" id="detailView">
+        <button class="back-btn" id="backBtn">
+          <i class="fas fa-arrow-left"></i> <span data-i18n="back">Назад</span>
+        </button>
+        <div id="detailContent"></div>
+      </div>
+    </div>
+
+    <footer>
+      <p data-i18n="dataSource">Данные предоставлены</p>
+      <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a> &amp;
+      <a href="https://theaudiodb.com" target="_blank" rel="noopener">TheAudioDB</a>
+    </footer>
+  </div>
+
+  <script>
+    /**
+     * Словарь переводов
+     */
+    const translations = {
+      ru: {
+        title: "Поиск музыки",
+        subtitle: "Исследуйте музыкальную базу данных MusicBrainz",
+        settings: "Настройки",
+        darkTheme: "Темная тема",
+        english: "English",
+        searchPlaceholder: "Введите название артиста, альбома или трека...",
+        artists: "Артисты",
+        albums: "Альбомы",
+        tracks: "Треки",
+        labels: "Лейблы",
+        works: "Произведения",
+        events: "События",
+        instruments: "Инструменты",
+        areas: "Регионы",
+        places: "Места",
+        series: "Серии",
+        startSearch: "Начните поиск",
+        startSearchDesc: "Введите название артиста, альбома или трека для поиска",
+        loading: "Загрузка...",
+        errorMessage: "Произошла ошибка при загрузке данных",
+        retry: "Повторить",
+        back: "Назад",
+        results: "Результаты",
+        found: "Найдено",
+        of: "из",
+        prev: "Назад",
+        next: "Далее",
+        page: "Страница",
+        noResults: "Ничего не найдено",
+        noResultsDesc: "Попробуйте изменить запрос или категорию поиска",
+        discography: "Дискография",
+        tracklist: "Треклист",
+        releases: "Релизы",
+        recordings: "Записи",
+        country: "Страна",
+        genre: "Жанр",
+        type: "Тип",
+        year: "Год",
+        founded: "Основан",
+        dissolved: "Распущен",
+        duration: "Длительность",
+        artist: "Артист",
+        album: "Альбом",
+        label: "Лейбл",
+        dataSource: "Данные предоставлены",
+        rateLimit: "Ожидание API...",
+        viewOnMusicBrainz: "Открыть на MusicBrainz",
+        members: "Участники",
+        area: "Регион",
+        lifeSpan: "Период активности",
+        begin: "Начало",
+        end: "Конец",
+        tags: "Теги",
+        aliases: "Псевдонимы",
+        description: "Описание",
+        biography: "Биография",
+        topTracks: "Топ треки",
+        musicVideos: "Музыкальные видео",
+        readMore: "Читать далее",
+        readLess: "Свернуть",
+        watchOnYoutube: "Смотреть на YouTube",
+        genre: "Жанр",
+        style: "Стиль",
+        formed: "Образован",
+        website: "Сайт"
+      },
+      en: {
+        title: "Music Search",
+        subtitle: "Explore the MusicBrainz music database",
+        settings: "Settings",
+        darkTheme: "Dark theme",
+        english: "English",
+        searchPlaceholder: "Enter artist, album or track name...",
+        artists: "Artists",
+        albums: "Albums",
+        tracks: "Tracks",
+        labels: "Labels",
+        works: "Works",
+        events: "Events",
+        instruments: "Instruments",
+        areas: "Areas",
+        places: "Places",
+        series: "Series",
+        startSearch: "Start searching",
+        startSearchDesc: "Enter artist, album or track name to search",
+        loading: "Loading...",
+        errorMessage: "Error loading data",
+        retry: "Retry",
+        back: "Back",
+        results: "Results",
+        found: "Found",
+        of: "of",
+        prev: "Previous",
+        next: "Next",
+        page: "Page",
+        noResults: "No results found",
+        noResultsDesc: "Try changing your search query or category",
+        discography: "Discography",
+        tracklist: "Tracklist",
+        releases: "Releases",
+        recordings: "Recordings",
+        country: "Country",
+        genre: "Genre",
+        type: "Type",
+        year: "Year",
+        founded: "Founded",
+        dissolved: "Dissolved",
+        duration: "Duration",
+        artist: "Artist",
+        album: "Album",
+        label: "Label",
+        dataSource: "Data provided by",
+        rateLimit: "Waiting for API...",
+        viewOnMusicBrainz: "View on MusicBrainz",
+        members: "Members",
+        area: "Area",
+        lifeSpan: "Life span",
+        begin: "Begin",
+        end: "End",
+        tags: "Tags",
+        aliases: "Aliases",
+        description: "Description",
+        biography: "Biography",
+        topTracks: "Top Tracks",
+        musicVideos: "Music Videos",
+        readMore: "Read more",
+        readLess: "Show less",
+        watchOnYoutube: "Watch on YouTube",
+        genre: "Genre",
+        style: "Style",
+        formed: "Formed",
+        website: "Website"
+      }
+    };
+
+    /**
+     * Состояние приложения
+     */
+    const state = {
+      lang: "ru",
+      theme: "light",
+      currentEntity: "artist",
+      query: "",
+      results: [],
+      totalResults: 0,
+      currentPage: 1,
+      pageSize: 25,
+      lastRequestTime: 0,
+      minRequestInterval: 1100, // MusicBrainz rate limit: 1 req/sec
+      currentDetail: null,
+      searchHistory: []
+    };
+
+    /**
+     * MusicBrainz API URL
+     */
+    const API_BASE = "https://musicbrainz.org/ws/2";
+    const USER_AGENT = "MusicSearchApp/1.0 (https://example.com)";
+
+    /**
+     * TheAudioDB API URL (бесплатный ключ: 2)
+     */
+    const AUDIODB_API = "https://www.theaudiodb.com/api/v1/json/2";
+
+    /**
+     * Иконки для типов сущностей
+     */
+    const entityIcons = {
+      artist: "fa-user",
+      "release-group": "fa-compact-disc",
+      recording: "fa-music",
+      label: "fa-building",
+      work: "fa-file-audio",
+      event: "fa-calendar-alt",
+      instrument: "fa-guitar",
+      area: "fa-globe",
+      place: "fa-map-marker-alt",
+      series: "fa-list-ol"
+    };
+
+    /**
+     * Типы альбомов для отображения
+     */
+    const releaseGroupTypes = {
+      Album: { ru: "Альбом", en: "Album" },
+      Single: { ru: "Сингл", en: "Single" },
+      EP: { ru: "EP", en: "EP" },
+      Broadcast: { ru: "Эфир", en: "Broadcast" },
+      Other: { ru: "Другое", en: "Other" },
+      Compilation: { ru: "Сборник", en: "Compilation" },
+      Soundtrack: { ru: "Саундтрек", en: "Soundtrack" },
+      Live: { ru: "Концерт", en: "Live" },
+      Remix: { ru: "Ремикс", en: "Remix" }
+    };
+
+    /**
+     * Загрузка настроек из localStorage
+     */
+    function loadSettings() {
+      const saved = localStorage.getItem("musicSearchSettings");
+      if (saved) {
+        const settings = JSON.parse(saved);
+        state.lang = settings.lang || "ru";
+        state.theme = settings.theme || "light";
+      }
+    }
+
+    /**
+     * Сохранение настроек
+     */
+    function saveSettings() {
+      localStorage.setItem("musicSearchSettings", JSON.stringify({
+        lang: state.lang,
+        theme: state.theme
+      }));
+    }
+
+    /**
+     * Применение темы
+     */
+    function applyTheme() {
+      document.body.setAttribute("data-theme", state.theme);
+      document.getElementById("themeSwitch").checked = state.theme === "dark";
+    }
+
+    /**
+     * Применение языка
+     */
+    function applyLanguage() {
+      const t = translations[state.lang];
+
+      // Обновляем текстовые элементы
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (t[key]) {
+          el.textContent = t[key];
+        }
+      });
+
+      // Обновляем плейсхолдеры
+      document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        const key = el.getAttribute("data-i18n-placeholder");
+        if (t[key]) {
+          el.placeholder = t[key];
+        }
+      });
+
+      // Обновляем опции select
+      document.querySelectorAll("[data-i18n-option]").forEach(el => {
+        const key = el.getAttribute("data-i18n-option");
+        if (t[key]) {
+          el.textContent = t[key];
+        }
+      });
+
+      document.getElementById("langSwitch").checked = state.lang === "en";
+    }
+
+    /**
+     * Ожидание для соблюдения rate limit
+     */
+    async function waitForRateLimit() {
+      const now = Date.now();
+      const timeSinceLastRequest = now - state.lastRequestTime;
+
+      if (timeSinceLastRequest < state.minRequestInterval) {
+        const waitTime = state.minRequestInterval - timeSinceLastRequest;
+        document.getElementById("rateLimitIndicator").classList.add("active");
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        document.getElementById("rateLimitIndicator").classList.remove("active");
+      }
+
+      state.lastRequestTime = Date.now();
+    }
+
+    /**
+     * Выполнение запроса к API
+     * @param {string} endpoint - URL endpoint
+     * @returns {Promise<Object>} - Данные ответа
+     */
+    async function fetchAPI(endpoint) {
+      await waitForRateLimit();
+
+      const url = `${API_BASE}${endpoint}`;
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": USER_AGENT
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response.json();
+    }
+
+    /**
+     * Получение данных об артисте с TheAudioDB
+     * @param {string} artistName - Имя артиста
+     * @returns {Promise<Object|null>} - Данные артиста или null
+     */
+    async function fetchAudioDBData(artistName) {
+      try {
+        const url = `${AUDIODB_API}/search.php?s=${encodeURIComponent(artistName)}`;
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.artists?.[0] || null;
+      } catch (error) {
+        console.warn("TheAudioDB fetch error:", error);
+        return null;
+      }
+    }
+
+    /**
+     * Получение топ-10 треков артиста с TheAudioDB
+     * @param {string} artistName - Имя артиста
+     * @returns {Promise<Array>} - Массив треков
+     */
+    async function fetchTopTracks(artistName) {
+      try {
+        const url = `${AUDIODB_API}/track-top10.php?s=${encodeURIComponent(artistName)}`;
+        const response = await fetch(url);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.track || [];
+      } catch (error) {
+        console.warn("TheAudioDB top tracks error:", error);
+        return [];
+      }
+    }
+
+    /**
+     * Получение музыкальных видео артиста с TheAudioDB
+     * @param {string} artistId - ID артиста в TheAudioDB
+     * @returns {Promise<Array>} - Массив видео
+     */
+    async function fetchMusicVideos(artistId) {
+      try {
+        const url = `${AUDIODB_API}/mvid.php?i=${artistId}`;
+        const response = await fetch(url);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.mvids || [];
+      } catch (error) {
+        console.warn("TheAudioDB music videos error:", error);
+        return [];
+      }
+    }
+
+    /**
+     * Поиск сущностей
+     * @param {string} entity - Тип сущности
+     * @param {string} query - Поисковый запрос
+     * @param {number} offset - Смещение для пагинации
+     */
+    async function search(entity, query, offset = 0) {
+      showLoading();
+      hideDetail();
+
+      try {
+        const encodedQuery = encodeURIComponent(query);
+        const endpoint = `/${entity}?query=${encodedQuery}&limit=${state.pageSize}&offset=${offset}&fmt=json`;
+        const data = await fetchAPI(endpoint);
+
+        // Определяем ключ для результатов
+        let resultsKey = entity + "s";
+        if (entity === "release-group") resultsKey = "release-groups";
+
+        state.results = data[resultsKey] || [];
+        state.totalResults = data.count || 0;
+        state.currentPage = Math.floor(offset / state.pageSize) + 1;
+        state.query = query;
+        state.currentEntity = entity;
+
+        displayResults();
+      } catch (error) {
+        console.error("Search error:", error);
+        showError();
+      }
+    }
+
+    /**
+     * Показать индикатор загрузки
+     */
+    function showLoading() {
+      document.getElementById("emptyState").style.display = "none";
+      document.getElementById("errorState").style.display = "none";
+      document.getElementById("resultsContainer").style.display = "none";
+      document.getElementById("loadingState").style.display = "block";
+    }
+
+    /**
+     * Показать ошибку
+     */
+    function showError() {
+      document.getElementById("emptyState").style.display = "none";
+      document.getElementById("loadingState").style.display = "none";
+      document.getElementById("resultsContainer").style.display = "none";
+      document.getElementById("errorState").style.display = "block";
+    }
+
+    /**
+     * Отображение результатов поиска
+     */
+    function displayResults() {
+      const t = translations[state.lang];
+
+      document.getElementById("loadingState").style.display = "none";
+      document.getElementById("errorState").style.display = "none";
+      document.getElementById("emptyState").style.display = "none";
+
+      if (state.results.length === 0) {
+        document.getElementById("emptyState").innerHTML = `
+          <i class="fas fa-search"></i>
+          <h3>${t.noResults}</h3>
+          <p>${t.noResultsDesc}</p>
+        `;
+        document.getElementById("emptyState").style.display = "block";
+        document.getElementById("resultsContainer").style.display = "none";
+        return;
+      }
+
+      document.getElementById("resultsContainer").style.display = "block";
+      document.getElementById("resultsTitle").textContent =
+        `${t.results}: "${state.query}"`;
+      document.getElementById("resultsCount").textContent =
+        `${t.found}: ${state.totalResults}`;
+
+      const grid = document.getElementById("resultsGrid");
+      grid.innerHTML = state.results.map(item => renderResultCard(item)).join("");
+
+      // Добавляем обработчики кликов
+      grid.querySelectorAll(".result-card").forEach(card => {
+        card.addEventListener("click", () => {
+          const id = card.dataset.id;
+          const entity = card.dataset.entity;
+          loadDetail(entity, id);
+        });
+      });
+
+      renderPagination();
+    }
+
+    /**
+     * Рендер карточки результата
+     * @param {Object} item - Данные элемента
+     * @returns {string} HTML карточки
+     */
+    function renderResultCard(item) {
+      const t = translations[state.lang];
+      const icon = entityIcons[state.currentEntity] || "fa-music";
+
+      let name = item.name || item.title || "Unknown";
+      let type = "";
+      let details = "";
+      let tags = [];
+
+      switch (state.currentEntity) {
+        case "artist":
+          type = item.type || "";
+          if (item.country) {
+            details = `<i class="fas fa-globe"></i> ${item.country}`;
+          }
+          if (item["life-span"]) {
+            const ls = item["life-span"];
+            if (ls.begin) {
+              details += details ? " • " : "";
+              details += `${ls.begin}${ls.end ? " - " + ls.end : ""}`;
+            }
+          }
+          if (item.tags) {
+            tags = item.tags.slice(0, 3).map(t => t.name);
+          }
+          break;
+
+        case "release-group":
+          type = releaseGroupTypes[item["primary-type"]]?.[state.lang] || item["primary-type"] || "";
+          if (item["artist-credit"]) {
+            const artists = item["artist-credit"].map(ac => ac.name || ac.artist?.name).join(", ");
+            details = `<i class="fas fa-user"></i> ${artists}`;
+          }
+          if (item["first-release-date"]) {
+            details += details ? " • " : "";
+            details += `<i class="fas fa-calendar"></i> ${item["first-release-date"].substring(0, 4)}`;
+          }
+          break;
+
+        case "recording":
+          if (item["artist-credit"]) {
+            const artists = item["artist-credit"].map(ac => ac.name || ac.artist?.name).join(", ");
+            details = `<i class="fas fa-user"></i> ${artists}`;
+          }
+          if (item.length) {
+            const duration = formatDuration(item.length);
+            details += details ? " • " : "";
+            details += `<i class="fas fa-clock"></i> ${duration}`;
+          }
+          if (item.releases && item.releases.length > 0) {
+            type = item.releases[0].title;
+          }
+          break;
+
+        case "label":
+          type = item.type || "";
+          if (item.country) {
+            details = `<i class="fas fa-globe"></i> ${item.country}`;
+          }
+          if (item["life-span"]) {
+            const ls = item["life-span"];
+            if (ls.begin) {
+              details += details ? " • " : "";
+              details += `${ls.begin}${ls.end ? " - " + ls.end : ""}`;
+            }
+          }
+          break;
+
+        case "work":
+          type = item.type || "";
+          if (item.language) {
+            details = `<i class="fas fa-language"></i> ${item.language}`;
+          }
+          break;
+
+        case "event":
+          type = item.type || "";
+          if (item["life-span"]) {
+            const ls = item["life-span"];
+            details = `<i class="fas fa-calendar"></i> ${ls.begin || ""}${ls.end && ls.end !== ls.begin ? " - " + ls.end : ""}`;
+          }
+          break;
+
+        case "instrument":
+          type = item.type || "";
+          if (item.description) {
+            details = item.description.substring(0, 100) + "...";
+          }
+          break;
+
+        case "area":
+          type = item.type || "";
+          break;
+
+        case "place":
+          type = item.type || "";
+          if (item.area) {
+            details = `<i class="fas fa-map-marker-alt"></i> ${item.area.name}`;
+          }
+          break;
+
+        case "series":
+          type = item.type || "";
+          break;
+      }
+
+      return `
+        <div class="result-card" data-id="${item.id}" data-entity="${state.currentEntity}">
+          <div class="result-card-header">
+            <div class="result-icon">
+              <i class="fas ${icon}"></i>
+            </div>
+            <div class="result-info">
+              <div class="result-name">${escapeHtml(name)}</div>
+              ${type ? `<div class="result-type">${escapeHtml(type)}</div>` : ""}
+            </div>
+          </div>
+          ${details ? `<div class="result-details">${details}</div>` : ""}
+          ${tags.length > 0 ? `
+            <div class="result-tags">
+              ${tags.map(tag => `<span class="result-tag">${escapeHtml(tag)}</span>`).join("")}
+            </div>
+          ` : ""}
+        </div>
+      `;
+    }
+
+    /**
+     * Рендер пагинации
+     */
+    function renderPagination() {
+      const t = translations[state.lang];
+      const totalPages = Math.ceil(state.totalResults / state.pageSize);
+
+      if (totalPages <= 1) {
+        document.getElementById("pagination").innerHTML = "";
+        return;
+      }
+
+      const prevDisabled = state.currentPage === 1 ? "disabled" : "";
+      const nextDisabled = state.currentPage === totalPages ? "disabled" : "";
+
+      document.getElementById("pagination").innerHTML = `
+        <button class="pagination-btn" id="prevPage" ${prevDisabled}>
+          <i class="fas fa-chevron-left"></i> ${t.prev}
+        </button>
+        <span class="pagination-info">
+          ${t.page} ${state.currentPage} ${t.of} ${totalPages}
+        </span>
+        <button class="pagination-btn" id="nextPage" ${nextDisabled}>
+          ${t.next} <i class="fas fa-chevron-right"></i>
+        </button>
+      `;
+
+      document.getElementById("prevPage").addEventListener("click", () => {
+        if (state.currentPage > 1) {
+          const offset = (state.currentPage - 2) * state.pageSize;
+          search(state.currentEntity, state.query, offset);
+        }
+      });
+
+      document.getElementById("nextPage").addEventListener("click", () => {
+        if (state.currentPage < totalPages) {
+          const offset = state.currentPage * state.pageSize;
+          search(state.currentEntity, state.query, offset);
+        }
+      });
+    }
+
+    /**
+     * Загрузка детальной информации
+     * @param {string} entity - Тип сущности
+     * @param {string} id - ID сущности
+     */
+    async function loadDetail(entity, id) {
+      showLoading();
+
+      try {
+        let inc = "";
+        switch (entity) {
+          case "artist":
+            inc = "release-groups+tags+aliases+ratings+url-rels";
+            break;
+          case "release-group":
+            inc = "artists+releases+tags+ratings";
+            break;
+          case "recording":
+            inc = "artists+releases+tags+ratings+isrcs";
+            break;
+          case "label":
+            inc = "tags+ratings+aliases";
+            break;
+          case "work":
+            inc = "artist-rels+tags+ratings";
+            break;
+          default:
+            inc = "tags";
+        }
+
+        const endpoint = `/${entity}/${id}?inc=${inc}&fmt=json`;
+        const data = await fetchAPI(endpoint);
+
+        // Для артистов загружаем дополнительные данные с TheAudioDB
+        let audioDBData = null;
+        let topTracks = [];
+        let musicVideos = [];
+
+        if (entity === "artist" && data.name) {
+          // Показываем базовую информацию сразу
+          state.currentDetail = { entity, data, audioDBData: null, topTracks: [], musicVideos: [] };
+          displayDetail(entity, data);
+
+          // Загружаем дополнительные данные асинхронно
+          audioDBData = await fetchAudioDBData(data.name);
+          if (audioDBData) {
+            topTracks = await fetchTopTracks(data.name);
+            if (audioDBData.idArtist) {
+              musicVideos = await fetchMusicVideos(audioDBData.idArtist);
+            }
+          }
+
+          // Обновляем с дополнительными данными
+          state.currentDetail = { entity, data, audioDBData, topTracks, musicVideos };
+          displayDetail(entity, data, audioDBData, topTracks, musicVideos);
+        } else {
+          state.currentDetail = { entity, data };
+          displayDetail(entity, data);
+        }
+      } catch (error) {
+        console.error("Detail load error:", error);
+        showError();
+      }
+    }
+
+    /**
+     * Отображение детальной информации
+     * @param {string} entity - Тип сущности
+     * @param {Object} data - Данные сущности
+     * @param {Object} audioDBData - Данные с TheAudioDB (для артистов)
+     * @param {Array} topTracks - Топ треки (для артистов)
+     * @param {Array} musicVideos - Музыкальные видео (для артистов)
+     */
+    function displayDetail(entity, data, audioDBData = null, topTracks = [], musicVideos = []) {
+      const t = translations[state.lang];
+
+      document.getElementById("loadingState").style.display = "none";
+      document.getElementById("searchResults").style.display = "none";
+      document.getElementById("detailView").classList.add("active");
+
+      const icon = entityIcons[entity] || "fa-music";
+      let content = "";
+
+      switch (entity) {
+        case "artist":
+          content = renderArtistDetail(data, audioDBData, topTracks, musicVideos);
+          break;
+        case "release-group":
+          content = renderReleaseGroupDetail(data);
+          break;
+        case "recording":
+          content = renderRecordingDetail(data);
+          break;
+        case "label":
+          content = renderLabelDetail(data);
+          break;
+        default:
+          content = renderGenericDetail(entity, data);
+      }
+
+      document.getElementById("detailContent").innerHTML = content;
+
+      // Добавляем обработчики для вложенных элементов
+      document.querySelectorAll(".list-item[data-id]").forEach(item => {
+        item.addEventListener("click", () => {
+          const id = item.dataset.id;
+          const itemEntity = item.dataset.entity;
+          loadDetail(itemEntity, id);
+        });
+      });
+    }
+
+    /**
+     * Рендер детальной информации об артисте
+     * @param {Object} data - Данные артиста
+     * @returns {string} HTML
+     */
+    function renderArtistDetail(data, audioDBData = null, topTracks = [], musicVideos = []) {
+      const t = translations[state.lang];
+      const icon = entityIcons["artist"];
+
+      // Изображение артиста из TheAudioDB
+      let imageHtml = "";
+      if (audioDBData) {
+        const artistThumb = audioDBData.strArtistThumb || audioDBData.strArtistFanart;
+        if (artistThumb) {
+          imageHtml = `<img src="${artistThumb}" alt="${escapeHtml(data.name)}" class="detail-image" onerror="this.style.display='none'">`;
+        }
+      }
+      if (!imageHtml) {
+        imageHtml = `<div class="detail-icon"><i class="fas ${icon}"></i></div>`;
+      }
+
+      // Баннер артиста
+      let bannerHtml = "";
+      if (audioDBData?.strArtistFanart) {
+        bannerHtml = `<img src="${audioDBData.strArtistFanart}" alt="" class="detail-banner" onerror="this.style.display='none'">`;
+      }
+
+      let metaHtml = "";
+      if (data.type) {
+        metaHtml += `<span><i class="fas fa-tag"></i> ${data.type}</span>`;
+      }
+      if (data.country) {
+        metaHtml += `<span><i class="fas fa-globe"></i> ${data.country}</span>`;
+      }
+      if (data["life-span"]) {
+        const ls = data["life-span"];
+        if (ls.begin) {
+          metaHtml += `<span><i class="fas fa-calendar"></i> ${ls.begin}${ls.end ? " - " + ls.end : ""}</span>`;
+        }
+      }
+      if (data.area) {
+        metaHtml += `<span><i class="fas fa-map-marker-alt"></i> ${data.area.name}</span>`;
+      }
+
+      // Жанр и стиль из TheAudioDB
+      let genreHtml = "";
+      if (audioDBData) {
+        const genres = [];
+        if (audioDBData.strGenre) genres.push(audioDBData.strGenre);
+        if (audioDBData.strStyle) genres.push(audioDBData.strStyle);
+        if (genres.length > 0) {
+          genreHtml = `
+            <div class="genre-tags">
+              ${genres.map(g => `<span class="genre-tag">${escapeHtml(g)}</span>`).join("")}
+            </div>
+          `;
+        }
+      }
+
+      // Социальные ссылки из TheAudioDB
+      let socialHtml = "";
+      if (audioDBData) {
+        const links = [];
+        if (audioDBData.strWebsite) {
+          links.push(`<a href="https://${audioDBData.strWebsite}" target="_blank" rel="noopener" class="social-link">
+            <i class="fas fa-globe"></i> ${t.website}
+          </a>`);
+        }
+        if (audioDBData.strFacebook) {
+          links.push(`<a href="https://facebook.com/${audioDBData.strFacebook}" target="_blank" rel="noopener" class="social-link">
+            <i class="fab fa-facebook"></i> Facebook
+          </a>`);
+        }
+        if (audioDBData.strTwitter) {
+          links.push(`<a href="https://twitter.com/${audioDBData.strTwitter}" target="_blank" rel="noopener" class="social-link">
+            <i class="fab fa-twitter"></i> Twitter
+          </a>`);
+        }
+        if (links.length > 0) {
+          socialHtml = `<div class="social-links">${links.join("")}</div>`;
+        }
+      }
+
+      // Биография
+      let biographyHtml = "";
+      if (audioDBData) {
+        const bio = state.lang === "ru"
+          ? (audioDBData.strBiographyRU || audioDBData.strBiographyEN)
+          : (audioDBData.strBiographyEN || audioDBData.strBiographyRU);
+        if (bio) {
+          biographyHtml = `
+            <div class="biography">
+              <h3 class="biography-title"><i class="fas fa-book-open"></i> ${t.biography}</h3>
+              <div class="biography-text collapsed" id="biographyText">${escapeHtml(bio)}</div>
+              <button class="read-more-btn" id="readMoreBtn" onclick="toggleBiography()">
+                ${t.readMore} <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
+          `;
+        }
+      }
+
+      // Топ треки из TheAudioDB
+      let topTracksHtml = "";
+      if (topTracks && topTracks.length > 0) {
+        topTracksHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-star"></i> ${t.topTracks}</h3>
+            ${topTracks.slice(0, 10).map((track, i) => {
+              const duration = track.intDuration ? formatDurationSeconds(parseInt(track.intDuration) / 1000) : "";
+              return `
+                <div class="top-track-item">
+                  <div class="track-number">${i + 1}</div>
+                  <div class="track-info">
+                    <div class="track-name">${escapeHtml(track.strTrack)}</div>
+                    <div class="track-album">${escapeHtml(track.strAlbum || "")}</div>
+                  </div>
+                  ${duration ? `<div class="track-duration">${duration}</div>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }
+
+      // Музыкальные видео из TheAudioDB
+      let videosHtml = "";
+      if (musicVideos && musicVideos.length > 0) {
+        videosHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fab fa-youtube"></i> ${t.musicVideos}</h3>
+            <div class="videos-grid">
+              ${musicVideos.slice(0, 6).map(video => {
+                const videoId = video.strMusicVid?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
+                const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : "";
+                return `
+                  <div class="video-card">
+                    ${thumbnail ? `<img src="${thumbnail}" alt="" class="video-thumbnail" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22><rect fill=%22%23666%22 width=%22100%25%22 height=%22100%25%22/></svg>'">` : ""}
+                    <div class="video-info">
+                      <div class="video-title">${escapeHtml(video.strTrack)}</div>
+                      ${video.strMusicVid ? `
+                        <a href="${video.strMusicVid}" target="_blank" rel="noopener" class="video-link">
+                          <i class="fab fa-youtube"></i> ${t.watchOnYoutube}
+                        </a>
+                      ` : ""}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      let tagsHtml = "";
+      if (data.tags && data.tags.length > 0) {
+        const sortedTags = data.tags.sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+        tagsHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-tags"></i> ${t.tags}</h3>
+            <div class="result-tags">
+              ${sortedTags.map(tag => `<span class="result-tag">${escapeHtml(tag.name)}</span>`).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      let aliasesHtml = "";
+      if (data.aliases && data.aliases.length > 0) {
+        const uniqueAliases = [...new Set(data.aliases.map(a => a.name))].slice(0, 5);
+        aliasesHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-signature"></i> ${t.aliases}</h3>
+            <p>${uniqueAliases.map(a => escapeHtml(a)).join(", ")}</p>
+          </div>
+        `;
+      }
+
+      let discographyHtml = "";
+      if (data["release-groups"] && data["release-groups"].length > 0) {
+        const sortedReleases = data["release-groups"]
+          .sort((a, b) => {
+            const dateA = a["first-release-date"] || "9999";
+            const dateB = b["first-release-date"] || "9999";
+            return dateB.localeCompare(dateA);
+          });
+
+        discographyHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-compact-disc"></i> ${t.discography} (${sortedReleases.length})</h3>
+            ${sortedReleases.slice(0, 20).map((rg, i) => {
+              const type = releaseGroupTypes[rg["primary-type"]]?.[state.lang] || rg["primary-type"] || "";
+              const year = rg["first-release-date"] ? rg["first-release-date"].substring(0, 4) : "";
+              return `
+                <div class="list-item" data-id="${rg.id}" data-entity="release-group">
+                  <div class="list-item-number">${i + 1}</div>
+                  <div class="list-item-info">
+                    <div class="list-item-name">${escapeHtml(rg.title)}</div>
+                    <div class="list-item-meta">${type}${year ? " • " + year : ""}</div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }
+
+      return `
+        ${bannerHtml}
+        <div class="detail-header">
+          ${imageHtml}
+          <div class="detail-info">
+            <h2 class="detail-name">${escapeHtml(data.name)}</h2>
+            <div class="detail-meta">${metaHtml}</div>
+            ${genreHtml}
+            <a href="https://musicbrainz.org/artist/${data.id}" target="_blank" rel="noopener" class="external-link" style="margin-top: 10px;">
+              <i class="fas fa-external-link-alt"></i> ${t.viewOnMusicBrainz}
+            </a>
+            ${socialHtml}
+          </div>
+        </div>
+        ${biographyHtml}
+        ${topTracksHtml}
+        ${videosHtml}
+        ${tagsHtml}
+        ${aliasesHtml}
+        ${discographyHtml}
+      `;
+    }
+
+    /**
+     * Переключение отображения биографии
+     */
+    function toggleBiography() {
+      const text = document.getElementById("biographyText");
+      const btn = document.getElementById("readMoreBtn");
+      const t = translations[state.lang];
+
+      if (text.classList.contains("collapsed")) {
+        text.classList.remove("collapsed");
+        btn.innerHTML = `${t.readLess} <i class="fas fa-chevron-up"></i>`;
+      } else {
+        text.classList.add("collapsed");
+        btn.innerHTML = `${t.readMore} <i class="fas fa-chevron-down"></i>`;
+      }
+    }
+
+    /**
+     * Форматирование длительности в секундах
+     * @param {number} seconds - Длительность в секундах
+     * @returns {string} Форматированная строка
+     */
+    function formatDurationSeconds(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, "0")}`;
+    }
+
+    /**
+     * Рендер детальной информации об альбоме
+     * @param {Object} data - Данные альбома
+     * @returns {string} HTML
+     */
+    function renderReleaseGroupDetail(data) {
+      const t = translations[state.lang];
+      const icon = entityIcons["release-group"];
+
+      let artistsHtml = "";
+      if (data["artist-credit"]) {
+        const artists = data["artist-credit"].map(ac => {
+          const name = ac.name || ac.artist?.name;
+          const id = ac.artist?.id;
+          return id ?
+            `<a href="#" class="artist-link" data-id="${id}">${escapeHtml(name)}</a>` :
+            escapeHtml(name);
+        }).join(", ");
+        artistsHtml = `<span><i class="fas fa-user"></i> ${artists}</span>`;
+      }
+
+      let metaHtml = "";
+      const type = releaseGroupTypes[data["primary-type"]]?.[state.lang] || data["primary-type"] || "";
+      if (type) {
+        metaHtml += `<span><i class="fas fa-tag"></i> ${type}</span>`;
+      }
+      if (data["first-release-date"]) {
+        metaHtml += `<span><i class="fas fa-calendar"></i> ${data["first-release-date"]}</span>`;
+      }
+
+      let tagsHtml = "";
+      if (data.tags && data.tags.length > 0) {
+        const sortedTags = data.tags.sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+        tagsHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-tags"></i> ${t.tags}</h3>
+            <div class="result-tags">
+              ${sortedTags.map(tag => `<span class="result-tag">${escapeHtml(tag.name)}</span>`).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      let releasesHtml = "";
+      if (data.releases && data.releases.length > 0) {
+        releasesHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-list"></i> ${t.releases} (${data.releases.length})</h3>
+            ${data.releases.slice(0, 15).map((rel, i) => {
+              const country = rel.country || "";
+              const date = rel.date || "";
+              const format = rel.media?.[0]?.format || "";
+              return `
+                <div class="list-item">
+                  <div class="list-item-number">${i + 1}</div>
+                  <div class="list-item-info">
+                    <div class="list-item-name">${escapeHtml(rel.title)}</div>
+                    <div class="list-item-meta">${[country, date, format].filter(x => x).join(" • ")}</div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }
+
+      const html = `
+        <div class="detail-header">
+          <div class="detail-icon">
+            <i class="fas ${icon}"></i>
+          </div>
+          <div class="detail-info">
+            <h2 class="detail-name">${escapeHtml(data.title)}</h2>
+            <div class="detail-meta">
+              ${artistsHtml}
+              ${metaHtml}
+            </div>
+            <a href="https://musicbrainz.org/release-group/${data.id}" target="_blank" rel="noopener" class="external-link">
+              <i class="fas fa-external-link-alt"></i> ${t.viewOnMusicBrainz}
+            </a>
+          </div>
+        </div>
+        ${tagsHtml}
+        ${releasesHtml}
+      `;
+
+      return html;
+    }
+
+    /**
+     * Рендер детальной информации о треке
+     * @param {Object} data - Данные трека
+     * @returns {string} HTML
+     */
+    function renderRecordingDetail(data) {
+      const t = translations[state.lang];
+      const icon = entityIcons["recording"];
+
+      let artistsHtml = "";
+      if (data["artist-credit"]) {
+        const artists = data["artist-credit"].map(ac => {
+          const name = ac.name || ac.artist?.name;
+          const id = ac.artist?.id;
+          return id ?
+            `<a href="#" class="artist-link" data-id="${id}">${escapeHtml(name)}</a>` :
+            escapeHtml(name);
+        }).join(", ");
+        artistsHtml = `<span><i class="fas fa-user"></i> ${artists}</span>`;
+      }
+
+      let metaHtml = "";
+      if (data.length) {
+        metaHtml += `<span><i class="fas fa-clock"></i> ${formatDuration(data.length)}</span>`;
+      }
+      if (data.isrcs && data.isrcs.length > 0) {
+        metaHtml += `<span><i class="fas fa-barcode"></i> ISRC: ${data.isrcs[0]}</span>`;
+      }
+
+      let tagsHtml = "";
+      if (data.tags && data.tags.length > 0) {
+        const sortedTags = data.tags.sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+        tagsHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-tags"></i> ${t.tags}</h3>
+            <div class="result-tags">
+              ${sortedTags.map(tag => `<span class="result-tag">${escapeHtml(tag.name)}</span>`).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      let releasesHtml = "";
+      if (data.releases && data.releases.length > 0) {
+        releasesHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-compact-disc"></i> ${t.releases} (${data.releases.length})</h3>
+            ${data.releases.slice(0, 10).map((rel, i) => {
+              const date = rel.date || "";
+              const country = rel.country || "";
+              return `
+                <div class="list-item">
+                  <div class="list-item-number">${i + 1}</div>
+                  <div class="list-item-info">
+                    <div class="list-item-name">${escapeHtml(rel.title)}</div>
+                    <div class="list-item-meta">${[date, country].filter(x => x).join(" • ")}</div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }
+
+      return `
+        <div class="detail-header">
+          <div class="detail-icon">
+            <i class="fas ${icon}"></i>
+          </div>
+          <div class="detail-info">
+            <h2 class="detail-name">${escapeHtml(data.title)}</h2>
+            <div class="detail-meta">
+              ${artistsHtml}
+              ${metaHtml}
+            </div>
+            <a href="https://musicbrainz.org/recording/${data.id}" target="_blank" rel="noopener" class="external-link">
+              <i class="fas fa-external-link-alt"></i> ${t.viewOnMusicBrainz}
+            </a>
+          </div>
+        </div>
+        ${tagsHtml}
+        ${releasesHtml}
+      `;
+    }
+
+    /**
+     * Рендер детальной информации о лейбле
+     * @param {Object} data - Данные лейбла
+     * @returns {string} HTML
+     */
+    function renderLabelDetail(data) {
+      const t = translations[state.lang];
+      const icon = entityIcons["label"];
+
+      let metaHtml = "";
+      if (data.type) {
+        metaHtml += `<span><i class="fas fa-tag"></i> ${data.type}</span>`;
+      }
+      if (data.country) {
+        metaHtml += `<span><i class="fas fa-globe"></i> ${data.country}</span>`;
+      }
+      if (data["life-span"]) {
+        const ls = data["life-span"];
+        if (ls.begin) {
+          metaHtml += `<span><i class="fas fa-calendar"></i> ${ls.begin}${ls.end ? " - " + ls.end : ""}</span>`;
+        }
+      }
+      if (data["label-code"]) {
+        metaHtml += `<span><i class="fas fa-barcode"></i> LC-${data["label-code"]}</span>`;
+      }
+
+      let tagsHtml = "";
+      if (data.tags && data.tags.length > 0) {
+        const sortedTags = data.tags.sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+        tagsHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-tags"></i> ${t.tags}</h3>
+            <div class="result-tags">
+              ${sortedTags.map(tag => `<span class="result-tag">${escapeHtml(tag.name)}</span>`).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      let aliasesHtml = "";
+      if (data.aliases && data.aliases.length > 0) {
+        const uniqueAliases = [...new Set(data.aliases.map(a => a.name))].slice(0, 5);
+        aliasesHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-signature"></i> ${t.aliases}</h3>
+            <p>${uniqueAliases.map(a => escapeHtml(a)).join(", ")}</p>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="detail-header">
+          <div class="detail-icon">
+            <i class="fas ${icon}"></i>
+          </div>
+          <div class="detail-info">
+            <h2 class="detail-name">${escapeHtml(data.name)}</h2>
+            <div class="detail-meta">${metaHtml}</div>
+            <a href="https://musicbrainz.org/label/${data.id}" target="_blank" rel="noopener" class="external-link">
+              <i class="fas fa-external-link-alt"></i> ${t.viewOnMusicBrainz}
+            </a>
+          </div>
+        </div>
+        ${tagsHtml}
+        ${aliasesHtml}
+      `;
+    }
+
+    /**
+     * Рендер общей детальной информации
+     * @param {string} entity - Тип сущности
+     * @param {Object} data - Данные
+     * @returns {string} HTML
+     */
+    function renderGenericDetail(entity, data) {
+      const t = translations[state.lang];
+      const icon = entityIcons[entity] || "fa-music";
+      const name = data.name || data.title || "Unknown";
+
+      let metaHtml = "";
+      if (data.type) {
+        metaHtml += `<span><i class="fas fa-tag"></i> ${data.type}</span>`;
+      }
+      if (data.description) {
+        metaHtml += `<p style="margin-top: 15px;">${escapeHtml(data.description)}</p>`;
+      }
+
+      let tagsHtml = "";
+      if (data.tags && data.tags.length > 0) {
+        const sortedTags = data.tags.sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+        tagsHtml = `
+          <div class="list-section">
+            <h3 class="list-title"><i class="fas fa-tags"></i> ${t.tags}</h3>
+            <div class="result-tags">
+              ${sortedTags.map(tag => `<span class="result-tag">${escapeHtml(tag.name)}</span>`).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="detail-header">
+          <div class="detail-icon">
+            <i class="fas ${icon}"></i>
+          </div>
+          <div class="detail-info">
+            <h2 class="detail-name">${escapeHtml(name)}</h2>
+            <div class="detail-meta">${metaHtml}</div>
+            <a href="https://musicbrainz.org/${entity}/${data.id}" target="_blank" rel="noopener" class="external-link">
+              <i class="fas fa-external-link-alt"></i> ${t.viewOnMusicBrainz}
+            </a>
+          </div>
+        </div>
+        ${tagsHtml}
+      `;
+    }
+
+    /**
+     * Скрыть детальный просмотр
+     */
+    function hideDetail() {
+      document.getElementById("detailView").classList.remove("active");
+      document.getElementById("searchResults").style.display = "block";
+    }
+
+    /**
+     * Форматирование длительности
+     * @param {number} ms - Длительность в миллисекундах
+     * @returns {string} Форматированная строка
+     */
+    function formatDuration(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    }
+
+    /**
+     * Экранирование HTML
+     * @param {string} str - Строка
+     * @returns {string} Экранированная строка
+     */
+    function escapeHtml(str) {
+      if (!str) return "";
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    /**
+     * Инициализация приложения
+     */
+    function init() {
+      loadSettings();
+      applyTheme();
+      applyLanguage();
+
+      // Обработчик настроек
+      document.getElementById("settingsButton").addEventListener("click", () => {
+        document.getElementById("settingsModal").classList.toggle("show");
+      });
+
+      document.addEventListener("click", (e) => {
+        const modal = document.getElementById("settingsModal");
+        const button = document.getElementById("settingsButton");
+        if (!modal.contains(e.target) && !button.contains(e.target)) {
+          modal.classList.remove("show");
+        }
+      });
+
+      // Переключение темы
+      document.getElementById("themeSwitch").addEventListener("change", (e) => {
+        state.theme = e.target.checked ? "dark" : "light";
+        applyTheme();
+        saveSettings();
+      });
+
+      // Переключение языка
+      document.getElementById("langSwitch").addEventListener("change", (e) => {
+        state.lang = e.target.checked ? "en" : "ru";
+        applyLanguage();
+        saveSettings();
+        // Обновляем результаты если есть
+        if (state.results.length > 0) {
+          displayResults();
+        }
+      });
+
+      // Поиск
+      const searchInput = document.getElementById("searchInput");
+      const searchBtn = document.getElementById("searchBtn");
+      const entitySelect = document.getElementById("entitySelect");
+
+      const performSearch = () => {
+        const query = searchInput.value.trim();
+        if (query) {
+          search(entitySelect.value, query);
+        }
+      };
+
+      searchBtn.addEventListener("click", performSearch);
+      searchInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          performSearch();
+        }
+      });
+
+      // Синхронизация табов с select
+      entitySelect.addEventListener("change", () => {
+        const entity = entitySelect.value;
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.entity === entity);
+        });
+      });
+
+      // Табы быстрого выбора
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const entity = btn.dataset.entity;
+          entitySelect.value = entity;
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+
+          // Если есть запрос, выполняем поиск
+          const query = searchInput.value.trim();
+          if (query) {
+            search(entity, query);
+          }
+        });
+      });
+
+      // Кнопка назад
+      document.getElementById("backBtn").addEventListener("click", hideDetail);
+
+      // Кнопка повтора
+      document.getElementById("retryBtn").addEventListener("click", () => {
+        if (state.query) {
+          search(state.currentEntity, state.query, (state.currentPage - 1) * state.pageSize);
+        }
+      });
+
+      // Обработка кликов на ссылки артистов в детальном просмотре
+      document.getElementById("detailContent").addEventListener("click", (e) => {
+        if (e.target.classList.contains("artist-link")) {
+          e.preventDefault();
+          const id = e.target.dataset.id;
+          loadDetail("artist", id);
+        }
+      });
+    }
+
+    // Запуск
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
