@@ -2583,14 +2583,11 @@
             // Делегирование клика на заголовки карточек (работает после translateUI)
             document.addEventListener('click', function(e) {
                 const h3 = e.target.closest('.card-header h3');
-                console.log('Header click handler - h3 found:', !!h3);
                 if (h3) {
                     const card = h3.closest('.example-card');
                     // Ищем view-btn в любом месте карточки (может быть в footer или header)
                     const link = card ? card.querySelector('.view-btn') : null;
-                    console.log('Found link:', link ? link.href : 'NONE');
                     if (link && link.href) {
-                        console.log('Navigating to:', link.href);
                         window.location.href = link.href;
                     }
                 }
