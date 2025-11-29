@@ -354,6 +354,13 @@
         transform: none;
       }
 
+      .search-btn:focus,
+      .tab-btn:focus,
+      .theme-toggle:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+      }
+
       /* Gallery */
       .gallery {
         display: grid;
@@ -373,6 +380,11 @@
       .gallery-item:hover {
         transform: translateY(-5px);
         box-shadow: var(--shadow-hover);
+      }
+
+      .gallery-item:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
       }
 
       .gallery-item img {
@@ -761,7 +773,7 @@
                 <option value="MARDI">Mars Descent Imager</option>
                 <option value="NAVCAM">Navigation Camera</option>
                 <option value="PANCAM">Panoramic Camera</option>
-                <option value="MINITES">Mini-TES</option>
+                <option value="MINITES">Mini-TES (Miniature Thermal Emission Spectrometer)</option>
               </select>
             </div>
             <div class="control-group">
@@ -826,9 +838,9 @@
     </div>
 
     <!-- Modal -->
-    <div class="modal" id="imageModal">
+    <div class="modal" id="imageModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-content">
-        <button class="modal-close" id="modalClose">&times;</button>
+        <button class="modal-close" id="modalClose" aria-label="Закрыть модальное окно">&times;</button>
         <img id="modalImage" src="" alt="" />
         <div class="modal-info">
           <h3 id="modalTitle"></h3>
@@ -843,9 +855,22 @@
        * Использует NASA Open APIs для отображения космических изображений
        */
 
-      const NASA_API_KEY = "DEMO_KEY";
+      // API Configuration - для продакшна получите свой ключ на https://api.nasa.gov/
+      const NASA_API_KEY = localStorage.getItem("nasa-api-key") || "DEMO_KEY";
       const NASA_API_BASE = "https://api.nasa.gov";
       const NASA_IMAGES_API = "https://images-api.nasa.gov";
+      
+      // Показать предупреждение о DEMO_KEY при первом использовании
+      if (NASA_API_KEY === "DEMO_KEY" && !localStorage.getItem("demo-key-warning-shown")) {
+        console.warn("⚠️ Используется DEMO_KEY с лимитом 30 запросов/час. Получите бесплатный API ключ на https://api.nasa.gov/ для полного доступа.");
+        localStorage.setItem("demo-key-warning-shown", "true");
+      }
+
+      // Constants
+      const PHOTOS_PER_PAGE = 12;
+      const SEARCH_RESULTS_PER_PAGE = 100;
+      const API_TIMEOUT = 10000;
+      const MAX_RETRIES = 2;
 
       // State
       let currentRoverPage = 1;
@@ -942,31 +967,16 @@
        */
       async function loadAPOD(date) {
         const container = document.getElementById("apodContent");
-        container.innerHTML = `
-          <div class="loading">
-            <div class="spinner"></div>
-            <p>Загрузка астрономического фото дня...</p>
-          </div>
-        `;
+        showLoading(container, "Загрузка астрономического фото дня...");
 
         try {
-          const response = await fetch(
+          const response = await fetchWithTimeout(
             `${NASA_API_BASE}/planetary/apod?api_key=${NASA_API_KEY}&date=${date}`
           );
-
-          if (!response.ok) {
-            throw new Error("Не удалось загрузить данные");
-          }
-
           const data = await response.json();
           displayAPOD(data);
         } catch (error) {
-          container.innerHTML = `
-            <div class="error-message">
-              <i class="fas fa-exclamation-triangle"></i>
-              <p>Ошибка загрузки: ${error.message}</p>
-            </div>
-          `;
+          showError(container, error.message);
         }
       }
 
@@ -985,10 +995,10 @@
             </div>
           `;
         } else {
+          const imageUrl = data.hdurl || data.url;
           mediaHtml = `
             <div class="apod-media-container">
-              <img class="apod-media" src="${data.url}" alt="${data.title}"
-                onclick="openModal('${data.hdurl || data.url}', '${escapeHtml(data.title)}', '')" />
+              <img class="apod-media" src="${data.url}" alt="${escapeHtml(data.title)}" data-modal-image="${escapeHtml(imageUrl)}" data-modal-title="${escapeHtml(data.title)}" style="cursor: pointer;" />
             </div>
           `;
         }
@@ -1003,19 +1013,31 @@
         container.innerHTML = `
           ${mediaHtml}
           <div class="apod-info">
-            <h2 class="apod-title">${data.title}${hdBadge}</h2>
+            <h2 class="apod-title">${escapeHtml(data.title)}${hdBadge}</h2>
             <p class="apod-date">
               <i class="fas fa-calendar"></i> ${formatDate(data.date)}
             </p>
-            <p class="apod-explanation">${data.explanation}</p>
+            <p class="apod-explanation">${escapeHtml(data.explanation)}</p>
             ${data.copyright ? `
               <p class="apod-copyright">
-                <i class="fas fa-copyright"></i> ${data.copyright}
+                <i class="fas fa-copyright"></i> ${escapeHtml(data.copyright)}
               </p>
             ` : ''}
             ${downloadBtn}
           </div>
         `;
+
+        // Add click event to APOD image if it exists
+        const apodImage = container.querySelector('.apod-media[data-modal-image]');
+        if (apodImage) {
+          apodImage.addEventListener('click', () => {
+            openModal(
+              apodImage.dataset.modalImage,
+              apodImage.dataset.modalTitle,
+              ''
+            );
+          });
+        }
       }
 
       /**
@@ -1031,8 +1053,11 @@
           }
         });
         document.getElementById("nextPage").addEventListener("click", () => {
-          currentRoverPage++;
-          displayRoverPhotos();
+          const totalPages = Math.ceil(roverPhotos.length / PHOTOS_PER_PAGE);
+          if (currentRoverPage < totalPages) {
+            currentRoverPage++;
+            displayRoverPhotos();
+          }
         });
       }
 
@@ -1046,12 +1071,7 @@
         const earthDate = document.getElementById("earthDate").value;
 
         const gallery = document.getElementById("roverGallery");
-        gallery.innerHTML = `
-          <div class="loading" style="grid-column: 1 / -1;">
-            <div class="spinner"></div>
-            <p>Загрузка фотографий с марсохода ${rover.charAt(0).toUpperCase() + rover.slice(1)}...</p>
-          </div>
-        `;
+        showLoading(gallery, `Загрузка фотографий с марсохода ${rover.charAt(0).toUpperCase() + rover.slice(1)}...`);
 
         try {
           let url = `${NASA_API_BASE}/mars-photos/api/v1/rovers/${rover}/photos?api_key=${NASA_API_KEY}`;
@@ -1066,12 +1086,7 @@
             url += `&camera=${camera}`;
           }
 
-          const response = await fetch(url);
-
-          if (!response.ok) {
-            throw new Error("Не удалось загрузить данные");
-          }
-
+          const response = await fetchWithTimeout(url);
           const data = await response.json();
           roverPhotos = data.photos;
           currentRoverPage = 1;
@@ -1079,8 +1094,8 @@
           if (roverPhotos.length > 0) {
             const roverInfo = roverPhotos[0].rover;
             document.getElementById("roverInfo").innerHTML = `
-              <i class="fas fa-robot"></i> ${roverInfo.name} |
-              Статус: ${roverInfo.status} |
+              <i class="fas fa-robot"></i> ${escapeHtml(roverInfo.name)} |
+              Статус: ${escapeHtml(roverInfo.status)} |
               Посадка: ${formatDate(roverInfo.landing_date)}
             `;
             document.getElementById("photoCount").textContent = `Найдено фотографий: ${roverPhotos.length}`;
@@ -1089,12 +1104,7 @@
 
           displayRoverPhotos();
         } catch (error) {
-          gallery.innerHTML = `
-            <div class="error-message" style="grid-column: 1 / -1;">
-              <i class="fas fa-exclamation-triangle"></i>
-              <p>Ошибка загрузки: ${error.message}</p>
-            </div>
-          `;
+          showError(gallery, error.message);
         }
       }
 
@@ -1105,22 +1115,12 @@
         const rover = document.getElementById("roverSelect").value;
         const gallery = document.getElementById("roverGallery");
 
-        gallery.innerHTML = `
-          <div class="loading" style="grid-column: 1 / -1;">
-            <div class="spinner"></div>
-            <p>Загрузка последних фотографий с марсохода ${rover.charAt(0).toUpperCase() + rover.slice(1)}...</p>
-          </div>
-        `;
+        showLoading(gallery, `Загрузка последних фотографий с марсохода ${rover.charAt(0).toUpperCase() + rover.slice(1)}...`);
 
         try {
-          const response = await fetch(
+          const response = await fetchWithTimeout(
             `${NASA_API_BASE}/mars-photos/api/v1/rovers/${rover}/latest_photos?api_key=${NASA_API_KEY}`
           );
-
-          if (!response.ok) {
-            throw new Error("Не удалось загрузить данные");
-          }
-
           const data = await response.json();
           roverPhotos = data.latest_photos;
           currentRoverPage = 1;
@@ -1128,8 +1128,8 @@
           if (roverPhotos.length > 0) {
             const roverInfo = roverPhotos[0].rover;
             document.getElementById("roverInfo").innerHTML = `
-              <i class="fas fa-robot"></i> ${roverInfo.name} |
-              Статус: ${roverInfo.status} |
+              <i class="fas fa-robot"></i> ${escapeHtml(roverInfo.name)} |
+              Статус: ${escapeHtml(roverInfo.status)} |
               Последнее фото: ${formatDate(roverPhotos[0].earth_date)}
             `;
             document.getElementById("photoCount").textContent = `Найдено фотографий: ${roverPhotos.length}`;
@@ -1138,12 +1138,7 @@
 
           displayRoverPhotos();
         } catch (error) {
-          gallery.innerHTML = `
-            <div class="error-message" style="grid-column: 1 / -1;">
-              <i class="fas fa-exclamation-triangle"></i>
-              <p>Ошибка загрузки: ${error.message}</p>
-            </div>
-          `;
+          showError(gallery, error.message);
         }
       }
 
@@ -1169,21 +1164,57 @@
           return;
         }
 
-        const photosPerPage = 12;
+        const photosPerPage = PHOTOS_PER_PAGE;
         const totalPages = Math.ceil(roverPhotos.length / photosPerPage);
         const startIndex = (currentRoverPage - 1) * photosPerPage;
         const endIndex = startIndex + photosPerPage;
         const pagePhotos = roverPhotos.slice(startIndex, endIndex);
 
-        gallery.innerHTML = pagePhotos.map(photo => `
-          <div class="gallery-item" onclick="openModal('${photo.img_src}', 'Sol ${photo.sol} - ${photo.camera.full_name}', 'Земная дата: ${formatDate(photo.earth_date)}')">
-            <img src="${photo.img_src}" alt="Mars photo" loading="lazy" />
-            <div class="gallery-item-info">
-              <h4>${photo.camera.full_name}</h4>
-              <p>Sol ${photo.sol} | ${formatDate(photo.earth_date)}</p>
-            </div>
-          </div>
-        `).join("");
+        // Clear gallery
+        gallery.innerHTML = "";
+        pagePhotos.forEach(photo => {
+          const div = document.createElement('div');
+          div.className = 'gallery-item';
+          div.tabIndex = 0;
+          div.setAttribute('role', 'button');
+          div.setAttribute('aria-label', `Открыть фотографию ${photo.camera.full_name} от Sol ${photo.sol}`);
+          
+          const openPhoto = () => {
+            openModal(
+              photo.img_src,
+              `Sol ${photo.sol} - ${photo.camera.full_name}`,
+              `Земная дата: ${formatDate(photo.earth_date)}`
+            );
+          };
+          
+          div.addEventListener('click', openPhoto);
+          div.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openPhoto();
+            }
+          });
+
+          const img = document.createElement('img');
+          img.src = photo.img_src;
+          img.alt = "Фотография Марса от " + photo.camera.full_name;
+          img.loading = "lazy";
+          div.appendChild(img);
+
+          const infoDiv = document.createElement('div');
+          infoDiv.className = 'gallery-item-info';
+
+          const h4 = document.createElement('h4');
+          h4.textContent = photo.camera.full_name;
+          infoDiv.appendChild(h4);
+
+          const p = document.createElement('p');
+          p.textContent = `Sol ${photo.sol} | ${formatDate(photo.earth_date)}`;
+          infoDiv.appendChild(p);
+
+          div.appendChild(infoDiv);
+          gallery.appendChild(div);
+        });
 
         pagination.style.display = "flex";
         pageInfo.textContent = `Страница ${currentRoverPage} из ${totalPages}`;
@@ -1222,27 +1253,21 @@
        * Поиск по NASA Image Library
        */
       async function searchNASA(query, page = 1) {
-        if (!query.trim()) return;
+        const trimmedQuery = query.trim();
+        if (!trimmedQuery || trimmedQuery.length > 500) {
+          showError(document.getElementById("searchGallery"), "Введите корректный поисковый запрос (не более 500 символов)");
+          return;
+        }
 
         const gallery = document.getElementById("searchGallery");
         const mediaType = document.getElementById("mediaType").value;
 
-        gallery.innerHTML = `
-          <div class="loading" style="grid-column: 1 / -1;">
-            <div class="spinner"></div>
-            <p>Поиск изображений NASA...</p>
-          </div>
-        `;
+        showLoading(gallery, "Поиск изображений NASA...");
 
         try {
-          const response = await fetch(
-            `${NASA_IMAGES_API}/search?q=${encodeURIComponent(query)}&media_type=${mediaType}&page=${page}`
+          const response = await fetchWithTimeout(
+            `${NASA_IMAGES_API}/search?q=${encodeURIComponent(trimmedQuery)}&media_type=${mediaType}&page=${page}`
           );
-
-          if (!response.ok) {
-            throw new Error("Не удалось выполнить поиск");
-          }
-
           const data = await response.json();
           searchResults = data.collection.items;
           totalSearchResults = data.collection.metadata.total_hits;
@@ -1254,12 +1279,7 @@
 
           displaySearchResults();
         } catch (error) {
-          gallery.innerHTML = `
-            <div class="error-message" style="grid-column: 1 / -1;">
-              <i class="fas fa-exclamation-triangle"></i>
-              <p>Ошибка поиска: ${error.message}</p>
-            </div>
-          `;
+          showError(gallery, error.message);
         }
       }
 
@@ -1285,24 +1305,65 @@
           return;
         }
 
-        gallery.innerHTML = searchResults.map(item => {
+        // Clear gallery
+        gallery.innerHTML = "";
+        const fragment = document.createDocumentFragment();
+        searchResults.forEach(item => {
           const data = item.data[0];
           const links = item.links || [];
           const thumbnail = links.find(l => l.rel === "preview")?.href || "";
 
-          return `
-            <div class="gallery-item" onclick="openModal('${thumbnail}', '${escapeHtml(data.title)}', '${escapeHtml(data.description?.substring(0, 200) || "")}...')">
-              <img src="${thumbnail}" alt="${escapeHtml(data.title)}" loading="lazy"
-                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text fill=%22%23666%22 font-size=%2214%22 x=%2250%22 y=%2255%22 text-anchor=%22middle%22>No Image</text></svg>'" />
-              <div class="gallery-item-info">
-                <h4>${data.title?.substring(0, 50)}${data.title?.length > 50 ? "..." : ""}</h4>
-                <p>${data.date_created ? formatDate(data.date_created.split("T")[0]) : "Дата неизвестна"}</p>
-              </div>
-            </div>
-          `;
-        }).join("");
+          const itemDiv = document.createElement("div");
+          itemDiv.className = "gallery-item";
+          itemDiv.tabIndex = 0;
+          itemDiv.setAttribute('role', 'button');
+          itemDiv.setAttribute('aria-label', `Открыть изображение: ${data.title || "Изображение NASA"}`);
+          
+          const openImage = () => {
+            const description = data.description || "";
+            const truncatedDesc = description.length > 200 ? description.substring(0, 200) + "..." : description;
+            openModal(
+              thumbnail,
+              data.title || "",
+              truncatedDesc
+            );
+          };
+          
+          itemDiv.addEventListener('click', openImage);
+          itemDiv.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openImage();
+            }
+          });
 
-        const totalPages = Math.ceil(totalSearchResults / 100);
+          const img = document.createElement("img");
+          img.src = thumbnail;
+          img.alt = data.title || "Изображение NASA";
+          img.loading = "lazy";
+          img.addEventListener("error", function() {
+            this.src = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23333' width='100' height='100'/><text fill='%23666' font-size='14' x='50' y='55' text-anchor='middle'>No Image</text></svg>";
+          });
+          itemDiv.appendChild(img);
+
+          const infoDiv = document.createElement("div");
+          infoDiv.className = "gallery-item-info";
+
+          const h4 = document.createElement("h4");
+          const title = data.title || "";
+          h4.textContent = title.length > 50 ? title.substring(0, 50) + "..." : title;
+          infoDiv.appendChild(h4);
+
+          const p = document.createElement("p");
+          p.textContent = data.date_created ? formatDate(data.date_created.split("T")[0]) : "Дата неизвестна";
+          infoDiv.appendChild(p);
+
+          itemDiv.appendChild(infoDiv);
+          fragment.appendChild(itemDiv);
+        });
+        gallery.appendChild(fragment);
+
+        const totalPages = Math.ceil(totalSearchResults / SEARCH_RESULTS_PER_PAGE);
         pagination.style.display = "flex";
         pageInfo.textContent = `Страница ${currentSearchPage} из ${totalPages}`;
         prevBtn.disabled = currentSearchPage === 1;
@@ -1369,7 +1430,71 @@
         if (!text) return "";
         const div = document.createElement("div");
         div.textContent = text;
-        return div.innerHTML.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        return div.innerHTML;
+      }
+
+      /**
+       * Отображение загрузки
+       */
+      function showLoading(container, message) {
+        container.innerHTML = `
+          <div class="loading" style="grid-column: 1 / -1;">
+            <div class="spinner"></div>
+            <p>${escapeHtml(message)}</p>
+          </div>
+        `;
+      }
+
+      /**
+       * Отображение ошибки
+       */
+      function showError(container, message) {
+        container.innerHTML = `
+          <div class="error-message" style="grid-column: 1 / -1;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Ошибка: ${escapeHtml(message)}</p>
+          </div>
+        `;
+      }
+
+      /**
+       * Улучшенная обработка ошибок с таймаутом
+       */
+      async function fetchWithTimeout(url, signal) {
+        let lastError;
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+          
+          try {
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              if (response.status === 429) {
+                throw new Error("Превышен лимит запросов к API. Пожалуйста, попробуйте позже");
+              } else if (response.status === 404) {
+                throw new Error("Данные не найдены для выбранных параметров");
+              }
+              throw new Error(`Ошибка ${response.status}: ${response.statusText}`);
+            }
+            return response;
+          } catch (error) {
+            clearTimeout(timeoutId);
+            lastError = error;
+            
+            if (error.name === 'AbortError') {
+              if (attempt < MAX_RETRIES) continue;
+              lastError = new Error("Превышено время ожидания ответа от сервера");
+            } else if (error instanceof TypeError) {
+              if (attempt < MAX_RETRIES) continue;
+              lastError = new Error("Ошибка сети при загрузке данных");
+            } else {
+              break;
+            }
+          }
+        }
+        throw lastError;
       }
 
       // Запуск приложения
