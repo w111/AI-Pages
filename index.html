@@ -317,43 +317,36 @@
         }
 
         .container.list-view .card-footer {
-            min-width: 130px;
+            min-width: 140px;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            background-color: transparent;
+            border-top: none;
+            border-left: 1px solid var(--border-color);
         }
 
         .container.list-view .card-footer .view-btn {
-            padding: 0.4rem 1rem;
+            display: inline-block;
+            padding: 0.5rem 1rem;
             font-size: 0.9rem;
-            flex-direction: row;
-            flex-wrap: wrap;
-            padding: 1rem;
-            gap: 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 4px;
+            text-decoration: none;
+            white-space: nowrap;
         }
 
         .container.list-view .card-body p {
-            flex: 1 1 300px;
-            margin: 0;
-        }
-
-        .container.list-view .features-list {
-            flex: 1 1 250px;
-            margin: 0;
+            margin: 0 0 0.5rem 0;
         }
 
         .container.list-view .tech-list {
-            flex: 0 0 100%;
-            margin-top: 0;
-            padding-top: 0.5rem;
-        }
-
-        .container.list-view .card-footer {
-            min-width: 120px;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-top: 0.5rem;
         }
         
         .card-body {
@@ -1403,31 +1396,6 @@
                         <a href="radio-globe.html" class="view-btn">Launch Globe</a>
                     </div>
                 </div>
-                <div class="example-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-water"></i> Симуляция жидкости</h3>
-                    </div>
-                    <div class="card-body">
-                        <p class="problem-statement">Хотите увидеть реалистичную физику жидкости?</p>
-                        <p>Интерактивная 3D симуляция жидкости с падающей каплей. Наблюдайте за реалистичным взаимодействием капли с поверхностью жидкости и управляйте параметрами симуляции.</p>
-                        <ul class="features-list">
-                            <li>Реалистичная физика жидкости</li>
-                            <li>Анимация падающей капли</li>
-                            <li>Интерактивное управление камерой</li>
-                            <li>GLSL шейдеры для эффектов</li>
-                            <li>Адаптивный дизайн</li>
-                        </ul>
-                        <div class="tech-list">
-                            <span class="tech-tag">Three.js</span>
-                            <span class="tech-tag">GLSL</span>
-                            <span class="tech-tag">JavaScript</span>
-                            <span class="tech-tag">WebGL</span>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <a href="liquid_simulation.html" class="view-btn">Запустить симуляцию</a>
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -1579,7 +1547,7 @@
         <footer>
             
             <div class="footer-bottom">
-                <p>© 2025 AI Pages <i class="far fa-copyright"></i> Все примеры разработаны для демонстрации различных технологий и решений.</p>
+                <p>© 2025 AI Pages <br/>Все примеры разработаны для демонстрации различных технологий и решений.</p>
             </div>
         </footer>
     </div>
@@ -1648,7 +1616,7 @@
                 settings: {
                     title: "Настройки",
                     darkTheme: "Темная тема",
-                    language: "English", // Label when Russian is selected
+                    language: "Русский",
                     view: "Вид списка"
                 },
                 common: {
@@ -1656,7 +1624,7 @@
                     title: "AI Pages",
                     subtitle: "Превратите идеи в код за минуты, а не дни",
                     open: "Открыть",
-                    copyright: "© 2025 AI Pages <i class=\"far fa-copyright\"></i> Все примеры разработаны для демонстрации различных технологий и решений."
+                    copyright: "© 2025 AI Pages <br/>Все примеры разработаны для демонстрации различных технологий и решений."
                 },
                 categories: {
                     devTools: "Инструменты для разработки",
@@ -1683,17 +1651,6 @@
                             "Форматирование и проверка кода"
                         ]
                     },
-
-                    gradioLite: {
-                        title: "Gradio Lite",
-                        description: "Легковесная версия Gradio для создания пользовательских интерфейсов для моделей машинного обучения.",
-                        problem: "Difficult to demonstrate ML model functionality without deploying a server?",
-                        features: [
-                            "Interactive ML model demonstrations",
-                            "Simplified API for interface creation",
-                            "Support for various input/output types"
-                        ]
-                    },
                     webStableDiffusion: {
                         title: "Web Stable Diffusion",
                         description: "Генерация изображений с помощью ИИ прямо в браузере. Полностью клиентское решение с WebGPU ускорением.",
@@ -1707,6 +1664,19 @@
                         limitedOfferTitle: "Требования",
                         limitedOffer: "Chrome Canary с WebGPU и GPU 6GB+"
                     },
+                    whisperLive: {
+                        title: "Whisper Live",
+                        description: "Транскрибация речи в текст прямо в браузере с помощью Whisper AI. Идеально для стримеров, докладчиков и создателей контента.",
+                        problem: "Нужны субтитры в реальном времени для стримов или презентаций?",
+                        features: [
+                            "Распознавание речи в реальном времени",
+                            "Режим телесуфлёра для выступлений",
+                            "Автоперевод на другие языки",
+                            "Экспорт в SRT/VTT форматы"
+                        ],
+                        limitedOfferTitle: "Статус",
+                        limitedOffer: "В разработке (доступен демо-режим)"
+                    },
                     webllmChat: {
                         title: "WebLLM Chat",
                         description: "Локальный ChatGPT-клон с моделями Llama 3, Mistral и другими. Полная конфиденциальность, работа без интернета после загрузки модели.",
@@ -1719,6 +1689,18 @@
                         ],
                         limitedOfferTitle: "ИИ в кармане",
                         limitedOffer: "Экономьте мегабайты нервов!"
+                    },
+                    pythonEditorGradio: {
+                        title: "Python Editor (Gradio Lite)",
+                        description: "Редактор Python с интеграцией Gradio Lite. Создавайте интерактивные демо и визуализации данных прямо в браузере.",
+                        problem: "Хотите создавать интерактивные Python-приложения?",
+                        features: [
+                            "Интеграция с Gradio Lite",
+                            "Создание интерактивных UI",
+                            "Визуализация с Matplotlib",
+                            "Поддержка NumPy и Pandas",
+                            "Работа полностью в браузере"
+                        ]
                     },
                     // Игры и развлечения
                     arcanoid: {
@@ -1778,8 +1760,8 @@
                         limitedOffer: "Изучите код и создайте свою версию с уникальными механиками!"
                     },
                     tetrisReact: {
-                        title: "Tetris (React)",
-                        description: "Реализация классической игры Tetris с использованием современного React-подхода.",
+                        title: "Тетрис (React)",
+                        description: "Реализация классической игры Тетрис с использованием современного React-подхода.",
                         features: [
                             "Компонентная архитектура React",
                             "Управление состоянием игры через хуки",
@@ -1788,15 +1770,26 @@
                         ]
                     },
                     tetrisVanilla: {
-                        title: "Tetris (Vanilla JS)",
-                        description: "Классическая реализация игры Tetris на чистом JavaScript без фреймворков.",
+                        title: "Тетрис (Vanilla JS)",
+                        description: "Классическая реализация игры Тетрис на чистом JavaScript без фреймворков.",
                         features: [
                             "Функциональная архитектура",
                             "Canvas для рендеринга",
                             "Система подсчета очков"
                         ]
                     },
-                    
+                    conwaysLife: {
+                        title: "Игра \"Жизнь\" Конвея",
+                        description: "Визуализация знаменитого клеточного автомата Конвея. Наблюдайте за эволюцией паттернов, создавайте свои конфигурации.",
+                        problem: "Интересуетесь клеточными автоматами и эмергентным поведением?",
+                        features: [
+                            "Интерактивное рисование клеток",
+                            "Управление скоростью симуляции",
+                            "Готовые паттерны (планеры, осцилляторы)",
+                            "Адаптивное поле"
+                        ]
+                    },
+
 
                     reactNews: {
                         title: "Новостное приложение (React)",
@@ -1842,7 +1835,7 @@
                         ]
                     },
                     nasaExplorer: {
-                        title: "NASA Explorer",
+                        title: "Исследователь NASA",
                         description: "Интерактивное приложение для исследования космоса с использованием NASA Open APIs. Астрономические фото дня, снимки с марсоходов и поиск по медиатеке NASA.",
                         problem: "Хотите исследовать космос?",
                         features: [
@@ -1863,6 +1856,18 @@
                             "Детальные рецепты с ингредиентами",
                             "Случайный коктейль дня",
                             "Темная и светлая тема, многоязычность"
+                        ]
+                    },
+                    windowsWeb: {
+                        title: "Windows Web Experience",
+                        description: "Полноценная симуляция рабочего стола Windows 11 в браузере. Рабочий стол, панель задач, меню Пуск и набор приложений.",
+                        problem: "Хотите попробовать Windows прямо в браузере?",
+                        features: [
+                            "Панель задач и меню Пуск в стиле Windows 11",
+                            "Перемещаемые и изменяемые по размеру окна",
+                            "Приложения: Проводник, Терминал, Блокнот, Paint, Калькулятор",
+                            "Браузер Edge и Медиаплеер с фильтрами",
+                            "Настройки персонализации"
                         ]
                     },
                     // 3D Visualizations
@@ -1894,8 +1899,8 @@
                         limitedOffer: "Загрузите свой MP3 и наблюдайте, как частицы реагируют на вашу музыку!" // Translated text
                     },
                     radioGlobe: {
-                        title: "Radio Globe",
-                        description: "Испытайте интерактивный 3D-глобус, где вы можете открывать и слушать радиостанции из разных стран. Навигируйте по глобусу, кликайте на маркеры и наслаждайтесь потоковым радио со всей планеты.",
+                        title: "Радио Глобус",
+                        description: "Интерактивный 3D-глобус, где вы можете открывать и слушать радиостанции из разных стран. Навигируйте по глобусу, кликайте на маркеры и наслаждайтесь потоковым радио со всей планеты.",
                         problem: "Хотите исследовать радиостанции со всего мира?",
                         features: [
                             "Интерактивный 3D-глобус Земли с реалистичными текстурами",
@@ -1974,7 +1979,7 @@
                 settings: {
                     title: "Settings",
                     darkTheme: "Dark Theme",
-                    language: "Русский", // Label when English is selected
+                    language: "English",
                     view: "List View"
                 },
                 common: {
@@ -1982,7 +1987,7 @@
                     title: "AI Pages",
                     subtitle: "Turn ideas into code in minutes, not days",
                     open: "Open",
-                    copyright: "© 2025 AI Pages <i class=\"far fa-copyright\"></i> All examples are developed to demonstrate various technologies and solutions."
+                    copyright: "© 2025 AI Pages <br/> All examples are developed to demonstrate various technologies and solutions."
                 },
                 categories: {
                     devTools: "Development Tools",
@@ -2009,17 +2014,6 @@
                             "Code formatting and validation"
                         ]
                     },
-
-                    gradioLite: {
-                        title: "Gradio Lite",
-                        description: "Lightweight version of Gradio for creating user interfaces for machine learning models.",
-                        problem: "Difficult to demonstrate ML model functionality without deploying a server?",
-                        features: [
-                            "Interactive ML model demonstrations",
-                            "Simplified API for interface creation",
-                            "Support for various input/output types"
-                        ]
-                    },
                     webStableDiffusion: {
                         title: "Web Stable Diffusion",
                         description: "Generate AI images directly in the browser. Fully client-side solution with WebGPU acceleration.",
@@ -2033,6 +2027,19 @@
                         limitedOfferTitle: "Requirements",
                         limitedOffer: "Chrome Canary with WebGPU and 6GB+ GPU"
                     },
+                    whisperLive: {
+                        title: "Whisper Live",
+                        description: "Speech-to-text transcription directly in the browser using Whisper AI. Perfect for streamers, speakers, and content creators.",
+                        problem: "Need real-time subtitles for streams or presentations?",
+                        features: [
+                            "Real-time speech recognition",
+                            "Teleprompter mode for presentations",
+                            "Auto-translation to other languages",
+                            "Export to SRT/VTT formats"
+                        ],
+                        limitedOfferTitle: "Status",
+                        limitedOffer: "In development (demo mode available)"
+                    },
                     webllmChat: {
                         title: "WebLLM Chat",
                         description: "Local ChatGPT clone with Llama 3, Mistral and other models. Full privacy, works offline after model download.",
@@ -2045,6 +2052,18 @@
                         ],
                         limitedOfferTitle: "AI in your pocket",
                         limitedOffer: "Save megabytes of nerves!"
+                    },
+                    pythonEditorGradio: {
+                        title: "Python Editor (Gradio Lite)",
+                        description: "Python editor with Gradio Lite integration. Create interactive demos and data visualizations directly in the browser.",
+                        problem: "Want to create interactive Python applications?",
+                        features: [
+                            "Gradio Lite integration",
+                            "Create interactive UIs",
+                            "Visualization with Matplotlib",
+                            "NumPy and Pandas support",
+                            "Works entirely in browser"
+                        ]
                     },
                     // Games & Entertainment
                     arcanoid: {
@@ -2122,6 +2141,17 @@
                             "Score system"
                         ]
                     },
+                    conwaysLife: {
+                        title: "Conway's Game of Life",
+                        description: "Visualization of the famous Conway's cellular automaton. Watch patterns evolve, create your own configurations.",
+                        problem: "Interested in cellular automata and emergent behavior?",
+                        features: [
+                            "Interactive cell drawing",
+                            "Simulation speed control",
+                            "Ready patterns (gliders, oscillators)",
+                            "Adaptive field"
+                        ]
+                    },
 
                     reactNews: {
                         title: "News Application (React)",
@@ -2188,6 +2218,18 @@
                             "Detailed recipes with ingredients",
                             "Random cocktail of the day",
                             "Dark and light themes, multilingual"
+                        ]
+                    },
+                    windowsWeb: {
+                        title: "Windows Web Experience",
+                        description: "Full Windows 11 desktop simulation in the browser. Desktop, taskbar, Start menu and a set of applications.",
+                        problem: "Want to try Windows right in your browser?",
+                        features: [
+                            "Windows 11 style taskbar and Start menu",
+                            "Resizable and movable windows",
+                            "Apps: File Explorer, Terminal, Notepad, Paint, Calculator",
+                            "Edge browser and Media Player with filters",
+                            "Personalization settings"
                         ]
                     },
                     // 3D Visualizations
@@ -2417,9 +2459,10 @@
             const devToolsCards = document.querySelectorAll('.category:nth-of-type(1) .example-card');
             if (devToolsCards.length > 0) {
                 updateCard(devToolsCards[0], 'pythonEditor', '<i class="fas fa-code"></i>');
-                if (devToolsCards.length > 1) updateCard(devToolsCards[1], 'gradioLite', '<i class="fas fa-chart-bar"></i>');
-                if (devToolsCards.length > 2) updateCard(devToolsCards[2], 'webStableDiffusion', '<i class="fas fa-magic"></i>');
+                if (devToolsCards.length > 1) updateCard(devToolsCards[1], 'webStableDiffusion', '<i class="fas fa-magic"></i>');
+                if (devToolsCards.length > 2) updateCard(devToolsCards[2], 'whisperLive', '<i class="fas fa-closed-captioning"></i>');
                 if (devToolsCards.length > 3) updateCard(devToolsCards[3], 'webllmChat', '<i class="fas fa-robot"></i>');
+                if (devToolsCards.length > 4) updateCard(devToolsCards[4], 'pythonEditorGradio', '<i class="fas fa-laptop-code"></i>');
             }
             
             // Вторая категория: Игры и развлечения
@@ -2432,6 +2475,7 @@
                 if (gamesCards.length > 4) updateCard(gamesCards[4], 'snake', '<span class="emoji-icon">🐍</span>');
                 if (gamesCards.length > 5) updateCard(gamesCards[5], 'tetrisReact', '<i class="fab fa-react"></i>');
                 if (gamesCards.length > 6) updateCard(gamesCards[6], 'tetrisVanilla', '<i class="fab fa-js"></i>');
+                if (gamesCards.length > 7) updateCard(gamesCards[7], 'conwaysLife', '<i class="fas fa-th"></i>');
             }
             
             // Третья категория: Веб-приложения
@@ -2440,6 +2484,10 @@
                 updateCard(webAppsCards[0], 'reactNews', '<i class="far fa-newspaper"></i>');
                 if (webAppsCards.length > 1) updateCard(webAppsCards[1], 'professions', '<i class="fas fa-briefcase"></i>');
                 if (webAppsCards.length > 2) updateCard(webAppsCards[2], 'currencyExchange', '<i class="fas fa-coins"></i>');
+                if (webAppsCards.length > 3) updateCard(webAppsCards[3], 'musicSearch', '<i class="fas fa-music"></i>');
+                if (webAppsCards.length > 4) updateCard(webAppsCards[4], 'nasaExplorer', '<i class="fas fa-rocket"></i>');
+                if (webAppsCards.length > 5) updateCard(webAppsCards[5], 'cocktails', '<i class="fas fa-cocktail"></i>');
+                if (webAppsCards.length > 6) updateCard(webAppsCards[6], 'windowsWeb', '<i class="fab fa-windows"></i>');
             }
             
             // Четвертая категория: 3D Визуализации
@@ -2448,6 +2496,7 @@
                 updateCard(visualizationsCards[0], 'threeDBalls', '<i class="fas fa-atom"></i>');
                 if (visualizationsCards.length > 1) updateCard(visualizationsCards[1], 'mp3Visualizer', '<i class="fas fa-tint"></i>');
                 if (visualizationsCards.length > 2) updateCard(visualizationsCards[2], 'radioGlobe', '<i class="fas fa-globe-americas"></i>');
+                if (visualizationsCards.length > 3) updateCard(visualizationsCards[3], 'fluidSimulation', '<i class="fas fa-water"></i>');
             }
             
             // Пятая категория: Карты и Геоданные
@@ -2463,6 +2512,9 @@
             }
             if (mapsCards.length > 3) {
                 updateCard(mapsCards[3], 'sportsApi', '<i class="fas fa-trophy"></i>');
+            }
+            if (mapsCards.length > 4) {
+                updateCard(mapsCards[4], 'populationRace', '<i class="fas fa-chart-bar"></i>');
             }
         }
         
@@ -2480,8 +2532,8 @@
         
         // Функция для переключения языка
         function toggleLanguage() {
-            const isEnglish = document.getElementById('languageSwitch').checked;
-            const lang = isEnglish ? 'en' : 'ru';
+            const isRussian = document.getElementById('languageSwitch').checked;
+            const lang = isRussian ? 'ru' : 'en';
             i18n.setLocale(lang);
             translateUI();
         }
@@ -2517,7 +2569,7 @@
             const savedLanguage = localStorage.getItem('language');
             if (savedLanguage) {
                 i18n.setLocale(savedLanguage);
-                document.getElementById('languageSwitch').checked = savedLanguage === 'en';
+                document.getElementById('languageSwitch').checked = savedLanguage === 'ru';
             }
             
             // Применяем переводы
@@ -2526,8 +2578,24 @@
             // Добавление обработчиков событий
             document.getElementById('themeSwitch').addEventListener('change', toggleTheme);
             document.getElementById('languageSwitch').addEventListener('change', toggleLanguage);
-            document.getElementById('viewSwitch').addEventListener('change', toggleView); // Added view switch handler
-            
+            // viewSwitch handler добавлен ниже в setView section
+
+            // Делегирование клика на заголовки карточек (работает после translateUI)
+            document.addEventListener('click', function(e) {
+                const h3 = e.target.closest('.card-header h3');
+                console.log('Header click handler - h3 found:', !!h3);
+                if (h3) {
+                    const card = h3.closest('.example-card');
+                    // Ищем view-btn в любом месте карточки (может быть в footer или header)
+                    const link = card ? card.querySelector('.view-btn') : null;
+                    console.log('Found link:', link ? link.href : 'NONE');
+                    if (link && link.href) {
+                        console.log('Navigating to:', link.href);
+                        window.location.href = link.href;
+                    }
+                }
+            });
+
             // Закрытие настроек при клике вне окна
             document.addEventListener('click', function(event) {
                 const settingsIcon = document.querySelector('.settings-icon');
