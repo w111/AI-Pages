@@ -7,24 +7,32 @@
 Функциональные требования:
 1. Текущая погода:
    - Температура (текущая, ощущается как)
-   - Влажность
+   - Влажность и точка росы
    - Скорость и направление ветра
+   - Атмосферное давление
+   - Облачность и видимость
+   - UV индекс
    - Иконка погодных условий
    - Описание погоды
 
-2. Прогноз на 7 дней:
+2. Астрономические данные:
+   - Восход и закат солнца
+   - Продолжительность светового дня
+
+3. Прогноз на 7 дней:
    - Дневные карточки с датой
    - Максимальная и минимальная температура
    - Иконка погодных условий
    - Вероятность осадков
-   - Скорость ветра
+   - UV индекс
+   - Восход/закат
 
-3. Поиск и геокодинг:
+4. Поиск и геокодинг:
    - Поиск городов через Nominatim OpenStreetMap API
    - Автоматическое определение местоположения (Geolocation API)
    - Сохранение последнего города в localStorage
 
-4. Пользовательский интерфейс:
+5. Пользовательский интерфейс:
    - Темная/светлая тема
    - Адаптивный дизайн
    - Анимации загрузки
@@ -60,6 +68,11 @@
         --gradient-end: #0984e3;
         --input-bg: #ffffff;
         --input-border: #d0e4f0;
+        --uv-low: #3ea72d;
+        --uv-moderate: #fff300;
+        --uv-high: #f18b00;
+        --uv-very-high: #e53210;
+        --uv-extreme: #b567a4;
       }
 
       [data-theme="dark"] {
@@ -95,7 +108,7 @@
       }
 
       .container {
-        max-width: 900px;
+        max-width: 1000px;
         margin: 0 auto;
       }
 
@@ -183,7 +196,7 @@
         border-radius: 20px;
         padding: 30px;
         box-shadow: var(--shadow);
-        margin-bottom: 30px;
+        margin-bottom: 20px;
         display: grid;
         grid-template-columns: 1fr auto;
         gap: 20px;
@@ -239,6 +252,8 @@
 
       .stat i {
         color: var(--primary-color);
+        width: 16px;
+        text-align: center;
       }
 
       .current-extra {
@@ -256,6 +271,133 @@
         font-size: 0.9rem;
       }
 
+      /* Подробная информация */
+      .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+
+      .detail-card {
+        background: var(--card-bg);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .detail-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-hover);
+      }
+
+      .detail-card i {
+        font-size: 2rem;
+        color: var(--primary-color);
+        margin-bottom: 10px;
+      }
+
+      .detail-card .label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+      }
+
+      .detail-card .value {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--text-color);
+      }
+
+      .detail-card .sub-value {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 5px;
+      }
+
+      /* UV индекс */
+      .uv-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 5px;
+      }
+
+      .uv-bar {
+        width: 100%;
+        height: 6px;
+        background: linear-gradient(to right,
+          var(--uv-low) 0%,
+          var(--uv-moderate) 25%,
+          var(--uv-high) 50%,
+          var(--uv-very-high) 75%,
+          var(--uv-extreme) 100%);
+        border-radius: 3px;
+        position: relative;
+      }
+
+      .uv-marker {
+        position: absolute;
+        top: -4px;
+        width: 14px;
+        height: 14px;
+        background: var(--text-color);
+        border: 2px solid var(--card-bg);
+        border-radius: 50%;
+        transform: translateX(-50%);
+      }
+
+      .uv-level {
+        font-size: 0.8rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        color: white;
+        font-weight: 500;
+      }
+
+      .uv-low { background: var(--uv-low); }
+      .uv-moderate { background: var(--uv-moderate); color: #333; }
+      .uv-high { background: var(--uv-high); }
+      .uv-very-high { background: var(--uv-very-high); }
+      .uv-extreme { background: var(--uv-extreme); }
+
+      /* Солнце */
+      .sun-times {
+        display: flex;
+        justify-content: space-around;
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      .sun-time {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .sun-time i {
+        font-size: 1.2rem;
+        margin-bottom: 5px;
+      }
+
+      .sun-time .time {
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      .sun-time .label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+      }
+
+      .sunrise i { color: #f39c12; }
+      .sunset i { color: #e74c3c; }
+
       /* Прогноз на 7 дней */
       .forecast-title {
         font-size: 1.5rem;
@@ -265,8 +407,9 @@
 
       .forecast-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
         gap: 15px;
+        margin-bottom: 30px;
       }
 
       .forecast-card {
@@ -285,7 +428,7 @@
 
       .forecast-day {
         font-weight: 600;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
         color: var(--text-color);
       }
 
@@ -296,7 +439,7 @@
       }
 
       .forecast-icon {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
         color: var(--primary-color);
         margin-bottom: 10px;
       }
@@ -304,8 +447,8 @@
       .forecast-temps {
         display: flex;
         justify-content: center;
-        gap: 10px;
-        margin-bottom: 10px;
+        gap: 8px;
+        margin-bottom: 8px;
       }
 
       .temp-high {
@@ -317,13 +460,24 @@
         color: var(--text-secondary);
       }
 
-      .forecast-rain {
-        font-size: 0.85rem;
-        color: var(--primary-color);
+      .forecast-details {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .forecast-details span {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 5px;
+      }
+
+      .forecast-details i {
+        color: var(--primary-color);
+        width: 14px;
       }
 
       /* Кнопка настроек */
@@ -558,6 +712,10 @@
           height: 40px;
           font-size: 20px;
         }
+
+        .details-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
       }
 
       @media (max-width: 480px) {
@@ -571,6 +729,22 @@
 
         .current-temp {
           font-size: 3rem;
+        }
+
+        .details-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .detail-card {
+          padding: 15px;
+        }
+
+        .detail-card i {
+          font-size: 1.5rem;
+        }
+
+        .detail-card .value {
+          font-size: 1.1rem;
         }
       }
     </style>
@@ -666,6 +840,73 @@
           </div>
         </div>
 
+        <!-- Подробная информация -->
+        <div class="details-grid">
+          <!-- Восход/Закат -->
+          <div class="detail-card">
+            <i class="fas fa-sun"></i>
+            <span class="label">Солнце</span>
+            <div class="sun-times">
+              <div class="sun-time sunrise">
+                <i class="fas fa-arrow-up"></i>
+                <span class="time" id="sunrise">--:--</span>
+                <span class="label">восход</span>
+              </div>
+              <div class="sun-time sunset">
+                <i class="fas fa-arrow-down"></i>
+                <span class="time" id="sunset">--:--</span>
+                <span class="label">закат</span>
+              </div>
+            </div>
+            <span class="sub-value" id="dayLength">Световой день: --</span>
+          </div>
+
+          <!-- UV индекс -->
+          <div class="detail-card">
+            <i class="fas fa-sun"></i>
+            <span class="label">UV индекс</span>
+            <span class="value" id="uvIndex">--</span>
+            <div class="uv-indicator">
+              <div class="uv-bar">
+                <div class="uv-marker" id="uvMarker"></div>
+              </div>
+            </div>
+            <span class="uv-level" id="uvLevel">--</span>
+          </div>
+
+          <!-- Давление -->
+          <div class="detail-card">
+            <i class="fas fa-tachometer-alt"></i>
+            <span class="label">Давление</span>
+            <span class="value" id="pressure">-- мм</span>
+            <span class="sub-value" id="pressureHpa">-- гПа</span>
+          </div>
+
+          <!-- Точка росы -->
+          <div class="detail-card">
+            <i class="fas fa-droplet"></i>
+            <span class="label">Точка росы</span>
+            <span class="value" id="dewPoint">--°C</span>
+            <span class="sub-value">Влажность: <span id="humidityDetail">--%</span></span>
+          </div>
+
+          <!-- Облачность -->
+          <div class="detail-card">
+            <i class="fas fa-cloud"></i>
+            <span class="label">Облачность</span>
+            <span class="value" id="cloudCover">--%</span>
+            <span class="sub-value" id="cloudDesc">--</span>
+          </div>
+
+          <!-- Ветер -->
+          <div class="detail-card">
+            <i class="fas fa-wind"></i>
+            <span class="label">Ветер</span>
+            <span class="value" id="windDetail">-- км/ч</span>
+            <span class="sub-value">Порывы: <span id="windGusts">-- км/ч</span></span>
+          </div>
+        </div>
+
         <!-- Прогноз на 7 дней -->
         <h3 class="forecast-title"><i class="fas fa-calendar-alt"></i> Прогноз на 7 дней</h3>
         <div class="forecast-grid" id="forecastGrid">
@@ -722,8 +963,15 @@
 
       // Дни недели
       const weekDays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-      const weekDaysFull = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда',
-        'Четверг', 'Пятница', 'Суббота'];
+
+      // UV уровни
+      const uvLevels = [
+        { max: 2, label: 'Низкий', class: 'uv-low' },
+        { max: 5, label: 'Умеренный', class: 'uv-moderate' },
+        { max: 7, label: 'Высокий', class: 'uv-high' },
+        { max: 10, label: 'Очень высокий', class: 'uv-very-high' },
+        { max: Infinity, label: 'Экстремальный', class: 'uv-extreme' }
+      ];
 
       // === КЕШИРОВАНИЕ ===
       const cache = {
@@ -771,12 +1019,34 @@
         let data = cache.get(cacheKey);
         if (data) return data;
 
+        const currentParams = [
+          'temperature_2m',
+          'relative_humidity_2m',
+          'apparent_temperature',
+          'weather_code',
+          'wind_speed_10m',
+          'wind_direction_10m',
+          'wind_gusts_10m',
+          'surface_pressure',
+          'dew_point_2m',
+          'cloud_cover'
+        ].join(',');
+
+        const dailyParams = [
+          'weather_code',
+          'temperature_2m_max',
+          'temperature_2m_min',
+          'precipitation_probability_max',
+          'wind_speed_10m_max',
+          'uv_index_max',
+          'sunrise',
+          'sunset'
+        ].join(',');
+
         const url = `https://api.open-meteo.com/v1/forecast?` +
           `latitude=${lat}&longitude=${lon}` +
-          `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,` +
-          `wind_speed_10m,wind_direction_10m` +
-          `&daily=weather_code,temperature_2m_max,temperature_2m_min,` +
-          `precipitation_probability_max,wind_speed_10m_max` +
+          `&current=${currentParams}` +
+          `&daily=${dailyParams}` +
           `&timezone=auto&forecast_days=7`;
 
         const resp = await fetch(url);
@@ -845,6 +1115,40 @@
         return weekDays[date.getDay()];
       }
 
+      function formatTime(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      function calculateDayLength(sunrise, sunset) {
+        const start = new Date(sunrise);
+        const end = new Date(sunset);
+        const diff = (end - start) / 1000 / 60; // минуты
+        const hours = Math.floor(diff / 60);
+        const minutes = Math.round(diff % 60);
+        return `${hours}ч ${minutes}м`;
+      }
+
+      function hpaToMmHg(hpa) {
+        return Math.round(hpa * 0.750062);
+      }
+
+      function getUvLevel(uv) {
+        for (const level of uvLevels) {
+          if (uv <= level.max) return level;
+        }
+        return uvLevels[uvLevels.length - 1];
+      }
+
+      function getCloudDescription(percent) {
+        if (percent <= 10) return 'Ясно';
+        if (percent <= 25) return 'Малооблачно';
+        if (percent <= 50) return 'Переменная облачность';
+        if (percent <= 75) return 'Облачно с прояснениями';
+        if (percent <= 90) return 'Облачно';
+        return 'Пасмурно';
+      }
+
       // === ОТОБРАЖЕНИЕ ПОГОДЫ ===
       function displayWeather(weatherData, cityName) {
         const current = weatherData.current;
@@ -877,6 +1181,43 @@
         document.getElementById('dateTime').textContent =
           now.toLocaleDateString('ru-RU', options);
 
+        // Подробная информация
+        // Восход/Закат
+        document.getElementById('sunrise').textContent = formatTime(daily.sunrise[0]);
+        document.getElementById('sunset').textContent = formatTime(daily.sunset[0]);
+        document.getElementById('dayLength').textContent =
+          `Световой день: ${calculateDayLength(daily.sunrise[0], daily.sunset[0])}`;
+
+        // UV индекс
+        const uvValue = daily.uv_index_max[0];
+        document.getElementById('uvIndex').textContent = uvValue.toFixed(1);
+        const uvLevel = getUvLevel(uvValue);
+        const uvLevelEl = document.getElementById('uvLevel');
+        uvLevelEl.textContent = uvLevel.label;
+        uvLevelEl.className = `uv-level ${uvLevel.class}`;
+        // Позиция маркера (UV шкала 0-11+)
+        const markerPos = Math.min(uvValue / 11 * 100, 100);
+        document.getElementById('uvMarker').style.left = `${markerPos}%`;
+
+        // Давление
+        const pressureHpa = current.surface_pressure;
+        document.getElementById('pressure').textContent = `${hpaToMmHg(pressureHpa)} мм рт.ст.`;
+        document.getElementById('pressureHpa').textContent = `${Math.round(pressureHpa)} гПа`;
+
+        // Точка росы
+        document.getElementById('dewPoint').textContent = `${Math.round(current.dew_point_2m)}°C`;
+        document.getElementById('humidityDetail').textContent = `${current.relative_humidity_2m}%`;
+
+        // Облачность
+        document.getElementById('cloudCover').textContent = `${current.cloud_cover}%`;
+        document.getElementById('cloudDesc').textContent = getCloudDescription(current.cloud_cover);
+
+        // Ветер детально
+        document.getElementById('windDetail').textContent =
+          `${Math.round(current.wind_speed_10m)} км/ч ${getWindDirection(current.wind_direction_10m)}`;
+        document.getElementById('windGusts').textContent =
+          `${Math.round(current.wind_gusts_10m)} км/ч`;
+
         // Прогноз на 7 дней
         const forecastGrid = document.getElementById('forecastGrid');
         forecastGrid.innerHTML = '';
@@ -893,9 +1234,10 @@
               <span class="temp-high">${Math.round(daily.temperature_2m_max[i])}°</span>
               <span class="temp-low">${Math.round(daily.temperature_2m_min[i])}°</span>
             </div>
-            <div class="forecast-rain">
-              <i class="fas fa-tint"></i>
-              ${daily.precipitation_probability_max[i]}%
+            <div class="forecast-details">
+              <span><i class="fas fa-tint"></i> ${daily.precipitation_probability_max[i]}%</span>
+              <span><i class="fas fa-sun"></i> UV ${daily.uv_index_max[i].toFixed(0)}</span>
+              <span><i class="fas fa-arrow-up"></i> ${formatTime(daily.sunrise[i])}</span>
             </div>
           `;
           forecastGrid.appendChild(card);
