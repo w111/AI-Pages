@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивную анимированную диаграмму "гонка" населения стран/городов.
+
+Функциональные требования:
+1. Анимированная горизонтальная диаграмма (bar chart race):
+   - Плавная анимация перехода между годами
+   - Автоматическое переупорядочивание столбцов
+   - Отображение текущего года
+   - Значения населения на столбцах
+
+2. Режимы отображения:
+   - Страны мира
+   - Крупнейшие города мира
+
+3. Управление анимацией:
+   - Воспроизведение/пауза
+   - Скорость анимации
+   - Перемотка к году
+   - Перезапуск
+
+4. Пользовательский интерфейс:
+   - Темная и светлая тема
+   - Многоязычность (русский/английский)
+   - Адаптивный дизайн
+   - Флаги стран / иконки городов
+
+Технические требования:
+1. Canvas API для отрисовки диаграммы
+2. Vanilla JavaScript без фреймворков
+3. CSS анимации и переходы
+4. Адаптивный дизайн
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Гонка населения | Population Race</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-color: #0f0f23;
+      --text-color: #e0e0e0;
+      --card-bg: #1a1a2e;
+      --border-color: #2a2a4a;
+      --primary-color: #00d4ff;
+      --primary-hover: #00a8cc;
+      --secondary-color: #8892b0;
+      --input-bg: #16213e;
+      --input-border: #2a2a4a;
+      --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+      --glow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    [data-theme="light"] {
+      --bg-color: #f5f7fa;
+      --text-color: #1a202c;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --primary-color: #3182ce;
+      --primary-hover: #2c5282;
+      --secondary-color: #718096;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --glow: none;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 20px 0;
+      position: relative;
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 700;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--secondary-color);
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+    }
+
+    /* Year display */
+    .year-display {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: clamp(3rem, 10vw, 6rem);
+      font-weight: 900;
+      color: var(--primary-color);
+      opacity: 0.3;
+      font-family: 'Courier New', monospace;
+      text-shadow: var(--glow);
+    }
+
+    /* Settings button */
+    .settings-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      color: var(--primary-color);
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .settings-button:hover {
+      transform: rotate(45deg);
+      box-shadow: var(--glow);
+    }
+
+    /* Settings modal */
+    .settings-modal {
+      display: none;
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-lg);
+      z-index: 1001;
+      min-width: 280px;
+    }
+
+    .settings-modal.active {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .settings-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--primary-color);
+    }
+
+    .settings-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .settings-option label {
+      color: var(--text-color);
+      font-size: 0.95rem;
+    }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      width: 52px;
+      height: 28px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--input-border);
+      transition: 0.3s;
+      border-radius: 28px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: var(--accent-gradient);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    /* Controls */
+    .controls-container {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 8px;
+      background: var(--input-bg);
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .mode-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--secondary-color);
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .mode-btn.active {
+      background: var(--accent-gradient);
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .mode-btn:hover:not(.active) {
+      color: var(--primary-color);
+      background: var(--border-color);
+    }
+
+    .playback-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .control-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-btn:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+      box-shadow: var(--glow);
+    }
+
+    .control-btn.play-btn {
+      width: 60px;
+      height: 60px;
+      font-size: 22px;
+      background: var(--accent-gradient);
+      border: none;
+      color: white;
+    }
+
+    .control-btn.play-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.5);
+    }
+
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--input-bg);
+      padding: 8px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .speed-control label {
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+    }
+
+    .speed-slider {
+      width: 100px;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border-color);
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    .speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
+    }
+
+    .year-slider-container {
+      flex: 1;
+      min-width: 200px;
+      max-width: 400px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .year-slider {
+      flex: 1;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--border-color);
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    .year-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.5);
+    }
+
+    .year-label {
+      color: var(--primary-color);
+      font-weight: 600;
+      font-size: 1.1rem;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    /* Chart container */
+    .chart-container {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      width: 100%;
+      height: 600px;
+      overflow: hidden;
+    }
+
+    #chart {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Bar styles */
+    .bar-container {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      transition: top 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .bar-label {
+      width: 140px;
+      padding-right: 12px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .bar-flag {
+      font-size: 1.4rem;
+    }
+
+    .bar {
+      height: 38px;
+      border-radius: 0 8px 8px 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 12px;
+      color: white;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .bar-value {
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      z-index: 1;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    /* Stats */
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+      margin-top: 4px;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      padding: 20px;
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 12px;
+      }
+
+      .year-display {
+        position: static;
+        transform: none;
+        font-size: 3rem;
+        text-align: center;
+        margin-top: 10px;
+      }
+
+      .controls-row {
+        flex-direction: column;
+      }
+
+      .mode-buttons {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .year-slider-container {
+        width: 100%;
+        max-width: none;
+      }
+
+      .chart-wrapper {
+        height: 500px;
+      }
+
+      .bar-label {
+        width: 100px;
+        font-size: 0.8rem;
+      }
+
+      .bar-flag {
+        font-size: 1.1rem;
+      }
+
+      .bar {
+        height: 32px;
+        font-size: 0.75rem;
+      }
+
+      .bar-container {
+        height: 40px;
+      }
+
+      .settings-modal {
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .bar-label {
+        width: 80px;
+        font-size: 0.7rem;
+      }
+
+      .bar-flag {
+        font-size: 1rem;
+      }
+
+      .chart-wrapper {
+        height: 450px;
+      }
+
+      .control-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+      }
+
+      .control-btn.play-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="settings-button" id="settingsBtn" aria-label="Настройки">
+    <i class="fas fa-cog"></i>
+  </button>
+
+  <div class="settings-modal" id="settingsModal">
+    <div class="settings-title" data-i18n="settings">Настройки</div>
+    <div class="settings-option">
+      <label data-i18n="darkTheme">Темная тема</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="themeToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="settings-option">
+      <label data-i18n="language">Язык / Language</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="langToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1><i class="fas fa-chart-bar"></i> <span data-i18n="title">Гонка населения</span></h1>
+      <p class="subtitle" data-i18n="subtitle">Динамика изменения населения с 1950 по 2024 год</p>
+      <div class="year-display" id="yearDisplay">1950</div>
+    </header>
+
+    <div class="controls-container">
+      <div class="controls-row">
+        <div class="mode-buttons">
+          <button class="mode-btn active" data-mode="countries" data-i18n="countries">Страны</button>
+          <button class="mode-btn" data-mode="cities" data-i18n="cities">Города</button>
+        </div>
+
+        <div class="playback-controls">
+          <button class="control-btn" id="restartBtn" title="В начало">
+            <i class="fas fa-backward-fast"></i>
+          </button>
+          <button class="control-btn" id="prevBtn" title="Назад">
+            <i class="fas fa-backward-step"></i>
+          </button>
+          <button class="control-btn play-btn" id="playBtn" title="Воспроизвести">
+            <i class="fas fa-play"></i>
+          </button>
+          <button class="control-btn" id="nextBtn" title="Вперед">
+            <i class="fas fa-forward-step"></i>
+          </button>
+          <button class="control-btn" id="endBtn" title="В конец">
+            <i class="fas fa-forward-fast"></i>
+          </button>
+        </div>
+
+        <div class="speed-control">
+          <label data-i18n="speed">Скорость:</label>
+          <input type="range" class="speed-slider" id="speedSlider" min="0.5" max="3" step="0.5" value="1">
+          <span id="speedValue">1x</span>
+        </div>
+
+        <div class="year-slider-container">
+          <span class="year-label" id="startYear">1950</span>
+          <input type="range" class="year-slider" id="yearSlider" min="1950" max="2024" value="1950">
+          <span class="year-label" id="endYear">2024</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="chart-wrapper" id="chartWrapper">
+        <!-- Bars will be dynamically inserted here -->
+      </div>
+
+      <div class="stats-container">
+        <div class="stat-card">
+          <div class="stat-value" id="totalPopulation">0</div>
+          <div class="stat-label" data-i18n="totalPopulation">Общее население (млрд)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="topCountry">-</div>
+          <div class="stat-label" data-i18n="leader">Лидер</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="growthRate">0%</div>
+          <div class="stat-label" data-i18n="growthRate">Рост за год</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p data-i18n="dataSource">Данные: Оценки ООН и World Bank</p>
+      <p><a href="index.html" data-i18n="backToMain">← Вернуться на главную</a></p>
+    </footer>
+  </div>
+
+  <script>
+    /**
+     * @description Приложение "Гонка населения" - анимированная диаграмма изменения населения
+     */
+
+    // Данные о населении стран (в миллионах)
+    const countriesData = {
+      "China": {
+        flag: "🇨🇳",
+        color: "#e63946",
+        data: {
+          1950: 554, 1955: 614, 1960: 667, 1965: 729, 1970: 827, 1975: 927,
+          1980: 1000, 1985: 1075, 1990: 1176, 1995: 1238, 2000: 1290, 2005: 1330,
+          2010: 1368, 2015: 1406, 2020: 1411, 2024: 1425
+        }
+      },
+      "India": {
+        flag: "🇮🇳",
+        color: "#ff9f1c",
+        data: {
+          1950: 376, 1955: 409, 1960: 450, 1965: 499, 1970: 555, 1975: 621,
+          1980: 698, 1985: 784, 1990: 873, 1995: 963, 2000: 1053, 2005: 1144,
+          2010: 1234, 2015: 1322, 2020: 1396, 2024: 1450
+        }
+      },
+      "USA": {
+        flag: "🇺🇸",
+        color: "#457b9d",
+        data: {
+          1950: 158, 1955: 171, 1960: 186, 1965: 199, 1970: 210, 1975: 220,
+          1980: 230, 1985: 242, 1990: 253, 1995: 266, 2000: 282, 2005: 296,
+          2010: 310, 2015: 322, 2020: 331, 2024: 340
+        }
+      },
+      "Indonesia": {
+        flag: "🇮🇩",
+        color: "#2a9d8f",
+        data: {
+          1950: 77, 1955: 86, 1960: 96, 1965: 107, 1970: 119, 1975: 134,
+          1980: 150, 1985: 166, 1990: 182, 1995: 199, 2000: 214, 2005: 227,
+          2010: 242, 2015: 258, 2020: 273, 2024: 280
+        }
+      },
+      "Pakistan": {
+        flag: "🇵🇰",
+        color: "#1d3557",
+        data: {
+          1950: 37, 1955: 43, 1960: 50, 1965: 58, 1970: 66, 1975: 74,
+          1980: 85, 1985: 99, 1990: 115, 1995: 131, 2000: 144, 2005: 160,
+          2010: 179, 2015: 199, 2020: 220, 2024: 240
+        }
+      },
+      "Brazil": {
+        flag: "🇧🇷",
+        color: "#2ec4b6",
+        data: {
+          1950: 54, 1955: 62, 1960: 72, 1965: 83, 1970: 96, 1975: 108,
+          1980: 122, 1985: 137, 1990: 150, 1995: 163, 2000: 176, 2005: 188,
+          2010: 198, 2015: 206, 2020: 212, 2024: 216
+        }
+      },
+      "Nigeria": {
+        flag: "🇳🇬",
+        color: "#8338ec",
+        data: {
+          1950: 38, 1955: 42, 1960: 46, 1965: 51, 1970: 56, 1975: 64,
+          1980: 74, 1985: 85, 1990: 99, 1995: 114, 2000: 129, 2005: 147,
+          2010: 166, 2015: 186, 2020: 206, 2024: 230
+        }
+      },
+      "Bangladesh": {
+        flag: "🇧🇩",
+        color: "#ff006e",
+        data: {
+          1950: 38, 1955: 43, 1960: 49, 1965: 57, 1970: 66, 1975: 73,
+          1980: 83, 1985: 95, 1990: 107, 1995: 120, 2000: 131, 2005: 143,
+          2010: 152, 2015: 161, 2020: 169, 2024: 175
+        }
+      },
+      "Russia": {
+        flag: "🇷🇺",
+        color: "#3a86ff",
+        data: {
+          1950: 103, 1955: 112, 1960: 120, 1965: 127, 1970: 130, 1975: 134,
+          1980: 139, 1985: 143, 1990: 148, 1995: 148, 2000: 146, 2005: 143,
+          2010: 143, 2015: 144, 2020: 146, 2024: 144
+        }
+      },
+      "Mexico": {
+        flag: "🇲🇽",
+        color: "#fb5607",
+        data: {
+          1950: 28, 1955: 33, 1960: 38, 1965: 45, 1970: 53, 1975: 61,
+          1980: 70, 1985: 78, 1990: 86, 1995: 96, 2000: 103, 2005: 110,
+          2010: 117, 2015: 125, 2020: 129, 2024: 130
+        }
+      },
+      "Japan": {
+        flag: "🇯🇵",
+        color: "#e07be0",
+        data: {
+          1950: 84, 1955: 90, 1960: 94, 1965: 99, 1970: 104, 1975: 112,
+          1980: 117, 1985: 121, 1990: 124, 1995: 126, 2000: 127, 2005: 128,
+          2010: 128, 2015: 127, 2020: 126, 2024: 124
+        }
+      },
+      "Ethiopia": {
+        flag: "🇪🇹",
+        color: "#06d6a0",
+        data: {
+          1950: 18, 1955: 20, 1960: 23, 1965: 26, 1970: 29, 1975: 33,
+          1980: 37, 1985: 42, 1990: 49, 1995: 58, 2000: 67, 2005: 77,
+          2010: 90, 2015: 102, 2020: 115, 2024: 130
+        }
+      }
+    };
+
+    // Данные о населении городов (в миллионах)
+    const citiesData = {
+      "Tokyo": {
+        flag: "🗼",
+        color: "#e63946",
+        data: {
+          1950: 11.3, 1955: 13.7, 1960: 16.7, 1965: 20.3, 1970: 23.3, 1975: 26.6,
+          1980: 28.5, 1985: 30.3, 1990: 32.5, 1995: 33.6, 2000: 34.5, 2005: 35.6,
+          2010: 36.8, 2015: 37.4, 2020: 37.3, 2024: 37.1
+        }
+      },
+      "Delhi": {
+        flag: "🕌",
+        color: "#ff9f1c",
+        data: {
+          1950: 1.4, 1955: 1.8, 1960: 2.3, 1965: 2.9, 1970: 3.5, 1975: 4.4,
+          1980: 5.6, 1985: 7.2, 1990: 9.7, 1995: 12.4, 2000: 15.7, 2005: 18.8,
+          2010: 22.0, 2015: 26.5, 2020: 30.3, 2024: 32.9
+        }
+      },
+      "Shanghai": {
+        flag: "🏙️",
+        color: "#457b9d",
+        data: {
+          1950: 4.3, 1955: 5.4, 1960: 6.0, 1965: 6.5, 1970: 7.0, 1975: 7.5,
+          1980: 8.0, 1985: 8.5, 1990: 9.3, 1995: 10.5, 2000: 13.2, 2005: 16.6,
+          2010: 20.2, 2015: 24.5, 2020: 27.8, 2024: 29.2
+        }
+      },
+      "São Paulo": {
+        flag: "🌆",
+        color: "#2a9d8f",
+        data: {
+          1950: 2.3, 1955: 3.2, 1960: 4.7, 1965: 6.5, 1970: 8.1, 1975: 10.3,
+          1980: 12.5, 1985: 14.0, 1990: 15.0, 1995: 16.4, 2000: 17.8, 2005: 19.0,
+          2010: 20.3, 2015: 21.3, 2020: 22.0, 2024: 22.6
+        }
+      },
+      "Mexico City": {
+        flag: "🏛️",
+        color: "#fb5607",
+        data: {
+          1950: 2.9, 1955: 3.8, 1960: 5.0, 1965: 6.8, 1970: 8.8, 1975: 11.2,
+          1980: 13.0, 1985: 14.1, 1990: 15.3, 1995: 16.8, 2000: 18.0, 2005: 19.0,
+          2010: 20.1, 2015: 21.0, 2020: 21.7, 2024: 22.2
+        }
+      },
+      "Cairo": {
+        flag: "🔺",
+        color: "#e07be0",
+        data: {
+          1950: 2.5, 1955: 3.0, 1960: 3.7, 1965: 4.6, 1970: 5.6, 1975: 6.4,
+          1980: 7.3, 1985: 8.3, 1990: 9.1, 1995: 10.2, 2000: 11.9, 2005: 13.6,
+          2010: 15.5, 2015: 18.0, 2020: 20.9, 2024: 22.1
+        }
+      },
+      "Mumbai": {
+        flag: "🌴",
+        color: "#8338ec",
+        data: {
+          1950: 3.1, 1955: 3.9, 1960: 4.8, 1965: 5.7, 1970: 6.8, 1975: 7.6,
+          1980: 8.7, 1985: 10.3, 1990: 12.4, 1995: 14.1, 2000: 16.4, 2005: 18.2,
+          2010: 19.4, 2015: 20.7, 2020: 21.0, 2024: 21.7
+        }
+      },
+      "Beijing": {
+        flag: "🏯",
+        color: "#1d3557",
+        data: {
+          1950: 1.7, 1955: 2.8, 1960: 4.2, 1965: 4.9, 1970: 5.1, 1975: 5.6,
+          1980: 6.4, 1985: 7.0, 1990: 7.4, 1995: 8.4, 2000: 10.2, 2005: 12.1,
+          2010: 15.8, 2015: 18.8, 2020: 20.9, 2024: 21.5
+        }
+      },
+      "Dhaka": {
+        flag: "🌿",
+        color: "#06d6a0",
+        data: {
+          1950: 0.3, 1955: 0.4, 1960: 0.5, 1965: 0.8, 1970: 1.4, 1975: 2.2,
+          1980: 3.3, 1985: 4.9, 1990: 6.6, 1995: 8.3, 2000: 10.3, 2005: 12.5,
+          2010: 14.7, 2015: 17.6, 2020: 21.7, 2024: 23.9
+        }
+      },
+      "Osaka": {
+        flag: "🎌",
+        color: "#ff006e",
+        data: {
+          1950: 4.1, 1955: 5.1, 1960: 6.5, 1965: 8.5, 1970: 9.4, 1975: 10.7,
+          1980: 11.0, 1985: 11.1, 1990: 11.0, 1995: 11.1, 2000: 11.2, 2005: 11.3,
+          2010: 11.4, 2015: 19.3, 2020: 19.2, 2024: 19.0
+        }
+      },
+      "New York": {
+        flag: "🗽",
+        color: "#3a86ff",
+        data: {
+          1950: 12.3, 1955: 13.2, 1960: 14.2, 1965: 15.2, 1970: 16.2, 1975: 15.9,
+          1980: 15.6, 1985: 15.8, 1990: 16.1, 1995: 16.8, 2000: 17.8, 2005: 18.5,
+          2010: 18.9, 2015: 18.6, 2020: 18.8, 2024: 18.9
+        }
+      },
+      "Karachi": {
+        flag: "⭐",
+        color: "#2ec4b6",
+        data: {
+          1950: 1.1, 1955: 1.4, 1960: 1.9, 1965: 2.5, 1970: 3.1, 1975: 4.0,
+          1980: 5.0, 1985: 6.0, 1990: 7.1, 1995: 8.5, 2000: 10.0, 2005: 11.6,
+          2010: 13.1, 2015: 15.4, 2020: 16.1, 2024: 17.2
+        }
+      }
+    };
+
+    // Интерполяция данных для каждого года
+    function interpolateData(dataObj) {
+      const years = Object.keys(dataObj).map(Number).sort((a, b) => a - b);
+      const result = {};
+
+      for (let year = 1950; year <= 2024; year++) {
+        if (dataObj[year] !== undefined) {
+          result[year] = dataObj[year];
+        } else {
+          // Линейная интерполяция
+          let prevYear = years.filter(y => y < year).pop();
+          let nextYear = years.filter(y => y > year).shift();
+
+          if (prevYear && nextYear) {
+            const ratio = (year - prevYear) / (nextYear - prevYear);
+            result[year] = dataObj[prevYear] + (dataObj[nextYear] - dataObj[prevYear]) * ratio;
+          }
+        }
+      }
+      return result;
+    }
+
+    // Подготовка интерполированных данных
+    const interpolatedCountries = {};
+    const interpolatedCities = {};
+
+    Object.keys(countriesData).forEach(key => {
+      interpolatedCountries[key] = {
+        ...countriesData[key],
+        data: interpolateData(countriesData[key].data)
+      };
+    });
+
+    Object.keys(citiesData).forEach(key => {
+      interpolatedCities[key] = {
+        ...citiesData[key],
+        data: interpolateData(citiesData[key].data)
+      };
+    });
+
+    // Переводы
+    const translations = {
+      ru: {
+        title: "Гонка населения",
+        subtitle: "Динамика изменения населения с 1950 по 2024 год",
+        settings: "Настройки",
+        darkTheme: "Темная тема",
+        language: "English",
+        countries: "Страны",
+        cities: "Города",
+        speed: "Скорость:",
+        totalPopulation: "Общее население (млрд)",
+        leader: "Лидер",
+        growthRate: "Рост за год",
+        dataSource: "Данные: Оценки ООН и World Bank",
+        backToMain: "← Вернуться на главную",
+        million: "млн",
+        billion: "млрд"
+      },
+      en: {
+        title: "Population Race",
+        subtitle: "Population dynamics from 1950 to 2024",
+        settings: "Settings",
+        darkTheme: "Dark theme",
+        language: "Русский",
+        countries: "Countries",
+        cities: "Cities",
+        speed: "Speed:",
+        totalPopulation: "Total population (billion)",
+        leader: "Leader",
+        growthRate: "Year growth",
+        dataSource: "Data: UN and World Bank estimates",
+        backToMain: "← Back to main page",
+        million: "M",
+        billion: "B"
+      }
+    };
+
+    // Состояние приложения
+    const state = {
+      mode: "countries",
+      currentYear: 1950,
+      isPlaying: false,
+      speed: 1,
+      animationId: null,
+      lastFrameTime: 0,
+      theme: "dark",
+      lang: "ru"
+    };
+
+    // Элементы DOM
+    const elements = {
+      chartWrapper: document.getElementById("chartWrapper"),
+      yearDisplay: document.getElementById("yearDisplay"),
+      yearSlider: document.getElementById("yearSlider"),
+      playBtn: document.getElementById("playBtn"),
+      speedSlider: document.getElementById("speedSlider"),
+      speedValue: document.getElementById("speedValue"),
+      totalPopulation: document.getElementById("totalPopulation"),
+      topCountry: document.getElementById("topCountry"),
+      growthRate: document.getElementById("growthRate"),
+      settingsBtn: document.getElementById("settingsBtn"),
+      settingsModal: document.getElementById("settingsModal"),
+      themeToggle: document.getElementById("themeToggle"),
+      langToggle: document.getElementById("langToggle")
+    };
+
+    /**
+     * @function getCurrentData
+     * @description Получает текущие данные в зависимости от режима
+     * @returns {Object} Объект с данными стран или городов
+     */
+    function getCurrentData() {
+      return state.mode === "countries" ? interpolatedCountries : interpolatedCities;
+    }
+
+    /**
+     * @function formatPopulation
+     * @description Форматирует число населения
+     * @param {number} value - Значение населения в миллионах
+     * @returns {string} Форматированная строка
+     */
+    function formatPopulation(value) {
+      const t = translations[state.lang];
+      if (value >= 1000) {
+        return (value / 1000).toFixed(2) + " " + t.billion;
+      }
+      return value.toFixed(1) + " " + t.million;
+    }
+
+    /**
+     * @function getSortedData
+     * @description Возвращает отсортированные данные для текущего года
+     * @param {number} year - Год
+     * @returns {Array} Массив отсортированных записей
+     */
+    function getSortedData(year) {
+      const data = getCurrentData();
+      const entries = Object.entries(data).map(([name, info]) => ({
+        name,
+        flag: info.flag,
+        color: info.color,
+        value: info.data[Math.floor(year)] || 0
+      }));
+
+      return entries.sort((a, b) => b.value - a.value).slice(0, 12);
+    }
+
+    /**
+     * @function createBars
+     * @description Создает элементы столбцов диаграммы
+     */
+    function createBars() {
+      elements.chartWrapper.innerHTML = "";
+      const data = getSortedData(state.currentYear);
+      const maxValue = data[0]?.value || 1;
+      const barHeight = state.mode === "countries" ? 48 : 48;
+      const chartWidth = elements.chartWrapper.clientWidth - 160;
+
+      data.forEach((item, index) => {
+        const container = document.createElement("div");
+        container.className = "bar-container";
+        container.style.top = `${index * barHeight}px`;
+        container.dataset.name = item.name;
+
+        const label = document.createElement("div");
+        label.className = "bar-label";
+        label.innerHTML = `<span class="bar-flag">${item.flag}</span><span>${item.name}</span>`;
+
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.background = item.color;
+        bar.style.width = `${(item.value / maxValue) * chartWidth}px`;
+
+        const value = document.createElement("span");
+        value.className = "bar-value";
+        value.textContent = formatPopulation(item.value);
+
+        bar.appendChild(value);
+        container.appendChild(label);
+        container.appendChild(bar);
+        elements.chartWrapper.appendChild(container);
+      });
+    }
+
+    /**
+     * @function updateBars
+     * @description Обновляет позиции и размеры столбцов
+     * @param {number} year - Текущий год (может быть дробным)
+     */
+    function updateBars(year) {
+      const data = getSortedData(year);
+      const maxValue = data[0]?.value || 1;
+      const barHeight = 48;
+      const chartWidth = elements.chartWrapper.clientWidth - 160;
+      const containers = elements.chartWrapper.querySelectorAll(".bar-container");
+
+      // Создаем карту позиций
+      const positionMap = {};
+      data.forEach((item, index) => {
+        positionMap[item.name] = {
+          index,
+          value: item.value
+        };
+      });
+
+      containers.forEach(container => {
+        const name = container.dataset.name;
+        const info = positionMap[name];
+
+        if (info) {
+          container.style.top = `${info.index * barHeight}px`;
+          const bar = container.querySelector(".bar");
+          const valueEl = container.querySelector(".bar-value");
+          bar.style.width = `${(info.value / maxValue) * chartWidth}px`;
+          valueEl.textContent = formatPopulation(info.value);
+        }
+      });
+
+      // Обновляем статистику
+      updateStats(data, year);
+    }
+
+    /**
+     * @function updateStats
+     * @description Обновляет статистику
+     * @param {Array} data - Отсортированные данные
+     * @param {number} year - Текущий год
+     */
+    function updateStats(data, year) {
+      const total = data.reduce((sum, item) => sum + item.value, 0);
+      const totalBillions = (total / 1000).toFixed(2);
+      elements.totalPopulation.textContent = totalBillions;
+
+      if (data[0]) {
+        elements.topCountry.textContent = data[0].name;
+      }
+
+      // Расчет роста
+      const prevYear = Math.floor(year) - 1;
+      if (prevYear >= 1950) {
+        const prevData = getSortedData(prevYear);
+        const prevTotal = prevData.reduce((sum, item) => sum + item.value, 0);
+        const growth = ((total - prevTotal) / prevTotal * 100).toFixed(1);
+        elements.growthRate.textContent = `+${growth}%`;
+      }
+    }
+
+    /**
+     * @function animate
+     * @description Основной цикл анимации
+     * @param {number} timestamp - Временная метка кадра
+     */
+    function animate(timestamp) {
+      if (!state.isPlaying) return;
+
+      if (!state.lastFrameTime) state.lastFrameTime = timestamp;
+      const delta = timestamp - state.lastFrameTime;
+
+      if (delta >= 50 / state.speed) {
+        state.lastFrameTime = timestamp;
+        state.currentYear += 0.1 * state.speed;
+
+        if (state.currentYear >= 2024) {
+          state.currentYear = 2024;
+          stopAnimation();
+        }
+
+        updateUI();
+      }
+
+      state.animationId = requestAnimationFrame(animate);
+    }
+
+    /**
+     * @function startAnimation
+     * @description Запускает анимацию
+     */
+    function startAnimation() {
+      state.isPlaying = true;
+      state.lastFrameTime = 0;
+      elements.playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+      state.animationId = requestAnimationFrame(animate);
+    }
+
+    /**
+     * @function stopAnimation
+     * @description Останавливает анимацию
+     */
+    function stopAnimation() {
+      state.isPlaying = false;
+      elements.playBtn.innerHTML = '<i class="fas fa-play"></i>';
+      if (state.animationId) {
+        cancelAnimationFrame(state.animationId);
+        state.animationId = null;
+      }
+    }
+
+    /**
+     * @function updateUI
+     * @description Обновляет интерфейс
+     */
+    function updateUI() {
+      const displayYear = Math.floor(state.currentYear);
+      elements.yearDisplay.textContent = displayYear;
+      elements.yearSlider.value = displayYear;
+      updateBars(state.currentYear);
+    }
+
+    /**
+     * @function applyTranslations
+     * @description Применяет переводы к интерфейсу
+     */
+    function applyTranslations() {
+      const t = translations[state.lang];
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.dataset.i18n;
+        if (t[key]) {
+          el.textContent = t[key];
+        }
+      });
+
+      // Обновляем заголовок
+      document.title = state.lang === "ru"
+        ? "Гонка населения | Population Race"
+        : "Population Race | Гонка населения";
+    }
+
+    /**
+     * @function applyTheme
+     * @description Применяет тему
+     */
+    function applyTheme() {
+      document.body.dataset.theme = state.theme;
+    }
+
+    /**
+     * @function loadSettings
+     * @description Загружает настройки из localStorage
+     */
+    function loadSettings() {
+      const savedTheme = localStorage.getItem("populationRace_theme");
+      const savedLang = localStorage.getItem("populationRace_lang");
+
+      if (savedTheme) {
+        state.theme = savedTheme;
+        elements.themeToggle.checked = state.theme === "dark";
+      }
+
+      if (savedLang) {
+        state.lang = savedLang;
+        elements.langToggle.checked = state.lang === "en";
+      }
+
+      applyTheme();
+      applyTranslations();
+    }
+
+    /**
+     * @function saveSettings
+     * @description Сохраняет настройки в localStorage
+     */
+    function saveSettings() {
+      localStorage.setItem("populationRace_theme", state.theme);
+      localStorage.setItem("populationRace_lang", state.lang);
+    }
+
+    // Обработчики событий
+    elements.playBtn.addEventListener("click", () => {
+      if (state.isPlaying) {
+        stopAnimation();
+      } else {
+        if (state.currentYear >= 2024) {
+          state.currentYear = 1950;
+        }
+        startAnimation();
+      }
+    });
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+      stopAnimation();
+      state.currentYear = 1950;
+      updateUI();
+    });
+
+    document.getElementById("endBtn").addEventListener("click", () => {
+      stopAnimation();
+      state.currentYear = 2024;
+      updateUI();
+    });
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      stopAnimation();
+      state.currentYear = Math.max(1950, Math.floor(state.currentYear) - 1);
+      updateUI();
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      stopAnimation();
+      state.currentYear = Math.min(2024, Math.floor(state.currentYear) + 1);
+      updateUI();
+    });
+
+    elements.yearSlider.addEventListener("input", (e) => {
+      stopAnimation();
+      state.currentYear = parseInt(e.target.value);
+      updateUI();
+    });
+
+    elements.speedSlider.addEventListener("input", (e) => {
+      state.speed = parseFloat(e.target.value);
+      elements.speedValue.textContent = state.speed + "x";
+    });
+
+    // Переключение режима
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.mode = btn.dataset.mode;
+        stopAnimation();
+        state.currentYear = 1950;
+        createBars();
+        updateUI();
+      });
+    });
+
+    // Настройки
+    elements.settingsBtn.addEventListener("click", () => {
+      elements.settingsModal.classList.toggle("active");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!elements.settingsModal.contains(e.target) &&
+          !elements.settingsBtn.contains(e.target)) {
+        elements.settingsModal.classList.remove("active");
+      }
+    });
+
+    elements.themeToggle.addEventListener("change", (e) => {
+      state.theme = e.target.checked ? "dark" : "light";
+      applyTheme();
+      saveSettings();
+    });
+
+    elements.langToggle.addEventListener("change", (e) => {
+      state.lang = e.target.checked ? "en" : "ru";
+      applyTranslations();
+      saveSettings();
+      // Перерисовываем значения
+      updateUI();
+    });
+
+    // Обработка изменения размера окна
+    let resizeTimeout;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        createBars();
+        updateUI();
+      }, 100);
+    });
+
+    // Инициализация
+    loadSettings();
+    createBars();
+    updateUI();
+  </script>
+</body>
+</html>
