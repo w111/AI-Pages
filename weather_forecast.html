@@ -2,7 +2,8 @@
 <!--
 ТЕХНИЧЕСКОЕ ЗАДАНИЕ
 
-Цель: Создать интерактивную страницу прогноза погоды с отображением текущих условий и прогноза на 7 дней.
+Цель: Создать интерактивную страницу прогноза погоды с отображением текущих условий,
+прогноза на 7 дней и качества воздуха.
 
 Функциональные требования:
 1. Текущая погода:
@@ -19,12 +20,19 @@
    - Вероятность осадков
    - Скорость ветра
 
-3. Поиск и геокодинг:
+3. Качество воздуха:
+   - European Air Quality Index (AQI)
+   - PM2.5, PM10 (мелкие частицы)
+   - NO₂, O₃, SO₂, CO (газы)
+   - Цветовая индикация уровня загрязнения
+   - Визуальная шкала AQI
+
+4. Поиск и геокодинг:
    - Поиск городов через Nominatim OpenStreetMap API
    - Автоматическое определение местоположения (Geolocation API)
    - Сохранение последнего города в localStorage
 
-4. Пользовательский интерфейс:
+5. Пользовательский интерфейс:
    - Темная/светлая тема
    - Адаптивный дизайн
    - Анимации загрузки
@@ -32,10 +40,11 @@
 
 Технические требования:
 1. Open-Meteo API для погодных данных (бесплатный, без API-ключа)
-2. Nominatim для геокодинга
-3. LocalStorage для кэширования и настроек
-4. CSS переменные для темизации
-5. Font Awesome для иконок
+2. Open-Meteo Air Quality API для данных о качестве воздуха
+3. Nominatim для геокодинга
+4. LocalStorage для кэширования и настроек
+5. CSS переменные для темизации
+6. Font Awesome для иконок
 -->
 
 <html lang="ru">
@@ -506,6 +515,130 @@
         display: block;
       }
 
+      /* Качество воздуха */
+      .air-quality-section {
+        background: var(--card-bg);
+        border-radius: 20px;
+        padding: 25px;
+        box-shadow: var(--shadow);
+        margin-bottom: 30px;
+      }
+
+      .air-quality-section h3 {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+        color: var(--text-color);
+      }
+
+      .aqi-container {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 25px;
+        align-items: center;
+      }
+
+      .aqi-main {
+        text-align: center;
+        min-width: 140px;
+      }
+
+      .aqi-value {
+        font-size: 3.5rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+
+      .aqi-label {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+
+      .aqi-scale {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+
+      /* Цвета AQI */
+      .aqi-good { color: #4caf50; }
+      .aqi-fair { color: #8bc34a; }
+      .aqi-moderate { color: #ffeb3b; }
+      .aqi-poor { color: #ff9800; }
+      .aqi-very-poor { color: #f44336; }
+      .aqi-hazardous { color: #9c27b0; }
+
+      .aqi-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 15px;
+      }
+
+      .aqi-detail-item {
+        background: var(--bg-color);
+        padding: 12px;
+        border-radius: 10px;
+        text-align: center;
+      }
+
+      .aqi-detail-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+        text-transform: uppercase;
+      }
+
+      .aqi-detail-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-color);
+      }
+
+      .aqi-detail-unit {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+      }
+
+      /* Полоска AQI */
+      .aqi-bar-container {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .aqi-bar {
+        height: 8px;
+        border-radius: 4px;
+        background: linear-gradient(to right,
+          #4caf50 0%, #4caf50 10%,
+          #8bc34a 10%, #8bc34a 20%,
+          #ffeb3b 20%, #ffeb3b 40%,
+          #ff9800 40%, #ff9800 60%,
+          #f44336 60%, #f44336 80%,
+          #9c27b0 80%, #9c27b0 100%);
+        position: relative;
+        margin-bottom: 8px;
+      }
+
+      .aqi-bar-marker {
+        position: absolute;
+        top: -4px;
+        width: 16px;
+        height: 16px;
+        background: var(--card-bg);
+        border: 3px solid var(--text-color);
+        border-radius: 50%;
+        transform: translateX(-50%);
+        transition: left 0.3s ease;
+      }
+
+      .aqi-bar-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+      }
+
       /* Атрибуция */
       .attribution {
         text-align: center;
@@ -571,6 +704,18 @@
 
         .current-temp {
           font-size: 3rem;
+        }
+
+        .aqi-container {
+          grid-template-columns: 1fr;
+        }
+
+        .aqi-main {
+          min-width: auto;
+        }
+
+        .aqi-value {
+          font-size: 2.5rem;
         }
       }
     </style>
@@ -666,6 +811,61 @@
           </div>
         </div>
 
+        <!-- Качество воздуха -->
+        <div class="air-quality-section" id="airQualitySection">
+          <h3><i class="fas fa-wind"></i> Качество воздуха</h3>
+          <div class="aqi-container">
+            <div class="aqi-main">
+              <div class="aqi-value" id="aqiValue">--</div>
+              <div class="aqi-label" id="aqiLabel">Загрузка...</div>
+              <div class="aqi-scale">European AQI</div>
+            </div>
+            <div class="aqi-details" id="aqiDetails">
+              <div class="aqi-detail-item">
+                <div class="aqi-detail-label">PM2.5</div>
+                <div class="aqi-detail-value" id="pm25Value">--</div>
+                <div class="aqi-detail-unit">мкг/м³</div>
+              </div>
+              <div class="aqi-detail-item">
+                <div class="aqi-detail-label">PM10</div>
+                <div class="aqi-detail-value" id="pm10Value">--</div>
+                <div class="aqi-detail-unit">мкг/м³</div>
+              </div>
+              <div class="aqi-detail-item">
+                <div class="aqi-detail-label">NO₂</div>
+                <div class="aqi-detail-value" id="no2Value">--</div>
+                <div class="aqi-detail-unit">мкг/м³</div>
+              </div>
+              <div class="aqi-detail-item">
+                <div class="aqi-detail-label">O₃</div>
+                <div class="aqi-detail-value" id="o3Value">--</div>
+                <div class="aqi-detail-unit">мкг/м³</div>
+              </div>
+              <div class="aqi-detail-item">
+                <div class="aqi-detail-label">SO₂</div>
+                <div class="aqi-detail-value" id="so2Value">--</div>
+                <div class="aqi-detail-unit">мкг/м³</div>
+              </div>
+              <div class="aqi-detail-item">
+                <div class="aqi-detail-label">CO</div>
+                <div class="aqi-detail-value" id="coValue">--</div>
+                <div class="aqi-detail-unit">мкг/м³</div>
+              </div>
+            </div>
+          </div>
+          <div class="aqi-bar-container">
+            <div class="aqi-bar">
+              <div class="aqi-bar-marker" id="aqiMarker"></div>
+            </div>
+            <div class="aqi-bar-labels">
+              <span>Хорошо</span>
+              <span>Умеренно</span>
+              <span>Плохо</span>
+              <span>Опасно</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Прогноз на 7 дней -->
         <h3 class="forecast-title"><i class="fas fa-calendar-alt"></i> Прогноз на 7 дней</h3>
         <div class="forecast-grid" id="forecastGrid">
@@ -675,7 +875,8 @@
 
       <!-- Атрибуция -->
       <div class="attribution">
-        Данные предоставлены <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a>
+        Данные предоставлены <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a>,
+        <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank">Open-Meteo Air Quality</a>
         и <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>
       </div>
     </div>
@@ -785,6 +986,78 @@
         data = await resp.json();
         cache.set(cacheKey, data);
         return data;
+      }
+
+      // === КАЧЕСТВО ВОЗДУХА ===
+      const aqiLevels = [
+        { max: 20, label: 'Отличное', class: 'aqi-good' },
+        { max: 40, label: 'Хорошее', class: 'aqi-fair' },
+        { max: 60, label: 'Умеренное', class: 'aqi-moderate' },
+        { max: 80, label: 'Плохое', class: 'aqi-poor' },
+        { max: 100, label: 'Очень плохое', class: 'aqi-very-poor' },
+        { max: Infinity, label: 'Опасное', class: 'aqi-hazardous' }
+      ];
+
+      function getAqiInfo(aqi) {
+        for (const level of aqiLevels) {
+          if (aqi <= level.max) return level;
+        }
+        return aqiLevels[aqiLevels.length - 1];
+      }
+
+      async function getAirQuality(lat, lon) {
+        const cacheKey = `aqi_${Math.round(lat * 100) / 100}_${Math.round(lon * 100) / 100}`;
+        let data = cache.get(cacheKey);
+        if (data) return data;
+
+        const url = `https://air-quality-api.open-meteo.com/v1/air-quality?` +
+          `latitude=${lat}&longitude=${lon}` +
+          `&current=european_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,` +
+          `sulphur_dioxide,ozone`;
+
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('Ошибка получения данных о качестве воздуха');
+
+        data = await resp.json();
+        cache.set(cacheKey, data);
+        return data;
+      }
+
+      function displayAirQuality(data) {
+        const current = data.current;
+        const aqi = current.european_aqi;
+
+        if (aqi === null || aqi === undefined) {
+          document.getElementById('airQualitySection').style.display = 'none';
+          return;
+        }
+
+        document.getElementById('airQualitySection').style.display = 'block';
+
+        // Главное значение AQI
+        const aqiInfo = getAqiInfo(aqi);
+        const aqiValueEl = document.getElementById('aqiValue');
+        const aqiLabelEl = document.getElementById('aqiLabel');
+
+        aqiValueEl.textContent = Math.round(aqi);
+        aqiValueEl.className = `aqi-value ${aqiInfo.class}`;
+        aqiLabelEl.textContent = aqiInfo.label;
+        aqiLabelEl.className = `aqi-label ${aqiInfo.class}`;
+
+        // Детали загрязнителей
+        const formatValue = (val) => val !== null && val !== undefined
+          ? Math.round(val * 10) / 10 : '--';
+
+        document.getElementById('pm25Value').textContent = formatValue(current.pm2_5);
+        document.getElementById('pm10Value').textContent = formatValue(current.pm10);
+        document.getElementById('no2Value').textContent = formatValue(current.nitrogen_dioxide);
+        document.getElementById('o3Value').textContent = formatValue(current.ozone);
+        document.getElementById('so2Value').textContent = formatValue(current.sulphur_dioxide);
+        document.getElementById('coValue').textContent = formatValue(current.carbon_monoxide);
+
+        // Позиция маркера на шкале (0-100+ -> 0-100%)
+        const markerPos = Math.min(aqi / 100 * 100, 100);
+        document.getElementById('aqiMarker').style.left = `${markerPos}%`;
       }
 
       // === ОБРАТНЫЙ ГЕОКОДИНГ ===
@@ -931,8 +1204,23 @@
               geoData.address?.village || geoData.display_name?.split(',')[0] || 'Неизвестно';
           }
 
-          const weatherData = await getWeather(lat, lon);
+          // Загружаем погоду и качество воздуха параллельно
+          const [weatherData, airQualityData] = await Promise.all([
+            getWeather(lat, lon),
+            getAirQuality(lat, lon).catch(err => {
+              console.warn('Не удалось загрузить качество воздуха:', err);
+              return null;
+            })
+          ]);
+
           displayWeather(weatherData, cityName);
+
+          // Отображаем качество воздуха если данные получены
+          if (airQualityData) {
+            displayAirQuality(airQualityData);
+          } else {
+            document.getElementById('airQualitySection').style.display = 'none';
+          }
 
         } catch (error) {
           console.error('Ошибка:', error);
