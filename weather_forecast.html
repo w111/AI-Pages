@@ -454,6 +454,83 @@
         transition: width 0.3s ease;
       }
 
+      /* Почасовой прогноз */
+      .hourly-section {
+        margin-bottom: 30px;
+      }
+
+      .hourly-scroll {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding: 10px 0;
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary-color) var(--border-color);
+      }
+
+      .hourly-scroll::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .hourly-scroll::-webkit-scrollbar-track {
+        background: var(--border-color);
+        border-radius: 3px;
+      }
+
+      .hourly-scroll::-webkit-scrollbar-thumb {
+        background: var(--primary-color);
+        border-radius: 3px;
+      }
+
+      .hourly-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 15px 12px;
+        min-width: 70px;
+        text-align: center;
+        box-shadow: var(--shadow);
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+      }
+
+      .hourly-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-hover);
+      }
+
+      .hourly-card.now {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .hourly-card.now .hourly-time,
+      .hourly-card.now .hourly-temp {
+        color: white;
+      }
+
+      .hourly-time {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+
+      .hourly-icon {
+        font-size: 1.5rem;
+        margin-bottom: 8px;
+      }
+
+      .hourly-temp {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-color);
+      }
+
+      .hourly-wind {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        margin-top: 5px;
+      }
+
       /* Прогноз на 7 дней */
       .forecast-title {
         font-size: 1.5rem;
@@ -984,6 +1061,14 @@
           </div>
         </div>
 
+        <!-- Почасовой прогноз -->
+        <div class="hourly-section">
+          <h3 class="forecast-title"><i class="fas fa-clock"></i> Почасовой прогноз</h3>
+          <div class="hourly-scroll" id="hourlyScroll">
+            <!-- Почасовые карточки добавляются динамически -->
+          </div>
+        </div>
+
         <!-- Прогноз на 7 дней -->
         <h3 class="forecast-title"><i class="fas fa-calendar-alt"></i> Прогноз на 7 дней</h3>
         <div class="forecast-grid" id="forecastGrid">
@@ -994,7 +1079,8 @@
       <!-- Атрибуция -->
       <div class="attribution">
         Данные предоставлены <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a>,
-        <a href="https://wttr.in/" target="_blank">wttr.in</a>
+        <a href="https://wttr.in/" target="_blank">wttr.in</a>,
+        <a href="https://www.7timer.info/" target="_blank">7Timer</a>
         и <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>
       </div>
     </div>
@@ -1181,6 +1267,48 @@
 
       function getMoonPhaseInfo(phase) {
         return moonPhases[phase] || { name: phase, emoji: '🌙' };
+      }
+
+      // === ПОЧАСОВОЙ ПРОГНОЗ (7Timer API) ===
+      async function getHourlyForecast(lat, lon) {
+        const cacheKey = `hourly_${Math.round(lat * 10) / 10}_${Math.round(lon * 10) / 10}`;
+        let data = cache.get(cacheKey);
+        if (data) return data;
+
+        try {
+          const resp = await fetch(
+            `https://www.7timer.info/bin/civil.php?lat=${lat}&lon=${lon}&ac=0&unit=metric&output=json`
+          );
+          if (!resp.ok) return null;
+          data = await resp.json();
+          cache.set(cacheKey, data);
+          return data;
+        } catch (e) {
+          console.warn('Не удалось получить почасовой прогноз:', e);
+          return null;
+        }
+      }
+
+      // Иконки погоды для 7Timer
+      const hourlyWeatherIcons = {
+        'clear': '☀️',
+        'pcloudy': '⛅',
+        'mcloudy': '🌥️',
+        'cloudy': '☁️',
+        'humid': '🌫️',
+        'lightrain': '🌧️',
+        'oshower': '🌦️',
+        'ishower': '🌧️',
+        'lightsnow': '🌨️',
+        'rain': '🌧️',
+        'snow': '❄️',
+        'rainsnow': '🌨️',
+        'ts': '⛈️',
+        'tsrain': '⛈️'
+      };
+
+      function getHourlyIcon(weather) {
+        return hourlyWeatherIcons[weather] || '🌡️';
       }
 
       // === UI ФУНКЦИИ ===
@@ -1383,6 +1511,74 @@
         document.getElementById('moonset').textContent = moonset;
       }
 
+      // === ОТОБРАЖЕНИЕ ПОЧАСОВОГО ПРОГНОЗА ===
+      function displayHourlyForecast(hourlyData) {
+        if (!hourlyData || !hourlyData.dataseries) {
+          return;
+        }
+
+        const hourlyScroll = document.getElementById('hourlyScroll');
+        hourlyScroll.innerHTML = '';
+
+        // Получаем начальное время прогноза
+        const initTime = hourlyData.init;
+        const year = parseInt(initTime.substring(0, 4));
+        const month = parseInt(initTime.substring(4, 6)) - 1;
+        const day = parseInt(initTime.substring(6, 8));
+        const hour = parseInt(initTime.substring(8, 10));
+        const baseDate = new Date(year, month, day, hour, 0, 0);
+
+        // Показываем первые 24 точки (каждая с шагом 3 часа = 72 часа вперёд)
+        const maxPoints = Math.min(hourlyData.dataseries.length, 24);
+
+        for (let i = 0; i < maxPoints; i++) {
+          const point = hourlyData.dataseries[i];
+          const pointDate = new Date(baseDate.getTime() + point.timepoint * 60 * 60 * 1000);
+
+          const card = document.createElement('div');
+          card.className = 'hourly-card' + (i === 0 ? ' now' : '');
+
+          // Форматируем время
+          const timeStr = pointDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+          const dateStr = pointDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+
+          // Получаем иконку погоды
+          const weatherIcon = getHourlyIcon(point.weather);
+
+          // Скорость ветра в км/ч (7Timer дает в м/с диапазонах)
+          const windSpeedMap = {
+            1: '< 1',     // 0.3 m/s
+            2: '1-5',     // 1-5 m/s
+            3: '5-11',    // 5-11 m/s
+            4: '11-19',   // 11-19 m/s
+            5: '19-28',   // 19-28 m/s
+            6: '28-38',   // 28-38 m/s
+            7: '38-49',   // 38-49 m/s
+            8: '49-61'    // 49-61 m/s
+          };
+          const windSpeed = windSpeedMap[point.wind10m?.speed] || '--';
+
+          card.innerHTML = `
+            <div class="hourly-time">${i === 0 ? 'Сейчас' : timeStr}</div>
+            <div class="hourly-icon">${weatherIcon}</div>
+            <div class="hourly-temp">${point.temp2m}°</div>
+            <div class="hourly-wind"><i class="fas fa-wind"></i> ${windSpeed}</div>
+          `;
+
+          // Добавляем дату для полуночи
+          if (pointDate.getHours() === 0 && i > 0) {
+            const dateLabel = document.createElement('div');
+            dateLabel.className = 'hourly-time';
+            dateLabel.style.fontSize = '0.7rem';
+            dateLabel.textContent = dateStr;
+            card.querySelector('.hourly-time').appendChild(document.createElement('br'));
+            card.querySelector('.hourly-time').innerHTML += `<span style="font-size:0.7rem">${dateStr}</span>`;
+          }
+
+          hourlyScroll.appendChild(card);
+        }
+      }
+
       // === ОСНОВНАЯ ФУНКЦИЯ ЗАГРУЗКИ ПОГОДЫ ===
       async function loadWeather(cityOrCoords) {
         showLoading();
@@ -1417,6 +1613,11 @@
           const searchCity = typeof cityOrCoords === 'string' ? cityOrCoords : cityName.split(',')[0];
           getMoonData(searchCity).then(moonData => {
             if (moonData) displayMoonData(moonData);
+          });
+
+          // Загрузка почасового прогноза (7Timer API)
+          getHourlyForecast(lat, lon).then(hourlyData => {
+            if (hourlyData) displayHourlyForecast(hourlyData);
           });
 
         } catch (error) {
