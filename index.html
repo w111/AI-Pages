@@ -992,6 +992,27 @@
                             <li>Фотографии, биографии и топ-треки артистов</li>
                             <li>Музыкальные видео с YouTube</li>
                             <li>Дискография, теги и связанные релизы</li>
+                        <h3><i class="fas fa-rocket"></i> NASA Explorer</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите исследовать космос?</p>
+                        <p>Интерактивное приложение для исследования космоса с использованием NASA Open APIs. Астрономические фото дня, снимки с марсоходов и поиск по медиатеке NASA.</p>
+                        <ul class="features-list">
+                            <li>Астрономическое фото дня (APOD)</li>
+                            <li>Фотографии с марсоходов NASA (Curiosity, Opportunity, Spirit, Perseverance)</li>
+                            <li>Поиск по NASA Image Library</li>
+                            <li>Выбор камеры и Sol/даты для марсоходов</li>
+                            <li>Темная и светлая тема</li>
+                        <h3><i class="fas fa-cocktail"></i> Рецепты коктейлей</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите приготовить идеальный коктейль?</p>
+                        <p>Интерактивный каталог коктейлей с рецептами и ингредиентами. Поиск по названию, фильтрация по категориям, ингредиентам и типу стакана.</p>
+                        <ul class="features-list">
+                            <li>База из 600+ рецептов коктейлей</li>
+                            <li>Поиск и фильтрация по категориям</li>
+                            <li>Детальные рецепты с ингредиентами</li>
+                            <li>Случайный коктейль дня</li>
                             <li>Темная и светлая тема, многоязычность</li>
                         </ul>
                         <div class="tech-list">
@@ -1003,6 +1024,18 @@
                     </div>
                     <div class="card-footer">
                         <a href="music-search.html" class="view-btn">Открыть</a>
+                            <span class="tech-tag">NASA API</span>
+                            <span class="tech-tag">REST API</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="nasa_explorer.html" class="view-btn">Открыть</a>
+                            <span class="tech-tag">TheCocktailDB API</span>
+                            <span class="tech-tag">LocalStorage</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="cocktails.html" class="view-btn">Открыть</a>
                     </div>
                 </div>
             </div>
@@ -1177,6 +1210,50 @@
                     </div>
                     <div class="card-footer">
                         <a href="weather_forecast.html" class="view-btn">Открыть Прогноз</a>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-trophy"></i> Спортивная статистика</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите узнать информацию о любимых спортивных командах и лигах?</p>
+                        <p>Интерактивная страница для просмотра спортивной статистики. Поддерживает выбор вида спорта, просмотр лиг и команд, поиск команд по названию и детальную информацию о каждой команде.</p>
+                        <ul class="features-list">
+                            <li>Все виды спорта и лиги мира</li>
+                            <li>Информация о командах и стадионах</li>
+                            <li>Поиск команд по названию</li>
+                            <li>Эмблемы и фото команд</li>
+                        <h3><i class="fas fa-chart-bar"></i> Гонка населения</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите увидеть, как менялось население стран и городов?</p>
+                        <p>Анимированная диаграмма "гонка" показывает динамику изменения населения с 1950 по 2024 год. Переключайтесь между странами и городами, управляйте скоростью и наблюдайте за историческими изменениями.</p>
+                        <ul class="features-list">
+                            <li>Анимированные столбцы с плавными переходами</li>
+                            <li>Режимы: страны мира и крупнейшие города</li>
+                            <li>Управление воспроизведением и скоростью</li>
+                            <li>Интерактивная навигация по годам</li>
+                            <li>Темная и светлая тема</li>
+                        </ul>
+
+                        <div class="tech-list">
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">TheSportsDB API</span>
+                            <span class="tech-tag">LocalStorage</span>
+                            <span class="tech-tag">HTML/CSS</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="sports_api.html" class="view-btn">Открыть Статистику</a>
+                            <span class="tech-tag">CSS Animations</span>
+                            <span class="tech-tag">HTML/CSS</span>
+                            <span class="tech-tag">i18n</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="population_race.html" class="view-btn">Запустить Гонку</a>
                     </div>
                 </div>
             </div>
@@ -1448,6 +1525,15 @@
                             "Фотографии, биографии и топ-треки артистов",
                             "Музыкальные видео с YouTube",
                             "Дискография, теги и связанные релизы",
+                    cocktails: {
+                        title: "Рецепты коктейлей",
+                        description: "Интерактивный каталог коктейлей с рецептами и ингредиентами. Поиск по названию, фильтрация по категориям, ингредиентам и типу стакана.",
+                        problem: "Хотите приготовить идеальный коктейль?",
+                        features: [
+                            "База из 600+ рецептов коктейлей",
+                            "Поиск и фильтрация по категориям",
+                            "Детальные рецепты с ингредиентами",
+                            "Случайный коктейль дня",
                             "Темная и светлая тема, многоязычность"
                         ]
                     },
@@ -1516,6 +1602,39 @@
                             "Поддержка множества городов",
                             "Поиск по достопримечательностям",
                             "Адаптивный дизайн для мобильных устройств"
+                        ]
+                    },
+                    weatherForecast: {
+                        title: "Прогноз погоды",
+                        description: "Интерактивная страница прогноза погоды с отображением текущих условий и прогноза на 7 дней. Поддерживает поиск по городам, автоопределение местоположения и красивую визуализацию данных.",
+                        problem: "Хотите узнать погоду на неделю для любого города мира?",
+                        features: [
+                            "Текущая погода с подробной информацией",
+                            "Прогноз на 7 дней",
+                            "Поиск по городам и геолокация",
+                            "Иконки погодных условий",
+                            "Темная и светлая тема"
+                        ]
+                    },
+                    sportsApi: {
+                        title: "Спортивная статистика",
+                        description: "Интерактивная страница для просмотра спортивной статистики. Поддерживает выбор вида спорта, просмотр лиг и команд, поиск команд по названию и детальную информацию о каждой команде.",
+                        problem: "Хотите узнать информацию о любимых спортивных командах и лигах?",
+                        features: [
+                            "Все виды спорта и лиги мира",
+                            "Информация о командах и стадионах",
+                            "Поиск команд по названию",
+                            "Эмблемы и фото команд",
+                    populationRace: {
+                        title: "Гонка населения",
+                        description: "Анимированная диаграмма \"гонка\" показывает динамику изменения населения с 1950 по 2024 год. Переключайтесь между странами и городами, управляйте скоростью и наблюдайте за историческими изменениями.",
+                        problem: "Хотите увидеть, как менялось население стран и городов?",
+                        features: [
+                            "Анимированные столбцы с плавными переходами",
+                            "Режимы: страны мира и крупнейшие города",
+                            "Управление воспроизведением и скоростью",
+                            "Интерактивная навигация по годам",
+                            "Темная и светлая тема"
                         ]
                     }
                 }
@@ -1713,6 +1832,15 @@
                             "Artist photos, biographies and top tracks",
                             "Music videos from YouTube",
                             "Discography, tags and related releases",
+                    cocktails: {
+                        title: "Cocktail Recipes",
+                        description: "Interactive cocktail catalog with recipes and ingredients. Search by name, filter by categories, ingredients and glass type.",
+                        problem: "Want to make the perfect cocktail?",
+                        features: [
+                            "Database of 600+ cocktail recipes",
+                            "Search and filter by categories",
+                            "Detailed recipes with ingredients",
+                            "Random cocktail of the day",
                             "Dark and light themes, multilingual"
                         ]
                     },
@@ -1782,11 +1910,44 @@
                             "Search for landmarks",
                             "Adaptive design for mobile devices"
                         ]
+                    },
+                    weatherForecast: {
+                        title: "Weather Forecast",
+                        description: "Interactive weather forecast page showing current conditions and 7-day forecast. Supports city search, automatic location detection and beautiful data visualization.",
+                        problem: "Want to know the weather for any city in the world?",
+                        features: [
+                            "Current weather with detailed information",
+                            "7-day forecast",
+                            "City search and geolocation",
+                            "Weather condition icons",
+                            "Dark and light themes"
+                        ]
+                    },
+                    sportsApi: {
+                        title: "Sports Statistics",
+                        description: "Interactive page for viewing sports statistics. Supports sport type selection, league and team browsing, team search by name and detailed team information.",
+                        problem: "Want to find information about your favorite sports teams and leagues?",
+                        features: [
+                            "All sports and leagues worldwide",
+                            "Team and stadium information",
+                            "Search teams by name",
+                            "Team badges and photos",
+                    populationRace: {
+                        title: "Population Race",
+                        description: "Animated racing bar chart showing population dynamics from 1950 to 2024. Switch between countries and cities, control playback speed, and observe historical changes.",
+                        problem: "Want to see how the population of countries and cities has changed?",
+                        features: [
+                            "Animated bars with smooth transitions",
+                            "Modes: world countries and largest cities",
+                            "Playback and speed control",
+                            "Interactive year navigation",
+                            "Dark and light themes"
+                        ]
                     }
                 }
             }
         };
-        
+
         // Инициализируем i18n с нашими переводами
         const i18n = I18n.init(translations);
         
@@ -1947,6 +2108,12 @@
             }
             if (mapsCards.length > 1) {
                 updateCard(mapsCards[1], 'audioGuide', '<i class="fas fa-headphones"></i>');
+            }
+            if (mapsCards.length > 2) {
+                updateCard(mapsCards[2], 'weatherForecast', '<i class="fas fa-cloud-sun"></i>');
+            }
+            if (mapsCards.length > 3) {
+                updateCard(mapsCards[3], 'sportsApi', '<i class="fas fa-trophy"></i>');
             }
         }
         

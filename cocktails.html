@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивную страницу с рецептами коктейлей на основе TheCocktailDB API.
+
+Функциональные требования:
+1. Поиск коктейлей по названию
+2. Получение случайного коктейля
+3. Фильтрация по категориям, ингредиентам, типу стакана
+4. Просмотр детального рецепта в модальном окне
+5. Поддержка темной и светлой темы
+6. Адаптивный дизайн для мобильных устройств
+7. Многоязычность (русский/английский)
+
+Технические требования:
+1. Использование TheCocktailDB API (https://www.thecocktaildb.com/api/json/v1/1/)
+2. Нативный JavaScript без фреймворков
+3. Современная CSS-верстка с Grid и Flexbox
+4. Анимации и плавные переходы
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Рецепты коктейлей - поиск, просмотр рецептов и ингредиентов">
+  <title>Рецепты коктейлей | Cocktail Recipes</title>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #e74c3c;
+      --primary-dark: #c0392b;
+      --secondary-color: #2c3e50;
+      --accent-color: #f39c12;
+      --text-color: #2c3e50;
+      --text-light: #7f8c8d;
+      --bg-color: #f5f6fa;
+      --card-bg: #ffffff;
+      --border-color: #dcdde1;
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      --shadow-hover: 0 20px 60px rgba(0, 0, 0, 0.15);
+      --gradient: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      --gradient-accent: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    }
+
+    body.dark-theme {
+      --primary-color: #e74c3c;
+      --primary-dark: #ff6b5b;
+      --secondary-color: #ecf0f1;
+      --accent-color: #f1c40f;
+      --text-color: #ecf0f1;
+      --text-light: #bdc3c7;
+      --bg-color: #1a1a2e;
+      --card-bg: #16213e;
+      --border-color: #2d3a4f;
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      --shadow-hover: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Header */
+    .header {
+      background: var(--gradient);
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo i {
+      font-size: 3rem;
+      color: white;
+      animation: shake 2s ease-in-out infinite;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(-5deg); }
+      50% { transform: rotate(5deg); }
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      color: white;
+      font-weight: 700;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.1rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Controls */
+    .controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 10;
+    }
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      backdrop-filter: blur(5px);
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+
+    .back-btn {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      z-index: 10;
+    }
+
+    /* Search Section */
+    .search-section {
+      max-width: 1200px;
+      margin: -2rem auto 2rem;
+      padding: 0 1rem;
+      position: relative;
+      z-index: 5;
+    }
+
+    .search-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .search-box {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    .search-input-wrapper i {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 1rem 1rem 1rem 3rem;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 1rem;
+      background: var(--card-bg);
+      color: var(--text-color);
+      transition: all 0.3s;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+    }
+
+    .search-btn, .random-btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s;
+    }
+
+    .search-btn {
+      background: var(--gradient);
+      color: white;
+    }
+
+    .search-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(231, 76, 60, 0.3);
+    }
+
+    .random-btn {
+      background: var(--gradient-accent);
+      color: white;
+    }
+
+    .random-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .filter-label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .filter-select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: var(--card-bg);
+      color: var(--text-color);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    /* Main Content */
+    .main-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem 3rem;
+    }
+
+    /* Loading */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Cocktails Grid */
+    .cocktails-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+
+    .cocktail-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: pointer;
+    }
+
+    .cocktail-card:hover {
+      transform: translateY(-10px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .cocktail-image {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      transition: transform 0.5s;
+    }
+
+    .cocktail-card:hover .cocktail-image {
+      transform: scale(1.05);
+    }
+
+    .cocktail-image-wrapper {
+      overflow: hidden;
+      position: relative;
+    }
+
+    .cocktail-badge {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: var(--gradient);
+      color: white;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .cocktail-info {
+      padding: 1.5rem;
+    }
+
+    .cocktail-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text-color);
+    }
+
+    .cocktail-meta {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .cocktail-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+
+    .cocktail-meta-item i {
+      color: var(--primary-color);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+
+    .empty-state i {
+      font-size: 5rem;
+      color: var(--text-light);
+      margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+      color: var(--text-light);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: 24px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      animation: modalSlide 0.4s ease-out;
+    }
+
+    @keyframes modalSlide {
+      from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.2rem;
+      z-index: 10;
+      transition: all 0.3s;
+    }
+
+    .modal-close:hover {
+      background: var(--primary-color);
+      transform: rotate(90deg);
+    }
+
+    .modal-image {
+      width: 100%;
+      height: 350px;
+      object-fit: cover;
+    }
+
+    .modal-content {
+      padding: 2rem;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+    }
+
+    .modal-title {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .modal-badges {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .modal-badge {
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-alcoholic {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .badge-category {
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .badge-glass {
+      background: var(--secondary-color);
+      color: white;
+    }
+
+    body.dark-theme .badge-glass {
+      background: #3d5a80;
+    }
+
+    .modal-section {
+      margin-bottom: 2rem;
+    }
+
+    .modal-section h3 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .ingredients-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .ingredient-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--bg-color);
+      border-radius: 12px;
+      transition: all 0.3s;
+    }
+
+    .ingredient-item:hover {
+      transform: translateX(5px);
+      background: rgba(231, 76, 60, 0.1);
+    }
+
+    .ingredient-image {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .ingredient-info {
+      flex: 1;
+    }
+
+    .ingredient-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .ingredient-measure {
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+
+    .instructions {
+      line-height: 1.8;
+      color: var(--text-color);
+      font-size: 1rem;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-light);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .footer a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 1.8rem;
+      }
+
+      .search-box {
+        flex-direction: column;
+      }
+
+      .search-btn, .random-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .filters {
+        flex-direction: column;
+      }
+
+      .filter-group {
+        min-width: 100%;
+      }
+
+      .modal-image {
+        height: 250px;
+      }
+
+      .modal-header {
+        flex-direction: column;
+      }
+
+      .modal-title {
+        font-size: 1.5rem;
+      }
+
+      .controls {
+        top: 0.5rem;
+        right: 0.5rem;
+      }
+
+      .back-btn {
+        top: 0.5rem;
+        left: 0.5rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .cocktails-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .ingredients-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <a href="index.html" class="control-btn back-btn" title="На главную">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+    <div class="controls">
+      <button class="control-btn" id="themeToggle" title="Сменить тему">
+        <i class="fas fa-moon"></i>
+      </button>
+      <button class="control-btn" id="langToggle" title="Change language">
+        <i class="fas fa-globe"></i>
+      </button>
+    </div>
+    <div class="header-content">
+      <div class="logo">
+        <i class="fas fa-cocktail"></i>
+        <h1 data-i18n="title">Рецепты коктейлей</h1>
+      </div>
+      <p data-i18n="subtitle">Откройте мир изысканных напитков</p>
+    </div>
+  </header>
+
+  <!-- Search Section -->
+  <section class="search-section">
+    <div class="search-card">
+      <div class="search-box">
+        <div class="search-input-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text"
+                 class="search-input"
+                 id="searchInput"
+                 data-i18n-placeholder="searchPlaceholder"
+                 placeholder="Введите название коктейля...">
+        </div>
+        <button class="search-btn" id="searchBtn">
+          <i class="fas fa-search"></i>
+          <span data-i18n="search">Искать</span>
+        </button>
+        <button class="random-btn" id="randomBtn">
+          <i class="fas fa-dice"></i>
+          <span data-i18n="random">Случайный</span>
+        </button>
+      </div>
+      <div class="filters">
+        <div class="filter-group">
+          <label class="filter-label" data-i18n="categoryLabel">Категория</label>
+          <select class="filter-select" id="categoryFilter">
+            <option value="" data-i18n="allCategories">Все категории</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" data-i18n="ingredientLabel">Ингредиент</label>
+          <select class="filter-select" id="ingredientFilter">
+            <option value="" data-i18n="allIngredients">Все ингредиенты</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" data-i18n="glassLabel">Тип стакана</label>
+          <select class="filter-select" id="glassFilter">
+            <option value="" data-i18n="allGlasses">Все типы</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" data-i18n="alcoholLabel">Алкоголь</label>
+          <select class="filter-select" id="alcoholFilter">
+            <option value="" data-i18n="allTypes">Все типы</option>
+            <option value="Alcoholic" data-i18n="alcoholic">Алкогольные</option>
+            <option value="Non_Alcoholic" data-i18n="nonAlcoholic">Безалкогольные</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p data-i18n="loading">Загрузка коктейлей...</p>
+    </div>
+    <div class="cocktails-grid" id="cocktailsGrid"></div>
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <i class="fas fa-glass-martini-alt"></i>
+      <h3 data-i18n="notFound">Коктейли не найдены</h3>
+      <p data-i18n="tryAgain">Попробуйте изменить параметры поиска</p>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modal">
+      <button class="modal-close" id="modalClose">
+        <i class="fas fa-times"></i>
+      </button>
+      <img class="modal-image" id="modalImage" src="" alt="">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modalTitle"></h2>
+          <div class="modal-badges" id="modalBadges"></div>
+        </div>
+        <div class="modal-section">
+          <h3><i class="fas fa-list"></i> <span data-i18n="ingredients">Ингредиенты</span></h3>
+          <div class="ingredients-list" id="ingredientsList"></div>
+        </div>
+        <div class="modal-section">
+          <h3><i class="fas fa-book-open"></i> <span data-i18n="instructions">Рецепт</span></h3>
+          <p class="instructions" id="instructions"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>
+      <span data-i18n="poweredBy">Работает на</span>
+      <a href="https://www.thecocktaildb.com/" target="_blank" rel="noopener">TheCocktailDB API</a>
+    </p>
+  </footer>
+
+  <script>
+    /**
+     * @description Переводы для интерфейса
+     */
+    const translations = {
+      ru: {
+        title: "Рецепты коктейлей",
+        subtitle: "Откройте мир изысканных напитков",
+        searchPlaceholder: "Введите название коктейля...",
+        search: "Искать",
+        random: "Случайный",
+        categoryLabel: "Категория",
+        ingredientLabel: "Ингредиент",
+        glassLabel: "Тип стакана",
+        alcoholLabel: "Алкоголь",
+        allCategories: "Все категории",
+        allIngredients: "Все ингредиенты",
+        allGlasses: "Все типы",
+        allTypes: "Все типы",
+        alcoholic: "Алкогольные",
+        nonAlcoholic: "Безалкогольные",
+        loading: "Загрузка коктейлей...",
+        notFound: "Коктейли не найдены",
+        tryAgain: "Попробуйте изменить параметры поиска",
+        ingredients: "Ингредиенты",
+        instructions: "Рецепт",
+        poweredBy: "Работает на"
+      },
+      en: {
+        title: "Cocktail Recipes",
+        subtitle: "Discover the world of exquisite drinks",
+        searchPlaceholder: "Enter cocktail name...",
+        search: "Search",
+        random: "Random",
+        categoryLabel: "Category",
+        ingredientLabel: "Ingredient",
+        glassLabel: "Glass type",
+        alcoholLabel: "Alcohol",
+        allCategories: "All categories",
+        allIngredients: "All ingredients",
+        allGlasses: "All types",
+        allTypes: "All types",
+        alcoholic: "Alcoholic",
+        nonAlcoholic: "Non-alcoholic",
+        loading: "Loading cocktails...",
+        notFound: "No cocktails found",
+        tryAgain: "Try changing your search parameters",
+        ingredients: "Ingredients",
+        instructions: "Instructions",
+        poweredBy: "Powered by"
+      }
+    };
+
+    /**
+     * @description Текущий язык интерфейса
+     */
+    let currentLang = localStorage.getItem("cocktails-lang") || "ru";
+
+    /**
+     * @description Базовый URL API
+     */
+    const API_BASE = "https://www.thecocktaildb.com/api/json/v1/1";
+
+    /**
+     * @function setLanguage
+     * @description Устанавливает язык интерфейса
+     * @param {string} lang - Код языка (ru/en)
+     */
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem("cocktails-lang", lang);
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (translations[lang][key]) {
+          el.textContent = translations[lang][key];
+        }
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        const key = el.getAttribute("data-i18n-placeholder");
+        if (translations[lang][key]) {
+          el.placeholder = translations[lang][key];
+        }
+      });
+    }
+
+    /**
+     * @function setTheme
+     * @description Устанавливает тему оформления
+     * @param {boolean} isDark - Темная тема
+     */
+    function setTheme(isDark) {
+      document.body.classList.toggle("dark-theme", isDark);
+      localStorage.setItem("cocktails-theme", isDark ? "dark" : "light");
+      const icon = document.querySelector("#themeToggle i");
+      icon.className = isDark ? "fas fa-sun" : "fas fa-moon";
+    }
+
+    /**
+     * @function fetchCocktails
+     * @description Получает список коктейлей по поисковому запросу
+     * @param {string} query - Поисковый запрос
+     * @returns {Promise<Array>} Массив коктейлей
+     */
+    async function fetchCocktails(query) {
+      const response = await fetch(`${API_BASE}/search.php?s=${encodeURIComponent(query)}`);
+      const data = await response.json();
+      return data.drinks || [];
+    }
+
+    /**
+     * @function fetchRandomCocktail
+     * @description Получает случайный коктейль
+     * @returns {Promise<Object>} Объект коктейля
+     */
+    async function fetchRandomCocktail() {
+      const response = await fetch(`${API_BASE}/random.php`);
+      const data = await response.json();
+      return data.drinks ? data.drinks[0] : null;
+    }
+
+    /**
+     * @function fetchByFilter
+     * @description Получает коктейли по фильтру
+     * @param {string} filterType - Тип фильтра (c, i, g, a)
+     * @param {string} value - Значение фильтра
+     * @returns {Promise<Array>} Массив коктейлей
+     */
+    async function fetchByFilter(filterType, value) {
+      const response = await fetch(`${API_BASE}/filter.php?${filterType}=${encodeURIComponent(value)}`);
+      const data = await response.json();
+      return data.drinks || [];
+    }
+
+    /**
+     * @function fetchCocktailDetails
+     * @description Получает детальную информацию о коктейле
+     * @param {string} id - ID коктейля
+     * @returns {Promise<Object>} Объект с деталями коктейля
+     */
+    async function fetchCocktailDetails(id) {
+      const response = await fetch(`${API_BASE}/lookup.php?i=${id}`);
+      const data = await response.json();
+      return data.drinks ? data.drinks[0] : null;
+    }
+
+    /**
+     * @function fetchFilterList
+     * @description Получает список значений для фильтра
+     * @param {string} type - Тип списка (c, i, g, a)
+     * @returns {Promise<Array>} Массив значений
+     */
+    async function fetchFilterList(type) {
+      const response = await fetch(`${API_BASE}/list.php?${type}=list`);
+      const data = await response.json();
+      return data.drinks || [];
+    }
+
+    /**
+     * @function initFilters
+     * @description Инициализирует фильтры
+     */
+    async function initFilters() {
+      try {
+        const [categories, ingredients, glasses] = await Promise.all([
+          fetchFilterList("c"),
+          fetchFilterList("i"),
+          fetchFilterList("g")
+        ]);
+
+        const categorySelect = document.getElementById("categoryFilter");
+        categories.forEach(cat => {
+          const option = document.createElement("option");
+          option.value = cat.strCategory;
+          option.textContent = cat.strCategory;
+          categorySelect.appendChild(option);
+        });
+
+        const ingredientSelect = document.getElementById("ingredientFilter");
+        ingredients.slice(0, 50).forEach(ing => {
+          const option = document.createElement("option");
+          option.value = ing.strIngredient1;
+          option.textContent = ing.strIngredient1;
+          ingredientSelect.appendChild(option);
+        });
+
+        const glassSelect = document.getElementById("glassFilter");
+        glasses.forEach(glass => {
+          const option = document.createElement("option");
+          option.value = glass.strGlass;
+          option.textContent = glass.strGlass;
+          glassSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error("Ошибка загрузки фильтров:", error);
+      }
+    }
+
+    /**
+     * @function renderCocktails
+     * @description Отрисовывает список коктейлей
+     * @param {Array} cocktails - Массив коктейлей
+     */
+    function renderCocktails(cocktails) {
+      const grid = document.getElementById("cocktailsGrid");
+      const emptyState = document.getElementById("emptyState");
+
+      if (!cocktails || cocktails.length === 0) {
+        grid.innerHTML = "";
+        emptyState.style.display = "block";
+        return;
+      }
+
+      emptyState.style.display = "none";
+      grid.innerHTML = cocktails.map(cocktail => `
+        <article class="cocktail-card" data-id="${cocktail.idDrink}">
+          <div class="cocktail-image-wrapper">
+            <img class="cocktail-image"
+                 src="${cocktail.strDrinkThumb}/preview"
+                 alt="${cocktail.strDrink}"
+                 loading="lazy">
+            ${cocktail.strAlcoholic ?
+              `<span class="cocktail-badge">${cocktail.strAlcoholic}</span>` : ""}
+          </div>
+          <div class="cocktail-info">
+            <h3 class="cocktail-name">${cocktail.strDrink}</h3>
+            <div class="cocktail-meta">
+              ${cocktail.strCategory ? `
+                <span class="cocktail-meta-item">
+                  <i class="fas fa-tag"></i> ${cocktail.strCategory}
+                </span>
+              ` : ""}
+              ${cocktail.strGlass ? `
+                <span class="cocktail-meta-item">
+                  <i class="fas fa-wine-glass"></i> ${cocktail.strGlass}
+                </span>
+              ` : ""}
+            </div>
+          </div>
+        </article>
+      `).join("");
+
+      // Добавляем обработчики кликов
+      grid.querySelectorAll(".cocktail-card").forEach(card => {
+        card.addEventListener("click", () => openModal(card.dataset.id));
+      });
+    }
+
+    /**
+     * @function openModal
+     * @description Открывает модальное окно с деталями коктейля
+     * @param {string} id - ID коктейля
+     */
+    async function openModal(id) {
+      const overlay = document.getElementById("modalOverlay");
+      overlay.classList.add("active");
+
+      try {
+        const cocktail = await fetchCocktailDetails(id);
+        if (!cocktail) return;
+
+        document.getElementById("modalImage").src = cocktail.strDrinkThumb;
+        document.getElementById("modalTitle").textContent = cocktail.strDrink;
+
+        // Бейджи
+        const badgesHtml = [];
+        if (cocktail.strAlcoholic) {
+          badgesHtml.push(`<span class="modal-badge badge-alcoholic">${cocktail.strAlcoholic}</span>`);
+        }
+        if (cocktail.strCategory) {
+          badgesHtml.push(`<span class="modal-badge badge-category">${cocktail.strCategory}</span>`);
+        }
+        if (cocktail.strGlass) {
+          badgesHtml.push(`<span class="modal-badge badge-glass">${cocktail.strGlass}</span>`);
+        }
+        document.getElementById("modalBadges").innerHTML = badgesHtml.join("");
+
+        // Ингредиенты
+        const ingredients = [];
+        for (let i = 1; i <= 15; i++) {
+          const ingredient = cocktail[`strIngredient${i}`];
+          const measure = cocktail[`strMeasure${i}`];
+          if (ingredient && ingredient.trim()) {
+            ingredients.push({ ingredient, measure: measure || "" });
+          }
+        }
+
+        const ingredientsHtml = ingredients.map(item => `
+          <div class="ingredient-item">
+            <img class="ingredient-image"
+                 src="https://www.thecocktaildb.com/images/ingredients/${encodeURIComponent(item.ingredient)}-Small.png"
+                 alt="${item.ingredient}"
+                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23eee%22 width=%22100%22 height=%22100%22/%3E%3Ctext fill=%22%23999%22 font-size=%2214%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E?%3C/text%3E%3C/svg%3E'">
+            <div class="ingredient-info">
+              <div class="ingredient-name">${item.ingredient}</div>
+              <div class="ingredient-measure">${item.measure}</div>
+            </div>
+          </div>
+        `).join("");
+        document.getElementById("ingredientsList").innerHTML = ingredientsHtml;
+
+        // Инструкции
+        const instructions = currentLang === "ru" && cocktail.strInstructionsDE
+          ? cocktail.strInstructionsDE
+          : cocktail.strInstructions;
+        document.getElementById("instructions").textContent = instructions || "";
+
+      } catch (error) {
+        console.error("Ошибка загрузки деталей коктейля:", error);
+      }
+    }
+
+    /**
+     * @function closeModal
+     * @description Закрывает модальное окно
+     */
+    function closeModal() {
+      document.getElementById("modalOverlay").classList.remove("active");
+    }
+
+    /**
+     * @function showLoading
+     * @description Показывает/скрывает индикатор загрузки
+     * @param {boolean} show - Показать индикатор
+     */
+    function showLoading(show) {
+      document.getElementById("loading").classList.toggle("active", show);
+      document.getElementById("cocktailsGrid").style.display = show ? "none" : "grid";
+    }
+
+    /**
+     * @function performSearch
+     * @description Выполняет поиск коктейлей
+     */
+    async function performSearch() {
+      const query = document.getElementById("searchInput").value.trim();
+      if (!query) return;
+
+      showLoading(true);
+      try {
+        const cocktails = await fetchCocktails(query);
+        renderCocktails(cocktails);
+      } catch (error) {
+        console.error("Ошибка поиска:", error);
+        renderCocktails([]);
+      }
+      showLoading(false);
+    }
+
+    /**
+     * @function loadRandomCocktail
+     * @description Загружает случайный коктейль
+     */
+    async function loadRandomCocktail() {
+      showLoading(true);
+      try {
+        const cocktail = await fetchRandomCocktail();
+        if (cocktail) {
+          renderCocktails([cocktail]);
+          openModal(cocktail.idDrink);
+        }
+      } catch (error) {
+        console.error("Ошибка загрузки случайного коктейля:", error);
+      }
+      showLoading(false);
+    }
+
+    /**
+     * @function applyFilter
+     * @description Применяет выбранный фильтр
+     * @param {string} filterType - Тип фильтра
+     * @param {string} value - Значение фильтра
+     */
+    async function applyFilter(filterType, value) {
+      if (!value) return;
+
+      // Сбрасываем другие фильтры
+      document.querySelectorAll(".filter-select").forEach(select => {
+        if (select.id !== filterType + "Filter") {
+          select.value = "";
+        }
+      });
+
+      showLoading(true);
+      try {
+        const cocktails = await fetchByFilter(filterType, value);
+        renderCocktails(cocktails);
+      } catch (error) {
+        console.error("Ошибка применения фильтра:", error);
+        renderCocktails([]);
+      }
+      showLoading(false);
+    }
+
+    /**
+     * @function loadPopularCocktails
+     * @description Загружает популярные коктейли для начального отображения
+     */
+    async function loadPopularCocktails() {
+      showLoading(true);
+      try {
+        // Загружаем несколько популярных коктейлей по первой букве
+        const cocktails = await fetchCocktails("margarita");
+        if (cocktails.length > 0) {
+          renderCocktails(cocktails);
+        } else {
+          // Если ничего не найдено, показываем случайные
+          const randomCocktails = [];
+          for (let i = 0; i < 6; i++) {
+            const cocktail = await fetchRandomCocktail();
+            if (cocktail) randomCocktails.push(cocktail);
+          }
+          renderCocktails(randomCocktails);
+        }
+      } catch (error) {
+        console.error("Ошибка загрузки:", error);
+        renderCocktails([]);
+      }
+      showLoading(false);
+    }
+
+    // Инициализация
+    document.addEventListener("DOMContentLoaded", () => {
+      // Инициализация темы
+      const savedTheme = localStorage.getItem("cocktails-theme");
+      setTheme(savedTheme === "dark");
+
+      // Инициализация языка
+      setLanguage(currentLang);
+
+      // Загрузка фильтров
+      initFilters();
+
+      // Загрузка начальных коктейлей
+      loadPopularCocktails();
+
+      // Обработчики событий
+      document.getElementById("themeToggle").addEventListener("click", () => {
+        const isDark = !document.body.classList.contains("dark-theme");
+        setTheme(isDark);
+      });
+
+      document.getElementById("langToggle").addEventListener("click", () => {
+        const newLang = currentLang === "ru" ? "en" : "ru";
+        setLanguage(newLang);
+      });
+
+      document.getElementById("searchBtn").addEventListener("click", performSearch);
+
+      document.getElementById("searchInput").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") performSearch();
+      });
+
+      document.getElementById("randomBtn").addEventListener("click", loadRandomCocktail);
+
+      document.getElementById("categoryFilter").addEventListener("change", (e) => {
+        applyFilter("c", e.target.value);
+      });
+
+      document.getElementById("ingredientFilter").addEventListener("change", (e) => {
+        applyFilter("i", e.target.value);
+      });
+
+      document.getElementById("glassFilter").addEventListener("change", (e) => {
+        applyFilter("g", e.target.value);
+      });
+
+      document.getElementById("alcoholFilter").addEventListener("change", (e) => {
+        applyFilter("a", e.target.value);
+      });
+
+      document.getElementById("modalClose").addEventListener("click", closeModal);
+
+      document.getElementById("modalOverlay").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeModal();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
+      });
+    });
+  </script>
+</body>
+</html>
