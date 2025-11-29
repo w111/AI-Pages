@@ -595,7 +595,6 @@ RULES:
                 id="poi-img"
                 alt="Изображение достопримечательности"
                 class="w-full h-64 lg:h-auto object-cover rounded-xl"
-                onerror="this.parentElement.style.display='none'"
               />
             </div>
           </div>
@@ -690,6 +689,7 @@ RULES:
       function getCityDisplayName(cityKey) {
         const cityNames = {
           subotica: 'Суботица',
+          zagreb: 'Загреб',
           moscow: 'Москва',
           paris: 'Париж',
           london: 'Лондон',
@@ -1146,14 +1146,26 @@ RULES:
             imgContainer.classList.remove('loading');
           };
           testImg.onerror = function () {
-            // Если изображение не загрузилось, скрываем контейнер
-            imgContainer.style.display = 'none';
+            // Если изображение не загрузилось, показываем плейсхолдер вместо скрытия
+            const placeholder =
+              "data:image/svg+xml;charset=UTF-8," +
+              encodeURIComponent(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="#e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="24">Изображение недоступно</text></svg>'
+              );
+            img.src = placeholder;
             imgContainer.classList.remove('loading');
             console.warn('Не удалось загрузить изображение:', poi.img);
           };
           testImg.src = poi.img;
         } else {
-          imgContainer.style.display = 'none';
+          // Если изображения нет, показываем плейсхолдер
+          const placeholder =
+            "data:image/svg+xml;charset=UTF-8," +
+            encodeURIComponent(
+              '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="#e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="24">Изображение отсутствует</text></svg>'
+            );
+          img.src = placeholder;
+          imgContainer.style.display = 'block';
           imgContainer.classList.remove('loading');
         }
 
