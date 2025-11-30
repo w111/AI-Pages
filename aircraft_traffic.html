@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивную визуализацию авиатрафика в реальном времени с использованием OpenSky Network API.
+
+Функциональные требования:
+1. Интерактивная карта:
+   - Отображение карты на базе Leaflet с OpenStreetMap тайлами
+   - Маркеры самолётов с ориентацией по курсу
+   - Автоматическое обновление позиций каждые 10 секунд
+   - Возможность масштабирования и перемещения по карте
+
+2. Данные о рейсах:
+   - Интеграция с OpenSky Network API (бесплатный)
+   - Отображение позывных, высоты, скорости
+   - Страна происхождения самолёта
+   - Информация о вертикальной скорости
+
+3. Фильтрация:
+   - Фильтр по позывному/авиакомпании
+   - Фильтр по диапазону высот
+   - Сброс фильтров
+
+4. Детали рейса:
+   - Клик по самолёту открывает панель с подробной информацией
+   - Отображение всех доступных параметров рейса
+   - Визуальное выделение выбранного самолёта
+
+5. История маршрута:
+   - Отслеживание траектории выбранного самолёта
+   - Отображение линии маршрута на карте
+   - Очистка истории при выборе нового самолёта
+
+Технические требования:
+1. Использование Leaflet.js для отображения карты
+2. Fetch API для HTTP-запросов к OpenSky Network
+3. LocalStorage для сохранения настроек пользователя
+4. Адаптивный дизайн для мобильных устройств
+5. Поддержка темной и светлой темы
+6. CSS-анимации для плавных переходов
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Авиатрафик - Визуализация в реальном времени</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg-color: #f4f4f4;
+      --text-color: #333;
+      --panel-bg: #ffffff;
+      --panel-border: #ddd;
+      --input-bg: #fff;
+      --input-border: #ccc;
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent-color: #f59e0b;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #1a1a2e;
+      --text-color: #e0e0e0;
+      --panel-bg: #16213e;
+      --panel-border: #0f3460;
+      --input-bg: #1f2937;
+      --input-border: #374151;
+      --primary-color: #3b82f6;
+      --primary-hover: #60a5fa;
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+      overflow: hidden;
+    }
+
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+
+    /* Контрольная панель */
+    .control-panel {
+      position: absolute;
+      top: 10px;
+      left: 60px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      padding: 16px;
+      min-width: 300px;
+      max-width: 350px;
+      transition: all 0.3s ease;
+    }
+
+    .control-panel.collapsed {
+      min-width: auto;
+      padding: 10px;
+    }
+
+    .control-panel.collapsed .panel-content {
+      display: none;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .panel-header h2 {
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-header h2 i {
+      color: var(--primary-color);
+    }
+
+    .toggle-btn {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .toggle-btn:hover {
+      background: var(--input-bg);
+    }
+
+    .filter-group {
+      margin-bottom: 12px;
+    }
+
+    .filter-group label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: var(--text-color);
+      opacity: 0.8;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    .altitude-range {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .altitude-range input {
+      flex: 1;
+    }
+
+    .altitude-range span {
+      color: var(--text-color);
+      opacity: 0.6;
+      font-size: 0.85rem;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 1px solid var(--input-border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--panel-border);
+    }
+
+    /* Статистика */
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-top: 1px solid var(--panel-border);
+      margin-top: 12px;
+      font-size: 0.85rem;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .stat-label {
+      opacity: 0.7;
+      font-size: 0.75rem;
+    }
+
+    /* Панель деталей рейса */
+    .flight-details {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      width: 320px;
+      max-height: calc(100vh - 20px);
+      overflow-y: auto;
+      transform: translateX(350px);
+      transition: transform 0.3s ease;
+    }
+
+    .flight-details.visible {
+      transform: translateX(0);
+    }
+
+    .details-header {
+      padding: 16px;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+      color: white;
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .details-header h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.2rem;
+    }
+
+    .close-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .details-content {
+      padding: 16px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0.7;
+      font-size: 0.9rem;
+    }
+
+    .detail-label i {
+      width: 16px;
+      text-align: center;
+      color: var(--primary-color);
+    }
+
+    .detail-value {
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .track-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .track-btn:hover {
+      background: #d97706;
+    }
+
+    .track-btn.active {
+      background: var(--danger-color);
+    }
+
+    /* Тема переключатель */
+    .theme-toggle {
+      position: absolute;
+      bottom: 20px;
+      left: 10px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      border-radius: 50px;
+      padding: 8px 16px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-toggle button {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      cursor: pointer;
+      padding: 5px;
+      font-size: 1.1rem;
+      transition: transform 0.2s;
+    }
+
+    .theme-toggle button:hover {
+      transform: scale(1.1);
+    }
+
+    /* Легенда высоты */
+    .altitude-legend {
+      position: absolute;
+      bottom: 70px;
+      left: 10px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: var(--card-shadow);
+      font-size: 0.8rem;
+    }
+
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    /* Кастомные маркеры самолётов */
+    .aircraft-marker {
+      font-size: 20px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease;
+    }
+
+    .aircraft-marker.selected {
+      font-size: 28px;
+      filter: drop-shadow(0 0 6px var(--accent-color));
+    }
+
+    /* Статус загрузки */
+    .loading-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: var(--panel-bg);
+      padding: 20px 40px;
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+
+    .loading-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--panel-border);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Уведомления */
+    .notification {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 2000;
+      background: var(--panel-bg);
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .notification.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .notification.error {
+      border-left: 4px solid var(--danger-color);
+    }
+
+    .notification.success {
+      border-left: 4px solid var(--success-color);
+    }
+
+    .notification.info {
+      border-left: 4px solid var(--primary-color);
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .control-panel {
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+        max-width: none;
+      }
+
+      .flight-details {
+        left: 10px;
+        right: 10px;
+        width: auto;
+        top: auto;
+        bottom: 10px;
+        max-height: 50vh;
+        transform: translateY(100%);
+      }
+
+      .flight-details.visible {
+        transform: translateY(0);
+      }
+
+      .altitude-legend {
+        display: none;
+      }
+    }
+
+    /* Leaflet popup кастомизация */
+    .leaflet-popup-content-wrapper {
+      background: var(--panel-bg);
+      color: var(--text-color);
+      border-radius: 8px;
+    }
+
+    .leaflet-popup-tip {
+      background: var(--panel-bg);
+    }
+
+    .aircraft-popup {
+      min-width: 180px;
+    }
+
+    .aircraft-popup h4 {
+      margin: 0 0 8px 0;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .aircraft-popup p {
+      margin: 4px 0;
+      font-size: 0.85rem;
+    }
+
+    /* Трек маршрута */
+    .route-polyline {
+      stroke-dasharray: 5, 10;
+      animation: dash 1s linear infinite;
+    }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -15; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Контрольная панель -->
+  <div class="control-panel" id="controlPanel">
+    <div class="panel-header">
+      <h2><i class="fas fa-plane"></i> Авиатрафик</h2>
+      <button class="toggle-btn" id="togglePanel" title="Свернуть/развернуть">
+        <i class="fas fa-chevron-up"></i>
+      </button>
+    </div>
+    <div class="panel-content">
+      <div class="filter-group">
+        <label for="callsignFilter">
+          <i class="fas fa-search"></i> Поиск по позывному
+        </label>
+        <input type="text" id="callsignFilter" placeholder="Например: AFL, SU, BAW...">
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <i class="fas fa-arrows-alt-v"></i> Диапазон высоты (м)
+        </label>
+        <div class="altitude-range">
+          <input type="number" id="altitudeMin" placeholder="Мин" min="0" max="15000" step="500">
+          <span>—</span>
+          <input type="number" id="altitudeMax" placeholder="Макс" min="0" max="15000" step="500">
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label for="countryFilter">
+          <i class="fas fa-globe"></i> Страна регистрации
+        </label>
+        <select id="countryFilter">
+          <option value="">Все страны</option>
+        </select>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="applyFilters">
+          <i class="fas fa-filter"></i> Применить
+        </button>
+        <button class="btn btn-secondary" id="resetFilters">
+          <i class="fas fa-undo"></i> Сброс
+        </button>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat-item">
+          <div class="stat-value" id="totalAircraft">0</div>
+          <div class="stat-label">Всего</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="filteredAircraft">0</div>
+          <div class="stat-label">Показано</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="lastUpdate">--:--</div>
+          <div class="stat-label">Обновлено</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Панель деталей рейса -->
+  <div class="flight-details" id="flightDetails">
+    <div class="details-header">
+      <h3><i class="fas fa-info-circle"></i> <span id="flightCallsign">---</span></h3>
+      <button class="close-btn" id="closeDetails">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="details-content">
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-fingerprint"></i> ICAO24</span>
+        <span class="detail-value" id="detailIcao">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-flag"></i> Страна</span>
+        <span class="detail-value" id="detailCountry">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-mountain"></i> Высота</span>
+        <span class="detail-value" id="detailAltitude">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-tachometer-alt"></i> Скорость</span>
+        <span class="detail-value" id="detailSpeed">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-compass"></i> Курс</span>
+        <span class="detail-value" id="detailHeading">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-arrow-up"></i> Верт. скорость</span>
+        <span class="detail-value" id="detailVerticalRate">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-map-marker-alt"></i> Координаты</span>
+        <span class="detail-value" id="detailCoords">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-broadcast-tower"></i> На земле</span>
+        <span class="detail-value" id="detailOnGround">---</span>
+      </div>
+      <button class="btn track-btn" id="trackFlight">
+        <i class="fas fa-route"></i> Отслеживать маршрут
+      </button>
+    </div>
+  </div>
+
+  <!-- Переключатель темы -->
+  <div class="theme-toggle">
+    <button id="themeLight" title="Светлая тема">
+      <i class="fas fa-sun"></i>
+    </button>
+    <button id="themeDark" title="Тёмная тема">
+      <i class="fas fa-moon"></i>
+    </button>
+  </div>
+
+  <!-- Легенда высоты -->
+  <div class="altitude-legend">
+    <div class="legend-title">Высота полёта</div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #22c55e;"></span>
+      <span>&lt; 3000 м</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #3b82f6;"></span>
+      <span>3000-8000 м</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #8b5cf6;"></span>
+      <span>8000-11000 м</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #ef4444;"></span>
+      <span>&gt; 11000 м</span>
+    </div>
+  </div>
+
+  <!-- Индикатор загрузки -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <span>Загрузка данных...</span>
+  </div>
+
+  <!-- Уведомления -->
+  <div class="notification" id="notification">
+    <i class="fas fa-info-circle"></i>
+    <span id="notificationText">Сообщение</span>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    /**
+     * @description Приложение для визуализации авиатрафика в реальном времени
+     * Использует OpenSky Network API для получения данных о воздушных судах
+     */
+    (function() {
+      "use strict";
+
+      // Конфигурация
+      const CONFIG = {
+        UPDATE_INTERVAL: 15000, // Интервал обновления (15 сек - лимит OpenSky для анонимных)
+        API_URL: "https://opensky-network.org/api/states/all",
+        DEFAULT_CENTER: [55.7558, 37.6173], // Москва
+        DEFAULT_ZOOM: 6,
+        TRACK_HISTORY_LIMIT: 100 // Максимум точек в истории маршрута
+      };
+
+      // Состояние приложения
+      const state = {
+        map: null,
+        markers: new Map(),
+        allAircraft: [],
+        filteredAircraft: [],
+        selectedAircraft: null,
+        trackingIcao: null,
+        trackHistory: [],
+        routePolyline: null,
+        updateTimer: null,
+        countries: new Set()
+      };
+
+      /**
+       * @function initMap
+       * @description Инициализация карты Leaflet
+       */
+      function initMap() {
+        state.map = L.map("map", {
+          center: CONFIG.DEFAULT_CENTER,
+          zoom: CONFIG.DEFAULT_ZOOM,
+          zoomControl: true
+        });
+
+        // Добавление тайлов карты
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          maxZoom: 18
+        }).addTo(state.map);
+
+        // Загрузка сохранённого положения карты
+        loadMapPosition();
+
+        // Сохранение положения при изменении
+        state.map.on("moveend zoomend", saveMapPosition);
+      }
+
+      /**
+       * @function saveMapPosition
+       * @description Сохранение позиции карты в localStorage
+       */
+      function saveMapPosition() {
+        const center = state.map.getCenter();
+        localStorage.setItem("aircraft_map_position", JSON.stringify({
+          lat: center.lat,
+          lng: center.lng,
+          zoom: state.map.getZoom()
+        }));
+      }
+
+      /**
+       * @function loadMapPosition
+       * @description Загрузка сохранённой позиции карты
+       */
+      function loadMapPosition() {
+        const saved = localStorage.getItem("aircraft_map_position");
+        if (saved) {
+          try {
+            const pos = JSON.parse(saved);
+            state.map.setView([pos.lat, pos.lng], pos.zoom);
+          } catch (e) {
+            console.warn("Не удалось загрузить позицию карты:", e);
+          }
+        }
+      }
+
+      /**
+       * @function getAltitudeColor
+       * @description Получение цвета маркера на основе высоты
+       * @param {number} altitude - Высота в метрах
+       * @returns {string} CSS цвет
+       */
+      function getAltitudeColor(altitude) {
+        if (!altitude || altitude < 0) return "#6b7280"; // На земле или нет данных
+        if (altitude < 3000) return "#22c55e"; // Низкая высота - зелёный
+        if (altitude < 8000) return "#3b82f6"; // Средняя - синий
+        if (altitude < 11000) return "#8b5cf6"; // Высокая - фиолетовый
+        return "#ef4444"; // Очень высокая - красный
+      }
+
+      /**
+       * @function createAircraftIcon
+       * @description Создание иконки самолёта с поворотом по курсу
+       * @param {number} heading - Курс в градусах
+       * @param {number} altitude - Высота в метрах
+       * @param {boolean} isSelected - Выбран ли самолёт
+       * @returns {L.DivIcon} Иконка Leaflet
+       */
+      function createAircraftIcon(heading, altitude, isSelected = false) {
+        const color = getAltitudeColor(altitude);
+        const size = isSelected ? 28 : 20;
+        const rotation = heading || 0;
+
+        return L.divIcon({
+          className: "aircraft-marker" + (isSelected ? " selected" : ""),
+          html: `<div style="transform: rotate(${rotation}deg); color: ${color}; font-size: ${size}px;
+                 text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
+                   <i class="fas fa-plane"></i>
+                 </div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2]
+        });
+      }
+
+      /**
+       * @function fetchAircraftData
+       * @description Загрузка данных о самолётах из OpenSky Network API
+       */
+      async function fetchAircraftData() {
+        showLoading(true);
+
+        try {
+          // Получаем границы видимой области карты
+          const bounds = state.map.getBounds();
+          const lamin = bounds.getSouth();
+          const lamax = bounds.getNorth();
+          const lomin = bounds.getWest();
+          const lomax = bounds.getEast();
+
+          // Формируем URL с ограничением по области
+          const url = `${CONFIG.API_URL}?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
+
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          if (data && data.states) {
+            processAircraftData(data.states);
+            updateStats();
+            showNotification("Данные обновлены", "success");
+          } else {
+            showNotification("Нет самолётов в этой области", "info");
+          }
+        } catch (error) {
+          console.error("Ошибка загрузки данных:", error);
+          showNotification("Ошибка загрузки: " + error.message, "error");
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      /**
+       * @function processAircraftData
+       * @description Обработка данных о самолётах
+       * @param {Array} states - Массив состояний самолётов из API
+       */
+      function processAircraftData(states) {
+        state.allAircraft = states.map(s => ({
+          icao24: s[0],
+          callsign: (s[1] || "").trim(),
+          country: s[2],
+          timePosition: s[3],
+          lastContact: s[4],
+          longitude: s[5],
+          latitude: s[6],
+          baroAltitude: s[7],
+          onGround: s[8],
+          velocity: s[9],
+          heading: s[10],
+          verticalRate: s[11],
+          sensors: s[12],
+          geoAltitude: s[13],
+          squawk: s[14],
+          spi: s[15],
+          positionSource: s[16]
+        })).filter(a => a.latitude && a.longitude);
+
+        // Собираем список стран для фильтра
+        state.allAircraft.forEach(a => {
+          if (a.country) state.countries.add(a.country);
+        });
+        updateCountryFilter();
+
+        applyFilters();
+      }
+
+      /**
+       * @function updateCountryFilter
+       * @description Обновление списка стран в фильтре
+       */
+      function updateCountryFilter() {
+        const select = document.getElementById("countryFilter");
+        const currentValue = select.value;
+
+        // Сохраняем первый option
+        const firstOption = select.options[0];
+        select.innerHTML = "";
+        select.appendChild(firstOption);
+
+        // Добавляем страны в алфавитном порядке
+        Array.from(state.countries).sort().forEach(country => {
+          const option = document.createElement("option");
+          option.value = country;
+          option.textContent = country;
+          select.appendChild(option);
+        });
+
+        // Восстанавливаем выбранное значение
+        if (currentValue) select.value = currentValue;
+      }
+
+      /**
+       * @function applyFilters
+       * @description Применение фильтров к списку самолётов
+       */
+      function applyFilters() {
+        const callsignFilter = document.getElementById("callsignFilter").value.toUpperCase();
+        const altitudeMin = parseFloat(document.getElementById("altitudeMin").value) || 0;
+        const altitudeMax = parseFloat(document.getElementById("altitudeMax").value) || Infinity;
+        const countryFilter = document.getElementById("countryFilter").value;
+
+        state.filteredAircraft = state.allAircraft.filter(aircraft => {
+          // Фильтр по позывному
+          if (callsignFilter && !aircraft.callsign.includes(callsignFilter)) {
+            return false;
+          }
+
+          // Фильтр по высоте
+          const altitude = aircraft.baroAltitude || aircraft.geoAltitude || 0;
+          if (altitude < altitudeMin || altitude > altitudeMax) {
+            return false;
+          }
+
+          // Фильтр по стране
+          if (countryFilter && aircraft.country !== countryFilter) {
+            return false;
+          }
+
+          return true;
+        });
+
+        updateMarkers();
+        updateStats();
+      }
+
+      /**
+       * @function updateMarkers
+       * @description Обновление маркеров на карте
+       */
+      function updateMarkers() {
+        const activeIcaos = new Set(state.filteredAircraft.map(a => a.icao24));
+
+        // Удаляем маркеры, которых нет в отфильтрованном списке
+        state.markers.forEach((marker, icao) => {
+          if (!activeIcaos.has(icao)) {
+            state.map.removeLayer(marker);
+            state.markers.delete(icao);
+          }
+        });
+
+        // Обновляем или создаём маркеры
+        state.filteredAircraft.forEach(aircraft => {
+          const isSelected = state.selectedAircraft?.icao24 === aircraft.icao24;
+          const altitude = aircraft.baroAltitude || aircraft.geoAltitude || 0;
+          const icon = createAircraftIcon(aircraft.heading, altitude, isSelected);
+
+          if (state.markers.has(aircraft.icao24)) {
+            // Обновляем существующий маркер
+            const marker = state.markers.get(aircraft.icao24);
+            marker.setLatLng([aircraft.latitude, aircraft.longitude]);
+            marker.setIcon(icon);
+            marker.aircraft = aircraft;
+          } else {
+            // Создаём новый маркер
+            const marker = L.marker([aircraft.latitude, aircraft.longitude], { icon })
+              .addTo(state.map);
+
+            marker.aircraft = aircraft;
+            marker.on("click", () => selectAircraft(aircraft));
+
+            // Popup при наведении
+            marker.bindPopup(() => createPopupContent(aircraft), {
+              closeButton: false,
+              offset: [0, -10]
+            });
+            marker.on("mouseover", function() { this.openPopup(); });
+            marker.on("mouseout", function() { this.closePopup(); });
+
+            state.markers.set(aircraft.icao24, marker);
+          }
+        });
+
+        // Обновляем отслеживаемый маршрут
+        if (state.trackingIcao) {
+          const trackedAircraft = state.filteredAircraft.find(a => a.icao24 === state.trackingIcao);
+          if (trackedAircraft) {
+            addTrackPoint(trackedAircraft);
+          }
+        }
+      }
+
+      /**
+       * @function createPopupContent
+       * @description Создание содержимого popup для самолёта
+       * @param {Object} aircraft - Данные самолёта
+       * @returns {string} HTML содержимое
+       */
+      function createPopupContent(aircraft) {
+        const altitude = aircraft.baroAltitude || aircraft.geoAltitude;
+        const speed = aircraft.velocity ? Math.round(aircraft.velocity * 3.6) : "—";
+
+        return `
+          <div class="aircraft-popup">
+            <h4><i class="fas fa-plane"></i> ${aircraft.callsign || "Без позывного"}</h4>
+            <p><strong>Страна:</strong> ${aircraft.country || "—"}</p>
+            <p><strong>Высота:</strong> ${altitude ? Math.round(altitude) + " м" : "—"}</p>
+            <p><strong>Скорость:</strong> ${speed} км/ч</p>
+          </div>
+        `;
+      }
+
+      /**
+       * @function selectAircraft
+       * @description Выбор самолёта для отображения деталей
+       * @param {Object} aircraft - Данные самолёта
+       */
+      function selectAircraft(aircraft) {
+        state.selectedAircraft = aircraft;
+
+        // Обновляем иконки (выделяем выбранный)
+        updateMarkers();
+
+        // Заполняем панель деталей
+        const altitude = aircraft.baroAltitude || aircraft.geoAltitude;
+        const speed = aircraft.velocity ? Math.round(aircraft.velocity * 3.6) : null;
+
+        document.getElementById("flightCallsign").textContent = aircraft.callsign || "Без позывного";
+        document.getElementById("detailIcao").textContent = aircraft.icao24.toUpperCase();
+        document.getElementById("detailCountry").textContent = aircraft.country || "—";
+        document.getElementById("detailAltitude").textContent = altitude ? `${Math.round(altitude)} м` : "—";
+        document.getElementById("detailSpeed").textContent = speed ? `${speed} км/ч` : "—";
+        document.getElementById("detailHeading").textContent = aircraft.heading ? `${Math.round(aircraft.heading)}°` : "—";
+        document.getElementById("detailVerticalRate").textContent = aircraft.verticalRate ?
+          `${aircraft.verticalRate > 0 ? "+" : ""}${aircraft.verticalRate.toFixed(1)} м/с` : "—";
+        document.getElementById("detailCoords").textContent =
+          `${aircraft.latitude.toFixed(4)}, ${aircraft.longitude.toFixed(4)}`;
+        document.getElementById("detailOnGround").textContent = aircraft.onGround ? "Да" : "Нет";
+
+        // Обновляем кнопку отслеживания
+        const trackBtn = document.getElementById("trackFlight");
+        if (state.trackingIcao === aircraft.icao24) {
+          trackBtn.classList.add("active");
+          trackBtn.innerHTML = '<i class="fas fa-stop"></i> Остановить отслеживание';
+        } else {
+          trackBtn.classList.remove("active");
+          trackBtn.innerHTML = '<i class="fas fa-route"></i> Отслеживать маршрут';
+        }
+
+        // Показываем панель
+        document.getElementById("flightDetails").classList.add("visible");
+      }
+
+      /**
+       * @function toggleTracking
+       * @description Переключение отслеживания маршрута
+       */
+      function toggleTracking() {
+        if (!state.selectedAircraft) return;
+
+        if (state.trackingIcao === state.selectedAircraft.icao24) {
+          // Останавливаем отслеживание
+          stopTracking();
+        } else {
+          // Начинаем отслеживание
+          startTracking(state.selectedAircraft);
+        }
+
+        // Обновляем кнопку
+        selectAircraft(state.selectedAircraft);
+      }
+
+      /**
+       * @function startTracking
+       * @description Начало отслеживания самолёта
+       * @param {Object} aircraft - Данные самолёта
+       */
+      function startTracking(aircraft) {
+        stopTracking(); // Очищаем предыдущее отслеживание
+
+        state.trackingIcao = aircraft.icao24;
+        state.trackHistory = [[aircraft.latitude, aircraft.longitude]];
+
+        // Создаём линию маршрута
+        state.routePolyline = L.polyline(state.trackHistory, {
+          color: "#f59e0b",
+          weight: 3,
+          opacity: 0.8,
+          dashArray: "5, 10",
+          className: "route-polyline"
+        }).addTo(state.map);
+
+        showNotification(`Отслеживание ${aircraft.callsign || aircraft.icao24}`, "info");
+      }
+
+      /**
+       * @function stopTracking
+       * @description Остановка отслеживания
+       */
+      function stopTracking() {
+        state.trackingIcao = null;
+        state.trackHistory = [];
+
+        if (state.routePolyline) {
+          state.map.removeLayer(state.routePolyline);
+          state.routePolyline = null;
+        }
+      }
+
+      /**
+       * @function addTrackPoint
+       * @description Добавление точки в историю маршрута
+       * @param {Object} aircraft - Данные самолёта
+       */
+      function addTrackPoint(aircraft) {
+        if (!state.routePolyline) return;
+
+        const newPoint = [aircraft.latitude, aircraft.longitude];
+        state.trackHistory.push(newPoint);
+
+        // Ограничиваем длину истории
+        if (state.trackHistory.length > CONFIG.TRACK_HISTORY_LIMIT) {
+          state.trackHistory.shift();
+        }
+
+        state.routePolyline.setLatLngs(state.trackHistory);
+      }
+
+      /**
+       * @function updateStats
+       * @description Обновление статистики
+       */
+      function updateStats() {
+        document.getElementById("totalAircraft").textContent = state.allAircraft.length;
+        document.getElementById("filteredAircraft").textContent = state.filteredAircraft.length;
+        document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString("ru-RU", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      /**
+       * @function showLoading
+       * @description Показ/скрытие индикатора загрузки
+       * @param {boolean} show - Показать или скрыть
+       */
+      function showLoading(show) {
+        document.getElementById("loadingOverlay").classList.toggle("visible", show);
+      }
+
+      /**
+       * @function showNotification
+       * @description Показ уведомления
+       * @param {string} message - Текст сообщения
+       * @param {string} type - Тип уведомления (info, success, error)
+       */
+      function showNotification(message, type = "info") {
+        const notification = document.getElementById("notification");
+        const text = document.getElementById("notificationText");
+
+        notification.className = "notification " + type;
+        text.textContent = message;
+
+        notification.classList.add("visible");
+
+        setTimeout(() => {
+          notification.classList.remove("visible");
+        }, 3000);
+      }
+
+      /**
+       * @function initTheme
+       * @description Инициализация темы оформления
+       */
+      function initTheme() {
+        const savedTheme = localStorage.getItem("aircraft_theme") || "light";
+        setTheme(savedTheme);
+      }
+
+      /**
+       * @function setTheme
+       * @description Установка темы оформления
+       * @param {string} theme - Название темы (light/dark)
+       */
+      function setTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("aircraft_theme", theme);
+      }
+
+      /**
+       * @function initEventListeners
+       * @description Инициализация обработчиков событий
+       */
+      function initEventListeners() {
+        // Свернуть/развернуть панель
+        document.getElementById("togglePanel").addEventListener("click", () => {
+          const panel = document.getElementById("controlPanel");
+          const icon = document.querySelector("#togglePanel i");
+          panel.classList.toggle("collapsed");
+          icon.classList.toggle("fa-chevron-up");
+          icon.classList.toggle("fa-chevron-down");
+        });
+
+        // Фильтры
+        document.getElementById("applyFilters").addEventListener("click", applyFilters);
+        document.getElementById("resetFilters").addEventListener("click", () => {
+          document.getElementById("callsignFilter").value = "";
+          document.getElementById("altitudeMin").value = "";
+          document.getElementById("altitudeMax").value = "";
+          document.getElementById("countryFilter").value = "";
+          applyFilters();
+        });
+
+        // Закрытие панели деталей
+        document.getElementById("closeDetails").addEventListener("click", () => {
+          document.getElementById("flightDetails").classList.remove("visible");
+          state.selectedAircraft = null;
+          updateMarkers();
+        });
+
+        // Отслеживание маршрута
+        document.getElementById("trackFlight").addEventListener("click", toggleTracking);
+
+        // Переключение темы
+        document.getElementById("themeLight").addEventListener("click", () => setTheme("light"));
+        document.getElementById("themeDark").addEventListener("click", () => setTheme("dark"));
+
+        // Обновление при перемещении карты
+        state.map.on("moveend", () => {
+          // Перезагружаем данные при значительном изменении области
+          clearTimeout(state.updateTimer);
+          state.updateTimer = setTimeout(fetchAircraftData, 1000);
+        });
+
+        // Фильтрация по Enter
+        document.getElementById("callsignFilter").addEventListener("keypress", (e) => {
+          if (e.key === "Enter") applyFilters();
+        });
+      }
+
+      /**
+       * @function startAutoUpdate
+       * @description Запуск автоматического обновления данных
+       */
+      function startAutoUpdate() {
+        setInterval(() => {
+          fetchAircraftData();
+        }, CONFIG.UPDATE_INTERVAL);
+      }
+
+      /**
+       * @function init
+       * @description Инициализация приложения
+       */
+      function init() {
+        initTheme();
+        initMap();
+        initEventListeners();
+        fetchAircraftData();
+        startAutoUpdate();
+      }
+
+      // Запуск при загрузке страницы
+      document.addEventListener("DOMContentLoaded", init);
+    })();
+  </script>
+</body>
+</html>
