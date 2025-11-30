@@ -38,6 +38,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Мировые данные | World Data Infographic</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdnjs.cloudflare.com https://api.worldbank.org; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' https://api.worldbank.org;">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -81,7 +82,7 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
       line-height: 1.6;
@@ -129,7 +130,7 @@
       font-weight: 900;
       color: var(--primary-color);
       opacity: 0.3;
-      font-family: 'Courier New', monospace;
+      font-family: "Courier New", monospace;
       text-shadow: var(--glow);
     }
 
@@ -871,6 +872,19 @@
      * @description World Data Infographic - интерактивная визуализация данных World Bank
      */
 
+    /**
+     * @function sanitizeHTML
+     * @description Безопасная очистка HTML строк от потенциально опасного контента
+     * @param {string} str - HTML строка для очистки
+     * @returns {string} Очищенная строка
+     */
+    function sanitizeHTML(str) {
+      if (typeof str !== "string") return "";
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
     // Переводы
     const translations = {
       ru: {
@@ -1160,7 +1174,7 @@
       const data = getDataForYear(state.currentMetric, state.currentYear);
 
       if (data.length === 0) {
-        container.innerHTML = '<div class="loading"><span>Нет данных за этот год</span></div>';
+        container.innerHTML = "<div class=\"loading\"><span>Нет данных за этот год</span></div>";
         return;
       }
 
@@ -1170,11 +1184,11 @@
       container.innerHTML = data.map((item, index) => `
         <div class="bar-item" style="top: ${index * barHeight}px">
           <span class="bar-rank">${index + 1}</span>
-          <span class="bar-flag">${item.flag}</span>
-          <span class="bar-name">${item.name}</span>
+          <span class="bar-flag">${sanitizeHTML(item.flag)}</span>
+          <span class="bar-name">${sanitizeHTML(item.name)}</span>
           <div class="bar-wrapper">
             <div class="bar ${state.currentMetric}" style="width: ${(item.value / maxValue) * 100}%">
-              <span class="bar-value">${formatNumber(item.value, state.currentMetric)}</span>
+              <span class="bar-value">${sanitizeHTML(formatNumber(item.value, state.currentMetric))}</span>
             </div>
           </div>
         </div>
@@ -1341,16 +1355,16 @@
             <div class="stat-card">
               <div class="stat-header">
                 <div class="stat-icon ${colors[metric]}">
-                  <i class="fas ${iconClass}"></i>
+                  <i class="fas ${sanitizeHTML(iconClass)}"></i>
                 </div>
                 <div>
-                  <div class="stat-label">${t.countries[country]} - ${metricLabel}</div>
+                  <div class="stat-label">${sanitizeHTML(t.countries[country])} - ${sanitizeHTML(metricLabel)}</div>
                 </div>
               </div>
-              <div class="stat-value">${formatNumber(currentValue, metric)}</div>
-              <div class="stat-change ${change >= 0 ? 'positive' : 'negative'}">
-                <i class="fas fa-arrow-${change >= 0 ? 'up' : 'down'}"></i>
-                ${Math.abs(change)}% ${t.comparison.change}
+              <div class="stat-value">${sanitizeHTML(formatNumber(currentValue, metric))}</div>
+              <div class="stat-change ${change >= 0 ? "positive" : "negative"}">
+                <i class="fas fa-arrow-${change >= 0 ? "up" : "down"}"></i>
+                ${Math.abs(change)}% ${sanitizeHTML(t.comparison.change)}
               </div>
             </div>
           `;
@@ -1498,8 +1512,8 @@
         state.isPlaying = !state.isPlaying;
         this.classList.toggle("active", state.isPlaying);
         this.innerHTML = state.isPlaying
-          ? '<i class="fas fa-pause"></i>'
-          : '<i class="fas fa-play"></i>';
+          ? "<i class=\"fas fa-pause\"></i>"
+          : "<i class=\"fas fa-play\"></i>";
       });
 
       document.getElementById("restartBtn").addEventListener("click", () => {
