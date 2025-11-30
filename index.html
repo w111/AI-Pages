@@ -1396,6 +1396,34 @@
                         <a href="radio-globe.html" class="view-btn">Launch Globe</a>
                     </div>
                 </div>
+                <div class="example-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-music"></i> Алгоритмическая музыка</h3>
+                        <span class="new-badge">NEW</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Хотите создавать уникальные мелодии автоматически?</p>
+                        <p>Генератор музыки на основе марковских цепей. Создавайте уникальные мелодии в реальном времени, настраивайте параметры синтезатора и экспортируйте результат в MIDI.</p>
+                        <ul class="features-list">
+                            <li>Марковские цепи для генерации мелодий</li>
+                            <li>Tone.js синтезатор с эффектами</li>
+                            <li>Визуализация нот и осциллограф</li>
+                            <li>Экспорт в MIDI формат</li>
+                            <li>Управление параметрами в реальном времени</li>
+                        </ul>
+
+                        <div class="tech-list">
+                            <span class="tech-tag">Tone.js</span>
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">Web Audio API</span>
+                            <span class="tech-tag">Canvas</span>
+                            <span class="tech-tag">MIDI</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="algorithmic_music.html" class="view-btn">Генерировать музыку</a>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1912,6 +1940,20 @@
                         limitedOfferTitle: "Возможности",
                         limitedOffer: "Путешествуйте по миру через радиоволны! Слушайте живое радио из России, США, Европы и других стран."
                     },
+                    algorithmicMusic: {
+                        title: "Алгоритмическая музыка",
+                        description: "Генератор музыки на основе марковских цепей. Создавайте уникальные мелодии в реальном времени, настраивайте параметры синтезатора и экспортируйте результат в MIDI.",
+                        problem: "Хотите создавать уникальные мелодии автоматически?",
+                        features: [
+                            "Марковские цепи для генерации мелодий",
+                            "Tone.js синтезатор с эффектами",
+                            "Визуализация нот и осциллограф",
+                            "Экспорт в MIDI формат",
+                            "Управление параметрами в реальном времени"
+                        ],
+                        limitedOfferTitle: "Возможности",
+                        limitedOffer: "Экспериментируйте с гаммами, темпом и эффектами для создания уникальных композиций!"
+                    },
                     // Карты и Геоданные
                     precipitationMap: {
                         title: "Карта Осадков",
@@ -2274,6 +2316,20 @@
                         limitedOfferTitle: "Features",
                         limitedOffer: "Travel the world through radio waves! Listen to live radio from Russia, USA, Europe and other countries."
                     },
+                    algorithmicMusic: {
+                        title: "Algorithmic Music",
+                        description: "Music generator based on Markov chains. Create unique melodies in real-time, configure synthesizer parameters and export the result to MIDI.",
+                        problem: "Want to create unique melodies automatically?",
+                        features: [
+                            "Markov chains for melody generation",
+                            "Tone.js synthesizer with effects",
+                            "Note visualization and oscilloscope",
+                            "Export to MIDI format",
+                            "Real-time parameter control"
+                        ],
+                        limitedOfferTitle: "Features",
+                        limitedOffer: "Experiment with scales, tempo and effects to create unique compositions!"
+                    },
                     // Maps and Geodata
                     precipitationMap: {
                         title: "Precipitation Map",
@@ -2496,7 +2552,8 @@
                 updateCard(visualizationsCards[0], 'threeDBalls', '<i class="fas fa-atom"></i>');
                 if (visualizationsCards.length > 1) updateCard(visualizationsCards[1], 'mp3Visualizer', '<i class="fas fa-tint"></i>');
                 if (visualizationsCards.length > 2) updateCard(visualizationsCards[2], 'radioGlobe', '<i class="fas fa-globe-americas"></i>');
-                if (visualizationsCards.length > 3) updateCard(visualizationsCards[3], 'fluidSimulation', '<i class="fas fa-water"></i>');
+                if (visualizationsCards.length > 3) updateCard(visualizationsCards[3], 'algorithmicMusic', '<i class="fas fa-music"></i>');
+                if (visualizationsCards.length > 4) updateCard(visualizationsCards[4], 'fluidSimulation', '<i class="fas fa-water"></i>');
             }
             
             // Пятая категория: Карты и Геоданные
