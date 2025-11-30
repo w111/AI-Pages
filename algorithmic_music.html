@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<!--
+====================================================================================
+                        ТЕХНИЧЕСКОЕ ЗАДАНИЕ (ТЗ)
+                        Алгоритмический генератор музыки
+====================================================================================
+
+ОБЗОР ПРОЕКТА:
+Интерактивный веб-генератор музыки с использованием марковских цепей для создания
+мелодий в реальном времени. Поддержка визуализации нот и экспорта в MIDI.
+
+ОСНОВНЫЕ ФУНКЦИИ:
+1. Синтез звука:
+   - Tone.js для генерации звуков
+   - Несколько типов синтезаторов (синус, треугольник, пила, квадрат)
+   - Настраиваемые ADSR огибающие
+   - Эффекты (реверберация, дилей, хорус)
+
+2. Генерация мелодий:
+   - Марковские цепи для создания последовательностей нот
+   - Настраиваемые музыкальные гаммы (мажор, минор, пентатоника и др.)
+   - Управление вероятностями переходов
+   - Ритмические паттерны
+
+3. Визуализация:
+   - Canvas-визуализатор нот в реальном времени
+   - Отображение текущей ноты на клавиатуре
+   - История проигранных нот
+   - Волновая форма и спектр
+
+4. Экспорт:
+   - Экспорт в MIDI файл
+   - Сохранение настроек
+
+5. Управление в реальном времени:
+   - Темп (BPM)
+   - Октава
+   - Длительность нот
+   - Параметры синтезатора
+
+АВТОР: AI Assistant
+ВЕРСИЯ: 1.0
+ДАТА: 2025
+====================================================================================
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Алгоритмическая музыка - Генератор мелодий</title>
+
+  <!-- Tone.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-primary: #0a0a1a;
+      --bg-secondary: #12122a;
+      --bg-card: #1a1a3a;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.3);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header h1 i {
+      color: var(--accent);
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-light);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #0d9668;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Main Layout */
+    .main-container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 900px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Sidebar */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .panel-header i {
+      color: var(--accent);
+    }
+
+    /* Controls */
+    .control-group {
+      margin-bottom: 1rem;
+    }
+
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .control-value {
+      color: var(--accent-light);
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      -webkit-appearance: none;
+      background: var(--bg-secondary);
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    select {
+      width: 100%;
+      padding: 0.625rem;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* Visualization Area */
+    .visualization-area {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Piano Roll */
+    .piano-roll-container {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+    }
+
+    #pianoRollCanvas {
+      width: 100%;
+      height: 200px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+    }
+
+    /* Virtual Keyboard */
+    .keyboard-container {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+    }
+
+    .keyboard {
+      display: flex;
+      position: relative;
+      height: 120px;
+      margin-top: 0.5rem;
+    }
+
+    .white-key {
+      flex: 1;
+      background: linear-gradient(180deg, #fff 0%, #e8e8e8 100%);
+      border: 1px solid #bbb;
+      border-radius: 0 0 6px 6px;
+      cursor: pointer;
+      transition: all 0.1s;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 8px;
+      font-size: 0.7rem;
+      color: #666;
+      min-width: 40px;
+    }
+
+    .white-key:hover {
+      background: linear-gradient(180deg, #f0f0f0 0%, #ddd 100%);
+    }
+
+    .white-key.active {
+      background: linear-gradient(180deg, var(--accent-light) 0%, var(--accent) 100%);
+      color: white;
+    }
+
+    .black-key {
+      position: absolute;
+      width: 28px;
+      height: 70px;
+      background: linear-gradient(180deg, #333 0%, #111 100%);
+      border-radius: 0 0 4px 4px;
+      z-index: 1;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+
+    .black-key:hover {
+      background: linear-gradient(180deg, #444 0%, #222 100%);
+    }
+
+    .black-key.active {
+      background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+    }
+
+    /* Waveform Visualizer */
+    .waveform-container {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+    }
+
+    #waveformCanvas {
+      width: 100%;
+      height: 100px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+    }
+
+    /* Note History */
+    .note-history {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+    }
+
+    .history-notes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+
+    .history-note {
+      padding: 0.25rem 0.5rem;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--accent-light);
+      border: 1px solid var(--border);
+    }
+
+    .history-note.current {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    /* Status Bar */
+    .status-bar {
+      background: var(--bg-secondary);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+    }
+
+    .status-item i {
+      color: var(--accent);
+    }
+
+    .status-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--danger);
+    }
+
+    .status-indicator.playing {
+      background: var(--success);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Markov Chain Visualization */
+    .markov-viz {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+    }
+
+    #markovCanvas {
+      width: 100%;
+      height: 150px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+    }
+
+    /* Probability Matrix */
+    .probability-matrix {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      margin-top: 0.75rem;
+    }
+
+    .prob-cell {
+      aspect-ratio: 1;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      position: relative;
+    }
+
+    .prob-cell::after {
+      content: attr(data-prob);
+      position: absolute;
+    }
+
+    .prob-header {
+      font-weight: bold;
+      color: var(--accent-light);
+    }
+
+    /* Toast Notifications */
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      animation: slideIn 0.3s ease;
+      z-index: 1000;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Preset Buttons */
+    .preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .preset-btn {
+      padding: 0.375rem 0.75rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-light);
+    }
+
+    .preset-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    /* Section titles */
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .section-title i {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <h1><i class="fas fa-music"></i> Алгоритмическая музыка</h1>
+    <div class="header-controls">
+      <button id="playBtn" class="btn btn-success">
+        <i class="fas fa-play"></i> Старт
+      </button>
+      <button id="stopBtn" class="btn btn-danger" disabled>
+        <i class="fas fa-stop"></i> Стоп
+      </button>
+      <button id="exportBtn" class="btn btn-secondary">
+        <i class="fas fa-download"></i> Экспорт MIDI
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="main-container">
+    <!-- Sidebar Controls -->
+    <aside class="sidebar">
+      <!-- Tempo & Rhythm -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="fas fa-clock"></i>
+          <h3>Темп и ритм</h3>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Темп (BPM)</span>
+            <span class="control-value" id="tempoValue">120</span>
+          </div>
+          <input type="range" id="tempoSlider" min="40" max="200" value="120">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Длительность ноты</span>
+            <span class="control-value" id="durationValue">8n</span>
+          </div>
+          <select id="durationSelect">
+            <option value="16n">Шестнадцатая</option>
+            <option value="8n" selected>Восьмая</option>
+            <option value="4n">Четвертная</option>
+            <option value="2n">Половинная</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Scale & Octave -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="fas fa-wave-square"></i>
+          <h3>Гамма и октава</h3>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Гамма</span>
+          </div>
+          <select id="scaleSelect">
+            <option value="major">Мажор</option>
+            <option value="minor">Минор</option>
+            <option value="pentatonic">Пентатоника</option>
+            <option value="blues">Блюз</option>
+            <option value="dorian">Дорийский</option>
+            <option value="mixolydian">Миксолидийский</option>
+            <option value="chromatic">Хроматическая</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Тоника</span>
+          </div>
+          <select id="rootSelect">
+            <option value="C">До (C)</option>
+            <option value="D">Ре (D)</option>
+            <option value="E">Ми (E)</option>
+            <option value="F">Фа (F)</option>
+            <option value="G">Соль (G)</option>
+            <option value="A">Ля (A)</option>
+            <option value="B">Си (B)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Октава</span>
+            <span class="control-value" id="octaveValue">4</span>
+          </div>
+          <input type="range" id="octaveSlider" min="2" max="6" value="4">
+        </div>
+      </div>
+
+      <!-- Synthesizer -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="fas fa-sliders-h"></i>
+          <h3>Синтезатор</h3>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Тип волны</span>
+          </div>
+          <select id="waveformSelect">
+            <option value="sine">Синус</option>
+            <option value="triangle" selected>Треугольник</option>
+            <option value="sawtooth">Пила</option>
+            <option value="square">Квадрат</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Атака</span>
+            <span class="control-value" id="attackValue">0.1s</span>
+          </div>
+          <input type="range" id="attackSlider" min="0.01" max="1" step="0.01" value="0.1">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Затухание</span>
+            <span class="control-value" id="releaseValue">0.5s</span>
+          </div>
+          <input type="range" id="releaseSlider" min="0.1" max="2" step="0.1" value="0.5">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Громкость</span>
+            <span class="control-value" id="volumeValue">-6dB</span>
+          </div>
+          <input type="range" id="volumeSlider" min="-24" max="0" value="-6">
+        </div>
+      </div>
+
+      <!-- Markov Chain -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="fas fa-project-diagram"></i>
+          <h3>Марковская цепь</h3>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Склонность к повтору</span>
+            <span class="control-value" id="repeatValue">30%</span>
+          </div>
+          <input type="range" id="repeatSlider" min="0" max="80" value="30">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Скачки интервалов</span>
+            <span class="control-value" id="jumpValue">20%</span>
+          </div>
+          <input type="range" id="jumpSlider" min="0" max="60" value="20">
+        </div>
+
+        <div class="section-title">
+          <i class="fas fa-magic"></i>
+          <span>Пресеты</span>
+        </div>
+        <div class="preset-buttons">
+          <button class="preset-btn" data-preset="melodic">Мелодичный</button>
+          <button class="preset-btn active" data-preset="balanced">Баланс</button>
+          <button class="preset-btn" data-preset="chaotic">Хаотичный</button>
+          <button class="preset-btn" data-preset="minimal">Минимал</button>
+        </div>
+      </div>
+
+      <!-- Effects -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="fas fa-magic"></i>
+          <h3>Эффекты</h3>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Реверберация</span>
+            <span class="control-value" id="reverbValue">20%</span>
+          </div>
+          <input type="range" id="reverbSlider" min="0" max="100" value="20">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Дилей</span>
+            <span class="control-value" id="delayValue">10%</span>
+          </div>
+          <input type="range" id="delaySlider" min="0" max="80" value="10">
+        </div>
+      </div>
+    </aside>
+
+    <!-- Visualization Area -->
+    <main class="visualization-area">
+      <!-- Piano Roll -->
+      <div class="piano-roll-container">
+        <div class="section-title">
+          <i class="fas fa-th"></i>
+          <span>Пианино-ролл</span>
+        </div>
+        <canvas id="pianoRollCanvas"></canvas>
+      </div>
+
+      <!-- Virtual Keyboard -->
+      <div class="keyboard-container">
+        <div class="section-title">
+          <i class="fas fa-piano-keyboard"></i>
+          <span>Виртуальная клавиатура</span>
+        </div>
+        <div class="keyboard" id="keyboard"></div>
+      </div>
+
+      <!-- Waveform -->
+      <div class="waveform-container">
+        <div class="section-title">
+          <i class="fas fa-wave-square"></i>
+          <span>Осциллограф</span>
+        </div>
+        <canvas id="waveformCanvas"></canvas>
+      </div>
+
+      <!-- Note History -->
+      <div class="note-history">
+        <div class="section-title">
+          <i class="fas fa-history"></i>
+          <span>История нот</span>
+        </div>
+        <div class="history-notes" id="historyNotes"></div>
+      </div>
+
+      <!-- Markov Visualization -->
+      <div class="markov-viz">
+        <div class="section-title">
+          <i class="fas fa-project-diagram"></i>
+          <span>Визуализация переходов</span>
+        </div>
+        <canvas id="markovCanvas"></canvas>
+      </div>
+    </main>
+  </div>
+
+  <!-- Status Bar -->
+  <footer class="status-bar">
+    <div class="status-item">
+      <div class="status-indicator" id="statusIndicator"></div>
+      <span id="statusText">Готов к воспроизведению</span>
+    </div>
+    <div class="status-item">
+      <i class="fas fa-music"></i>
+      <span>Нот сгенерировано: <strong id="noteCount">0</strong></span>
+    </div>
+    <div class="status-item">
+      <i class="fas fa-clock"></i>
+      <span>Время: <strong id="playTime">00:00</strong></span>
+    </div>
+  </footer>
+
+  <script>
+    /**
+     * Алгоритмический генератор музыки
+     * Использует марковские цепи для создания мелодий
+     */
+
+    // Музыкальные гаммы (интервалы от тоники)
+    const SCALES = {
+      major: [0, 2, 4, 5, 7, 9, 11],
+      minor: [0, 2, 3, 5, 7, 8, 10],
+      pentatonic: [0, 2, 4, 7, 9],
+      blues: [0, 3, 5, 6, 7, 10],
+      dorian: [0, 2, 3, 5, 7, 9, 10],
+      mixolydian: [0, 2, 4, 5, 7, 9, 10],
+      chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    };
+
+    // Названия нот
+    const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+    // Пресеты марковских цепей
+    const PRESETS = {
+      melodic: { repeat: 15, jump: 10 },
+      balanced: { repeat: 30, jump: 20 },
+      chaotic: { repeat: 5, jump: 50 },
+      minimal: { repeat: 60, jump: 5 }
+    };
+
+    /**
+     * @class MarkovMelodyGenerator
+     * @description Генератор мелодий на основе марковских цепей
+     */
+    class MarkovMelodyGenerator {
+      constructor() {
+        this.scale = SCALES.major;
+        this.root = "C";
+        this.octave = 4;
+        this.repeatProb = 0.3;
+        this.jumpProb = 0.2;
+        this.currentNoteIndex = 0;
+        this.transitionMatrix = [];
+        this.buildTransitionMatrix();
+      }
+
+      /**
+       * @method buildTransitionMatrix
+       * @description Строит матрицу переходов для марковской цепи
+       */
+      buildTransitionMatrix() {
+        const n = this.scale.length;
+        this.transitionMatrix = [];
+
+        for (let i = 0; i < n; i++) {
+          const row = [];
+          for (let j = 0; j < n; j++) {
+            const distance = Math.abs(i - j);
+            let prob;
+
+            if (i === j) {
+              prob = this.repeatProb;
+            } else if (distance === 1) {
+              prob = (1 - this.repeatProb - this.jumpProb) * 0.6;
+            } else if (distance === 2) {
+              prob = (1 - this.repeatProb - this.jumpProb) * 0.3;
+            } else {
+              prob = this.jumpProb / (n - 3);
+            }
+
+            row.push(Math.max(0.01, prob));
+          }
+
+          // Нормализуем
+          const sum = row.reduce((a, b) => a + b, 0);
+          this.transitionMatrix.push(row.map(p => p / sum));
+        }
+      }
+
+      /**
+       * @method setScale
+       * @description Устанавливает музыкальную гамму
+       * @param {string} scaleName - Название гаммы
+       */
+      setScale(scaleName) {
+        this.scale = SCALES[scaleName] || SCALES.major;
+        this.currentNoteIndex = Math.min(this.currentNoteIndex, this.scale.length - 1);
+        this.buildTransitionMatrix();
+      }
+
+      /**
+       * @method setParameters
+       * @description Устанавливает параметры марковской цепи
+       * @param {number} repeat - Вероятность повтора ноты
+       * @param {number} jump - Вероятность скачка
+       */
+      setParameters(repeat, jump) {
+        this.repeatProb = repeat;
+        this.jumpProb = jump;
+        this.buildTransitionMatrix();
+      }
+
+      /**
+       * @method getNextNote
+       * @description Генерирует следующую ноту на основе марковской цепи
+       * @returns {string} Название ноты с октавой
+       */
+      getNextNote() {
+        const probabilities = this.transitionMatrix[this.currentNoteIndex];
+        const random = Math.random();
+        let cumulative = 0;
+
+        for (let i = 0; i < probabilities.length; i++) {
+          cumulative += probabilities[i];
+          if (random < cumulative) {
+            this.currentNoteIndex = i;
+            break;
+          }
+        }
+
+        const semitone = this.scale[this.currentNoteIndex];
+        const rootIndex = NOTE_NAMES.indexOf(this.root);
+        const noteIndex = (rootIndex + semitone) % 12;
+        const octaveOffset = Math.floor((rootIndex + semitone) / 12);
+        const noteName = NOTE_NAMES[noteIndex];
+
+        return `${noteName}${this.octave + octaveOffset}`;
+      }
+
+      /**
+       * @method getTransitionMatrix
+       * @description Возвращает текущую матрицу переходов
+       * @returns {Array} Матрица переходов
+       */
+      getTransitionMatrix() {
+        return this.transitionMatrix;
+      }
+    }
+
+    /**
+     * @class AlgorithmicMusicApp
+     * @description Основной класс приложения
+     */
+    class AlgorithmicMusicApp {
+      constructor() {
+        this.synth = null;
+        this.reverb = null;
+        this.delay = null;
+        this.analyser = null;
+        this.generator = new MarkovMelodyGenerator();
+        this.isPlaying = false;
+        this.noteHistory = [];
+        this.noteCount = 0;
+        this.startTime = null;
+        this.loopId = null;
+        this.midiData = [];
+
+        this.initializeAudio();
+        this.initializeUI();
+        this.initializeCanvases();
+        this.buildKeyboard();
+      }
+
+      /**
+       * @method initializeAudio
+       * @description Инициализирует аудио компоненты
+       */
+      initializeAudio() {
+        // Создаем эффекты
+        this.reverb = new Tone.Reverb({ decay: 2, wet: 0.2 }).toDestination();
+        this.delay = new Tone.FeedbackDelay({
+          delayTime: "8n",
+          feedback: 0.1,
+          wet: 0.1
+        }).connect(this.reverb);
+
+        // Создаем синтезатор
+        this.synth = new Tone.PolySynth(Tone.Synth, {
+          oscillator: { type: "triangle" },
+          envelope: {
+            attack: 0.1,
+            decay: 0.2,
+            sustain: 0.5,
+            release: 0.5
+          },
+          volume: -6
+        }).connect(this.delay);
+
+        // Анализатор для визуализации
+        this.analyser = new Tone.Analyser("waveform", 256);
+        this.synth.connect(this.analyser);
+      }
+
+      /**
+       * @method initializeUI
+       * @description Инициализирует обработчики событий UI
+       */
+      initializeUI() {
+        // Кнопки управления
+        document.getElementById("playBtn").addEventListener("click", () => this.start());
+        document.getElementById("stopBtn").addEventListener("click", () => this.stop());
+        document.getElementById("exportBtn").addEventListener("click", () => this.exportMidi());
+
+        // Темп
+        const tempoSlider = document.getElementById("tempoSlider");
+        tempoSlider.addEventListener("input", (e) => {
+          const value = e.target.value;
+          document.getElementById("tempoValue").textContent = value;
+          Tone.Transport.bpm.value = parseInt(value);
+        });
+
+        // Длительность
+        document.getElementById("durationSelect").addEventListener("change", (e) => {
+          document.getElementById("durationValue").textContent = e.target.value;
+        });
+
+        // Гамма
+        document.getElementById("scaleSelect").addEventListener("change", (e) => {
+          this.generator.setScale(e.target.value);
+          this.drawMarkovVisualization();
+        });
+
+        // Тоника
+        document.getElementById("rootSelect").addEventListener("change", (e) => {
+          this.generator.root = e.target.value;
+        });
+
+        // Октава
+        document.getElementById("octaveSlider").addEventListener("input", (e) => {
+          const value = e.target.value;
+          document.getElementById("octaveValue").textContent = value;
+          this.generator.octave = parseInt(value);
+        });
+
+        // Тип волны
+        document.getElementById("waveformSelect").addEventListener("change", (e) => {
+          this.synth.set({ oscillator: { type: e.target.value } });
+        });
+
+        // Атака
+        document.getElementById("attackSlider").addEventListener("input", (e) => {
+          const value = parseFloat(e.target.value);
+          document.getElementById("attackValue").textContent = `${value}s`;
+          this.synth.set({ envelope: { attack: value } });
+        });
+
+        // Затухание
+        document.getElementById("releaseSlider").addEventListener("input", (e) => {
+          const value = parseFloat(e.target.value);
+          document.getElementById("releaseValue").textContent = `${value}s`;
+          this.synth.set({ envelope: { release: value } });
+        });
+
+        // Громкость
+        document.getElementById("volumeSlider").addEventListener("input", (e) => {
+          const value = parseInt(e.target.value);
+          document.getElementById("volumeValue").textContent = `${value}dB`;
+          this.synth.volume.value = value;
+        });
+
+        // Параметры марковской цепи
+        document.getElementById("repeatSlider").addEventListener("input", (e) => {
+          const value = parseInt(e.target.value);
+          document.getElementById("repeatValue").textContent = `${value}%`;
+          this.updateMarkovParams();
+        });
+
+        document.getElementById("jumpSlider").addEventListener("input", (e) => {
+          const value = parseInt(e.target.value);
+          document.getElementById("jumpValue").textContent = `${value}%`;
+          this.updateMarkovParams();
+        });
+
+        // Пресеты
+        document.querySelectorAll(".preset-btn").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            const preset = e.target.dataset.preset;
+            this.applyPreset(preset);
+            document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
+            e.target.classList.add("active");
+          });
+        });
+
+        // Реверберация
+        document.getElementById("reverbSlider").addEventListener("input", (e) => {
+          const value = parseInt(e.target.value);
+          document.getElementById("reverbValue").textContent = `${value}%`;
+          this.reverb.wet.value = value / 100;
+        });
+
+        // Дилей
+        document.getElementById("delaySlider").addEventListener("input", (e) => {
+          const value = parseInt(e.target.value);
+          document.getElementById("delayValue").textContent = `${value}%`;
+          this.delay.wet.value = value / 100;
+        });
+      }
+
+      /**
+       * @method updateMarkovParams
+       * @description Обновляет параметры марковской цепи
+       */
+      updateMarkovParams() {
+        const repeat = parseInt(document.getElementById("repeatSlider").value) / 100;
+        const jump = parseInt(document.getElementById("jumpSlider").value) / 100;
+        this.generator.setParameters(repeat, jump);
+        this.drawMarkovVisualization();
+      }
+
+      /**
+       * @method applyPreset
+       * @description Применяет пресет настроек
+       * @param {string} presetName - Название пресета
+       */
+      applyPreset(presetName) {
+        const preset = PRESETS[presetName];
+        if (preset) {
+          document.getElementById("repeatSlider").value = preset.repeat;
+          document.getElementById("repeatValue").textContent = `${preset.repeat}%`;
+          document.getElementById("jumpSlider").value = preset.jump;
+          document.getElementById("jumpValue").textContent = `${preset.jump}%`;
+          this.updateMarkovParams();
+        }
+      }
+
+      /**
+       * @method initializeCanvases
+       * @description Инициализирует canvas элементы
+       */
+      initializeCanvases() {
+        this.pianoRollCanvas = document.getElementById("pianoRollCanvas");
+        this.pianoRollCtx = this.pianoRollCanvas.getContext("2d");
+
+        this.waveformCanvas = document.getElementById("waveformCanvas");
+        this.waveformCtx = this.waveformCanvas.getContext("2d");
+
+        this.markovCanvas = document.getElementById("markovCanvas");
+        this.markovCtx = this.markovCanvas.getContext("2d");
+
+        this.resizeCanvases();
+        window.addEventListener("resize", () => this.resizeCanvases());
+
+        this.drawMarkovVisualization();
+      }
+
+      /**
+       * @method resizeCanvases
+       * @description Изменяет размер canvas элементов
+       */
+      resizeCanvases() {
+        [this.pianoRollCanvas, this.waveformCanvas, this.markovCanvas].forEach(canvas => {
+          const rect = canvas.getBoundingClientRect();
+          canvas.width = rect.width * window.devicePixelRatio;
+          canvas.height = rect.height * window.devicePixelRatio;
+          const ctx = canvas.getContext("2d");
+          ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        });
+
+        this.drawMarkovVisualization();
+      }
+
+      /**
+       * @method buildKeyboard
+       * @description Строит виртуальную клавиатуру
+       */
+      buildKeyboard() {
+        const keyboard = document.getElementById("keyboard");
+        keyboard.innerHTML = "";
+
+        const whiteNotes = ["C", "D", "E", "F", "G", "A", "B"];
+        const blackNotes = { "C": "C#", "D": "D#", "F": "F#", "G": "G#", "A": "A#" };
+
+        let keyWidth = keyboard.offsetWidth / 14;
+
+        for (let oct = 3; oct <= 4; oct++) {
+          whiteNotes.forEach((note, i) => {
+            const key = document.createElement("div");
+            key.className = "white-key";
+            key.dataset.note = `${note}${oct}`;
+            key.textContent = note;
+            key.addEventListener("click", () => this.playNote(`${note}${oct}`));
+            keyboard.appendChild(key);
+          });
+        }
+
+        // Черные клавиши
+        let position = 0;
+        for (let oct = 3; oct <= 4; oct++) {
+          whiteNotes.forEach((note, i) => {
+            if (blackNotes[note]) {
+              const blackKey = document.createElement("div");
+              blackKey.className = "black-key";
+              blackKey.dataset.note = `${blackNotes[note]}${oct}`;
+              const offset = position * keyWidth + keyWidth * 0.7;
+              blackKey.style.left = `${offset}px`;
+              blackKey.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.playNote(`${blackNotes[note]}${oct}`);
+              });
+              keyboard.appendChild(blackKey);
+            }
+            position++;
+          });
+        }
+      }
+
+      /**
+       * @method playNote
+       * @description Воспроизводит указанную ноту
+       * @param {string} note - Название ноты
+       */
+      playNote(note) {
+        const duration = document.getElementById("durationSelect").value;
+        this.synth.triggerAttackRelease(note, duration);
+        this.highlightKey(note);
+        this.addToHistory(note);
+        this.midiData.push({
+          note: note,
+          time: Tone.now(),
+          duration: Tone.Time(duration).toSeconds()
+        });
+      }
+
+      /**
+       * @method highlightKey
+       * @description Подсвечивает клавишу на клавиатуре
+       * @param {string} note - Название ноты
+       */
+      highlightKey(note) {
+        document.querySelectorAll(".white-key, .black-key").forEach(key => {
+          key.classList.remove("active");
+        });
+
+        const key = document.querySelector(`[data-note="${note}"]`);
+        if (key) {
+          key.classList.add("active");
+          setTimeout(() => key.classList.remove("active"), 200);
+        }
+      }
+
+      /**
+       * @method addToHistory
+       * @description Добавляет ноту в историю
+       * @param {string} note - Название ноты
+       */
+      addToHistory(note) {
+        this.noteHistory.push(note);
+        if (this.noteHistory.length > 20) {
+          this.noteHistory.shift();
+        }
+        this.updateHistoryDisplay();
+        this.noteCount++;
+        document.getElementById("noteCount").textContent = this.noteCount;
+      }
+
+      /**
+       * @method updateHistoryDisplay
+       * @description Обновляет отображение истории нот
+       */
+      updateHistoryDisplay() {
+        const container = document.getElementById("historyNotes");
+        container.innerHTML = this.noteHistory.map((note, i) =>
+          `<span class="history-note ${i === this.noteHistory.length - 1 ? 'current' : ''}">${note}</span>`
+        ).join("");
+      }
+
+      /**
+       * @method start
+       * @description Запускает генерацию музыки
+       */
+      async start() {
+        await Tone.start();
+
+        if (Tone.context.state !== "running") {
+          await Tone.context.resume();
+        }
+
+        this.isPlaying = true;
+        this.startTime = Date.now();
+        this.midiData = [];
+
+        document.getElementById("playBtn").disabled = true;
+        document.getElementById("stopBtn").disabled = false;
+        document.getElementById("statusIndicator").classList.add("playing");
+        document.getElementById("statusText").textContent = "Воспроизведение...";
+
+        Tone.Transport.bpm.value = parseInt(document.getElementById("tempoSlider").value);
+
+        const duration = document.getElementById("durationSelect").value;
+
+        this.loopId = Tone.Transport.scheduleRepeat((time) => {
+          const note = this.generator.getNextNote();
+          this.synth.triggerAttackRelease(note, duration, time);
+
+          Tone.Draw.schedule(() => {
+            this.highlightKey(note);
+            this.addToHistory(note);
+            this.midiData.push({
+              note: note,
+              time: time,
+              duration: Tone.Time(duration).toSeconds()
+            });
+          }, time);
+        }, duration);
+
+        Tone.Transport.start();
+
+        this.animate();
+        this.startTimer();
+      }
+
+      /**
+       * @method stop
+       * @description Останавливает генерацию музыки
+       */
+      stop() {
+        this.isPlaying = false;
+
+        Tone.Transport.stop();
+        Tone.Transport.cancel();
+
+        document.getElementById("playBtn").disabled = false;
+        document.getElementById("stopBtn").disabled = true;
+        document.getElementById("statusIndicator").classList.remove("playing");
+        document.getElementById("statusText").textContent = "Остановлено";
+      }
+
+      /**
+       * @method startTimer
+       * @description Запускает таймер воспроизведения
+       */
+      startTimer() {
+        const updateTimer = () => {
+          if (!this.isPlaying) return;
+
+          const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+          const minutes = Math.floor(elapsed / 60).toString().padStart(2, "0");
+          const seconds = (elapsed % 60).toString().padStart(2, "0");
+          document.getElementById("playTime").textContent = `${minutes}:${seconds}`;
+
+          requestAnimationFrame(updateTimer);
+        };
+        updateTimer();
+      }
+
+      /**
+       * @method animate
+       * @description Анимация визуализаций
+       */
+      animate() {
+        if (!this.isPlaying) return;
+
+        this.drawWaveform();
+        this.drawPianoRoll();
+
+        requestAnimationFrame(() => this.animate());
+      }
+
+      /**
+       * @method drawWaveform
+       * @description Рисует осциллограф
+       */
+      drawWaveform() {
+        const canvas = this.waveformCanvas;
+        const ctx = this.waveformCtx;
+        const width = canvas.width / window.devicePixelRatio;
+        const height = canvas.height / window.devicePixelRatio;
+
+        ctx.fillStyle = "#0f0f2a";
+        ctx.fillRect(0, 0, width, height);
+
+        const waveform = this.analyser.getValue();
+
+        ctx.beginPath();
+        ctx.strokeStyle = "#6366f1";
+        ctx.lineWidth = 2;
+
+        const sliceWidth = width / waveform.length;
+        let x = 0;
+
+        for (let i = 0; i < waveform.length; i++) {
+          const v = (waveform[i] + 1) / 2;
+          const y = v * height;
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+          x += sliceWidth;
+        }
+
+        ctx.stroke();
+
+        // Центральная линия
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(99, 102, 241, 0.3)";
+        ctx.lineWidth = 1;
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+      }
+
+      /**
+       * @method drawPianoRoll
+       * @description Рисует пианино-ролл
+       */
+      drawPianoRoll() {
+        const canvas = this.pianoRollCanvas;
+        const ctx = this.pianoRollCtx;
+        const width = canvas.width / window.devicePixelRatio;
+        const height = canvas.height / window.devicePixelRatio;
+
+        ctx.fillStyle = "#0f0f2a";
+        ctx.fillRect(0, 0, width, height);
+
+        // Сетка
+        ctx.strokeStyle = "rgba(99, 102, 241, 0.1)";
+        ctx.lineWidth = 1;
+
+        const rows = 12;
+        const rowHeight = height / rows;
+
+        for (let i = 0; i <= rows; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, i * rowHeight);
+          ctx.lineTo(width, i * rowHeight);
+          ctx.stroke();
+        }
+
+        // Отрисовка нот из истории
+        const noteWidth = 30;
+        const noteGap = 5;
+
+        this.noteHistory.forEach((note, i) => {
+          const noteName = note.replace(/\d/g, "");
+          const octave = parseInt(note.match(/\d/)[0]);
+          const noteIndex = NOTE_NAMES.indexOf(noteName);
+          const y = height - ((noteIndex + (octave - 3) * 12) / 24 * height);
+          const x = width - (this.noteHistory.length - i) * (noteWidth + noteGap);
+
+          const gradient = ctx.createLinearGradient(x, y, x + noteWidth, y);
+          gradient.addColorStop(0, "#6366f1");
+          gradient.addColorStop(1, "#818cf8");
+
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.roundRect(x, y - 8, noteWidth, 16, 4);
+          ctx.fill();
+
+          // Подсветка текущей ноты
+          if (i === this.noteHistory.length - 1) {
+            ctx.shadowColor = "#6366f1";
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+        });
+
+        // Название нот слева
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "10px monospace";
+        NOTE_NAMES.forEach((name, i) => {
+          const y = height - (i / 12 * height / 2) - rowHeight / 2;
+          ctx.fillText(name, 5, y + 3);
+        });
+      }
+
+      /**
+       * @method drawMarkovVisualization
+       * @description Визуализирует матрицу переходов марковской цепи
+       */
+      drawMarkovVisualization() {
+        const canvas = this.markovCanvas;
+        const ctx = this.markovCtx;
+        const width = canvas.width / window.devicePixelRatio;
+        const height = canvas.height / window.devicePixelRatio;
+
+        ctx.fillStyle = "#0f0f2a";
+        ctx.fillRect(0, 0, width, height);
+
+        const matrix = this.generator.getTransitionMatrix();
+        const scale = this.generator.scale;
+        const n = matrix.length;
+
+        const cellSize = Math.min((width - 40) / (n + 1), (height - 30) / (n + 1));
+        const startX = (width - (n + 1) * cellSize) / 2;
+        const startY = 20;
+
+        // Заголовки
+        ctx.fillStyle = "#818cf8";
+        ctx.font = `${Math.min(11, cellSize * 0.4)}px monospace`;
+        ctx.textAlign = "center";
+
+        const rootIndex = NOTE_NAMES.indexOf(this.generator.root);
+
+        for (let i = 0; i < n; i++) {
+          const semitone = scale[i];
+          const noteIndex = (rootIndex + semitone) % 12;
+          const noteName = NOTE_NAMES[noteIndex];
+
+          ctx.fillText(noteName, startX + (i + 1.5) * cellSize, startY);
+          ctx.fillText(noteName, startX + cellSize * 0.5, startY + (i + 1) * cellSize + 4);
+        }
+
+        // Матрица
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            const prob = matrix[i][j];
+            const intensity = Math.floor(prob * 255);
+
+            ctx.fillStyle = `rgba(99, 102, 241, ${prob})`;
+            ctx.fillRect(
+              startX + (j + 1) * cellSize + 1,
+              startY + i * cellSize + 1,
+              cellSize - 2,
+              cellSize - 2
+            );
+
+            // Текущая позиция
+            if (i === this.generator.currentNoteIndex) {
+              ctx.strokeStyle = "#10b981";
+              ctx.lineWidth = 2;
+              ctx.strokeRect(
+                startX + (j + 1) * cellSize,
+                startY + i * cellSize,
+                cellSize,
+                cellSize
+              );
+            }
+          }
+        }
+      }
+
+      /**
+       * @method exportMidi
+       * @description Экспортирует сгенерированную музыку в MIDI файл
+       */
+      exportMidi() {
+        if (this.midiData.length === 0) {
+          this.showToast("Сначала сгенерируйте музыку!", "warning");
+          return;
+        }
+
+        // Создаем MIDI файл вручную
+        const midiFile = this.createMidiFile(this.midiData);
+        const blob = new Blob([midiFile], { type: "audio/midi" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `algorithmic-music-${Date.now()}.mid`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+        this.showToast("MIDI файл успешно экспортирован!", "success");
+      }
+
+      /**
+       * @method createMidiFile
+       * @description Создает MIDI файл из данных нот
+       * @param {Array} notes - Массив нот
+       * @returns {Uint8Array} MIDI данные
+       */
+      createMidiFile(notes) {
+        const ticksPerBeat = 480;
+        const tempo = parseInt(document.getElementById("tempoSlider").value);
+        const microsecondsPerBeat = Math.round(60000000 / tempo);
+
+        // Вспомогательные функции
+        const writeVariableLength = (value) => {
+          const bytes = [];
+          bytes.push(value & 0x7f);
+          value >>= 7;
+          while (value > 0) {
+            bytes.unshift((value & 0x7f) | 0x80);
+            value >>= 7;
+          }
+          return bytes;
+        };
+
+        const noteToMidi = (note) => {
+          const noteName = note.replace(/\d/g, "");
+          const octave = parseInt(note.match(/\d/)[0]);
+          const noteIndex = NOTE_NAMES.indexOf(noteName);
+          return noteIndex + (octave + 1) * 12;
+        };
+
+        // Формируем трек
+        const trackEvents = [];
+
+        // Tempo event
+        trackEvents.push([0, 0xff, 0x51, 0x03,
+          (microsecondsPerBeat >> 16) & 0xff,
+          (microsecondsPerBeat >> 8) & 0xff,
+          microsecondsPerBeat & 0xff
+        ]);
+
+        let lastTick = 0;
+        const baseTime = notes[0]?.time || 0;
+
+        notes.forEach(noteData => {
+          const midiNote = noteToMidi(noteData.note);
+          const startTick = Math.round((noteData.time - baseTime) * ticksPerBeat * (tempo / 60));
+          const durationTicks = Math.round(noteData.duration * ticksPerBeat * (tempo / 60));
+
+          // Note On
+          const deltaOn = startTick - lastTick;
+          trackEvents.push([...writeVariableLength(deltaOn), 0x90, midiNote, 100]);
+
+          // Note Off
+          trackEvents.push([...writeVariableLength(durationTicks), 0x80, midiNote, 0]);
+          lastTick = startTick + durationTicks;
+        });
+
+        // End of track
+        trackEvents.push([0x00, 0xff, 0x2f, 0x00]);
+
+        // Собираем трек
+        const trackData = trackEvents.flat();
+        const trackLength = trackData.length;
+
+        // MIDI header
+        const header = [
+          0x4d, 0x54, 0x68, 0x64, // MThd
+          0x00, 0x00, 0x00, 0x06, // Header length
+          0x00, 0x00, // Format 0
+          0x00, 0x01, // 1 track
+          (ticksPerBeat >> 8) & 0xff, ticksPerBeat & 0xff // Ticks per beat
+        ];
+
+        // Track header
+        const trackHeader = [
+          0x4d, 0x54, 0x72, 0x6b, // MTrk
+          (trackLength >> 24) & 0xff,
+          (trackLength >> 16) & 0xff,
+          (trackLength >> 8) & 0xff,
+          trackLength & 0xff
+        ];
+
+        return new Uint8Array([...header, ...trackHeader, ...trackData]);
+      }
+
+      /**
+       * @method showToast
+       * @description Показывает уведомление
+       * @param {string} message - Сообщение
+       * @param {string} type - Тип уведомления
+       */
+      showToast(message, type = "info") {
+        const toast = document.createElement("div");
+        toast.className = "toast";
+        toast.innerHTML = `
+          <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"
+             style="color: var(--${type === 'success' ? 'success' : 'warning'})"></i>
+          <span>${message}</span>
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.animation = "slideIn 0.3s ease reverse";
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+    }
+
+    // Инициализация приложения
+    document.addEventListener("DOMContentLoaded", () => {
+      window.app = new AlgorithmicMusicApp();
+    });
+  </script>
+</body>
+</html>
