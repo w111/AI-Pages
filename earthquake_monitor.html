@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивный дашборд для мониторинга землетрясений в реальном времени
+с использованием данных USGS API.
+
+Функциональные требования:
+1. Карта с маркерами землетрясений:
+   - Отображение землетрясений за последний период
+   - Размер маркера зависит от магнитуды
+   - Цвет маркера зависит от глубины
+   - Интерактивные попапы с информацией о событии
+
+2. Временная шкала событий:
+   - Список последних землетрясений в хронологическом порядке
+   - Быстрая навигация к событию на карте
+   - Фильтрация по магнитуде
+
+3. Push-уведомления:
+   - Уведомления о крупных событиях (магнитуда 5.0+)
+   - Запрос разрешения пользователя
+   - Звуковое оповещение (опционально)
+
+4. Статистика по регионам:
+   - Количество событий по магнитуде
+   - Топ регионов по активности
+   - Графики распределения
+
+5. Пользовательский интерфейс:
+   - Темная/светлая тема
+   - Адаптивный дизайн
+   - Автообновление данных
+   - Фильтры по периоду и магнитуде
+
+Технические требования:
+1. USGS Earthquake API (бесплатный, без API-ключа)
+2. Leaflet для интерактивной карты
+3. CSS переменные для темизации
+4. LocalStorage для настроек пользователя
+5. Web Notifications API для push-уведомлений
+6. Font Awesome для иконок
+-->
+
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Мониторинг Землетрясений</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --bg-color: #f0f4f8;
+      --card-bg: #ffffff;
+      --text-color: #1a202c;
+      --text-secondary: #4a5568;
+      --border-color: #e2e8f0;
+      --primary-color: #e53e3e;
+      --primary-hover: #c53030;
+      --shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+      --gradient-start: #667eea;
+      --gradient-end: #764ba2;
+      --input-bg: #ffffff;
+      --input-border: #e2e8f0;
+      --success-color: #48bb78;
+      --warning-color: #ed8936;
+      --danger-color: #e53e3e;
+      --info-color: #4299e1;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #1a202c;
+      --card-bg: #2d3748;
+      --text-color: #e2e8f0;
+      --text-secondary: #a0aec0;
+      --border-color: #4a5568;
+      --primary-color: #fc8181;
+      --primary-hover: #f56565;
+      --shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.4);
+      --gradient-start: #2d3748;
+      --gradient-end: #1a202c;
+      --input-bg: #2d3748;
+      --input-border: #4a5568;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-color);
+      min-height: 100vh;
+      color: var(--text-color);
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .app-container {
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* Шапка */
+    .header {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, var(--primary-color), #744210);
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header h1 i {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-select, .filter-input {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .filter-select option {
+      background: var(--card-bg);
+      color: var(--text-color);
+    }
+
+    .filter-select:focus, .filter-input:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-notification {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .btn-notification.disabled {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Основная панель */
+    .main-panel {
+      position: relative;
+      overflow: hidden;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Статистика поверх карты */
+    .stats-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      padding: 10px 15px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: white;
+    }
+
+    .stat-icon.total { background: var(--info-color); }
+    .stat-icon.significant { background: var(--danger-color); }
+    .stat-icon.moderate { background: var(--warning-color); }
+    .stat-icon.light { background: var(--success-color); }
+
+    .stat-info h4 {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .stat-info p {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: var(--text-color);
+    }
+
+    /* Легенда */
+    .legend {
+      position: absolute;
+      bottom: 30px;
+      left: 10px;
+      z-index: 1000;
+      background: var(--card-bg);
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .legend h4 {
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+      color: var(--text-color);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .legend-circle {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* Боковая панель */
+    .sidebar {
+      background: var(--card-bg);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 15px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-header h3 {
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab:hover {
+      color: var(--text-color);
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .tab.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* Список событий */
+    .event-list {
+      list-style: none;
+    }
+
+    .event-item {
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .event-item:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 5px;
+    }
+
+    .event-magnitude {
+      font-size: 1.1rem;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      color: white;
+    }
+
+    .mag-1 { background: #48bb78; }
+    .mag-2 { background: #68d391; }
+    .mag-3 { background: #f6e05e; }
+    .mag-4 { background: #ed8936; }
+    .mag-5 { background: #e53e3e; }
+    .mag-6 { background: #c53030; }
+    .mag-7 { background: #742a2a; }
+
+    .event-time {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .event-location {
+      font-size: 0.85rem;
+      color: var(--text-color);
+      margin-bottom: 3px;
+    }
+
+    .event-depth {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Статистика регионов */
+    .region-stats {
+      padding: 15px;
+    }
+
+    .region-item {
+      margin-bottom: 15px;
+    }
+
+    .region-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .region-name {
+      font-size: 0.85rem;
+      color: var(--text-color);
+    }
+
+    .region-count {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    .region-bar {
+      height: 8px;
+      background: var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .region-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--warning-color), var(--danger-color));
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    /* Графики */
+    .chart-container {
+      padding: 15px;
+    }
+
+    .chart-title {
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+      color: var(--text-color);
+    }
+
+    .magnitude-chart {
+      display: flex;
+      align-items: flex-end;
+      height: 120px;
+      gap: 8px;
+      padding: 10px 0;
+    }
+
+    .chart-bar {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .chart-bar-fill {
+      width: 100%;
+      background: linear-gradient(180deg, var(--primary-color), var(--warning-color));
+      border-radius: 4px 4px 0 0;
+      transition: height 0.5s ease;
+      min-height: 2px;
+    }
+
+    .chart-bar-label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-top: 5px;
+    }
+
+    .chart-bar-value {
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: var(--text-color);
+      margin-bottom: 3px;
+    }
+
+    /* Настройки */
+    .settings-panel {
+      padding: 15px;
+    }
+
+    .settings-group {
+      margin-bottom: 20px;
+    }
+
+    .settings-group h4 {
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+      color: var(--text-color);
+    }
+
+    .settings-option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .settings-option label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--border-color);
+      transition: 0.4s;
+      border-radius: 26px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    /* Загрузка */
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Уведомления */
+    .notification-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--card-bg);
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-hover);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 3000;
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      max-width: 350px;
+    }
+
+    .notification-toast.show {
+      transform: translateX(0);
+    }
+
+    .notification-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--danger-color);
+      color: white;
+      font-size: 1.2rem;
+    }
+
+    .notification-content h4 {
+      font-size: 0.9rem;
+      margin-bottom: 3px;
+    }
+
+    .notification-content p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    /* Кнопка настроек */
+    .settings-button {
+      position: fixed;
+      top: 80px;
+      right: 370px;
+      font-size: 20px;
+      color: var(--text-color);
+      background-color: var(--card-bg);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      border: 1px solid var(--border-color);
+    }
+
+    .settings-button:hover {
+      transform: rotate(45deg);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .app-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 50vh 1fr;
+      }
+
+      .sidebar {
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .stats-overlay {
+        flex-direction: column;
+      }
+
+      .settings-button {
+        right: 20px;
+        top: auto;
+        bottom: 20px;
+      }
+
+      .legend {
+        bottom: 70px;
+      }
+    }
+
+    @media (max-width: 500px) {
+      .header {
+        padding: 10px;
+      }
+
+      .header h1 {
+        font-size: 1.2rem;
+      }
+
+      .header-controls {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .stat-card {
+        padding: 8px 10px;
+      }
+
+      .stat-info p {
+        font-size: 1.1rem;
+      }
+    }
+
+    /* Атрибуция */
+    .attribution {
+      position: absolute;
+      bottom: 5px;
+      right: 10px;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      z-index: 1000;
+      background: var(--card-bg);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .attribution a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    /* Пустое состояние */
+    .empty-state {
+      padding: 30px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      opacity: 0.5;
+    }
+
+    .empty-state p {
+      font-size: 0.9rem;
+    }
+
+    /* Анимация маркеров на карте */
+    .earthquake-marker {
+      animation: markerPulse 2s infinite;
+    }
+
+    @keyframes markerPulse {
+      0%, 100% {
+        opacity: 0.8;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+
+    /* Время обновления */
+    .update-time {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Шапка -->
+    <header class="header">
+      <h1>
+        <i class="fas fa-house-crack"></i>
+        Мониторинг Землетрясений
+      </h1>
+      <div class="header-controls">
+        <select id="periodFilter" class="filter-select" title="Период">
+          <option value="hour">За час</option>
+          <option value="day" selected>За сутки</option>
+          <option value="week">За неделю</option>
+          <option value="month">За месяц</option>
+        </select>
+        <select id="magnitudeFilter" class="filter-select" title="Минимальная магнитуда">
+          <option value="all">Все</option>
+          <option value="1.0">1.0+</option>
+          <option value="2.5">2.5+</option>
+          <option value="4.5" selected>4.5+</option>
+          <option value="5.5">5.5+ (значительные)</option>
+          <option value="6.5">6.5+ (сильные)</option>
+        </select>
+        <button id="refreshBtn" class="btn btn-primary" title="Обновить данные">
+          <i class="fas fa-sync-alt"></i> Обновить
+        </button>
+        <button id="notificationBtn" class="btn btn-notification disabled" title="Включить уведомления">
+          <i class="fas fa-bell-slash"></i>
+        </button>
+        <span id="updateTime" class="update-time"></span>
+      </div>
+    </header>
+
+    <!-- Основная панель с картой -->
+    <main class="main-panel">
+      <div id="map"></div>
+
+      <!-- Статистика поверх карты -->
+      <div class="stats-overlay">
+        <div class="stat-card">
+          <div class="stat-icon total"><i class="fas fa-globe"></i></div>
+          <div class="stat-info">
+            <h4>Всего</h4>
+            <p id="totalCount">0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon significant"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="stat-info">
+            <h4>Сильные (5+)</h4>
+            <p id="significantCount">0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon moderate"><i class="fas fa-exclamation"></i></div>
+          <div class="stat-info">
+            <h4>Средние (3-5)</h4>
+            <p id="moderateCount">0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon light"><i class="fas fa-info-circle"></i></div>
+          <div class="stat-info">
+            <h4>Слабые (&lt;3)</h4>
+            <p id="lightCount">0</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Легенда -->
+      <div class="legend">
+        <h4><i class="fas fa-layer-group"></i> Легенда</h4>
+        <div class="legend-item">
+          <div class="legend-circle" style="background: #48bb78; width: 10px; height: 10px;"></div>
+          <span>M &lt; 3 (слабое)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-circle" style="background: #f6e05e; width: 14px; height: 14px;"></div>
+          <span>M 3-5 (среднее)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-circle" style="background: #ed8936; width: 18px; height: 18px;"></div>
+          <span>M 5-6 (сильное)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-circle" style="background: #e53e3e; width: 22px; height: 22px;"></div>
+          <span>M 6+ (разрушительное)</span>
+        </div>
+      </div>
+
+      <!-- Атрибуция -->
+      <div class="attribution">
+        Данные: <a href="https://earthquake.usgs.gov/" target="_blank">USGS</a>
+      </div>
+
+      <!-- Загрузка -->
+      <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+      </div>
+    </main>
+
+    <!-- Боковая панель -->
+    <aside class="sidebar">
+      <div class="tabs">
+        <div class="tab active" data-tab="events">
+          <i class="fas fa-list"></i> События
+        </div>
+        <div class="tab" data-tab="stats">
+          <i class="fas fa-chart-bar"></i> Статистика
+        </div>
+        <div class="tab" data-tab="settings">
+          <i class="fas fa-cog"></i> Настройки
+        </div>
+      </div>
+
+      <div class="tab-content">
+        <!-- Список событий -->
+        <div id="eventsPanel" class="tab-panel active">
+          <ul id="eventList" class="event-list">
+            <!-- Заполняется динамически -->
+          </ul>
+        </div>
+
+        <!-- Статистика -->
+        <div id="statsPanel" class="tab-panel">
+          <div class="chart-container">
+            <h4 class="chart-title"><i class="fas fa-chart-bar"></i> Распределение по магнитуде</h4>
+            <div id="magnitudeChart" class="magnitude-chart">
+              <!-- Заполняется динамически -->
+            </div>
+          </div>
+
+          <div class="region-stats">
+            <h4 class="chart-title"><i class="fas fa-map-marker-alt"></i> Топ регионов</h4>
+            <div id="regionList">
+              <!-- Заполняется динамически -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Настройки -->
+        <div id="settingsPanel" class="tab-panel">
+          <div class="settings-panel">
+            <div class="settings-group">
+              <h4><i class="fas fa-palette"></i> Оформление</h4>
+              <div class="settings-option">
+                <label for="darkMode">Тёмная тема</label>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="darkMode">
+                  <span class="slider"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <h4><i class="fas fa-bell"></i> Уведомления</h4>
+              <div class="settings-option">
+                <label for="notifySignificant">Сильные (M 5+)</label>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="notifySignificant" checked>
+                  <span class="slider"></span>
+                </div>
+              </div>
+              <div class="settings-option">
+                <label for="notifySound">Звук уведомления</label>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="notifySound">
+                  <span class="slider"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <h4><i class="fas fa-sync"></i> Автообновление</h4>
+              <div class="settings-option">
+                <label for="autoRefresh">Включить</label>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="autoRefresh" checked>
+                  <span class="slider"></span>
+                </div>
+              </div>
+              <div class="settings-option">
+                <label for="refreshInterval">Интервал</label>
+                <select id="refreshInterval" class="filter-select" style="background: var(--input-bg); color: var(--text-color); border: 1px solid var(--input-border);">
+                  <option value="60000">1 мин</option>
+                  <option value="300000" selected>5 мин</option>
+                  <option value="600000">10 мин</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Уведомление -->
+  <div id="notificationToast" class="notification-toast">
+    <div class="notification-icon">
+      <i class="fas fa-exclamation"></i>
+    </div>
+    <div class="notification-content">
+      <h4 id="toastTitle">Новое землетрясение</h4>
+      <p id="toastMessage">M 5.5 - Калифорния, США</p>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * @description Основной класс для мониторинга землетрясений
+     */
+    class EarthquakeMonitor {
+      constructor() {
+        this.map = null;
+        this.markersLayer = null;
+        this.earthquakes = [];
+        this.seenIds = new Set();
+        this.refreshInterval = null;
+        this.notificationsEnabled = false;
+
+        this.init();
+      }
+
+      /**
+       * @description Инициализация приложения
+       */
+      init() {
+        this.loadSettings();
+        this.initMap();
+        this.bindEvents();
+        this.loadEarthquakes();
+        this.startAutoRefresh();
+      }
+
+      /**
+       * @description Загрузка настроек из localStorage
+       */
+      loadSettings() {
+        const theme = localStorage.getItem("earthquake_theme");
+        if (theme === "dark") {
+          document.body.setAttribute("data-theme", "dark");
+          document.getElementById("darkMode").checked = true;
+        }
+
+        const autoRefresh = localStorage.getItem("earthquake_autoRefresh");
+        if (autoRefresh !== null) {
+          document.getElementById("autoRefresh").checked = autoRefresh === "true";
+        }
+
+        const interval = localStorage.getItem("earthquake_interval");
+        if (interval) {
+          document.getElementById("refreshInterval").value = interval;
+        }
+
+        const notifySound = localStorage.getItem("earthquake_sound");
+        if (notifySound === "true") {
+          document.getElementById("notifySound").checked = true;
+        }
+      }
+
+      /**
+       * @description Инициализация карты Leaflet
+       */
+      initMap() {
+        this.map = L.map("map", {
+          center: [20, 0],
+          zoom: 2,
+          minZoom: 2,
+          maxZoom: 18,
+          worldCopyJump: true
+        });
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(this.map);
+
+        this.markersLayer = L.layerGroup().addTo(this.map);
+      }
+
+      /**
+       * @description Привязка обработчиков событий
+       */
+      bindEvents() {
+        // Фильтры
+        document.getElementById("periodFilter").addEventListener("change", () => this.loadEarthquakes());
+        document.getElementById("magnitudeFilter").addEventListener("change", () => this.loadEarthquakes());
+        document.getElementById("refreshBtn").addEventListener("click", () => this.loadEarthquakes());
+
+        // Уведомления
+        document.getElementById("notificationBtn").addEventListener("click", () => this.toggleNotifications());
+
+        // Табы
+        document.querySelectorAll(".tab").forEach(tab => {
+          tab.addEventListener("click", () => this.switchTab(tab.dataset.tab));
+        });
+
+        // Настройки
+        document.getElementById("darkMode").addEventListener("change", (e) => {
+          const theme = e.target.checked ? "dark" : "light";
+          document.body.setAttribute("data-theme", theme);
+          localStorage.setItem("earthquake_theme", theme);
+        });
+
+        document.getElementById("autoRefresh").addEventListener("change", (e) => {
+          localStorage.setItem("earthquake_autoRefresh", e.target.checked);
+          if (e.target.checked) {
+            this.startAutoRefresh();
+          } else {
+            this.stopAutoRefresh();
+          }
+        });
+
+        document.getElementById("refreshInterval").addEventListener("change", (e) => {
+          localStorage.setItem("earthquake_interval", e.target.value);
+          this.startAutoRefresh();
+        });
+
+        document.getElementById("notifySound").addEventListener("change", (e) => {
+          localStorage.setItem("earthquake_sound", e.target.checked);
+        });
+      }
+
+      /**
+       * @description Переключение вкладок
+       * @param {string} tabId - ID вкладки
+       */
+      switchTab(tabId) {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+
+        document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add("active");
+        document.getElementById(`${tabId}Panel`).classList.add("active");
+      }
+
+      /**
+       * @description Загрузка данных о землетрясениях с USGS API
+       */
+      async loadEarthquakes() {
+        const loading = document.getElementById("loadingOverlay");
+        loading.classList.remove("hidden");
+
+        const period = document.getElementById("periodFilter").value;
+        const minMag = document.getElementById("magnitudeFilter").value;
+
+        const now = new Date();
+        let startTime;
+
+        switch (period) {
+          case "hour":
+            startTime = new Date(now - 3600000);
+            break;
+          case "day":
+            startTime = new Date(now - 86400000);
+            break;
+          case "week":
+            startTime = new Date(now - 604800000);
+            break;
+          case "month":
+            startTime = new Date(now - 2592000000);
+            break;
+        }
+
+        const params = new URLSearchParams({
+          format: "geojson",
+          starttime: startTime.toISOString(),
+          endtime: now.toISOString(),
+          orderby: "time"
+        });
+
+        if (minMag !== "all") {
+          params.append("minmagnitude", minMag);
+        }
+
+        try {
+          const response = await fetch(
+            `https://earthquake.usgs.gov/fdsnws/event/1/query?${params}`
+          );
+
+          if (!response.ok) throw new Error("Failed to fetch data");
+
+          const data = await response.json();
+          this.earthquakes = data.features;
+
+          this.updateMap();
+          this.updateEventList();
+          this.updateStats();
+          this.checkNewEarthquakes();
+          this.updateTimestamp();
+
+        } catch (error) {
+          console.error("Error loading earthquakes:", error);
+          this.showToast("Ошибка загрузки", "Не удалось загрузить данные");
+        } finally {
+          loading.classList.add("hidden");
+        }
+      }
+
+      /**
+       * @description Обновление маркеров на карте
+       */
+      updateMap() {
+        this.markersLayer.clearLayers();
+
+        this.earthquakes.forEach((eq, index) => {
+          const [lng, lat, depth] = eq.geometry.coordinates;
+          const mag = eq.properties.mag;
+          const place = eq.properties.place || "Неизвестно";
+          const time = new Date(eq.properties.time);
+
+          const radius = this.getMagnitudeRadius(mag);
+          const color = this.getDepthColor(depth);
+
+          const marker = L.circleMarker([lat, lng], {
+            radius: radius,
+            fillColor: color,
+            color: "#fff",
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8,
+            className: "earthquake-marker"
+          });
+
+          const popupContent = `
+            <div style="min-width: 200px;">
+              <h4 style="margin: 0 0 8px 0; color: ${color};">
+                <i class="fas fa-house-crack"></i> M ${mag.toFixed(1)}
+              </h4>
+              <p style="margin: 0 0 5px 0;"><strong>Место:</strong> ${place}</p>
+              <p style="margin: 0 0 5px 0;"><strong>Глубина:</strong> ${depth.toFixed(1)} км</p>
+              <p style="margin: 0 0 5px 0;"><strong>Время:</strong> ${time.toLocaleString("ru-RU")}</p>
+              <a href="https://earthquake.usgs.gov/earthquakes/eventpage/${eq.id}"
+                 target="_blank" style="color: #4299e1; text-decoration: none;">
+                Подробнее →
+              </a>
+            </div>
+          `;
+
+          marker.bindPopup(popupContent);
+          this.markersLayer.addLayer(marker);
+        });
+      }
+
+      /**
+       * @description Получение радиуса маркера по магнитуде
+       * @param {number} mag - Магнитуда
+       * @returns {number} Радиус в пикселях
+       */
+      getMagnitudeRadius(mag) {
+        if (mag < 2) return 4;
+        if (mag < 3) return 6;
+        if (mag < 4) return 8;
+        if (mag < 5) return 12;
+        if (mag < 6) return 16;
+        if (mag < 7) return 22;
+        return 28;
+      }
+
+      /**
+       * @description Получение цвета маркера по глубине
+       * @param {number} depth - Глубина в км
+       * @returns {string} Цвет в формате HEX
+       */
+      getDepthColor(depth) {
+        if (depth < 10) return "#48bb78";
+        if (depth < 50) return "#f6e05e";
+        if (depth < 100) return "#ed8936";
+        if (depth < 300) return "#e53e3e";
+        return "#742a2a";
+      }
+
+      /**
+       * @description Обновление списка событий
+       */
+      updateEventList() {
+        const list = document.getElementById("eventList");
+
+        if (this.earthquakes.length === 0) {
+          list.innerHTML = `
+            <div class="empty-state">
+              <i class="fas fa-check-circle"></i>
+              <p>Нет землетрясений за выбранный период</p>
+            </div>
+          `;
+          return;
+        }
+
+        list.innerHTML = this.earthquakes.slice(0, 100).map((eq, index) => {
+          const mag = eq.properties.mag;
+          const place = eq.properties.place || "Неизвестно";
+          const time = new Date(eq.properties.time);
+          const [lng, lat, depth] = eq.geometry.coordinates;
+          const magClass = this.getMagnitudeClass(mag);
+
+          return `
+            <li class="event-item" data-lat="${lat}" data-lng="${lng}" data-index="${index}">
+              <div class="event-header">
+                <span class="event-magnitude ${magClass}">${mag.toFixed(1)}</span>
+                <span class="event-time">${this.formatTime(time)}</span>
+              </div>
+              <div class="event-location">${place}</div>
+              <div class="event-depth">
+                <i class="fas fa-arrow-down"></i> Глубина: ${depth.toFixed(1)} км
+              </div>
+            </li>
+          `;
+        }).join("");
+
+        // Обработчики клика для навигации к маркеру
+        list.querySelectorAll(".event-item").forEach(item => {
+          item.addEventListener("click", () => {
+            const lat = parseFloat(item.dataset.lat);
+            const lng = parseFloat(item.dataset.lng);
+            this.map.setView([lat, lng], 8);
+
+            // Открываем попап соответствующего маркера
+            const layers = this.markersLayer.getLayers();
+            const targetLayer = layers[parseInt(item.dataset.index)];
+            if (targetLayer) {
+              targetLayer.openPopup();
+            }
+          });
+        });
+      }
+
+      /**
+       * @description Получение CSS класса по магнитуде
+       * @param {number} mag - Магнитуда
+       * @returns {string} CSS класс
+       */
+      getMagnitudeClass(mag) {
+        if (mag < 2) return "mag-1";
+        if (mag < 3) return "mag-2";
+        if (mag < 4) return "mag-3";
+        if (mag < 5) return "mag-4";
+        if (mag < 6) return "mag-5";
+        if (mag < 7) return "mag-6";
+        return "mag-7";
+      }
+
+      /**
+       * @description Форматирование времени
+       * @param {Date} date - Дата события
+       * @returns {string} Отформатированная строка
+       */
+      formatTime(date) {
+        const now = new Date();
+        const diff = now - date;
+
+        if (diff < 60000) return "только что";
+        if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+
+        return date.toLocaleDateString("ru-RU", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      /**
+       * @description Обновление статистики
+       */
+      updateStats() {
+        // Счетчики по категориям
+        let total = this.earthquakes.length;
+        let significant = 0;
+        let moderate = 0;
+        let light = 0;
+
+        // Распределение по магнитуде
+        const magBuckets = {
+          "0-2": 0,
+          "2-3": 0,
+          "3-4": 0,
+          "4-5": 0,
+          "5-6": 0,
+          "6+": 0
+        };
+
+        // Статистика по регионам
+        const regions = {};
+
+        this.earthquakes.forEach(eq => {
+          const mag = eq.properties.mag;
+          const place = eq.properties.place || "Unknown";
+
+          // Категоризация
+          if (mag >= 5) significant++;
+          else if (mag >= 3) moderate++;
+          else light++;
+
+          // Распределение
+          if (mag < 2) magBuckets["0-2"]++;
+          else if (mag < 3) magBuckets["2-3"]++;
+          else if (mag < 4) magBuckets["3-4"]++;
+          else if (mag < 5) magBuckets["4-5"]++;
+          else if (mag < 6) magBuckets["5-6"]++;
+          else magBuckets["6+"]++;
+
+          // Регионы - извлекаем последнюю часть названия
+          const regionMatch = place.match(/,\s*([^,]+)$/);
+          const region = regionMatch ? regionMatch[1].trim() : place;
+          regions[region] = (regions[region] || 0) + 1;
+        });
+
+        // Обновляем счетчики
+        document.getElementById("totalCount").textContent = total;
+        document.getElementById("significantCount").textContent = significant;
+        document.getElementById("moderateCount").textContent = moderate;
+        document.getElementById("lightCount").textContent = light;
+
+        // Обновляем график
+        this.updateMagnitudeChart(magBuckets);
+
+        // Обновляем регионы
+        this.updateRegionStats(regions);
+      }
+
+      /**
+       * @description Обновление графика распределения магнитуд
+       * @param {Object} buckets - Объект с распределением
+       */
+      updateMagnitudeChart(buckets) {
+        const chart = document.getElementById("magnitudeChart");
+        const maxValue = Math.max(...Object.values(buckets), 1);
+
+        chart.innerHTML = Object.entries(buckets).map(([label, count]) => {
+          const height = (count / maxValue) * 100;
+          return `
+            <div class="chart-bar">
+              <div class="chart-bar-value">${count}</div>
+              <div class="chart-bar-fill" style="height: ${height}%"></div>
+              <div class="chart-bar-label">${label}</div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      /**
+       * @description Обновление статистики по регионам
+       * @param {Object} regions - Объект с количеством по регионам
+       */
+      updateRegionStats(regions) {
+        const container = document.getElementById("regionList");
+
+        // Сортируем регионы по количеству событий
+        const sortedRegions = Object.entries(regions)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
+
+        if (sortedRegions.length === 0) {
+          container.innerHTML = '<p class="empty-state">Нет данных</p>';
+          return;
+        }
+
+        const maxCount = sortedRegions[0][1];
+
+        container.innerHTML = sortedRegions.map(([name, count]) => {
+          const percent = (count / maxCount) * 100;
+          return `
+            <div class="region-item">
+              <div class="region-header">
+                <span class="region-name">${name}</span>
+                <span class="region-count">${count}</span>
+              </div>
+              <div class="region-bar">
+                <div class="region-bar-fill" style="width: ${percent}%"></div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      /**
+       * @description Проверка новых землетрясений для уведомлений
+       */
+      checkNewEarthquakes() {
+        if (!this.notificationsEnabled) return;
+
+        const notifySignificant = document.getElementById("notifySignificant").checked;
+        const soundEnabled = document.getElementById("notifySound").checked;
+
+        this.earthquakes.forEach(eq => {
+          const id = eq.id;
+          const mag = eq.properties.mag;
+
+          if (!this.seenIds.has(id)) {
+            this.seenIds.add(id);
+
+            // Уведомляем только о значительных землетрясениях
+            if (notifySignificant && mag >= 5) {
+              const place = eq.properties.place || "Неизвестное место";
+              this.sendNotification(
+                `Землетрясение M ${mag.toFixed(1)}`,
+                place,
+                soundEnabled
+              );
+            }
+          }
+        });
+      }
+
+      /**
+       * @description Отправка уведомления
+       * @param {string} title - Заголовок
+       * @param {string} body - Текст
+       * @param {boolean} sound - Воспроизводить звук
+       */
+      sendNotification(title, body, sound = false) {
+        // Показываем внутреннее уведомление
+        this.showToast(title, body);
+
+        // Отправляем системное уведомление
+        if (Notification.permission === "granted") {
+          const notification = new Notification(title, {
+            body: body,
+            icon: "https://earthquake.usgs.gov/favicon.ico",
+            tag: "earthquake-alert",
+            requireInteraction: true
+          });
+
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+          };
+        }
+
+        // Звук
+        if (sound) {
+          this.playAlertSound();
+        }
+      }
+
+      /**
+       * @description Показ внутреннего уведомления
+       * @param {string} title - Заголовок
+       * @param {string} message - Сообщение
+       */
+      showToast(title, message) {
+        const toast = document.getElementById("notificationToast");
+        document.getElementById("toastTitle").textContent = title;
+        document.getElementById("toastMessage").textContent = message;
+
+        toast.classList.add("show");
+
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 5000);
+      }
+
+      /**
+       * @description Воспроизведение звука оповещения
+       */
+      playAlertSound() {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800;
+        oscillator.type = "sine";
+        gainNode.gain.value = 0.3;
+
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.3);
+      }
+
+      /**
+       * @description Переключение уведомлений
+       */
+      async toggleNotifications() {
+        const btn = document.getElementById("notificationBtn");
+
+        if (this.notificationsEnabled) {
+          this.notificationsEnabled = false;
+          btn.classList.add("disabled");
+          btn.innerHTML = '<i class="fas fa-bell-slash"></i>';
+          return;
+        }
+
+        if (!("Notification" in window)) {
+          this.showToast("Ошибка", "Браузер не поддерживает уведомления");
+          return;
+        }
+
+        if (Notification.permission === "denied") {
+          this.showToast("Отказано", "Разрешите уведомления в настройках браузера");
+          return;
+        }
+
+        if (Notification.permission === "default") {
+          const permission = await Notification.requestPermission();
+          if (permission !== "granted") {
+            this.showToast("Отменено", "Уведомления не разрешены");
+            return;
+          }
+        }
+
+        this.notificationsEnabled = true;
+        btn.classList.remove("disabled");
+        btn.innerHTML = '<i class="fas fa-bell"></i>';
+        this.showToast("Уведомления включены", "Вы будете получать уведомления о сильных землетрясениях");
+      }
+
+      /**
+       * @description Обновление временной метки
+       */
+      updateTimestamp() {
+        const timeEl = document.getElementById("updateTime");
+        const now = new Date();
+        timeEl.textContent = `Обновлено: ${now.toLocaleTimeString("ru-RU")}`;
+      }
+
+      /**
+       * @description Запуск автообновления
+       */
+      startAutoRefresh() {
+        this.stopAutoRefresh();
+
+        if (!document.getElementById("autoRefresh").checked) return;
+
+        const interval = parseInt(document.getElementById("refreshInterval").value);
+        this.refreshInterval = setInterval(() => {
+          this.loadEarthquakes();
+        }, interval);
+      }
+
+      /**
+       * @description Остановка автообновления
+       */
+      stopAutoRefresh() {
+        if (this.refreshInterval) {
+          clearInterval(this.refreshInterval);
+          this.refreshInterval = null;
+        }
+      }
+    }
+
+    // Запуск приложения
+    document.addEventListener("DOMContentLoaded", () => {
+      new EarthquakeMonitor();
+    });
+  </script>
+</body>
+</html>

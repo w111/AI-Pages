@@ -1,0 +1,1721 @@
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать конвертер форматов данных для преобразования между JSON, YAML, TOML и XML.
+
+Функциональные требования:
+1. Конвертация между форматами:
+   - JSON ↔ YAML ↔ TOML ↔ XML
+   - Автоопределение входного формата
+   - Выбор целевого формата
+2. Подсветка синтаксиса:
+   - Цветовое выделение ключей, значений, строк, чисел
+   - Поддержка всех четырех форматов
+3. Валидация и форматирование:
+   - Проверка корректности синтаксиса
+   - Отображение ошибок с указанием позиции
+   - Автоматическое форматирование (beautify)
+4. Diff между двумя версиями:
+   - Сравнение двух текстов
+   - Подсветка добавленных/удаленных строк
+5. Минификация / Beautify:
+   - Сжатие данных для минимального размера
+   - Форматирование с отступами для читаемости
+
+Технические требования:
+1. Самодостаточный HTML-файл
+2. Нативный JavaScript без сборки
+3. CDN библиотеки для парсинга форматов
+4. Адаптивный дизайн
+5. Темная и светлая тема
+6. Сохранение настроек в localStorage
+-->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Конвертер форматов данных | AI Pages</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Prism.js для подсветки синтаксиса -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-toml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-xml-doc.min.js"></script>
+  <!-- js-yaml для YAML -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <!-- diff-match-patch для сравнения -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js"></script>
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --secondary-color: #64748b;
+      --success-color: #10b981;
+      --error-color: #ef4444;
+      --warning-color: #f59e0b;
+      --background: #f8fafc;
+      --surface: #ffffff;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --editor-bg: #1e1e1e;
+      --editor-text: #d4d4d4;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --radius: 8px;
+    }
+
+    .dark-theme {
+      --background: #0f172a;
+      --surface: #1e293b;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow);
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header-title i {
+      font-size: 1.5rem;
+      color: var(--primary-color);
+    }
+
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border-color);
+    }
+
+    .btn-icon {
+      padding: 0.5rem;
+      width: 36px;
+      height: 36px;
+      justify-content: center;
+    }
+
+    /* Main layout */
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 60px);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0 1rem;
+    }
+
+    .tab {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .toolbar-group label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .format-select {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .format-select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    /* Editor area */
+    .editor-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .editor-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-color);
+    }
+
+    .editor-panel:last-child {
+      border-right: none;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .editor-wrapper {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .editor {
+      width: 100%;
+      height: 100%;
+      padding: 1rem;
+      border: none;
+      resize: none;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      background: var(--editor-bg);
+      color: var(--editor-text);
+      outline: none;
+    }
+
+    .output-display {
+      width: 100%;
+      height: 100%;
+      padding: 1rem;
+      overflow: auto;
+      background: var(--editor-bg);
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .output-display pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .output-display code {
+      background: transparent !important;
+      padding: 0 !important;
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      background: var(--surface);
+      border-top: 1px solid var(--border-color);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-success {
+      color: var(--success-color);
+    }
+
+    .status-error {
+      color: var(--error-color);
+    }
+
+    .status-warning {
+      color: var(--warning-color);
+    }
+
+    /* Diff view */
+    .diff-container {
+      flex: 1;
+      overflow: auto;
+      padding: 1rem;
+      background: var(--editor-bg);
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .diff-line {
+      padding: 0.125rem 0.5rem;
+      margin: 0 -0.5rem;
+    }
+
+    .diff-added {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .diff-removed {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .diff-unchanged {
+      color: var(--editor-text);
+    }
+
+    /* Error display */
+    .error-message {
+      padding: 1rem;
+      background: rgba(239, 68, 68, 0.1);
+      border-left: 4px solid var(--error-color);
+      color: var(--error-color);
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      max-width: 400px;
+      width: 90%;
+      padding: 1.5rem;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .modal-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 1.25rem;
+    }
+
+    .settings-option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .settings-option:last-child {
+      border-bottom: none;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--border-color);
+      border-radius: 24px;
+      transition: 0.3s;
+    }
+
+    .slider:before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    input:checked + .slider {
+      background: var(--primary-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header {
+        padding: 0.75rem 1rem;
+      }
+
+      .header-title h1 {
+        font-size: 1rem;
+      }
+
+      .editor-container {
+        flex-direction: column;
+      }
+
+      .editor-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        min-height: 40vh;
+      }
+
+      .toolbar {
+        padding: 0.5rem;
+      }
+
+      .tab {
+        padding: 0.5rem 1rem;
+        font-size: 0.75rem;
+      }
+    }
+
+    /* Hidden panels */
+    .panel-hidden {
+      display: none;
+    }
+
+    /* Sample data hint */
+    .sample-hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: var(--text-secondary);
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .sample-hint i {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .sample-hint p {
+      font-size: 0.875rem;
+    }
+
+    .editor:not(:placeholder-shown) + .sample-hint {
+      display: none;
+    }
+
+    /* Copy notification */
+    .notification {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      padding: 0.75rem 1.5rem;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--success-color);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1001;
+    }
+
+    .notification.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Loading state */
+    .loading {
+      position: absolute;
+      inset: 0;
+      background: var(--editor-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s;
+    }
+
+    .loading.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title">
+      <i class="fas fa-exchange-alt"></i>
+      <h1>Конвертер форматов данных</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-icon" onclick="loadSample()" title="Загрузить пример">
+        <i class="fas fa-file-code"></i>
+      </button>
+      <button class="btn btn-secondary btn-icon" onclick="clearAll()" title="Очистить все">
+        <i class="fas fa-trash-alt"></i>
+      </button>
+      <button class="btn btn-secondary btn-icon" onclick="toggleSettings()" title="Настройки">
+        <i class="fas fa-cog"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="convert" onclick="switchTab('convert')">
+        <i class="fas fa-exchange-alt"></i> Конвертация
+      </button>
+      <button class="tab" data-tab="diff" onclick="switchTab('diff')">
+        <i class="fas fa-columns"></i> Сравнение
+      </button>
+    </div>
+
+    <!-- Convert Tab Content -->
+    <div id="convert-tab" class="tab-content">
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <label>Входной формат:</label>
+          <select class="format-select" id="inputFormat" onchange="handleFormatChange()">
+            <option value="auto">Авто</option>
+            <option value="json">JSON</option>
+            <option value="yaml">YAML</option>
+            <option value="toml">TOML</option>
+            <option value="xml">XML</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <i class="fas fa-arrow-right" style="color: var(--text-secondary)"></i>
+        </div>
+        <div class="toolbar-group">
+          <label>Выходной формат:</label>
+          <select class="format-select" id="outputFormat" onchange="convert()">
+            <option value="json">JSON</option>
+            <option value="yaml">YAML</option>
+            <option value="toml">TOML</option>
+            <option value="xml">XML</option>
+          </select>
+        </div>
+        <div class="toolbar-group" style="margin-left: auto;">
+          <button class="btn btn-secondary" onclick="beautify()">
+            <i class="fas fa-indent"></i> Beautify
+          </button>
+          <button class="btn btn-secondary" onclick="minify()">
+            <i class="fas fa-compress-alt"></i> Minify
+          </button>
+          <button class="btn btn-primary" onclick="convert()">
+            <i class="fas fa-sync-alt"></i> Конвертировать
+          </button>
+        </div>
+      </div>
+
+      <!-- Editor Panels -->
+      <div class="editor-container">
+        <!-- Input Panel -->
+        <div class="editor-panel">
+          <div class="panel-header">
+            <span class="panel-title">Входные данные</span>
+            <div class="panel-actions">
+              <button class="btn btn-secondary btn-icon" onclick="pasteFromClipboard()" title="Вставить">
+                <i class="fas fa-paste"></i>
+              </button>
+              <button class="btn btn-secondary btn-icon" onclick="clearInput()" title="Очистить">
+                <i class="fas fa-eraser"></i>
+              </button>
+            </div>
+          </div>
+          <div class="editor-wrapper">
+            <textarea
+              class="editor"
+              id="inputEditor"
+              placeholder="Введите или вставьте данные в формате JSON, YAML, TOML или XML..."
+              oninput="handleInput()"
+              spellcheck="false"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Output Panel -->
+        <div class="editor-panel">
+          <div class="panel-header">
+            <span class="panel-title">Результат</span>
+            <div class="panel-actions">
+              <button class="btn btn-secondary btn-icon" onclick="copyOutput()" title="Копировать">
+                <i class="fas fa-copy"></i>
+              </button>
+              <button class="btn btn-secondary btn-icon" onclick="downloadOutput()" title="Скачать">
+                <i class="fas fa-download"></i>
+              </button>
+            </div>
+          </div>
+          <div class="editor-wrapper">
+            <div class="output-display" id="outputDisplay">
+              <pre><code id="outputCode"></code></pre>
+            </div>
+            <div class="loading" id="loadingIndicator">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diff Tab Content -->
+    <div id="diff-tab" class="tab-content panel-hidden">
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <label>Формат:</label>
+          <select class="format-select" id="diffFormat">
+            <option value="json">JSON</option>
+            <option value="yaml">YAML</option>
+            <option value="toml">TOML</option>
+            <option value="xml">XML</option>
+          </select>
+        </div>
+        <div class="toolbar-group" style="margin-left: auto;">
+          <button class="btn btn-primary" onclick="compareDiff()">
+            <i class="fas fa-balance-scale"></i> Сравнить
+          </button>
+        </div>
+      </div>
+
+      <div class="editor-container">
+        <!-- Left Panel -->
+        <div class="editor-panel">
+          <div class="panel-header">
+            <span class="panel-title">Версия A</span>
+            <div class="panel-actions">
+              <button class="btn btn-secondary btn-icon" onclick="clearDiffA()" title="Очистить">
+                <i class="fas fa-eraser"></i>
+              </button>
+            </div>
+          </div>
+          <div class="editor-wrapper">
+            <textarea
+              class="editor"
+              id="diffEditorA"
+              placeholder="Введите первую версию данных..."
+              spellcheck="false"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="editor-panel">
+          <div class="panel-header">
+            <span class="panel-title">Версия B</span>
+            <div class="panel-actions">
+              <button class="btn btn-secondary btn-icon" onclick="clearDiffB()" title="Очистить">
+                <i class="fas fa-eraser"></i>
+              </button>
+            </div>
+          </div>
+          <div class="editor-wrapper">
+            <textarea
+              class="editor"
+              id="diffEditorB"
+              placeholder="Введите вторую версию данных..."
+              spellcheck="false"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Diff Result -->
+        <div class="editor-panel">
+          <div class="panel-header">
+            <span class="panel-title">Результат сравнения</span>
+          </div>
+          <div class="diff-container" id="diffResult">
+            <p style="color: var(--text-secondary); text-align: center; margin-top: 2rem;">
+              Введите данные и нажмите "Сравнить"
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-item" id="statusMessage">
+        <i class="fas fa-info-circle"></i>
+        <span>Готово к работе</span>
+      </div>
+      <div class="status-item">
+        <span id="charCount">0 символов</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Настройки</h3>
+        <button class="modal-close" onclick="toggleSettings()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-option">
+          <label>Темная тема</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="darkThemeToggle" onchange="toggleDarkTheme()">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-option">
+          <label>Автоконвертация</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="autoConvertToggle" onchange="toggleAutoConvert()" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-option">
+          <label>Отступ (пробелы)</label>
+          <select class="format-select" id="indentSize" onchange="saveSettings()">
+            <option value="2">2</option>
+            <option value="4" selected>4</option>
+            <option value="8">8</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification">
+    <i class="fas fa-check-circle" style="color: var(--success-color); margin-right: 0.5rem;"></i>
+    <span id="notificationText">Скопировано!</span>
+  </div>
+
+  <script>
+    /**
+     * @description Конвертер форматов данных - основной модуль
+     * Поддерживает JSON, YAML, TOML, XML с валидацией и подсветкой
+     */
+
+    // Глобальные переменные состояния
+    let settings = {
+      darkTheme: false,
+      autoConvert: true,
+      indentSize: 4
+    };
+    let currentOutputData = "";
+    let lastParsedData = null;
+    let detectedFormat = "json";
+
+    /**
+     * @function initApp
+     * @description Инициализация приложения
+     */
+    function initApp() {
+      loadSettings();
+      applyTheme();
+
+      // Обработка drag & drop
+      const inputEditor = document.getElementById("inputEditor");
+      inputEditor.addEventListener("dragover", handleDragOver);
+      inputEditor.addEventListener("drop", handleDrop);
+    }
+
+    /**
+     * @function loadSettings
+     * @description Загрузка настроек из localStorage
+     */
+    function loadSettings() {
+      const saved = localStorage.getItem("dataConverterSettings");
+      if (saved) {
+        settings = { ...settings, ...JSON.parse(saved) };
+      }
+      document.getElementById("darkThemeToggle").checked = settings.darkTheme;
+      document.getElementById("autoConvertToggle").checked = settings.autoConvert;
+      document.getElementById("indentSize").value = settings.indentSize;
+    }
+
+    /**
+     * @function saveSettings
+     * @description Сохранение настроек в localStorage
+     */
+    function saveSettings() {
+      settings.indentSize = parseInt(document.getElementById("indentSize").value);
+      localStorage.setItem("dataConverterSettings", JSON.stringify(settings));
+    }
+
+    /**
+     * @function toggleDarkTheme
+     * @description Переключение темной темы
+     */
+    function toggleDarkTheme() {
+      settings.darkTheme = document.getElementById("darkThemeToggle").checked;
+      applyTheme();
+      saveSettings();
+    }
+
+    /**
+     * @function applyTheme
+     * @description Применение текущей темы
+     */
+    function applyTheme() {
+      document.body.classList.toggle("dark-theme", settings.darkTheme);
+    }
+
+    /**
+     * @function toggleAutoConvert
+     * @description Переключение автоконвертации
+     */
+    function toggleAutoConvert() {
+      settings.autoConvert = document.getElementById("autoConvertToggle").checked;
+      saveSettings();
+    }
+
+    /**
+     * @function toggleSettings
+     * @description Открытие/закрытие модального окна настроек
+     */
+    function toggleSettings() {
+      document.getElementById("settingsModal").classList.toggle("active");
+    }
+
+    /**
+     * @function switchTab
+     * @description Переключение между вкладками
+     * @param {string} tabId - идентификатор вкладки
+     */
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.toggle("active", tab.dataset.tab === tabId);
+      });
+      document.querySelectorAll(".tab-content").forEach(content => {
+        content.classList.toggle("panel-hidden", content.id !== tabId + "-tab");
+      });
+    }
+
+    /**
+     * @function detectFormat
+     * @description Автоматическое определение формата входных данных
+     * @param {string} text - входной текст
+     * @returns {string} - определенный формат
+     */
+    function detectFormat(text) {
+      const trimmed = text.trim();
+      if (!trimmed) return "json";
+
+      // Проверка XML
+      if (trimmed.startsWith("<?xml") || trimmed.startsWith("<")) {
+        return "xml";
+      }
+
+      // Проверка JSON
+      try {
+        JSON.parse(trimmed);
+        return "json";
+      } catch (e) {
+        // Не JSON
+      }
+
+      // Проверка YAML (ключи без кавычек с двоеточием)
+      if (/^[\w-]+:\s/m.test(trimmed) && !trimmed.includes("[") && !trimmed.startsWith("{")) {
+        return "yaml";
+      }
+
+      // Проверка TOML (секции в квадратных скобках или ключи с =)
+      if (/^\[[\w.-]+\]/m.test(trimmed) || /^[\w-]+\s*=/m.test(trimmed)) {
+        return "toml";
+      }
+
+      return "yaml"; // По умолчанию YAML
+    }
+
+    /**
+     * @function parseInput
+     * @description Парсинг входных данных
+     * @param {string} text - входной текст
+     * @param {string} format - формат данных
+     * @returns {object} - распарсенные данные
+     */
+    function parseInput(text, format) {
+      if (!text.trim()) {
+        throw new Error("Входные данные пусты");
+      }
+
+      switch (format) {
+        case "json":
+          return JSON.parse(text);
+
+        case "yaml":
+          return jsyaml.load(text);
+
+        case "toml":
+          return parseTOML(text);
+
+        case "xml":
+          return parseXML(text);
+
+        default:
+          throw new Error("Неизвестный формат: " + format);
+      }
+    }
+
+    /**
+     * @function parseTOML
+     * @description Простой парсер TOML
+     * @param {string} text - TOML текст
+     * @returns {object} - распарсенный объект
+     */
+    function parseTOML(text) {
+      const result = {};
+      let currentSection = result;
+      const lines = text.split("\n");
+
+      for (let line of lines) {
+        line = line.trim();
+
+        // Пропуск комментариев и пустых строк
+        if (!line || line.startsWith("#")) continue;
+
+        // Секция [section] или [section.subsection]
+        const sectionMatch = line.match(/^\[([^\]]+)\]$/);
+        if (sectionMatch) {
+          const path = sectionMatch[1].split(".");
+          currentSection = result;
+          for (const key of path) {
+            if (!currentSection[key]) currentSection[key] = {};
+            currentSection = currentSection[key];
+          }
+          continue;
+        }
+
+        // Ключ = значение
+        const kvMatch = line.match(/^([\w.-]+)\s*=\s*(.+)$/);
+        if (kvMatch) {
+          const key = kvMatch[1];
+          let value = kvMatch[2].trim();
+          currentSection[key] = parseTOMLValue(value);
+        }
+      }
+
+      return result;
+    }
+
+    /**
+     * @function parseTOMLValue
+     * @description Парсинг значения TOML
+     * @param {string} value - строковое значение
+     * @returns {any} - распарсенное значение
+     */
+    function parseTOMLValue(value) {
+      // Строка в кавычках
+      if ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))) {
+        return value.slice(1, -1);
+      }
+
+      // Массив
+      if (value.startsWith("[") && value.endsWith("]")) {
+        const inner = value.slice(1, -1);
+        if (!inner.trim()) return [];
+        return inner.split(",").map(v => parseTOMLValue(v.trim()));
+      }
+
+      // Булевы значения
+      if (value === "true") return true;
+      if (value === "false") return false;
+
+      // Числа
+      if (/^-?\d+$/.test(value)) return parseInt(value);
+      if (/^-?\d+\.\d+$/.test(value)) return parseFloat(value);
+
+      // Дата/время
+      if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
+
+      return value;
+    }
+
+    /**
+     * @function parseXML
+     * @description Парсинг XML в объект
+     * @param {string} text - XML текст
+     * @returns {object} - распарсенный объект
+     */
+    function parseXML(text) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, "application/xml");
+
+      const errorNode = doc.querySelector("parsererror");
+      if (errorNode) {
+        throw new Error("Ошибка парсинга XML: " + errorNode.textContent);
+      }
+
+      return xmlToObject(doc.documentElement);
+    }
+
+    /**
+     * @function xmlToObject
+     * @description Рекурсивное преобразование XML элемента в объект
+     * @param {Element} element - XML элемент
+     * @returns {object} - объект
+     */
+    function xmlToObject(element) {
+      const result = {};
+
+      // Атрибуты
+      if (element.attributes.length > 0) {
+        result["@attributes"] = {};
+        for (const attr of element.attributes) {
+          result["@attributes"][attr.name] = attr.value;
+        }
+      }
+
+      // Дочерние элементы
+      for (const child of element.children) {
+        const childObj = xmlToObject(child);
+        const tagName = child.tagName;
+
+        if (result[tagName]) {
+          if (!Array.isArray(result[tagName])) {
+            result[tagName] = [result[tagName]];
+          }
+          result[tagName].push(childObj);
+        } else {
+          result[tagName] = childObj;
+        }
+      }
+
+      // Текстовое содержимое
+      const textContent = Array.from(element.childNodes)
+        .filter(n => n.nodeType === Node.TEXT_NODE)
+        .map(n => n.textContent.trim())
+        .join("")
+        .trim();
+
+      if (textContent && Object.keys(result).length === 0) {
+        return textContent;
+      } else if (textContent) {
+        result["#text"] = textContent;
+      }
+
+      return Object.keys(result).length === 0 ? "" : result;
+    }
+
+    /**
+     * @function formatOutput
+     * @description Форматирование данных в выходной формат
+     * @param {object} data - данные
+     * @param {string} format - целевой формат
+     * @param {boolean} minified - минифицированный вывод
+     * @returns {string} - отформатированная строка
+     */
+    function formatOutput(data, format, minified = false) {
+      const indent = minified ? 0 : settings.indentSize;
+
+      switch (format) {
+        case "json":
+          return minified
+            ? JSON.stringify(data)
+            : JSON.stringify(data, null, indent);
+
+        case "yaml":
+          return jsyaml.dump(data, {
+            indent: indent || 2,
+            lineWidth: -1,
+            noRefs: true
+          });
+
+        case "toml":
+          return objectToTOML(data, minified);
+
+        case "xml":
+          return objectToXML(data, "root", minified ? 0 : indent);
+
+        default:
+          throw new Error("Неизвестный формат: " + format);
+      }
+    }
+
+    /**
+     * @function objectToTOML
+     * @description Преобразование объекта в TOML
+     * @param {object} obj - объект
+     * @param {boolean} minified - минификация
+     * @param {string} prefix - префикс секции
+     * @returns {string} - TOML строка
+     */
+    function objectToTOML(obj, minified = false, prefix = "") {
+      let result = "";
+      const nl = minified ? "\n" : "\n";
+      const sections = [];
+
+      for (const [key, value] of Object.entries(obj)) {
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          sections.push({ key, value });
+        } else {
+          result += `${key} = ${tomlValue(value)}${nl}`;
+        }
+      }
+
+      for (const { key, value } of sections) {
+        const sectionName = prefix ? `${prefix}.${key}` : key;
+        result += `${nl}[${sectionName}]${nl}`;
+        result += objectToTOML(value, minified, sectionName);
+      }
+
+      return result;
+    }
+
+    /**
+     * @function tomlValue
+     * @description Преобразование значения в TOML формат
+     * @param {any} value - значение
+     * @returns {string} - TOML представление
+     */
+    function tomlValue(value) {
+      if (typeof value === "string") {
+        return `"${value.replace(/"/g, '\\"')}"`;
+      }
+      if (typeof value === "boolean") {
+        return value ? "true" : "false";
+      }
+      if (typeof value === "number") {
+        return String(value);
+      }
+      if (Array.isArray(value)) {
+        return `[${value.map(v => tomlValue(v)).join(", ")}]`;
+      }
+      return String(value);
+    }
+
+    /**
+     * @function objectToXML
+     * @description Преобразование объекта в XML
+     * @param {object} obj - объект
+     * @param {string} rootName - имя корневого элемента
+     * @param {number} indent - размер отступа
+     * @param {number} level - уровень вложенности
+     * @returns {string} - XML строка
+     */
+    function objectToXML(obj, rootName = "root", indent = 4, level = 0) {
+      const nl = indent > 0 ? "\n" : "";
+      const pad = indent > 0 ? " ".repeat(level * indent) : "";
+      const childPad = indent > 0 ? " ".repeat((level + 1) * indent) : "";
+
+      if (typeof obj !== "object" || obj === null) {
+        return `${pad}<${rootName}>${escapeXML(String(obj))}</${rootName}>`;
+      }
+
+      let result = level === 0 ? '<?xml version="1.0" encoding="UTF-8"?>' + nl : "";
+
+      let attrs = "";
+      let content = "";
+      let hasChildren = false;
+
+      for (const [key, value] of Object.entries(obj)) {
+        if (key === "@attributes") {
+          for (const [attrName, attrValue] of Object.entries(value)) {
+            attrs += ` ${attrName}="${escapeXML(String(attrValue))}"`;
+          }
+        } else if (key === "#text") {
+          content += escapeXML(String(value));
+        } else if (Array.isArray(value)) {
+          hasChildren = true;
+          for (const item of value) {
+            content += nl + objectToXML(item, key, indent, level + 1);
+          }
+        } else {
+          hasChildren = true;
+          content += nl + objectToXML(value, key, indent, level + 1);
+        }
+      }
+
+      if (hasChildren) {
+        result += `${pad}<${rootName}${attrs}>${content}${nl}${pad}</${rootName}>`;
+      } else if (content) {
+        result += `${pad}<${rootName}${attrs}>${content}</${rootName}>`;
+      } else {
+        result += `${pad}<${rootName}${attrs}/>`;
+      }
+
+      return result;
+    }
+
+    /**
+     * @function escapeXML
+     * @description Экранирование специальных символов XML
+     * @param {string} str - строка
+     * @returns {string} - экранированная строка
+     */
+    function escapeXML(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+    }
+
+    /**
+     * @function handleInput
+     * @description Обработчик ввода в редакторе
+     */
+    function handleInput() {
+      const input = document.getElementById("inputEditor").value;
+      updateCharCount(input.length);
+
+      const formatSelect = document.getElementById("inputFormat");
+      if (formatSelect.value === "auto") {
+        detectedFormat = detectFormat(input);
+        updateStatus(`Определен формат: ${detectedFormat.toUpperCase()}`, "info");
+      }
+
+      if (settings.autoConvert && input.trim()) {
+        debounce(convert, 300)();
+      }
+    }
+
+    /**
+     * @function handleFormatChange
+     * @description Обработчик изменения формата
+     */
+    function handleFormatChange() {
+      const formatSelect = document.getElementById("inputFormat");
+      if (formatSelect.value !== "auto") {
+        detectedFormat = formatSelect.value;
+      }
+      convert();
+    }
+
+    /**
+     * @function convert
+     * @description Основная функция конвертации
+     */
+    function convert() {
+      const inputText = document.getElementById("inputEditor").value;
+      const inputFormat = document.getElementById("inputFormat").value;
+      const outputFormat = document.getElementById("outputFormat").value;
+      const outputCode = document.getElementById("outputCode");
+      const outputDisplay = document.getElementById("outputDisplay");
+
+      if (!inputText.trim()) {
+        outputCode.textContent = "";
+        outputCode.className = "";
+        updateStatus("Введите данные для конвертации", "info");
+        return;
+      }
+
+      try {
+        showLoading(true);
+        const format = inputFormat === "auto" ? detectFormat(inputText) : inputFormat;
+        const data = parseInput(inputText, format);
+        lastParsedData = data;
+
+        const output = formatOutput(data, outputFormat);
+        currentOutputData = output;
+
+        // Подсветка синтаксиса
+        outputCode.textContent = output;
+        outputCode.className = `language-${outputFormat === "xml" ? "xml-doc" : outputFormat}`;
+        Prism.highlightElement(outputCode);
+
+        updateStatus(`Успешно конвертировано из ${format.toUpperCase()} в ${outputFormat.toUpperCase()}`, "success");
+      } catch (error) {
+        outputCode.innerHTML = `<div class="error-message">${escapeHTML(error.message)}</div>`;
+        updateStatus(`Ошибка: ${error.message}`, "error");
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    /**
+     * @function beautify
+     * @description Форматирование входных данных
+     */
+    function beautify() {
+      const inputEditor = document.getElementById("inputEditor");
+      const inputFormat = document.getElementById("inputFormat").value;
+      const format = inputFormat === "auto" ? detectFormat(inputEditor.value) : inputFormat;
+
+      try {
+        const data = parseInput(inputEditor.value, format);
+        inputEditor.value = formatOutput(data, format, false);
+        updateStatus("Данные отформатированы", "success");
+        if (settings.autoConvert) convert();
+      } catch (error) {
+        updateStatus(`Ошибка форматирования: ${error.message}`, "error");
+      }
+    }
+
+    /**
+     * @function minify
+     * @description Минификация входных данных
+     */
+    function minify() {
+      const inputEditor = document.getElementById("inputEditor");
+      const inputFormat = document.getElementById("inputFormat").value;
+      const format = inputFormat === "auto" ? detectFormat(inputEditor.value) : inputFormat;
+
+      try {
+        const data = parseInput(inputEditor.value, format);
+        inputEditor.value = formatOutput(data, format, true);
+        updateStatus("Данные минифицированы", "success");
+        if (settings.autoConvert) convert();
+      } catch (error) {
+        updateStatus(`Ошибка минификации: ${error.message}`, "error");
+      }
+    }
+
+    /**
+     * @function compareDiff
+     * @description Сравнение двух версий данных
+     */
+    function compareDiff() {
+      const textA = document.getElementById("diffEditorA").value;
+      const textB = document.getElementById("diffEditorB").value;
+      const format = document.getElementById("diffFormat").value;
+      const diffResult = document.getElementById("diffResult");
+
+      if (!textA.trim() || !textB.trim()) {
+        diffResult.innerHTML = '<p style="color: var(--text-secondary); text-align: center; margin-top: 2rem;">Введите данные в оба поля</p>';
+        return;
+      }
+
+      try {
+        // Парсим и форматируем для нормализации
+        const dataA = parseInput(textA, format);
+        const dataB = parseInput(textB, format);
+        const normalizedA = formatOutput(dataA, format).split("\n");
+        const normalizedB = formatOutput(dataB, format).split("\n");
+
+        // Простое построчное сравнение
+        const dmp = new diff_match_patch();
+        const diff = dmp.diff_main(normalizedA.join("\n"), normalizedB.join("\n"));
+        dmp.diff_cleanupSemantic(diff);
+
+        let html = "";
+        for (const [op, text] of diff) {
+          const lines = text.split("\n");
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (i < lines.length - 1 || line) {
+              if (op === 0) {
+                html += `<div class="diff-line diff-unchanged">${escapeHTML(line)}</div>`;
+              } else if (op === 1) {
+                html += `<div class="diff-line diff-added">+ ${escapeHTML(line)}</div>`;
+              } else if (op === -1) {
+                html += `<div class="diff-line diff-removed">- ${escapeHTML(line)}</div>`;
+              }
+            }
+          }
+        }
+
+        diffResult.innerHTML = html || '<p style="color: var(--success-color); text-align: center; margin-top: 2rem;">Данные идентичны</p>';
+        updateStatus("Сравнение завершено", "success");
+      } catch (error) {
+        diffResult.innerHTML = `<div class="error-message">${escapeHTML(error.message)}</div>`;
+        updateStatus(`Ошибка сравнения: ${error.message}`, "error");
+      }
+    }
+
+    /**
+     * @function copyOutput
+     * @description Копирование результата в буфер обмена
+     */
+    function copyOutput() {
+      if (!currentOutputData) {
+        showNotification("Нет данных для копирования");
+        return;
+      }
+
+      navigator.clipboard.writeText(currentOutputData).then(() => {
+        showNotification("Скопировано в буфер обмена!");
+      }).catch(() => {
+        showNotification("Ошибка копирования", true);
+      });
+    }
+
+    /**
+     * @function downloadOutput
+     * @description Скачивание результата
+     */
+    function downloadOutput() {
+      if (!currentOutputData) {
+        showNotification("Нет данных для скачивания");
+        return;
+      }
+
+      const format = document.getElementById("outputFormat").value;
+      const extensions = { json: "json", yaml: "yaml", toml: "toml", xml: "xml" };
+      const filename = `data.${extensions[format]}`;
+
+      const blob = new Blob([currentOutputData], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      showNotification(`Файл ${filename} загружен`);
+    }
+
+    /**
+     * @function pasteFromClipboard
+     * @description Вставка из буфера обмена
+     */
+    async function pasteFromClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById("inputEditor").value = text;
+        handleInput();
+        showNotification("Данные вставлены");
+      } catch (error) {
+        showNotification("Ошибка доступа к буферу обмена", true);
+      }
+    }
+
+    /**
+     * @function loadSample
+     * @description Загрузка примера данных
+     */
+    function loadSample() {
+      const sample = {
+        "name": "AI Pages",
+        "version": "1.0.0",
+        "description": "Коллекция интерактивных веб-приложений",
+        "features": ["Конвертация форматов", "Подсветка синтаксиса", "Валидация"],
+        "settings": {
+          "theme": "dark",
+          "autoSave": true,
+          "indentSize": 4
+        },
+        "metadata": {
+          "created": "2025-01-01",
+          "author": "Developer"
+        }
+      };
+
+      document.getElementById("inputEditor").value = JSON.stringify(sample, null, 2);
+      document.getElementById("inputFormat").value = "json";
+      handleInput();
+      showNotification("Пример загружен");
+    }
+
+    /**
+     * @function clearInput
+     * @description Очистка поля ввода
+     */
+    function clearInput() {
+      document.getElementById("inputEditor").value = "";
+      handleInput();
+    }
+
+    /**
+     * @function clearAll
+     * @description Очистка всех полей
+     */
+    function clearAll() {
+      document.getElementById("inputEditor").value = "";
+      document.getElementById("outputCode").textContent = "";
+      document.getElementById("diffEditorA").value = "";
+      document.getElementById("diffEditorB").value = "";
+      document.getElementById("diffResult").innerHTML = '<p style="color: var(--text-secondary); text-align: center; margin-top: 2rem;">Введите данные и нажмите "Сравнить"</p>';
+      currentOutputData = "";
+      lastParsedData = null;
+      updateCharCount(0);
+      updateStatus("Все очищено", "info");
+    }
+
+    /**
+     * @function clearDiffA
+     * @description Очистка поля A в режиме сравнения
+     */
+    function clearDiffA() {
+      document.getElementById("diffEditorA").value = "";
+    }
+
+    /**
+     * @function clearDiffB
+     * @description Очистка поля B в режиме сравнения
+     */
+    function clearDiffB() {
+      document.getElementById("diffEditorB").value = "";
+    }
+
+    /**
+     * @function handleDragOver
+     * @description Обработчик dragover
+     * @param {DragEvent} e - событие
+     */
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.currentTarget.style.borderColor = "var(--primary-color)";
+    }
+
+    /**
+     * @function handleDrop
+     * @description Обработчик drop для загрузки файлов
+     * @param {DragEvent} e - событие
+     */
+    function handleDrop(e) {
+      e.preventDefault();
+      e.currentTarget.style.borderColor = "";
+
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          document.getElementById("inputEditor").value = event.target.result;
+          handleInput();
+          showNotification(`Файл ${file.name} загружен`);
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    /**
+     * @function updateStatus
+     * @description Обновление строки статуса
+     * @param {string} message - сообщение
+     * @param {string} type - тип (info, success, error, warning)
+     */
+    function updateStatus(message, type = "info") {
+      const statusEl = document.getElementById("statusMessage");
+      const icons = {
+        info: "fa-info-circle",
+        success: "fa-check-circle",
+        error: "fa-exclamation-circle",
+        warning: "fa-exclamation-triangle"
+      };
+
+      statusEl.className = `status-item status-${type}`;
+      statusEl.innerHTML = `<i class="fas ${icons[type]}"></i><span>${message}</span>`;
+    }
+
+    /**
+     * @function updateCharCount
+     * @description Обновление счетчика символов
+     * @param {number} count - количество символов
+     */
+    function updateCharCount(count) {
+      document.getElementById("charCount").textContent = `${count} символов`;
+    }
+
+    /**
+     * @function showLoading
+     * @description Показать/скрыть индикатор загрузки
+     * @param {boolean} show - показать
+     */
+    function showLoading(show) {
+      document.getElementById("loadingIndicator").classList.toggle("active", show);
+    }
+
+    /**
+     * @function showNotification
+     * @description Показать уведомление
+     * @param {string} message - сообщение
+     * @param {boolean} isError - это ошибка
+     */
+    function showNotification(message, isError = false) {
+      const notification = document.getElementById("notification");
+      const notificationText = document.getElementById("notificationText");
+
+      notificationText.textContent = message;
+      notification.style.borderLeftColor = isError ? "var(--error-color)" : "var(--success-color)";
+      notification.classList.add("show");
+
+      setTimeout(() => {
+        notification.classList.remove("show");
+      }, 3000);
+    }
+
+    /**
+     * @function escapeHTML
+     * @description Экранирование HTML
+     * @param {string} str - строка
+     * @returns {string} - экранированная строка
+     */
+    function escapeHTML(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    /**
+     * @function debounce
+     * @description Debounce функция для оптимизации
+     * @param {Function} func - функция
+     * @param {number} wait - задержка
+     * @returns {Function} - debounced функция
+     */
+    let debounceTimer;
+    function debounce(func, wait) {
+      return function(...args) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => func.apply(this, args), wait);
+      };
+    }
+
+    // Инициализация при загрузке
+    document.addEventListener("DOMContentLoaded", initApp);
+  </script>
+</body>
+</html>
