@@ -9,16 +9,24 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
 
-    <!-- 
+    <!--
     Техническое описание:
     - WebLLM для локального запуска LLM в браузере
-    - Поддержка Llama 3, Mistral, Phi-3 и других моделей
+    - Поддержка Llama 3, Mistral, Phi-3, Qwen и других моделей
     - OpenAI-совместимый API интерфейс
     - Полностью клиентская реализация без серверов
     - WebGPU для ускорения вычислений
-    
+    - Tool Calling с интеграцией внешних API:
+      * Wikipedia API - поиск информации и фактов
+      * Open-Meteo API - погода и прогнозы
+      * ExchangeRate API - курсы валют
+      * CoinGecko API - криптовалюты
+      * MusicBrainz API - музыка и артисты
+      * TheSportsDB API - спорт и команды
+
     История изменений:
     2025-01-26: Первоначальная версия WebLLM Chat
+    2025-12-12: Добавлен Tool Calling с 6 API интеграциями
   -->
 
     <style>
@@ -689,6 +697,129 @@
         color: white;
       }
 
+      /* Tool call styles */
+      .message.tool-call {
+        opacity: 0.85;
+      }
+
+      .message.tool-call .message-content {
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 0.9rem;
+      }
+
+      .message.tool-call .message-avatar {
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+      }
+
+      .message.tool-result {
+        opacity: 0.9;
+      }
+
+      .message.tool-result .message-content {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+        border-radius: 12px;
+        padding: 12px 16px;
+      }
+
+      .message.tool-result .message-avatar {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+      }
+
+      .tool-result-data {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 8px;
+        font-size: 0.85rem;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      /* Tools toggle section */
+      .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .tool-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        background: var(--bg-color);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+      }
+
+      .tool-item:hover {
+        border-color: var(--primary-color);
+      }
+
+      .tool-item.active {
+        background: rgba(16, 163, 127, 0.2);
+        border-color: var(--primary-color);
+      }
+
+      .tool-item input[type="checkbox"] {
+        display: none;
+      }
+
+      .tool-item .tool-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        font-size: 0.9rem;
+      }
+
+      .tool-item .tool-name {
+        font-size: 0.85rem;
+        flex: 1;
+      }
+
+      .tool-item .tool-check {
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--border-color);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+
+      .tool-item.active .tool-check {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .tool-item.active .tool-check::after {
+        content: '✓';
+        color: white;
+        font-size: 12px;
+      }
+
+      .tools-info {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 10px;
+        padding: 8px;
+        background: var(--bg-color);
+        border-radius: 6px;
+        border-left: 3px solid var(--primary-color);
+      }
+
       .requirements-modal {
         position: fixed;
         top: 0;
@@ -1155,6 +1286,73 @@
         </div>
 
         <div class="settings-section">
+          <!-- Инструменты (Tool Calling) -->
+          <div class="accordion-item">
+            <div class="accordion-header active" onclick="toggleAccordion('toolsSettings')">
+              <h3 class="section-title">
+                <i class="fas fa-tools"></i>
+                Инструменты
+              </h3>
+              <i class="fas fa-chevron-down accordion-icon"></i>
+            </div>
+            <div id="toolsSettings" class="accordion-content">
+              <div class="tools-grid" id="toolsGrid">
+                <label class="tool-item active" data-tool="wikipedia">
+                  <input type="checkbox" checked>
+                  <span class="tool-icon" style="background: #667eea; color: white;">
+                    <i class="fab fa-wikipedia-w"></i>
+                  </span>
+                  <span class="tool-name">Wikipedia</span>
+                  <span class="tool-check"></span>
+                </label>
+                <label class="tool-item active" data-tool="weather">
+                  <input type="checkbox" checked>
+                  <span class="tool-icon" style="background: #3498db; color: white;">
+                    <i class="fas fa-cloud-sun"></i>
+                  </span>
+                  <span class="tool-name">Погода</span>
+                  <span class="tool-check"></span>
+                </label>
+                <label class="tool-item active" data-tool="currency">
+                  <input type="checkbox" checked>
+                  <span class="tool-icon" style="background: #27ae60; color: white;">
+                    <i class="fas fa-dollar-sign"></i>
+                  </span>
+                  <span class="tool-name">Валюты</span>
+                  <span class="tool-check"></span>
+                </label>
+                <label class="tool-item active" data-tool="crypto">
+                  <input type="checkbox" checked>
+                  <span class="tool-icon" style="background: #f7931a; color: white;">
+                    <i class="fab fa-bitcoin"></i>
+                  </span>
+                  <span class="tool-name">Крипто</span>
+                  <span class="tool-check"></span>
+                </label>
+                <label class="tool-item active" data-tool="music">
+                  <input type="checkbox" checked>
+                  <span class="tool-icon" style="background: #9b59b6; color: white;">
+                    <i class="fas fa-music"></i>
+                  </span>
+                  <span class="tool-name">Музыка</span>
+                  <span class="tool-check"></span>
+                </label>
+                <label class="tool-item active" data-tool="sports">
+                  <input type="checkbox" checked>
+                  <span class="tool-icon" style="background: #e74c3c; color: white;">
+                    <i class="fas fa-futbol"></i>
+                  </span>
+                  <span class="tool-name">Спорт</span>
+                  <span class="tool-check"></span>
+                </label>
+              </div>
+              <div class="tools-info">
+                <i class="fas fa-info-circle"></i>
+                ИИ автоматически вызывает инструменты для получения актуальных данных
+              </div>
+            </div>
+          </div>
+
           <!-- Базовые настройки -->
           <div class="accordion-item">
             <div class="accordion-header" onclick="toggleAccordion('basicSettings')">
@@ -1164,7 +1362,7 @@
               </h3>
               <i class="fas fa-chevron-down accordion-icon"></i>
             </div>
-            <div id="basicSettings" class="accordion-content">
+            <div id="basicSettings" class="accordion-content collapsed">
               <div class="setting-item">
                 <label for="temperature">Temperature (креативность):</label>
                 <input
@@ -1228,6 +1426,10 @@
               🔒 Полная конфиденциальность - все вычисления локально<br />
               ⚡ Без API-ключей и интернета после загрузки модели<br />
               🚀 Использует ваш GPU для быстрых ответов
+            </p>
+            <p style="font-size: 0.85rem; margin-top: 15px; color: var(--primary-color)">
+              🔧 <strong>Tool Calling:</strong> Спросите о погоде, курсах валют,<br />
+              криптовалютах, музыке или спорте!
             </p>
           </div>
 
@@ -1341,17 +1543,17 @@
           language: 'ru',
           view: 'grid'
         },
-        
+
         // Получить значение настройки
         get(key) {
           const value = localStorage.getItem(key);
           return value !== null ? value : this.defaults[key];
         },
-        
+
         // Установить значение настройки
         set(key, value) {
           localStorage.setItem(key, value);
-          
+
           // Автоматически применяем изменения
           if (key === 'theme') {
             this.applyTheme();
@@ -1359,31 +1561,498 @@
             this.applyLanguage();
           }
         },
-        
+
         // Применить тему
         applyTheme() {
           const theme = this.get('theme');
           document.documentElement.setAttribute('data-theme', theme);
-          
+
           // Обновляем checkbox если он есть
           const themeSwitch = document.getElementById('themeSwitch');
           if (themeSwitch) {
             themeSwitch.checked = theme === 'dark';
           }
         },
-        
+
         // Применить язык
         applyLanguage() {
           const language = this.get('language');
           document.documentElement.setAttribute('lang', language);
         },
-        
+
         // Инициализация
         init() {
           this.applyTheme();
           this.applyLanguage();
         }
       };
+
+      /**
+       * ToolManager - Менеджер инструментов для WebLLM Chat
+       * Поддерживает Wikipedia, Weather, Currency, Crypto, Music, Sports API
+       */
+      class ToolManager {
+        constructor() {
+          this.enabledTools = {
+            wikipedia: true,
+            weather: true,
+            currency: true,
+            crypto: true,
+            music: true,
+            sports: true
+          };
+
+          // Определения инструментов
+          this.toolDefinitions = {
+            wikipedia: {
+              name: 'wikipedia_search',
+              description: 'Поиск информации в Wikipedia. Используй для получения фактов, биографий, описаний понятий.',
+              parameters: {
+                query: 'Поисковый запрос (название статьи или термин)'
+              }
+            },
+            weather: {
+              name: 'get_weather',
+              description: 'Получение текущей погоды и прогноза. Используй когда спрашивают о погоде в городе.',
+              parameters: {
+                city: 'Название города'
+              }
+            },
+            currency: {
+              name: 'get_currency_rate',
+              description: 'Получение курсов валют. Используй для конвертации или получения актуального курса.',
+              parameters: {
+                from: 'Код исходной валюты (USD, EUR, RUB и т.д.)',
+                to: 'Код целевой валюты (опционально)',
+                amount: 'Сумма для конвертации (опционально)'
+              }
+            },
+            crypto: {
+              name: 'get_crypto_price',
+              description: 'Получение цен криптовалют. Используй для Bitcoin, Ethereum и других криптовалют.',
+              parameters: {
+                coin: 'Название криптовалюты (bitcoin, ethereum, и т.д.)'
+              }
+            },
+            music: {
+              name: 'search_music',
+              description: 'Поиск информации о музыке. Используй для артистов, альбомов, треков.',
+              parameters: {
+                query: 'Имя артиста или название альбома/трека',
+                type: 'Тип поиска: artist, album, track (по умолчанию artist)'
+              }
+            },
+            sports: {
+              name: 'search_sports',
+              description: 'Поиск спортивной информации. Используй для команд, лиг, соревнований.',
+              parameters: {
+                query: 'Название команды или лиги'
+              }
+            }
+          };
+        }
+
+        /**
+         * Генерация системного промпта с описанием инструментов
+         */
+        getToolsSystemPrompt() {
+          const enabledToolsList = Object.entries(this.enabledTools)
+            .filter(([_, enabled]) => enabled)
+            .map(([tool]) => this.toolDefinitions[tool]);
+
+          if (enabledToolsList.length === 0) {
+            return '';
+          }
+
+          let prompt = `\n\nУ тебя есть доступ к следующим инструментам для получения актуальных данных:\n\n`;
+
+          enabledToolsList.forEach(tool => {
+            prompt += `**${tool.name}**: ${tool.description}\n`;
+            prompt += `Параметры: ${JSON.stringify(tool.parameters)}\n\n`;
+          });
+
+          prompt += `Когда тебе нужно использовать инструмент, отправь ТОЛЬКО вызов в формате:
+<tool_call>{"tool": "название_инструмента", "params": {"param1": "value1"}}</tool_call>
+
+После получения результата, сформулируй ответ пользователю на основе полученных данных.
+Используй инструменты только когда это действительно нужно для ответа на вопрос.`;
+
+          return prompt;
+        }
+
+        /**
+         * Проверка, содержит ли ответ вызов инструмента
+         */
+        hasToolCall(response) {
+          return response.includes('<tool_call>') && response.includes('</tool_call>');
+        }
+
+        /**
+         * Извлечение вызова инструмента из ответа
+         */
+        extractToolCall(response) {
+          const match = response.match(/<tool_call>([\s\S]*?)<\/tool_call>/);
+          if (!match) return null;
+
+          try {
+            return JSON.parse(match[1].trim());
+          } catch (e) {
+            console.error('Ошибка парсинга tool call:', e);
+            return null;
+          }
+        }
+
+        /**
+         * Выполнение вызова инструмента
+         */
+        async executeToolCall(toolCall) {
+          const { tool, params } = toolCall;
+
+          switch (tool) {
+            case 'wikipedia_search':
+              return await this.searchWikipedia(params.query);
+            case 'get_weather':
+              return await this.getWeather(params.city);
+            case 'get_currency_rate':
+              return await this.getCurrencyRate(params.from, params.to, params.amount);
+            case 'get_crypto_price':
+              return await this.getCryptoPrice(params.coin);
+            case 'search_music':
+              return await this.searchMusic(params.query, params.type);
+            case 'search_sports':
+              return await this.searchSports(params.query);
+            default:
+              return { error: `Неизвестный инструмент: ${tool}` };
+          }
+        }
+
+        /**
+         * Wikipedia API
+         */
+        async searchWikipedia(query) {
+          try {
+            const url = `https://ru.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(query)}&prop=extracts&exintro=1&format=json&origin=*`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            const pages = data.query.pages;
+            const pageId = Object.keys(pages)[0];
+
+            if (pageId === '-1') {
+              // Попробуем поиск
+              const searchUrl = `https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=3`;
+              const searchResp = await fetch(searchUrl);
+              const searchData = await searchResp.json();
+
+              if (searchData.query.search.length > 0) {
+                const firstResult = searchData.query.search[0];
+                return {
+                  source: 'Wikipedia',
+                  title: firstResult.title,
+                  snippet: firstResult.snippet.replace(/<[^>]*>/g, ''),
+                  suggestion: `Возможно вы имели в виду: ${firstResult.title}`
+                };
+              }
+              return { error: 'Статья не найдена в Wikipedia' };
+            }
+
+            const page = pages[pageId];
+            const extract = page.extract ? page.extract.replace(/<[^>]*>/g, '').substring(0, 1000) : '';
+
+            return {
+              source: 'Wikipedia',
+              title: page.title,
+              content: extract + (extract.length >= 1000 ? '...' : ''),
+              url: `https://ru.wikipedia.org/wiki/${encodeURIComponent(page.title)}`
+            };
+          } catch (error) {
+            return { error: `Ошибка Wikipedia API: ${error.message}` };
+          }
+        }
+
+        /**
+         * Weather API (Open-Meteo)
+         */
+        async getWeather(city) {
+          try {
+            // Геокодинг через Nominatim
+            const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}&limit=1`;
+            const geoResp = await fetch(geoUrl);
+            const geoData = await geoResp.json();
+
+            if (geoData.length === 0) {
+              return { error: `Город "${city}" не найден` };
+            }
+
+            const { lat, lon, display_name } = geoData[0];
+
+            // Погода через Open-Meteo
+            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=3`;
+            const weatherResp = await fetch(weatherUrl);
+            const weatherData = await weatherResp.json();
+
+            const weatherCodes = {
+              0: 'Ясно', 1: 'Преимущественно ясно', 2: 'Переменная облачность', 3: 'Пасмурно',
+              45: 'Туман', 48: 'Изморозь', 51: 'Мелкая морось', 53: 'Морось', 55: 'Сильная морось',
+              61: 'Небольшой дождь', 63: 'Дождь', 65: 'Сильный дождь',
+              71: 'Небольшой снег', 73: 'Снег', 75: 'Сильный снегопад',
+              95: 'Гроза', 96: 'Гроза с градом', 99: 'Сильная гроза с градом'
+            };
+
+            const current = weatherData.current;
+            const daily = weatherData.daily;
+
+            return {
+              source: 'Open-Meteo',
+              location: display_name,
+              current: {
+                temperature: `${current.temperature_2m}°C`,
+                humidity: `${current.relative_humidity_2m}%`,
+                wind: `${current.wind_speed_10m} км/ч`,
+                conditions: weatherCodes[current.weather_code] || 'Неизвестно'
+              },
+              forecast: daily.time.slice(0, 3).map((date, i) => ({
+                date: new Date(date).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' }),
+                max: `${daily.temperature_2m_max[i]}°C`,
+                min: `${daily.temperature_2m_min[i]}°C`,
+                conditions: weatherCodes[daily.weather_code[i]] || 'Неизвестно'
+              }))
+            };
+          } catch (error) {
+            return { error: `Ошибка Weather API: ${error.message}` };
+          }
+        }
+
+        /**
+         * Currency API (ExchangeRate)
+         */
+        async getCurrencyRate(from = 'USD', to = null, amount = null) {
+          try {
+            const url = `https://api.exchangerate-api.com/v4/latest/${from.toUpperCase()}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.error) {
+              return { error: data.error };
+            }
+
+            const result = {
+              source: 'ExchangeRate-API',
+              base: from.toUpperCase(),
+              date: data.date
+            };
+
+            if (to) {
+              const rate = data.rates[to.toUpperCase()];
+              if (rate) {
+                result.rate = `1 ${from.toUpperCase()} = ${rate.toFixed(4)} ${to.toUpperCase()}`;
+                if (amount) {
+                  result.converted = `${amount} ${from.toUpperCase()} = ${(amount * rate).toFixed(2)} ${to.toUpperCase()}`;
+                }
+              } else {
+                result.error = `Валюта ${to} не найдена`;
+              }
+            } else {
+              // Показываем основные валюты
+              const mainCurrencies = ['EUR', 'RUB', 'GBP', 'CNY', 'JPY'];
+              result.rates = {};
+              mainCurrencies.forEach(curr => {
+                if (data.rates[curr] && curr !== from.toUpperCase()) {
+                  result.rates[curr] = data.rates[curr].toFixed(4);
+                }
+              });
+            }
+
+            return result;
+          } catch (error) {
+            return { error: `Ошибка Currency API: ${error.message}` };
+          }
+        }
+
+        /**
+         * Crypto API (CoinGecko)
+         */
+        async getCryptoPrice(coin = 'bitcoin') {
+          try {
+            const coinId = coin.toLowerCase().replace(/\s+/g, '-');
+            const url = `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&community_data=false&developer_data=false`;
+            const response = await fetch(url);
+
+            if (!response.ok) {
+              // Попробуем поиск
+              const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(coin)}`;
+              const searchResp = await fetch(searchUrl);
+              const searchData = await searchResp.json();
+
+              if (searchData.coins && searchData.coins.length > 0) {
+                return {
+                  error: `Криптовалюта "${coin}" не найдена. Возможно вы имели в виду: ${searchData.coins.slice(0, 3).map(c => c.name).join(', ')}`
+                };
+              }
+              return { error: `Криптовалюта "${coin}" не найдена` };
+            }
+
+            const data = await response.json();
+
+            return {
+              source: 'CoinGecko',
+              name: data.name,
+              symbol: data.symbol.toUpperCase(),
+              price_usd: `$${data.market_data.current_price.usd.toLocaleString()}`,
+              price_rub: `₽${data.market_data.current_price.rub?.toLocaleString() || 'N/A'}`,
+              change_24h: `${data.market_data.price_change_percentage_24h?.toFixed(2)}%`,
+              market_cap: `$${(data.market_data.market_cap.usd / 1e9).toFixed(2)}B`,
+              rank: `#${data.market_cap_rank}`
+            };
+          } catch (error) {
+            return { error: `Ошибка Crypto API: ${error.message}` };
+          }
+        }
+
+        /**
+         * Music API (MusicBrainz)
+         */
+        async searchMusic(query, type = 'artist') {
+          try {
+            const searchType = type === 'album' ? 'release-group' : type === 'track' ? 'recording' : 'artist';
+            const url = `https://musicbrainz.org/ws/2/${searchType}?query=${encodeURIComponent(query)}&limit=5&fmt=json`;
+
+            const response = await fetch(url, {
+              headers: { 'User-Agent': 'WebLLM-Chat/1.0 (https://github.com/example)' }
+            });
+            const data = await response.json();
+
+            const results = data[searchType + 's'] || data.artists || data['release-groups'] || data.recordings || [];
+
+            if (results.length === 0) {
+              return { error: `По запросу "${query}" ничего не найдено` };
+            }
+
+            const formatResult = (item) => {
+              if (type === 'artist') {
+                return {
+                  name: item.name,
+                  type: item.type || 'Артист',
+                  country: item.country || 'Неизвестно',
+                  active: item['life-span']?.begin ? `с ${item['life-span'].begin}` : 'Неизвестно'
+                };
+              } else if (type === 'album') {
+                return {
+                  title: item.title,
+                  artist: item['artist-credit']?.[0]?.name || 'Неизвестен',
+                  type: item['primary-type'] || 'Альбом',
+                  year: item['first-release-date']?.substring(0, 4) || 'Неизвестно'
+                };
+              } else {
+                return {
+                  title: item.title,
+                  artist: item['artist-credit']?.[0]?.name || 'Неизвестен',
+                  duration: item.length ? `${Math.floor(item.length / 60000)}:${String(Math.floor((item.length % 60000) / 1000)).padStart(2, '0')}` : 'Неизвестно'
+                };
+              }
+            };
+
+            return {
+              source: 'MusicBrainz',
+              query: query,
+              type: type,
+              results: results.slice(0, 3).map(formatResult)
+            };
+          } catch (error) {
+            return { error: `Ошибка Music API: ${error.message}` };
+          }
+        }
+
+        /**
+         * Sports API (TheSportsDB)
+         */
+        async searchSports(query) {
+          try {
+            const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(query)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.teams || data.teams.length === 0) {
+              // Попробуем поиск лиг
+              const leagueUrl = `https://www.thesportsdb.com/api/v1/json/3/search_all_leagues.php?s=${encodeURIComponent(query)}`;
+              const leagueResp = await fetch(leagueUrl);
+              const leagueData = await leagueResp.json();
+
+              if (leagueData.countrys && leagueData.countrys.length > 0) {
+                return {
+                  source: 'TheSportsDB',
+                  type: 'leagues',
+                  results: leagueData.countrys.slice(0, 3).map(l => ({
+                    name: l.strLeague,
+                    sport: l.strSport,
+                    country: l.strCountry
+                  }))
+                };
+              }
+
+              return { error: `По запросу "${query}" ничего не найдено` };
+            }
+
+            return {
+              source: 'TheSportsDB',
+              type: 'teams',
+              results: data.teams.slice(0, 3).map(team => ({
+                name: team.strTeam,
+                sport: team.strSport,
+                league: team.strLeague,
+                country: team.strCountry,
+                stadium: team.strStadium,
+                founded: team.intFormedYear
+              }))
+            };
+          } catch (error) {
+            return { error: `Ошибка Sports API: ${error.message}` };
+          }
+        }
+
+        /**
+         * Форматирование результата для отображения
+         */
+        formatToolResult(toolName, result) {
+          if (result.error) {
+            return `⚠️ ${result.error}`;
+          }
+
+          let formatted = `📊 **${result.source || toolName}**\n\n`;
+
+          // Рекурсивное форматирование объекта
+          const formatObject = (obj, indent = 0) => {
+            let str = '';
+            for (const [key, value] of Object.entries(obj)) {
+              if (key === 'source') continue;
+              const prefix = '  '.repeat(indent);
+              if (typeof value === 'object' && value !== null) {
+                if (Array.isArray(value)) {
+                  str += `${prefix}**${key}:**\n`;
+                  value.forEach((item, i) => {
+                    if (typeof item === 'object') {
+                      str += `${prefix}  ${i + 1}. ${formatObject(item, indent + 2)}\n`;
+                    } else {
+                      str += `${prefix}  - ${item}\n`;
+                    }
+                  });
+                } else {
+                  str += `${prefix}**${key}:** ${formatObject(value, indent + 1)}\n`;
+                }
+              } else {
+                str += `${prefix}• ${key}: ${value}\n`;
+              }
+            }
+            return str;
+          };
+
+          formatted += formatObject(result);
+          return formatted;
+        }
+      }
+
+      // Глобальный экземпляр ToolManager
+      window.toolManager = new ToolManager();
 
       // WebLLM Chat Application
       // Импорт WebLLM
@@ -1768,10 +2437,14 @@
             content: userMessage,
           });
 
-          // Создаем системный промпт
+          // Создаем системный промпт с инструментами
           let systemPrompt =
             this.systemPrompt.value ||
             'Ты - полезный ИИ-ассистент. Отвечай кратко и по делу.';
+
+          // Добавляем описания инструментов к системному промпту
+          const toolsPrompt = window.toolManager.getToolsSystemPrompt();
+          systemPrompt += toolsPrompt;
 
           // Создаем сообщения для модели
           const messages = [
@@ -1791,7 +2464,52 @@
 
           // Генерируем ответ
           const response = await this.engine.chat.completions.create(requestParams);
-          const aiResponse = response.choices[0].message.content;
+          let aiResponse = response.choices[0].message.content;
+
+          // Проверяем на вызов инструмента
+          if (window.toolManager.hasToolCall(aiResponse)) {
+            const toolCall = window.toolManager.extractToolCall(aiResponse);
+
+            if (toolCall) {
+              // Показываем сообщение о вызове инструмента
+              this.addMessage('tool-call', `🔧 Вызов инструмента: ${toolCall.tool}`);
+
+              // Выполняем вызов инструмента
+              const toolResult = await window.toolManager.executeToolCall(toolCall);
+
+              // Показываем результат инструмента
+              const formattedResult = window.toolManager.formatToolResult(toolCall.tool, toolResult);
+              this.addMessage('tool-result', formattedResult);
+
+              // Добавляем результат в историю и просим модель сформировать ответ
+              this.conversationHistory.push({
+                role: 'assistant',
+                content: aiResponse,
+              });
+              this.conversationHistory.push({
+                role: 'user',
+                content: `Результат инструмента ${toolCall.tool}:\n${JSON.stringify(toolResult, null, 2)}\n\nТеперь сформулируй понятный ответ для пользователя на основе этих данных.`,
+              });
+
+              // Генерируем финальный ответ
+              const finalMessages = [
+                { role: 'system', content: 'Ты - полезный ИИ-ассистент. Сформулируй ответ на основе полученных данных. Не используй tool_call, просто дай ответ.' },
+                ...this.conversationHistory,
+              ];
+
+              const finalResponse = await this.engine.chat.completions.create({
+                messages: finalMessages,
+                temperature: parseFloat(this.temperatureSlider.value),
+                max_tokens: parseInt(this.maxTokensSlider.value),
+              });
+
+              aiResponse = finalResponse.choices[0].message.content;
+
+              // Удаляем технические сообщения из истории
+              this.conversationHistory.pop();
+              this.conversationHistory.pop();
+            }
+          }
 
           // Добавляем ответ в историю
           this.conversationHistory.push({
@@ -1804,23 +2522,98 @@
         }
 
         async simulateAIResponse(userMessage) {
-          // Симуляция задержки
-          await new Promise(resolve =>
-            setTimeout(resolve, 1000 + Math.random() * 2000)
-          );
+          const lowerMessage = userMessage.toLowerCase();
 
-          // Демо-ответы
-          const demoResponses = [
-            'Это демо-режим WebLLM Chat. Выберите реальную модель для полноценного общения с ИИ!',
-            'Интересный вопрос! В реальном режиме ИИ дал бы развернутый ответ на основе загруженной модели.',
-            'WebLLM позволяет запускать большие языковые модели прямо в браузере. Попробуйте загрузить Llama-3 или Mistral!',
-            'В демо-режиме я могу только показать, как работает интерфейс. Загрузите модель для настоящего ИИ-общения.',
-            'Вы используете демонстрационный режим. Реальная модель ИИ ответила бы намного интереснее!',
-          ];
+          // Определяем, какой инструмент использовать
+          let toolToUse = null;
+          let toolParams = {};
 
-          const response =
-            demoResponses[Math.floor(Math.random() * demoResponses.length)];
-          this.addMessage('ai', response);
+          if (lowerMessage.includes('погод') || lowerMessage.includes('weather')) {
+            toolToUse = 'get_weather';
+            // Извлекаем город из сообщения
+            const cityMatch = userMessage.match(/(?:в|in|город|city)\s+([а-яa-z]+)/i) ||
+                              userMessage.match(/погод[аеу]?\s+([а-яa-z]+)/i);
+            toolParams = { city: cityMatch ? cityMatch[1] : 'Москва' };
+          } else if (lowerMessage.includes('курс') || lowerMessage.includes('валют') || lowerMessage.includes('dollar') || lowerMessage.includes('euro')) {
+            toolToUse = 'get_currency_rate';
+            toolParams = { from: 'USD', to: 'RUB' };
+          } else if (lowerMessage.includes('биткоин') || lowerMessage.includes('bitcoin') || lowerMessage.includes('крипт') || lowerMessage.includes('ethereum')) {
+            toolToUse = 'get_crypto_price';
+            const coinMatch = lowerMessage.includes('ethereum') ? 'ethereum' : 'bitcoin';
+            toolParams = { coin: coinMatch };
+          } else if (lowerMessage.includes('музык') || lowerMessage.includes('music') || lowerMessage.includes('артист') || lowerMessage.includes('группа')) {
+            toolToUse = 'search_music';
+            const queryMatch = userMessage.match(/(?:о|about|про)\s+([^?]+)/i);
+            toolParams = { query: queryMatch ? queryMatch[1].trim() : 'Queen', type: 'artist' };
+          } else if (lowerMessage.includes('команд') || lowerMessage.includes('team') || lowerMessage.includes('футбол') || lowerMessage.includes('спорт')) {
+            toolToUse = 'search_sports';
+            const teamMatch = userMessage.match(/(?:о|about|про)\s+([^?]+)/i);
+            toolParams = { query: teamMatch ? teamMatch[1].trim() : 'Barcelona' };
+          } else if (lowerMessage.includes('что такое') || lowerMessage.includes('кто такой') || lowerMessage.includes('расскажи о') || lowerMessage.includes('wiki')) {
+            toolToUse = 'wikipedia_search';
+            const wikiMatch = userMessage.match(/(?:что такое|кто такой|расскажи о|о|wiki)\s+([^?]+)/i);
+            toolParams = { query: wikiMatch ? wikiMatch[1].trim() : 'Искусственный интеллект' };
+          }
+
+          // Если определили инструмент - вызываем его
+          if (toolToUse && window.toolManager.enabledTools[this.getToolKey(toolToUse)]) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Показываем вызов инструмента
+            this.addMessage('tool-call', `🔧 Вызов инструмента: ${toolToUse}`);
+
+            // Выполняем реальный вызов API
+            const toolResult = await window.toolManager.executeToolCall({
+              tool: toolToUse,
+              params: toolParams
+            });
+
+            // Показываем результат
+            const formattedResult = window.toolManager.formatToolResult(toolToUse, toolResult);
+            this.addMessage('tool-result', formattedResult);
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Формируем ответ на основе результата
+            let response;
+            if (toolResult.error) {
+              response = `К сожалению, не удалось получить данные: ${toolResult.error}. Попробуйте загрузить полную модель для более точных ответов.`;
+            } else {
+              response = `Вот актуальные данные от ${toolResult.source || 'API'}! В демо-режиме я показываю реальные данные из API, но для полноценного общения рекомендую загрузить модель Qwen или Llama.`;
+            }
+            this.addMessage('ai', response);
+          } else {
+            // Стандартные демо-ответы
+            await new Promise(resolve =>
+              setTimeout(resolve, 1000 + Math.random() * 1000)
+            );
+
+            const demoResponses = [
+              'Это демо-режим WebLLM Chat с поддержкой Tool Calling! Попробуйте спросить о погоде, курсах валют или криптовалютах.',
+              'В демо-режиме вы можете протестировать инструменты: спросите "какая погода в Москве?" или "курс биткоина".',
+              'WebLLM позволяет запускать ИИ локально. Попробуйте: "что такое квантовый компьютер?" или "расскажи о группе Queen".',
+              'Демо-режим показывает работу API инструментов. Для полного ИИ-общения загрузите модель!',
+              'Попробуйте вопросы о погоде, валютах, криптовалютах, музыке или спорте - я покажу реальные данные из API!',
+            ];
+
+            const response = demoResponses[Math.floor(Math.random() * demoResponses.length)];
+            this.addMessage('ai', response);
+          }
+        }
+
+        /**
+         * Получение ключа инструмента по имени
+         */
+        getToolKey(toolName) {
+          const mapping = {
+            'wikipedia_search': 'wikipedia',
+            'get_weather': 'weather',
+            'get_currency_rate': 'currency',
+            'get_crypto_price': 'crypto',
+            'search_music': 'music',
+            'search_sports': 'sports'
+          };
+          return mapping[toolName] || toolName;
         }
 
         addMessage(role, content) {
@@ -1836,6 +2629,12 @@
           } else if (role === 'system') {
             avatar.innerHTML = '<i class="fas fa-cog"></i>';
             messageDiv.classList.add('system-message');
+          } else if (role === 'tool-call') {
+            avatar.innerHTML = '<i class="fas fa-wrench"></i>';
+            messageDiv.classList.add('tool-call');
+          } else if (role === 'tool-result') {
+            avatar.innerHTML = '<i class="fas fa-database"></i>';
+            messageDiv.classList.add('tool-result');
           } else {
             avatar.innerHTML = '<i class="fas fa-robot"></i>';
           }
@@ -1928,40 +2727,71 @@
       document.addEventListener('DOMContentLoaded', () => {
         // Инициализируем настройки
         window.aiPagesSettings.init();
-        
+
         // Обработчики для кнопки настроек
         const settingsButton = document.querySelector('.settings-button');
         const settingsModal = document.getElementById('settingsModal');
         const themeSwitch = document.getElementById('themeSwitch');
-        
+
         // Клик по кнопке настроек
         settingsButton.addEventListener('click', () => {
           settingsModal.classList.toggle('show');
         });
-        
+
         // Закрытие модала по клику на фон
         settingsModal.addEventListener('click', (e) => {
           if (e.target === settingsModal) {
             settingsModal.classList.remove('show');
           }
         });
-        
+
         // Переключение темы
         themeSwitch.addEventListener('change', () => {
           const theme = themeSwitch.checked ? 'dark' : 'light';
           window.aiPagesSettings.set('theme', theme);
         });
-        
+
         // Закрытие по Escape
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape' && settingsModal.classList.contains('show')) {
             settingsModal.classList.remove('show');
           }
         });
-        
+
+        // Обработчики для переключения инструментов
+        const toolItems = document.querySelectorAll('.tool-item');
+        toolItems.forEach(item => {
+          const checkbox = item.querySelector('input[type="checkbox"]');
+          const toolName = item.dataset.tool;
+
+          // Загружаем сохраненные настройки
+          const savedState = localStorage.getItem(`tool_${toolName}`);
+          if (savedState !== null) {
+            const isEnabled = savedState === 'true';
+            checkbox.checked = isEnabled;
+            item.classList.toggle('active', isEnabled);
+            window.toolManager.enabledTools[toolName] = isEnabled;
+          }
+
+          // Обработчик клика
+          item.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT') {
+              checkbox.checked = !checkbox.checked;
+            }
+
+            const isEnabled = checkbox.checked;
+            item.classList.toggle('active', isEnabled);
+            window.toolManager.enabledTools[toolName] = isEnabled;
+            localStorage.setItem(`tool_${toolName}`, isEnabled);
+
+            console.log(`Инструмент ${toolName}: ${isEnabled ? 'включен' : 'выключен'}`);
+          });
+        });
+
         window.webLLMChat = new WebLLMChat();
 
         console.log('🤖 WebLLM Chat готов! Выберите модель и начните общение.');
+        console.log('🔧 Tool Calling включен. Доступные инструменты:', Object.keys(window.toolManager.enabledTools).filter(t => window.toolManager.enabledTools[t]));
       });
     </script>
   </body>
