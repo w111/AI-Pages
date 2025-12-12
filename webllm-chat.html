@@ -1671,65 +1671,141 @@
             prompt += `Параметры: ${JSON.stringify(tool.parameters)}\n\n`;
           });
 
-          prompt += `Когда тебе нужно использовать инструмент, отправь ТОЛЬКО вызов в формате:
-<tool_call>{"tool": "название_инструмента", "params": {"param1": "value1"}}</tool_call>
+	          prompt += `Когда тебе нужно использовать инструмент, отправь ТОЛЬКО вызов (без пояснений) в одном из форматов:
+	<tool_call>{"tool": "название_инструмента", "params": {"param1": "value1"}}</tool_call>
+	или просто JSON:
+	{"tool": "название_инструмента", "params": {"param1": "value1"}}
 
-После получения результата, сформулируй ответ пользователю на основе полученных данных.
-Используй инструменты только когда это действительно нужно для ответа на вопрос.`;
+	После получения результата, сформулируй ответ пользователю на основе полученных данных.
+	Используй инструменты только когда это действительно нужно для ответа на вопрос.`;
 
           return prompt;
         }
 
-        /**
-         * Проверка, содержит ли ответ вызов инструмента
-         */
-        hasToolCall(response) {
-          return response.includes('<tool_call>') && response.includes('</tool_call>');
-        }
+	        /**
+	         * Проверка, содержит ли ответ вызов инструмента
+	         */
+	        hasToolCall(response) {
+	          const trimmed = (response || '').trim();
+	          if (!trimmed) return false;
+	
+	          // 1) Явные теги <tool_call>...</tool_call>
+	          if (trimmed.includes('<tool_call>') && trimmed.includes('</tool_call>')) {
+	            return this.extractToolCall(trimmed) !== null;
+	          }
+	
+	          // 2) Некоторые модели (например, Qwen) часто возвращают "чистый" JSON без тегов
+	          // Поддерживаем только случаи, когда ответ начинается как JSON/код-блок,
+	          // чтобы не ловить ложные совпадения на случайных скобках в тексте.
+	          if (trimmed.startsWith('{') || trimmed.startsWith('```')) {
+	            return this.extractToolCall(trimmed) !== null;
+	          }
+	
+	          return false;
+	        }
 
-        /**
-         * Извлечение вызова инструмента из ответа
-         */
-        extractToolCall(response) {
-          const match = response.match(/<tool_call>([\s\S]*?)<\/tool_call>/);
-          if (!match) return null;
-
-          try {
-            return JSON.parse(match[1].trim());
-          } catch (e) {
-            console.error('Ошибка парсинга tool call:', e);
-            return null;
-          }
-        }
-
-        /**
-         * Выполнение вызова инструмента
-         */
-        async executeToolCall(toolCall) {
-          const { tool, params } = toolCall;
-
-          switch (tool) {
-            case 'wikipedia_search':
-              return await this.searchWikipedia(params.query);
-            case 'get_weather':
-              return await this.getWeather(params.city);
-            case 'get_currency_rate':
-              return await this.getCurrencyRate(params.from, params.to, params.amount);
-            case 'get_crypto_price':
-              return await this.getCryptoPrice(params.coin);
-            case 'search_music':
-              return await this.searchMusic(params.query, params.type);
-            case 'search_sports':
-              return await this.searchSports(params.query);
-            default:
-              return { error: `Неизвестный инструмент: ${tool}` };
-          }
-        }
-
-        /**
-         * Wikipedia API
-         */
-        async searchWikipedia(query) {
+	        /**
+	         * Извлечение вызова инструмента из ответа
+	         */
+	        extractToolCall(response) {
+	          const text = (response || '').trim();
+	          if (!text) return null;
+	
+	          // 1) Формат с тегами
+	          const tagMatch = text.match(/<tool_call>([\s\S]*?)<\/tool_call>/i);
+	          if (tagMatch) {
+	            return this.parseAndNormalizeToolCall(tagMatch[1]);
+	          }
+	
+	          // 2) JSON в fenced code block (```json ... ```)
+	          const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+	          if (fencedMatch) {
+	            const parsed = this.parseAndNormalizeToolCall(fencedMatch[1]);
+	            if (parsed) return parsed;
+	          }
+	
+	          // 3) Чистый JSON целиком
+	          if (text.startsWith('{') && text.endsWith('}')) {
+	            const parsed = this.parseAndNormalizeToolCall(text);
+	            if (parsed) return parsed;
+	          }
+	
+	          return null;
+	        }
+	
+	        parseAndNormalizeToolCall(jsonText) {
+	          try {
+	            const raw = JSON.parse((jsonText || '').trim());
+	
+	            // Поддерживаем вариации ключей от разных моделей:
+	            // - { tool, params }
+	            // - { tool, parameters }
+	            // - { tool, args }
+	            if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+	            if (typeof raw.tool !== 'string' || !raw.tool.trim()) return null;
+	
+	            const tool = raw.tool.trim();
+	            const params =
+	              (raw.params && typeof raw.params === 'object' && !Array.isArray(raw.params) ? raw.params : null) ||
+	              (raw.parameters && typeof raw.parameters === 'object' && !Array.isArray(raw.parameters) ? raw.parameters : null) ||
+	              (raw.args && typeof raw.args === 'object' && !Array.isArray(raw.args) ? raw.args : null) ||
+	              {};
+	
+	            // Валидируем, что это действительно наш инструмент
+	            const toolKey = this.getToolKeyByName(tool);
+	            if (!toolKey) return null;
+	
+	            return { tool, params };
+	          } catch (e) {
+	            console.error('Ошибка парсинга tool call:', e);
+	            return null;
+	          }
+	        }
+	
+	        /**
+	         * Получение ключа включения по имени инструмента (wikipedia/weather/...)
+	         */
+	        getToolKeyByName(toolName) {
+	          const entry = Object.entries(this.toolDefinitions).find(([_, def]) => def.name === toolName);
+	          return entry ? entry[0] : null;
+	        }
+	
+	        /**
+	         * Выполнение вызова инструмента
+	         */
+	        async executeToolCall(toolCall) {
+	          const { tool, params } = toolCall;
+	
+	          const toolKey = this.getToolKeyByName(tool);
+	          if (!toolKey) {
+	            return { error: `Неизвестный инструмент: ${tool}` };
+	          }
+	          if (!this.enabledTools[toolKey]) {
+	            return { error: `Инструмент отключен в настройках: ${tool}` };
+	          }
+	
+	          switch (tool) {
+	            case 'wikipedia_search':
+	              return await this.searchWikipedia(params.query);
+	            case 'get_weather':
+	              return await this.getWeather(params.city);
+	            case 'get_currency_rate':
+	              return await this.getCurrencyRate(params.from, params.to, params.amount);
+	            case 'get_crypto_price':
+	              return await this.getCryptoPrice(params.coin);
+	            case 'search_music':
+	              return await this.searchMusic(params.query, params.type);
+	            case 'search_sports':
+	              return await this.searchSports(params.query);
+	            default:
+	              return { error: `Неизвестный инструмент: ${tool}` };
+	          }
+	        }
+	
+	        /**
+	         * Wikipedia API
+	         */
+	        async searchWikipedia(query) {
           try {
             const url = `https://ru.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(query)}&prop=extracts&exintro=1&format=json&origin=*`;
             const response = await fetch(url);
