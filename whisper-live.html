@@ -610,24 +610,48 @@
       user-select: none;
     }
     
+    @media (max-width: 900px) {
+      .sidebar {
+        display: none;
+      }
+
+      .main-container {
+        display: block;
+      }
+
+      .content-area {
+        width: 100%;
+      }
+    }
+
     @media (max-width: 768px) {
       .settings-panel {
         width: 100%;
         right: -100%;
       }
-      
+
       .transcription-container {
         width: 95%;
         bottom: 20px;
       }
-      
+
       .status-card {
         padding: 20px;
       }
-      
+
       .teleprompter-text {
         font-size: 2rem;
         padding: 20px;
+      }
+
+      .header {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .header-controls {
+        width: 100%;
+        justify-content: center;
       }
     }
   </style>
@@ -655,40 +679,62 @@
 
   <!-- Main Container -->
   <main class="main-container">
-    <!-- Status Card -->
-    <div class="status-card" id="statusCard">
-      <div class="status-icon" id="statusIcon">
-        <i class="fas fa-microphone-slash"></i>
+    <!-- Left Sidebar - Transcription History -->
+    <aside class="sidebar">
+      <div class="app-header">
+        <div class="app-title">
+          <i class="fas fa-closed-captioning"></i>
+          <span>Whisper Live</span>
+        </div>
+        <p class="app-subtitle">Субтитры в реальном времени с AI</p>
       </div>
-      <h2 class="status-title" id="statusTitle">Готов к записи</h2>
-      <p class="status-message" id="statusMessage">
-        Нажмите кнопку ниже, чтобы начать транскрибацию
-      </p>
-      
-      <!-- Audio Visualizer -->
-      <canvas id="audioVisualizer" style="width: 100%; height: 60px; margin: 15px 0; display: none; border-radius: 8px; background: rgba(0,0,0,0.2);"></canvas>
-      
-      <!-- Audio Capture Indicator -->
-      <div id="audioCaptureIndicator" style="display: none; margin-top: 10px; font-size: 0.9rem; color: var(--text-secondary);">
-        <i class="fas fa-circle" style="color: var(--success-color); animation: pulse 2s infinite;"></i>
-        <span id="audioCaptureStatus">Захват аудио...</span>
+      <div class="transcription-area" id="sidebarTranscription">
+        <div class="transcription-item" style="color: var(--text-secondary); text-align: center;">
+          <i class="fas fa-microphone-slash"></i>
+          <p>История транскрипций появится здесь после начала записи</p>
+        </div>
       </div>
-      
-      <button class="btn btn-primary" id="startBtn">
-        <i class="fas fa-microphone"></i>
-        <span>Начать запись</span>
-      </button>
-      
-      <button class="btn btn-secondary" id="testBtn" style="margin-top: 10px;">
-        <i class="fas fa-vial"></i>
-        <span>Тест транскрипции</span>
-      </button>
-    </div>
+    </aside>
 
-    <!-- Model Loading Progress -->
-    <div class="model-loading" id="modelLoading" style="display: none;">
-      <div class="loading-spinner"></div>
-      <p style="margin-top: 10px;">Загрузка модели Whisper...</p>
+    <!-- Content Area -->
+    <div class="content-area">
+      <div class="main-content">
+        <!-- Status Card -->
+        <div class="status-card" id="statusCard">
+          <div class="status-icon" id="statusIcon">
+            <i class="fas fa-microphone-slash"></i>
+          </div>
+          <h2 class="status-title" id="statusTitle">Готов к записи</h2>
+          <p class="status-message" id="statusMessage">
+            Нажмите кнопку ниже, чтобы начать транскрибацию
+          </p>
+
+          <!-- Audio Visualizer -->
+          <canvas id="audioVisualizer" style="width: 100%; height: 60px; margin: 15px 0; display: none; border-radius: 8px; background: rgba(0,0,0,0.2);"></canvas>
+
+          <!-- Audio Capture Indicator -->
+          <div id="audioCaptureIndicator" style="display: none; margin-top: 10px; font-size: 0.9rem; color: var(--text-secondary);">
+            <i class="fas fa-circle" style="color: var(--success-color); animation: pulse 2s infinite;"></i>
+            <span id="audioCaptureStatus">Захват аудио...</span>
+          </div>
+
+          <button class="btn btn-primary" id="startBtn">
+            <i class="fas fa-microphone"></i>
+            <span>Начать запись</span>
+          </button>
+
+          <button class="btn btn-secondary" id="testBtn" style="margin-top: 10px;">
+            <i class="fas fa-vial"></i>
+            <span>Тест транскрипции</span>
+          </button>
+        </div>
+
+        <!-- Model Loading Progress -->
+        <div class="model-loading" id="modelLoading" style="display: none;">
+          <div class="loading-spinner"></div>
+          <p style="margin-top: 10px;">Загрузка модели Whisper...</p>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -826,6 +872,7 @@
         this.transcriptionContainer = document.getElementById('transcriptionContainer');
         this.transcriptionCurrent = document.getElementById('transcriptionCurrent');
         this.transcriptionHistory = document.getElementById('transcriptionHistory');
+        this.sidebarTranscription = document.getElementById('sidebarTranscription');
         
         // Settings
         this.settingsPanel = document.getElementById('settingsPanel');
@@ -1708,29 +1755,69 @@
       }
 
       addTranscription(text) {
+        const timestamp = new Date();
         this.transcriptionHistoryData.push({
           text: text,
-          timestamp: new Date()
+          timestamp: timestamp
         });
-        
+
         // Build complete history text
         const allText = this.transcriptionHistoryData
           .map(item => item.text)
           .join(' ');
-        
+
         // Update history display with all previous text
         this.transcriptionHistory.textContent = allText;
-        
+
         // Update current text (highlight latest)
         this.transcriptionCurrent.textContent = text;
-        
+
         // Scroll to bottom to show latest text
         this.transcriptionContainer.scrollTop = this.transcriptionContainer.scrollHeight;
-        
+
         // Update teleprompter if active with complete text
         if (this.teleprompterMode.classList.contains('active')) {
           this.teleprompterText.textContent = allText;
         }
+
+        // Update sidebar with transcription history
+        this.updateSidebar(text, timestamp);
+      }
+
+      updateSidebar(text, timestamp) {
+        if (!this.sidebarTranscription) return;
+
+        // Clear placeholder on first transcription
+        if (this.transcriptionHistoryData.length === 1) {
+          this.sidebarTranscription.innerHTML = '';
+        }
+
+        // Create new transcription item
+        const item = document.createElement('div');
+        item.className = 'transcription-item current';
+
+        const timeStr = timestamp.toLocaleTimeString('ru-RU', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
+        item.innerHTML = `
+          <div class="transcription-timestamp">${timeStr}</div>
+          <div>${text}</div>
+        `;
+
+        // Remove 'current' class from previous items
+        const previousCurrent = this.sidebarTranscription.querySelector('.current');
+        if (previousCurrent) {
+          previousCurrent.classList.remove('current');
+        }
+
+        // Add new item
+        this.sidebarTranscription.appendChild(item);
+
+        // Scroll to bottom
+        this.sidebarTranscription.scrollTop = this.sidebarTranscription.scrollHeight;
       }
       
       enterTeleprompterMode() {
