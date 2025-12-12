@@ -2197,6 +2197,18 @@
                             "Интерактивные попапы с подробной информацией"
                         ]
                     },
+                    earthquakeMonitor: {
+                        title: "Мониторинг Землетрясений",
+                        description: "Интерактивный дашборд для мониторинга землетрясений по всему миру с использованием данных USGS. Карта с маркерами магнитуды, временная шкала событий, push-уведомления о крупных событиях и статистика по регионам.",
+                        problem: "Хотите отслеживать сейсмическую активность в реальном времени?",
+                        features: [
+                            "Данные USGS в реальном времени",
+                            "Интерактивная карта с маркерами",
+                            "Фильтрация по магнитуде и периоду",
+                            "Push-уведомления о сильных событиях",
+                            "Статистика и графики по регионам"
+                        ]
+                    },
                     audioGuide: {
                         title: "Аудиогид по городам",
                         description: "Интерактивный аудиогид с картой и голосовым сопровождением для путешествий по городам. Включает описания достопримечательностей, интерактивную карту с маркерами и синтез речи для озвучивания информации.",
@@ -2255,6 +2267,18 @@
                             "Сравнение стран с графиками",
                             "Данные World Bank API в реальном времени",
                             "Темная и светлая тема"
+                        ]
+                    },
+                    aircraftTraffic: {
+                        title: "Авиатрафик",
+                        description: "Интерактивная карта авиатрафика с данными OpenSky Network. Отслеживайте самолёты в реальном времени, фильтруйте по авиакомпаниям и высоте, просматривайте детали рейсов и историю маршрутов.",
+                        problem: "Хотите наблюдать за самолётами в реальном времени?",
+                        features: [
+                            "Позиции самолётов в реальном времени",
+                            "Фильтрация по позывному, высоте, стране",
+                            "Детальная информация о каждом рейсе",
+                            "Отслеживание маршрута выбранного самолёта",
+                            "Цветовая кодировка по высоте полёта"
                         ]
                     }
                 }
@@ -2632,6 +2656,18 @@
                             "Interactive popups with detailed information"
                         ]
                     },
+                    earthquakeMonitor: {
+                        title: "Earthquake Monitor",
+                        description: "Interactive dashboard for monitoring earthquakes worldwide using USGS data. Map with magnitude markers, event timeline, push notifications for major events and regional statistics.",
+                        problem: "Want to track seismic activity in real time?",
+                        features: [
+                            "Real-time USGS data",
+                            "Interactive map with markers",
+                            "Filter by magnitude and time period",
+                            "Push notifications for major events",
+                            "Statistics and charts by region"
+                        ]
+                    },
                     audioGuide: {
                         title: "Audio City Guide",
                         description: "Interactive audio guide with map and voice narration for city tours. Includes landmark descriptions, interactive map with markers, and text-to-speech for audio information.",
@@ -2690,6 +2726,18 @@
                             "Country comparison with charts",
                             "Real-time World Bank API data",
                             "Dark and light themes"
+                        ]
+                    },
+                    aircraftTraffic: {
+                        title: "Aircraft Traffic",
+                        description: "Interactive aircraft traffic map with OpenSky Network data. Track planes in real-time, filter by airline and altitude, view flight details and route history.",
+                        problem: "Want to watch aircraft in real time?",
+                        features: [
+                            "Real-time aircraft positions",
+                            "Filter by callsign, altitude, country",
+                            "Detailed information for each flight",
+                            "Track selected aircraft route",
+                            "Color coding by flight altitude"
                         ]
                     }
                 }
@@ -2865,16 +2913,25 @@
                 updateCard(mapsCards[0], 'precipitationMap', '<i class="fas fa-cloud-rain"></i>');
             }
             if (mapsCards.length > 1) {
-                updateCard(mapsCards[1], 'audioGuide', '<i class="fas fa-headphones"></i>');
+                updateCard(mapsCards[1], 'earthquakeMonitor', '<i class="fas fa-house-crack"></i>');
             }
             if (mapsCards.length > 2) {
-                updateCard(mapsCards[2], 'weatherForecast', '<i class="fas fa-cloud-sun"></i>');
+                updateCard(mapsCards[2], 'audioGuide', '<i class="fas fa-headphones"></i>');
             }
             if (mapsCards.length > 3) {
-                updateCard(mapsCards[3], 'sportsApi', '<i class="fas fa-trophy"></i>');
+                updateCard(mapsCards[3], 'weatherForecast', '<i class="fas fa-cloud-sun"></i>');
             }
             if (mapsCards.length > 4) {
-                updateCard(mapsCards[4], 'populationRace', '<i class="fas fa-chart-bar"></i>');
+                updateCard(mapsCards[4], 'sportsApi', '<i class="fas fa-trophy"></i>');
+            }
+            if (mapsCards.length > 5) {
+                updateCard(mapsCards[5], 'populationRace', '<i class="fas fa-chart-bar"></i>');
+            }
+            if (mapsCards.length > 6) {
+                updateCard(mapsCards[6], 'worldDataInfographic', '<i class="fas fa-globe"></i>');
+            }
+            if (mapsCards.length > 7) {
+                updateCard(mapsCards[7], 'aircraftTraffic', '<i class="fas fa-plane"></i>');
             }
         }
         
