@@ -697,12 +697,21 @@
         margin: 8px 0;
       }
 
-      .message-content code {
-        background: rgba(0, 0, 0, 0.3);
-        padding: 2px 4px;
-        border-radius: 3px;
-        font-family: 'Courier New', monospace;
-      }
+	      .message-content code {
+	        background: rgba(0, 0, 0, 0.3);
+	        padding: 2px 4px;
+	        border-radius: 3px;
+	        font-family: 'Courier New', monospace;
+	      }
+	
+	      .message-content a {
+	        color: #8ab4f8;
+	        text-decoration: underline;
+	      }
+	
+	      .message-content a:hover {
+	        color: #a8c7ff;
+	      }
 
       .chat-input-container {
         position: absolute;
@@ -1691,19 +1700,35 @@
               <span class="tool-name">Музыка</span>
               <span class="tool-check"></span>
             </label>
-            <label class="tool-item active" data-tool="sports">
-              <input type="checkbox" checked>
-              <span class="tool-icon" style="background: #e74c3c; color: white;">
-                <i class="fas fa-futbol"></i>
-              </span>
-              <span class="tool-name">Спорт</span>
-              <span class="tool-check"></span>
-            </label>
-          </div>
-          <div class="tools-info">
-            <i class="fas fa-info-circle"></i>
-            ИИ автоматически вызывает инструменты для получения актуальных данных
-          </div>
+	            <label class="tool-item active" data-tool="sports">
+	              <input type="checkbox" checked>
+	              <span class="tool-icon" style="background: #e74c3c; color: white;">
+	                <i class="fas fa-futbol"></i>
+	              </span>
+	              <span class="tool-name">Спорт</span>
+	              <span class="tool-check"></span>
+	            </label>
+	            <label class="tool-item active" data-tool="websearch">
+	              <input type="checkbox" checked>
+	              <span class="tool-icon" style="background: #2d9cdb; color: white;">
+	                <i class="fas fa-search"></i>
+	              </span>
+	              <span class="tool-name">WebSearch</span>
+	              <span class="tool-check"></span>
+	            </label>
+	            <label class="tool-item active" data-tool="openurl">
+	              <input type="checkbox" checked>
+	              <span class="tool-icon" style="background: #34495e; color: white;">
+	                <i class="fas fa-link"></i>
+	              </span>
+	              <span class="tool-name">Open URL</span>
+	              <span class="tool-check"></span>
+	            </label>
+	          </div>
+	          <div class="tools-info">
+	            <i class="fas fa-info-circle"></i>
+	            ИИ автоматически вызывает инструменты для получения актуальных данных
+	          </div>
         </div>
       </div>
 
@@ -1987,19 +2012,21 @@
        * ToolManager - Менеджер инструментов для WebLLM Chat
        * Поддерживает Wikipedia, Weather, Currency, Crypto, Music, Sports API
        */
-      class ToolManager {
-        constructor() {
-          this.enabledTools = {
-            wikipedia: true,
-            weather: true,
-            currency: true,
-            crypto: true,
-            music: true,
-            sports: true
-          };
+	      class ToolManager {
+	        constructor() {
+	          this.enabledTools = {
+	            wikipedia: true,
+	            weather: true,
+	            currency: true,
+	            crypto: true,
+	            music: true,
+	            sports: true,
+	            websearch: true,
+	            openurl: true
+	          };
 
           // Определения инструментов
-          this.toolDefinitions = {
+	          this.toolDefinitions = {
             wikipedia: {
               name: 'wikipedia_search',
               description: 'Поиск информации в Wikipedia. Используй для получения фактов, биографий, описаний понятий.',
@@ -2038,15 +2065,31 @@
                 type: 'Тип поиска: artist, album, track (по умолчанию artist)'
               }
             },
-            sports: {
-              name: 'search_sports',
-              description: 'Поиск спортивной информации. Используй для команд, лиг, соревнований.',
-              parameters: {
-                query: 'Название команды или лиги'
-              }
-            }
-          };
-        }
+	            sports: {
+	              name: 'search_sports',
+	              description: 'Поиск спортивной информации. Используй для команд, лиг, соревнований.',
+	              parameters: {
+	                query: 'Название команды или лиги'
+	              }
+	            },
+	            websearch: {
+	              name: 'web_search',
+	              description: 'Поиск по открытым источникам без прокси (Wikipedia, arXiv, OpenAlex, StackOverflow, GitHub, Hacker News). Возвращает список ссылок и краткие сниппеты.',
+	              parameters: {
+	                query: 'Поисковый запрос',
+	                limit: 'Сколько результатов вернуть (опционально, по умолчанию 8)'
+	              }
+	            },
+	            openurl: {
+	              name: 'open_url',
+	              description: 'Открывает ссылку и возвращает текст (без прокси работает только для некоторых источников/URL; многие сайты блокируются CORS). Используй после web_search для чтения 1-2 самых релевантных ссылок.',
+	              parameters: {
+	                url: 'URL для открытия',
+	                max_chars: 'Максимум символов текста (опционально, по умолчанию 8000)'
+	              }
+	            }
+	          };
+	        }
 
         /**
          * Генерация системного промпта с описанием инструментов
@@ -2073,6 +2116,7 @@
 	{"tool": "название_инструмента", "params": {"param1": "value1"}}
 
 	После получения результата, сформулируй ответ пользователю на основе полученных данных.
+	Если нужна информация из интернета: сначала вызови web_search, затем при необходимости open_url для 1-2 результатов.
 	Используй инструменты только когда это действительно нужно для ответа на вопрос.`;
 
           return prompt;
@@ -2231,23 +2275,27 @@
 	            return { error: `Инструмент отключен в настройках: ${tool}` };
 	          }
 	
-	          switch (tool) {
-	            case 'wikipedia_search':
-	              return await this.searchWikipedia(params.query);
-	            case 'get_weather':
-	              return await this.getWeather(params.city);
-	            case 'get_currency_rate':
-	              return await this.getCurrencyRate(params.from, params.to, params.amount);
-	            case 'get_crypto_price':
-	              return await this.getCryptoPrice(params.coin);
-	            case 'search_music':
-	              return await this.searchMusic(params.query, params.type);
-	            case 'search_sports':
-	              return await this.searchSports(params.query);
-	            default:
-	              return { error: `Неизвестный инструмент: ${tool}` };
-	          }
-	        }
+		          switch (tool) {
+		            case 'wikipedia_search':
+		              return await this.searchWikipedia(params.query);
+		            case 'get_weather':
+		              return await this.getWeather(params.city);
+		            case 'get_currency_rate':
+		              return await this.getCurrencyRate(params.from, params.to, params.amount);
+		            case 'get_crypto_price':
+		              return await this.getCryptoPrice(params.coin);
+		            case 'search_music':
+		              return await this.searchMusic(params.query, params.type);
+		            case 'search_sports':
+		              return await this.searchSports(params.query);
+		            case 'web_search':
+		              return await this.webSearch(params.query, params.limit);
+		            case 'open_url':
+		              return await this.openUrl(params.url, params.max_chars);
+		            default:
+		              return { error: `Неизвестный инструмент: ${tool}` };
+		          }
+		        }
 	
 	        /**
 	         * Wikipedia API
@@ -2394,42 +2442,120 @@
 	          }
 	        }
 
-        /**
-         * Crypto API (CoinGecko)
-         */
+	        /**
+	         * Crypto API (CoinGecko)
+	         */
 	        async getCryptoPrice(coin = 'bitcoin') {
-	          try {
-	            // CoinGecko часто блокирует CORS в браузере. Используем CoinCap (CORS OK).
-	            const coinQuery = coin.toLowerCase().trim();
-	            const normalized = coinQuery.replace(/\s+/g, '-');
-	            const url = `https://api.coincap.io/v2/assets?search=${encodeURIComponent(normalized)}`;
-	            const response = await fetch(url);
-	            const data = await response.json();
-	
-	            const assets = Array.isArray(data?.data) ? data.data : [];
-	            if (assets.length === 0) {
-	              return { error: `Криптовалюта "${coin}" не найдена` };
+	          const fetchJson = async (url, timeoutMs = 12000) => {
+	            const controller = new AbortController();
+	            const t = setTimeout(() => controller.abort(), timeoutMs);
+	            try {
+	              const resp = await fetch(url, { signal: controller.signal });
+	              const json = await resp.json();
+	              return { ok: resp.ok, status: resp.status, json };
+	            } finally {
+	              clearTimeout(t);
 	            }
+	          };
 	
-	            // Берём самый релевантный матч
-	            const asset = assets[0];
-	            const priceUsd = Number(asset.priceUsd);
-	            const change24h = Number(asset.changePercent24Hr);
-	            const marketCapUsd = Number(asset.marketCapUsd);
+	          const coinQuery = String(coin || '').toLowerCase().trim();
+	          const normalized = coinQuery.replace(/\s+/g, '-');
 	
-	            return {
-	              source: 'CoinCap',
-	              name: asset.name,
-	              symbol: String(asset.symbol || '').toUpperCase(),
-	              price_usd: Number.isFinite(priceUsd) ? `$${priceUsd.toLocaleString(undefined, { maximumFractionDigits: 6 })}` : 'N/A',
-	              change_24h: Number.isFinite(change24h) ? `${change24h.toFixed(2)}%` : 'N/A',
-	              market_cap: Number.isFinite(marketCapUsd) ? `$${(marketCapUsd / 1e9).toFixed(2)}B` : 'N/A',
-	              rank: asset.rank ? `#${asset.rank}` : 'N/A',
-	              id: asset.id
-	            };
-	          } catch (error) {
-	            return { error: `Ошибка Crypto API: ${error.message}` };
+	          // 1) CoinCap (часто работает, но у некоторых может блокироваться расширениями/политиками)
+	          try {
+	            const url = `https://api.coincap.io/v2/assets?search=${encodeURIComponent(normalized)}`;
+	            const { ok, json } = await fetchJson(url);
+	            const assets = Array.isArray(json?.data) ? json.data : [];
+	            if (ok && assets.length > 0) {
+	              const asset = assets[0];
+	              const priceUsd = Number(asset.priceUsd);
+	              const change24h = Number(asset.changePercent24Hr);
+	              const marketCapUsd = Number(asset.marketCapUsd);
+	
+	              return {
+	                source: 'CoinCap',
+	                name: asset.name,
+	                symbol: String(asset.symbol || '').toUpperCase(),
+	                price_usd: Number.isFinite(priceUsd)
+	                  ? `$${priceUsd.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
+	                  : 'N/A',
+	                change_24h: Number.isFinite(change24h) ? `${change24h.toFixed(2)}%` : 'N/A',
+	                market_cap: Number.isFinite(marketCapUsd) ? `$${(marketCapUsd / 1e9).toFixed(2)}B` : 'N/A',
+	                rank: asset.rank ? `#${asset.rank}` : 'N/A',
+	                id: asset.id
+	              };
+	            }
+	          } catch (_) {
+	            // continue to fallbacks
 	          }
+	
+	          // 2) CoinGecko (simple price) — часто CORS OK
+	          try {
+	            const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(coinQuery)}`;
+	            const search = await fetchJson(searchUrl);
+	            const first = Array.isArray(search?.json?.coins) ? search.json.coins[0] : null;
+	            if (search.ok && first?.id) {
+	              const priceUrl =
+	                `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(first.id)}` +
+	                `&vs_currencies=usd,rub&include_24hr_change=true`;
+	              const priceResp = await fetchJson(priceUrl);
+	              const p = priceResp?.json?.[first.id];
+	              if (priceResp.ok && p) {
+	                const usd = Number(p.usd);
+	                const rub = Number(p.rub);
+	                const ch = Number(p.usd_24h_change);
+	                return {
+	                  source: 'CoinGecko',
+	                  name: first.name,
+	                  symbol: String(first.symbol || '').toUpperCase(),
+	                  price_usd: Number.isFinite(usd) ? `$${usd.toLocaleString()}` : 'N/A',
+	                  price_rub: Number.isFinite(rub) ? `₽${rub.toLocaleString()}` : 'N/A',
+	                  change_24h: Number.isFinite(ch) ? `${ch.toFixed(2)}%` : 'N/A',
+	                  id: first.id
+	                };
+	              }
+	            }
+	          } catch (_) {
+	            // continue
+	          }
+	
+	          // 3) Coinbase spot price (пары для популярных монет)
+	          try {
+	            const symbolMap = {
+	              bitcoin: 'BTC',
+	              btc: 'BTC',
+	              ethereum: 'ETH',
+	              eth: 'ETH',
+	              solana: 'SOL',
+	              sol: 'SOL',
+	              toncoin: 'TON',
+	              ton: 'TON',
+	              ripple: 'XRP',
+	              xrp: 'XRP'
+	            };
+	            const sym = symbolMap[normalized] || symbolMap[coinQuery];
+	            if (sym) {
+	              const url = `https://api.coinbase.com/v2/prices/${encodeURIComponent(sym)}-USD/spot`;
+	              const { ok, json } = await fetchJson(url);
+	              const amount = Number(json?.data?.amount);
+	              if (ok && Number.isFinite(amount)) {
+	                return {
+	                  source: 'Coinbase',
+	                  name: sym,
+	                  symbol: sym,
+	                  price_usd: `$${amount.toLocaleString()}`
+	                };
+	              }
+	            }
+	          } catch (_) {
+	            // continue
+	          }
+	
+	          return {
+	            error:
+	              `Не удалось получить цену для "${coin}". ` +
+	              `Возможные причины: блокировка CORS, AdBlock/Privacy extensions, VPN или временная недоступность API.`
+	          };
 	        }
 
         /**
@@ -2489,8 +2615,8 @@
         /**
          * Sports API (TheSportsDB)
          */
-        async searchSports(query) {
-          try {
+	        async searchSports(query) {
+	          try {
             const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(query)}`;
             const response = await fetch(url);
             const data = await response.json();
@@ -2528,15 +2654,351 @@
                 founded: team.intFormedYear
               }))
             };
-          } catch (error) {
-            return { error: `Ошибка Sports API: ${error.message}` };
-          }
-        }
+	          } catch (error) {
+	            return { error: `Ошибка Sports API: ${error.message}` };
+	          }
+	        }
+	
+	        /**
+	         * Web Search (без прокси): агрегирует поиск по открытым источникам
+	         */
+	        async webSearch(query, limit = 8) {
+	          const q = String(query || '').trim();
+	          const maxResults = Math.max(1, Math.min(parseInt(limit || 8, 10) || 8, 15));
+	          if (!q) return { error: 'Пустой поисковый запрос' };
+	
+	          const fetchJson = async (url, timeoutMs = 12000, options = {}) => {
+	            const controller = new AbortController();
+	            const t = setTimeout(() => controller.abort(), timeoutMs);
+	            try {
+	              const resp = await fetch(url, { ...options, signal: controller.signal });
+	              const json = await resp.json();
+	              return { ok: resp.ok, status: resp.status, json };
+	            } finally {
+	              clearTimeout(t);
+	            }
+	          };
+	
+	          const fetchText = async (url, timeoutMs = 12000, options = {}) => {
+	            const controller = new AbortController();
+	            const t = setTimeout(() => controller.abort(), timeoutMs);
+	            try {
+	              const resp = await fetch(url, { ...options, signal: controller.signal });
+	              const text = await resp.text();
+	              return { ok: resp.ok, status: resp.status, text };
+	            } finally {
+	              clearTimeout(t);
+	            }
+	          };
+	
+	          const results = [];
+	          const errors = [];
+	
+	          // Wikipedia (RU)
+	          try {
+	            const url = `https://ru.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(q)}&limit=5&namespace=0&format=json&origin=*`;
+	            const r = await fetchJson(url);
+	            const titles = Array.isArray(r.json?.[1]) ? r.json[1] : [];
+	            const descs = Array.isArray(r.json?.[2]) ? r.json[2] : [];
+	            const links = Array.isArray(r.json?.[3]) ? r.json[3] : [];
+	            titles.slice(0, 5).forEach((title, i) => {
+	              results.push({
+	                source: 'Wikipedia',
+	                title,
+	                url: links[i],
+	                snippet: descs[i] || ''
+	              });
+	            });
+	          } catch (e) {
+	            errors.push(`Wikipedia: ${e.message || e}`);
+	          }
+	
+	          // OpenAlex (papers)
+	          try {
+	            const url = `https://api.openalex.org/works?search=${encodeURIComponent(q)}&per-page=5`;
+	            const r = await fetchJson(url);
+	            const works = Array.isArray(r.json?.results) ? r.json.results : [];
+	            works.slice(0, 5).forEach(w => {
+	              const openAlexId = w?.id ? String(w.id).replace('https://openalex.org/', '') : null;
+	              results.push({
+	                source: 'OpenAlex',
+	                title: w?.title || 'Untitled',
+	                url: openAlexId ? `https://openalex.org/${openAlexId}` : (w?.id || ''),
+	                snippet: w?.publication_year ? `Year: ${w.publication_year}` : ''
+	              });
+	            });
+	          } catch (e) {
+	            errors.push(`OpenAlex: ${e.message || e}`);
+	          }
+	
+	          // arXiv
+	          try {
+	            const aq = q.replace(/\s+/g, '+');
+	            const url = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(aq)}&start=0&max_results=5`;
+	            const r = await fetchText(url);
+	            if (r.ok) {
+	              const xml = new DOMParser().parseFromString(r.text, 'text/xml');
+	              const entries = Array.from(xml.getElementsByTagName('entry')).slice(0, 5);
+	              entries.forEach(entry => {
+	                const title = entry.getElementsByTagName('title')[0]?.textContent?.trim() || 'Untitled';
+	                const summary = entry.getElementsByTagName('summary')[0]?.textContent?.trim() || '';
+	                const id = entry.getElementsByTagName('id')[0]?.textContent?.trim() || '';
+	                results.push({
+	                  source: 'arXiv',
+	                  title,
+	                  url: id,
+	                  snippet: summary.slice(0, 220)
+	                });
+	              });
+	            }
+	          } catch (e) {
+	            errors.push(`arXiv: ${e.message || e}`);
+	          }
+	
+	          // StackOverflow
+	          try {
+	            const url = `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q=${encodeURIComponent(q)}&site=stackoverflow&pagesize=5`;
+	            const r = await fetchJson(url);
+	            const items = Array.isArray(r.json?.items) ? r.json.items : [];
+	            items.slice(0, 5).forEach(it => {
+	              results.push({
+	                source: 'StackOverflow',
+	                title: it?.title || 'Untitled',
+	                url: it?.link || '',
+	                snippet: `Score: ${it?.score ?? 0}, Answers: ${it?.answer_count ?? 0}`
+	              });
+	            });
+	          } catch (e) {
+	            errors.push(`StackOverflow: ${e.message || e}`);
+	          }
+	
+	          // GitHub repos
+	          try {
+	            const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&per_page=5`;
+	            const r = await fetchJson(url, 12000, {
+	              headers: { Accept: 'application/vnd.github+json' }
+	            });
+	            const items = Array.isArray(r.json?.items) ? r.json.items : [];
+	            items.slice(0, 5).forEach(it => {
+	              results.push({
+	                source: 'GitHub',
+	                title: it?.full_name || it?.name || 'repo',
+	                url: it?.html_url || '',
+	                snippet: it?.description || ''
+	              });
+	            });
+	          } catch (e) {
+	            errors.push(`GitHub: ${e.message || e}`);
+	          }
+	
+	          // Hacker News (Algolia)
+	          try {
+	            const url = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=5`;
+	            const r = await fetchJson(url);
+	            const hits = Array.isArray(r.json?.hits) ? r.json.hits : [];
+	            hits.slice(0, 5).forEach(h => {
+	              const hnUrl = h?.objectID ? `https://news.ycombinator.com/item?id=${h.objectID}` : '';
+	              results.push({
+	                source: 'HackerNews',
+	                title: h?.title || 'Untitled',
+	                url: hnUrl,
+	                snippet: `Points: ${h?.points ?? 0}, Author: ${h?.author || 'N/A'}`
+	              });
+	            });
+	          } catch (e) {
+	            errors.push(`HackerNews: ${e.message || e}`);
+	          }
+	
+	          // Убираем пустые URL и режем общий лимит
+	          const filtered = results.filter(r => r.url).slice(0, maxResults);
+	
+	          const out = {
+	            source: 'WebSearch',
+	            query: q,
+	            results: filtered
+	          };
+	          if (errors.length > 0) out.warnings = errors.slice(0, 5);
+	          return out;
+	        }
+	
+	        /**
+	         * Open URL (без прокси): пытается получить текст для известных источников
+	         */
+	        async openUrl(url, maxChars = 8000) {
+	          const target = String(url || '').trim();
+	          const limit = Math.max(500, Math.min(parseInt(maxChars || 8000, 10) || 8000, 20000));
+	          if (!target) return { error: 'Пустой URL' };
+	
+	          const fetchJson = async (u, timeoutMs = 15000, options = {}) => {
+	            const controller = new AbortController();
+	            const t = setTimeout(() => controller.abort(), timeoutMs);
+	            try {
+	              const resp = await fetch(u, { ...options, signal: controller.signal });
+	              const json = await resp.json();
+	              return { ok: resp.ok, status: resp.status, json };
+	            } finally {
+	              clearTimeout(t);
+	            }
+	          };
+	
+	          const fetchText = async (u, timeoutMs = 15000, options = {}) => {
+	            const controller = new AbortController();
+	            const t = setTimeout(() => controller.abort(), timeoutMs);
+	            try {
+	              const resp = await fetch(u, { ...options, signal: controller.signal });
+	              const text = await resp.text();
+	              return { ok: resp.ok, status: resp.status, text, contentType: resp.headers.get('content-type') || '' };
+	            } finally {
+	              clearTimeout(t);
+	            }
+	          };
+	
+	          const htmlToText = (html) => {
+	            const doc = new DOMParser().parseFromString(html, 'text/html');
+	            doc.querySelectorAll('script,style,noscript').forEach(n => n.remove());
+	            const text = (doc.body?.innerText || doc.documentElement?.textContent || '').trim();
+	            return text.replace(/\n{3,}/g, '\n\n').slice(0, limit);
+	          };
+	
+	          let parsed;
+	          try {
+	            parsed = new URL(target);
+	          } catch {
+	            return { error: `Некорректный URL: ${target}` };
+	          }
+	
+	          // Wikipedia: читаем через API (explaintext)
+	          if (/wikipedia\.org$/i.test(parsed.hostname)) {
+	            const title = decodeURIComponent(parsed.pathname.replace(/^\/wiki\//, '')).replace(/_/g, ' ');
+	            const api = `https://${parsed.hostname}/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&format=json&origin=*&redirects=1&titles=${encodeURIComponent(title)}`;
+	            const r = await fetchJson(api);
+	            const pages = r.json?.query?.pages || {};
+	            const pageId = Object.keys(pages)[0];
+	            const page = pages?.[pageId] || {};
+	            if (pageId === '-1' || !page?.extract) {
+	              return { error: 'Статья не найдена или недоступна', url: target };
+	            }
+	            return {
+	              source: 'Wikipedia',
+	              url: target,
+	              title: page.title,
+	              text: String(page.extract).slice(0, limit)
+	            };
+	          }
+	
+	          // OpenAlex: https://openalex.org/W...
+	          if (/openalex\.org$/i.test(parsed.hostname)) {
+	            const id = parsed.pathname.replace(/^\//, '');
+	            const api = `https://api.openalex.org/works/${encodeURIComponent(id)}`;
+	            const r = await fetchJson(api);
+	            if (!r.ok) return { error: `OpenAlex недоступен (${r.status})`, url: target };
+	            const w = r.json || {};
+	            return {
+	              source: 'OpenAlex',
+	              url: target,
+	              title: w.title || 'Untitled',
+	              year: w.publication_year || null,
+	              text: (w.abstract_inverted_index ? 'Abstract available (inverted index).' : 'No abstract available.'),
+	              primary_location: w.primary_location?.landing_page_url || null
+	            };
+	          }
+	
+	          // arXiv: abs link -> export API by id
+	          if (/arxiv\.org$/i.test(parsed.hostname) && parsed.pathname.startsWith('/abs/')) {
+	            const arxivId = parsed.pathname.replace('/abs/', '').trim();
+	            const api = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(arxivId)}`;
+	            const r = await fetchText(api);
+	            if (!r.ok) return { error: `arXiv недоступен (${r.status})`, url: target };
+	            const xml = new DOMParser().parseFromString(r.text, 'text/xml');
+	            const entry = xml.getElementsByTagName('entry')[0];
+	            if (!entry) return { error: 'arXiv: запись не найдена', url: target };
+	            const title = entry.getElementsByTagName('title')[0]?.textContent?.trim() || 'Untitled';
+	            const summary = entry.getElementsByTagName('summary')[0]?.textContent?.trim() || '';
+	            return {
+	              source: 'arXiv',
+	              url: target,
+	              title,
+	              text: summary.slice(0, limit)
+	            };
+	          }
+	
+	          // StackOverflow question -> StackExchange API with body
+	          if (/stackoverflow\.com$/i.test(parsed.hostname) && /^\/questions\/\d+/.test(parsed.pathname)) {
+	            const m = parsed.pathname.match(/^\/questions\/(\d+)/);
+	            const qid = m ? m[1] : null;
+	            if (!qid) return { error: 'StackOverflow: не удалось извлечь id вопроса', url: target };
+	            const api = `https://api.stackexchange.com/2.3/questions/${qid}?site=stackoverflow&filter=withbody`;
+	            const r = await fetchJson(api);
+	            const item = Array.isArray(r.json?.items) ? r.json.items[0] : null;
+	            if (!r.ok || !item) return { error: `StackOverflow недоступен (${r.status})`, url: target };
+	            return {
+	              source: 'StackOverflow',
+	              url: target,
+	              title: item.title || 'Untitled',
+	              text: htmlToText(item.body || '').slice(0, limit)
+	            };
+	          }
+	
+	          // GitHub repo -> README через API
+	          if (/github\.com$/i.test(parsed.hostname)) {
+	            const parts = parsed.pathname.split('/').filter(Boolean);
+	            if (parts.length >= 2) {
+	              const owner = parts[0];
+	              const repo = parts[1];
+	              const api = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`;
+	              const r = await fetchText(api, 15000, {
+	                headers: { Accept: 'application/vnd.github.raw+json' }
+	              });
+	              if (r.ok) {
+	                return {
+	                  source: 'GitHub',
+	                  url: target,
+	                  title: `${owner}/${repo} README`,
+	                  text: r.text.slice(0, limit)
+	                };
+	              }
+	            }
+	          }
+	
+	          // Hacker News item -> Algolia items API
+	          if (/news\.ycombinator\.com$/i.test(parsed.hostname) && parsed.searchParams.get('id')) {
+	            const id = parsed.searchParams.get('id');
+	            const api = `https://hn.algolia.com/api/v1/items/${encodeURIComponent(id)}`;
+	            const r = await fetchJson(api);
+	            if (!r.ok) return { error: `HackerNews недоступен (${r.status})`, url: target };
+	            const title = r.json?.title || 'Untitled';
+	            const points = r.json?.points ?? null;
+	            const text = (r.json?.text || '').replace(/<[^>]+>/g, '').trim();
+	            return {
+	              source: 'HackerNews',
+	              url: target,
+	              title,
+	              points,
+	              text: text.slice(0, limit)
+	            };
+	          }
+	
+	          // Generic попытка (может упасть на CORS)
+	          try {
+	            const r = await fetchText(target);
+	            if (!r.ok) return { error: `URL недоступен (${r.status})`, url: target };
+	            const isHtml = /text\/html/i.test(r.contentType);
+	            const text = isHtml ? htmlToText(r.text) : String(r.text).slice(0, limit);
+	            return { source: 'open_url', url: target, text };
+	          } catch (e) {
+	            return {
+	              error:
+	                'Браузер не смог прочитать страницу (скорее всего CORS). ' +
+	                'Без прокси можно открывать только некоторые источники. Откройте ссылку в новой вкладке и при необходимости вставьте текст сюда.',
+	              url: target
+	            };
+	          }
+	        }
 
-        /**
-         * Форматирование результата для отображения
-         */
-        formatToolResult(toolName, result) {
+	        /**
+	         * Форматирование результата для отображения
+	         */
+	        formatToolResult(toolName, result) {
           if (result.error) {
             return `⚠️ ${result.error}`;
           }
@@ -2764,6 +3226,7 @@
 	          this.conversationHistory = [];
 	          this.selectedModelId = 'qwen-3-4b'; // По умолчанию выбираем Qwen 4B (лучшая модель)
 	          this.lastLoadError = null;
+	          this.streamingEnabled = true;
 
 	          this.initializeElements();
 	          this.setupEventListeners();
@@ -3197,42 +3660,141 @@
           this.welcomeMessage.style.display = 'none';
         }
 
-        async sendMessage() {
-          const message = this.chatInput.value.trim();
-          if (!message || !this.currentModel) return;
+	        async sendMessage() {
+	          const message = this.chatInput.value.trim();
+	          if (!message || !this.currentModel) return;
 
           // Добавляем сообщение пользователя
           this.addMessage('user', message);
           this.chatInput.value = '';
           this.chatInput.style.height = 'auto';
 
-          // Показываем индикатор печати
-          this.showTypingIndicator();
-          this.sendButton.disabled = true;
+	          // Показываем индикатор печати
+	          this.showTypingIndicator();
+	          this.sendButton.disabled = true;
 
-          try {
-            if (this.currentModel === 'demo') {
-              // Демо-режим
-              await this.simulateAIResponse(message);
-            } else {
-              // Реальная модель
-              await this.generateAIResponse(message);
-            }
-          } catch (error) {
+	          try {
+	            if (this.currentModel === 'demo') {
+	              // Демо-режим
+	              await this.simulateAIResponse(message);
+	            } else {
+	              // Реальная модель
+	              await this.generateAIResponse(message);
+	            }
+	          } catch (error) {
             console.error('Ошибка генерации ответа:', error);
             this.addMessage('ai', `Извините, произошла ошибка: ${error.message}`);
-          } finally {
-            this.hideTypingIndicator();
-            this.sendButton.disabled = false;
-          }
-        }
+	          } finally {
+	            this.hideTypingIndicator();
+	            this.sendButton.disabled = false;
+	          }
+	        }
+	
+	        createStreamingMessage(role, saveToHistory = true) {
+	          const messageDiv = document.createElement('div');
+	          messageDiv.className = `message ${role}`;
+	
+	          const avatar = document.createElement('div');
+	          avatar.className = 'message-avatar';
+	
+	          if (role === 'user') {
+	            avatar.innerHTML = '<i class="fas fa-user"></i>';
+	          } else if (role === 'system') {
+	            avatar.innerHTML = '<i class="fas fa-cog"></i>';
+	            messageDiv.classList.add('system-message');
+	          } else if (role === 'tool-call') {
+	            avatar.innerHTML = '<i class="fas fa-wrench"></i>';
+	            messageDiv.classList.add('tool-call');
+	          } else if (role === 'tool-result') {
+	            avatar.innerHTML = '<i class="fas fa-database"></i>';
+	            messageDiv.classList.add('tool-result');
+	          } else {
+	            avatar.innerHTML = '<i class="fas fa-robot"></i>';
+	          }
+	
+	          const messageContent = document.createElement('div');
+	          messageContent.className = 'message-content';
+	
+	          messageDiv.appendChild(avatar);
+	          messageDiv.appendChild(messageContent);
+	
+	          this.chatMessages.appendChild(messageDiv);
+	          this.scrollToBottom();
+	
+	          let raw = '';
+	          const update = (delta) => {
+	            raw += String(delta || '');
+	            messageContent.innerHTML = this.formatMessage(raw);
+	            this.scrollToBottom();
+	          };
+	
+	          const set = (text) => {
+	            raw = String(text || '');
+	            messageContent.innerHTML = this.formatMessage(raw);
+	            this.scrollToBottom();
+	          };
+	
+	          const finalize = () => {
+	            if (saveToHistory && (role === 'user' || role === 'ai')) {
+	              const historyRole = role === 'ai' ? 'assistant' : role;
+	              window.chatHistoryManager?.addMessage?.(historyRole, raw);
+	              window.renderChatList?.();
+	            }
+	            return raw;
+	          };
+	
+	          return { update, set, finalize, getText: () => raw, element: messageDiv };
+	        }
+	
+	        async runChatCompletionStream({ messages, temperature, max_tokens }, { onDelta } = {}) {
+	          if (!this.streamingEnabled) {
+	            const resp = await this.engine.chat.completions.create({
+	              messages,
+	              temperature,
+	              max_tokens
+	            });
+	            const text = resp?.choices?.[0]?.message?.content ?? '';
+	            return String(text || '');
+	          }
+	
+	          let full = '';
+	          try {
+	            const stream = await this.engine.chat.completions.create({
+	              messages,
+	              temperature,
+	              max_tokens,
+	              stream: true
+	            });
+	
+	            if (!stream || typeof stream[Symbol.asyncIterator] !== 'function') {
+	              const resp = stream;
+	              const text = resp?.choices?.[0]?.message?.content ?? '';
+	              return String(text || '');
+	            }
+	
+	            for await (const chunk of stream) {
+	              const delta =
+	                chunk?.choices?.[0]?.delta?.content ??
+	                chunk?.choices?.[0]?.message?.content ??
+	                '';
+	              if (delta) {
+	                full += delta;
+	                onDelta?.(delta, full);
+	              }
+	            }
+	            return full;
+	          } catch (e) {
+	            if (full) return full;
+	            throw e;
+	          }
+	        }
 
-        async generateAIResponse(userMessage) {
-          // Добавляем сообщение в историю
-          this.conversationHistory.push({
-            role: 'user',
-            content: userMessage,
-          });
+	        async generateAIResponse(userMessage) {
+	          // Добавляем сообщение в историю
+	          this.conversationHistory.push({
+	            role: 'user',
+	            content: userMessage,
+	          });
 
           // Создаем системный промпт с инструментами
           let systemPrompt =
@@ -3252,24 +3814,61 @@
             ...this.conversationHistory,
           ];
 
-          // Готовим параметры запроса
-          const requestParams = {
-            messages: messages,
-            temperature: parseFloat(this.temperatureSlider.value),
-            max_tokens: parseInt(this.maxTokensSlider.value),
-          };
+	          // Готовим параметры запроса
+	          const requestParams = {
+	            messages: messages,
+	            temperature: parseFloat(this.temperatureSlider.value),
+	            max_tokens: parseInt(this.maxTokensSlider.value),
+	          };
 
-          // Генерируем ответ
-          const response = await this.engine.chat.completions.create(requestParams);
-          let aiResponse = response.choices[0].message.content;
+	          // Генерируем ответ (stream)
+	          let aiResponse = '';
+	          let startedAssistantStream = false;
+	          let assistantStream = null;
+	          let alreadyRendered = false;
+	          let firstNonWs = null;
+	
+	          const collectOnly = (delta, full) => {
+	            if (firstNonWs === null) {
+	              const m = full.match(/[^\s]/);
+	              if (m) firstNonWs = m[0];
+	            }
+	
+	            // Если похоже на tool_call/JSON, не стримим в bubble (чтобы не показывать технический JSON)
+	            if (!startedAssistantStream && firstNonWs !== null) {
+	              if (firstNonWs !== '{' && firstNonWs !== '<') {
+	                assistantStream = this.createStreamingMessage('ai', true);
+	                startedAssistantStream = true;
+	                alreadyRendered = true;
+	                this.hideTypingIndicator();
+	              }
+	            }
+	
+	            if (startedAssistantStream) {
+	              assistantStream.update(delta);
+	            }
+	          };
+	
+	          aiResponse = await this.runChatCompletionStream(requestParams, { onDelta: collectOnly });
+	          if (startedAssistantStream) {
+	            // выравниваем итоговый текст (на случай, если были chunk-особенности)
+	            assistantStream.set(aiResponse);
+	          }
 
-          // Проверяем на вызов инструмента
-          if (window.toolManager.hasToolCall(aiResponse)) {
-            const toolCall = window.toolManager.extractToolCall(aiResponse);
+	          // Проверяем на вызов инструмента
+	          if (window.toolManager.hasToolCall(aiResponse)) {
+	            // Если мы начали стримить (и случайно показали текст), заменим его на пустое.
+	            if (assistantStream) {
+	              assistantStream.element.remove();
+	              assistantStream = null;
+	              startedAssistantStream = false;
+	              alreadyRendered = false;
+	            }
+	            const toolCall = window.toolManager.extractToolCall(aiResponse);
 
-            if (toolCall) {
-              // Показываем сообщение о вызове инструмента
-              this.addMessage('tool-call', `🔧 Вызов инструмента: ${toolCall.tool}`);
+	            if (toolCall) {
+	              // Показываем сообщение о вызове инструмента
+	              this.addMessage('tool-call', `🔧 Вызов инструмента: ${toolCall.tool}`);
 
               // Выполняем вызов инструмента
               const toolResult = await window.toolManager.executeToolCall(toolCall);
@@ -3283,40 +3882,51 @@
                 role: 'assistant',
                 content: aiResponse,
               });
-              this.conversationHistory.push({
-                role: 'user',
-                content: `Результат инструмента ${toolCall.tool}:\n${JSON.stringify(toolResult, null, 2)}\n\nТеперь сформулируй понятный ответ для пользователя на основе этих данных.`,
-              });
+	              this.conversationHistory.push({
+	                role: 'user',
+	                content: `Результат инструмента ${toolCall.tool}:\n${JSON.stringify(toolResult, null, 2)}\n\nТеперь сформулируй понятный ответ для пользователя на основе этих данных.`,
+	              });
 
-              // Генерируем финальный ответ
-              const finalMessages = [
-                { role: 'system', content: 'Ты - полезный ИИ-ассистент. Сформулируй ответ на основе полученных данных. Не используй tool_call, просто дай ответ.' },
-                ...this.conversationHistory,
-              ];
+	              // Генерируем финальный ответ (stream)
+	              const finalMessages = [
+	                { role: 'system', content: 'Ты - полезный ИИ-ассистент. Сформулируй ответ на основе полученных данных. Не используй tool_call, просто дай ответ.' },
+	                ...this.conversationHistory,
+	              ];
 
-              const finalResponse = await this.engine.chat.completions.create({
-                messages: finalMessages,
-                temperature: parseFloat(this.temperatureSlider.value),
-                max_tokens: parseInt(this.maxTokensSlider.value),
-              });
+	              // Создаем bubble для финального ответа и стримим туда
+	              const finalStream = this.createStreamingMessage('ai', true);
+	              alreadyRendered = true;
+	              this.hideTypingIndicator();
+	              aiResponse = await this.runChatCompletionStream(
+	                {
+	                  messages: finalMessages,
+	                  temperature: parseFloat(this.temperatureSlider.value),
+	                  max_tokens: parseInt(this.maxTokensSlider.value),
+	                },
+	                { onDelta: (delta) => finalStream.update(delta) }
+	              );
+	              finalStream.set(aiResponse);
+	              finalStream.finalize();
 
-              aiResponse = finalResponse.choices[0].message.content;
+	              // Удаляем технические сообщения из истории
+	              this.conversationHistory.pop();
+	              this.conversationHistory.pop();
+	            }
+	          }
 
-              // Удаляем технические сообщения из истории
-              this.conversationHistory.pop();
-              this.conversationHistory.pop();
-            }
-          }
+	          // Добавляем ответ в историю
+	          this.conversationHistory.push({
+	            role: 'assistant',
+	            content: aiResponse,
+	          });
 
-          // Добавляем ответ в историю
-          this.conversationHistory.push({
-            role: 'assistant',
-            content: aiResponse,
-          });
-
-          // Показываем ответ
-          this.addMessage('ai', aiResponse);
-        }
+	          // Показываем ответ (если не стримили ранее)
+	          if (!alreadyRendered && !window.toolManager.hasToolCall(aiResponse)) {
+	            this.addMessage('ai', aiResponse);
+	          } else if (assistantStream && !window.toolManager.hasToolCall(aiResponse)) {
+	            assistantStream.finalize();
+	          }
+	        }
 
         async simulateAIResponse(userMessage) {
           const lowerMessage = userMessage.toLowerCase();
@@ -3460,13 +4070,72 @@
           }
         }
 
-        formatMessage(content) {
-          // Простое форматирование для кода и блоков
-          return content
-            .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\n/g, '<br>');
-        }
+	        formatMessage(content) {
+	          const escapeHtml = (str) =>
+	            String(str)
+	              .replace(/&/g, '&amp;')
+	              .replace(/</g, '&lt;')
+	              .replace(/>/g, '&gt;')
+	              .replace(/"/g, '&quot;')
+	              .replace(/'/g, '&#39;');
+	
+	          const stripUrlPunctuation = (url) => {
+	            let u = url;
+	            let suffix = '';
+	            while (u.length > 0 && /[),.;:!?]+$/.test(u)) {
+	              suffix = u.slice(-1) + suffix;
+	              u = u.slice(0, -1);
+	            }
+	            return { url: u, suffix };
+	          };
+	
+	          const makeLink = (href, label) =>
+	            `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+	
+	          let text = String(content ?? '').replace(/\r\n?/g, '\n');
+	
+	          // 1) Вырезаем code blocks, чтобы не линковать внутри
+	          const codeBlocks = [];
+	          text = text.replace(/```([\s\S]*?)```/g, (_, code) => {
+	            const key = `@@CODEBLOCK_${codeBlocks.length}@@`;
+	            codeBlocks.push(code);
+	            return key;
+	          });
+	
+	          // 2) Вырезаем inline code, чтобы не линковать внутри
+	          const inlineCodes = [];
+	          text = text.replace(/`([^`\n]+)`/g, (_, code) => {
+	            const key = `@@INLINECODE_${inlineCodes.length}@@`;
+	            inlineCodes.push(code);
+	            return key;
+	          });
+	
+	          // 3) Экранируем HTML
+	          text = escapeHtml(text);
+	
+	          // 4) Markdown links: [text](https://...)
+	          text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, label, href) => {
+	            const { url, suffix } = stripUrlPunctuation(href);
+	            return makeLink(url, label) + suffix;
+	          });
+	
+	          // 5) Авто-линковка голых URL
+	          text = text.replace(/(^|[\s>])((https?:\/\/)[^\s<]+)/g, (_, prefix, href) => {
+	            const { url, suffix } = stripUrlPunctuation(href);
+	            return `${prefix}${makeLink(url, url)}${suffix}`;
+	          });
+	
+	          // 6) Переводы строк
+	          text = text.replace(/\n/g, '<br>');
+	
+	          // 7) Возвращаем inline code
+	          text = text.replace(/@@INLINECODE_(\d+)@@/g, (_, i) => `<code>${escapeHtml(inlineCodes[Number(i)] ?? '')}</code>`);
+	
+	          // 8) Возвращаем code blocks (с сохранением \n внутри <pre>)
+	          text = text.replace(/@@CODEBLOCK_(\d+)@@/g, (_, i) => `<pre><code>${escapeHtml(codeBlocks[Number(i)] ?? '')}</code></pre>`);
+	
+	          return text;
+	        }
 
         showTypingIndicator() {
           this.typingIndicator.classList.add('show');
