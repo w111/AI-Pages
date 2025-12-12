@@ -804,6 +804,35 @@
         display: flex;
       }
 
+      .settings-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 25px;
+        max-width: 400px;
+        width: 90%;
+        border: 1px solid var(--border-color);
+        position: relative;
+      }
+
+      .settings-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 1.5rem;
+        padding: 5px;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+      }
+
+      .settings-close:hover {
+        background: var(--bg-color);
+        color: var(--text-color);
+      }
+
       .settings-title {
         color: var(--primary-color);
         font-size: 1.8rem;
@@ -857,6 +886,8 @@
         content: '';
         height: 22px;
         width: 22px;
+        left: 3px;
+        bottom: 3px;
         border-radius: 50%;
         background-color: var(--text-color);
         transition: 0.4s;
@@ -938,17 +969,22 @@
 
     <!-- Модальное окно настроек -->
     <div class="settings-modal" id="settingsModal" role="dialog" aria-labelledby="settingsTitle" aria-modal="true">
-      <h3 class="settings-title" id="settingsTitle">
-        <i class="fas fa-sliders-h"></i> Настройки
-      </h3>
-      <div class="settings-option">
-        <label for="themeSwitch">
-          <i class="fas fa-moon"></i> Темная тема
-        </label>
-        <label class="toggle-switch">
-          <input type="checkbox" id="themeSwitch">
-          <span class="slider"></span>
-        </label>
+      <div class="settings-content">
+        <button class="settings-close" onclick="closeSettingsModal()">
+          <i class="fas fa-times"></i>
+        </button>
+        <h3 class="settings-title" id="settingsTitle">
+          <i class="fas fa-sliders-h"></i> Настройки
+        </h3>
+        <div class="settings-option">
+          <label for="themeSwitch">
+            <i class="fas fa-moon"></i> Темная тема
+          </label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="themeSwitch">
+            <span class="slider"></span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -971,71 +1007,22 @@
 
           <div class="model-dropdown" id="modelDropdown">
             <div class="model-dropdown-button" id="modelDropdownButton">
-              <span id="selectedModelText">Llama-3-8B-Instruct (Рекомендуется)</span>
+              <span id="selectedModelText">Qwen-3-4B-Instruct (Рекомендуется)</span>
               <i class="fas fa-chevron-down"></i>
             </div>
             <div class="model-dropdown-content" id="modelDropdownContent">
-              <div class="model-option selected" data-model="llama-3-8b">
+              <div class="model-option selected" data-model="qwen-3-4b">
                 <div class="model-option-header">
-                  <span>Llama-3-8B-Instruct</span>
-                  <span class="model-option-size">4.3GB</span>
+                  <span>Qwen-3-4B-Instruct</span>
+                  <span class="model-option-size">2.0GB</span>
                 </div>
                 <div class="model-option-desc">
-                  Мощная модель от Meta. Отличное качество ответов и понимание
-                  контекста.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">6GB VRAM</span>
-                  <span class="model-spec-tag">Высокое качество</span>
-                  <span class="model-spec-tag">Рекомендуется</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="mistral-7b">
-                <div class="model-option-header">
-                  <span>Mistral-7B-Instruct</span>
-                  <span class="model-option-size">3.8GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Быстрая и эффективная модель от Mistral AI. Хороший баланс скорости и
-                  качества.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">5GB VRAM</span>
-                  <span class="model-spec-tag">Быстрая</span>
-                  <span class="model-spec-tag">Высокое качество</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="phi-3-mini">
-                <div class="model-option-header">
-                  <span>Phi-3-Mini-4K</span>
-                  <span class="model-option-size">2.2GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Компактная модель от Microsoft. Идеальна для быстрых ответов и
-                  небольших задач.
+                  Лучшая компактная модель от Alibaba. Отличное качество при небольшом размере.
                 </div>
                 <div class="model-option-specs">
                   <span class="model-spec-tag">3GB VRAM</span>
                   <span class="model-spec-tag">Очень быстрая</span>
-                  <span class="model-spec-tag">Компактная</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="gemma-3n-4b">
-                <div class="model-option-header">
-                  <span>Gemma-3n-4B-Instruct</span>
-                  <span class="model-option-size">2.5GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Компактная модель Google с адаптивной активацией параметров. 140+
-                  языков.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">3.5GB VRAM</span>
-                  <span class="model-spec-tag">Быстрая</span>
-                  <span class="model-spec-tag">Многоязычная</span>
+                  <span class="model-spec-tag">Рекомендуется</span>
                 </div>
               </div>
 
@@ -1054,14 +1041,87 @@
                 </div>
               </div>
 
+              <div class="model-option" data-model="llama-3-8b">
+                <div class="model-option-header">
+                  <span>Llama-3-8B-Instruct</span>
+                  <span class="model-option-size">4.3GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Мощная модель от Meta. Отличное качество ответов и понимание контекста.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">6GB VRAM</span>
+                  <span class="model-spec-tag">Высокое качество</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="mistral-7b">
+                <div class="model-option-header">
+                  <span>Mistral-7B-Instruct</span>
+                  <span class="model-option-size">3.8GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Быстрая и эффективная модель от Mistral AI. Хороший баланс скорости и качества.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">5GB VRAM</span>
+                  <span class="model-spec-tag">Быстрая</span>
+                  <span class="model-spec-tag">Высокое качество</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="phi-3-mini">
+                <div class="model-option-header">
+                  <span>Phi-3-Mini-4K</span>
+                  <span class="model-option-size">2.2GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Компактная модель от Microsoft. Идеальна для быстрых ответов и небольших задач.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">3GB VRAM</span>
+                  <span class="model-spec-tag">Очень быстрая</span>
+                  <span class="model-spec-tag">Компактная</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="gemma-3n-4b">
+                <div class="model-option-header">
+                  <span>Gemma-3n-4B-Instruct</span>
+                  <span class="model-option-size">2.5GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Компактная модель Google с адаптивной активацией параметров. 140+ языков.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">3.5GB VRAM</span>
+                  <span class="model-spec-tag">Быстрая</span>
+                  <span class="model-spec-tag">Многоязычная</span>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="smollm2-1.7b">
+                <div class="model-option-header">
+                  <span>SmolLM2-1.7B</span>
+                  <span class="model-option-size">1.0GB</span>
+                </div>
+                <div class="model-option-desc">
+                  Ультра-компактная модель. Минимальные требования к памяти.
+                </div>
+                <div class="model-option-specs">
+                  <span class="model-spec-tag">2GB VRAM</span>
+                  <span class="model-spec-tag">Мгновенная</span>
+                  <span class="model-spec-tag">Ультра-компактная</span>
+                </div>
+              </div>
+
               <div class="model-option" data-model="demo">
                 <div class="model-option-header">
                   <span>Демо-режим</span>
                   <span class="model-option-size">0MB</span>
                 </div>
                 <div class="model-option-desc">
-                  Демонстрационный режим без загрузки модели. Показывает примеры
-                  интерфейса.
+                  Демонстрационный режим без загрузки модели. Показывает примеры интерфейса.
                 </div>
                 <div class="model-option-specs">
                   <span class="model-spec-tag">Без загрузки</span>
@@ -1335,7 +1395,7 @@
           this.isModelLoading = false;
           this.currentModel = null;
           this.conversationHistory = [];
-          this.selectedModelId = 'llama-3-8b'; // По умолчанию выбираем Llama 3
+          this.selectedModelId = 'qwen-3-4b'; // По умолчанию выбираем Qwen 4B (лучшая модель)
 
           this.initializeElements();
           this.setupEventListeners();
@@ -1412,6 +1472,29 @@
 
         initializeModels() {
           this.models = {
+            'qwen-3-4b': {
+              id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+              name: 'Qwen-3-4B-Instruct',
+              description:
+                'Лучшая компактная модель от Alibaba. Отличное качество при небольшом размере.',
+              size: '2.0GB',
+              vramRequired: '3GB',
+              speed: 'Очень быстрая',
+              quality: 'Очень высокое',
+              recommended: true,
+              toolUse: true,
+            },
+            'qwen-3-8b': {
+              id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
+              name: 'Qwen-3-8B-Instruct',
+              description:
+                'Многоязычная модель от Alibaba с отличным пониманием контекста.',
+              size: '4.5GB',
+              vramRequired: '6GB',
+              speed: 'Быстрая',
+              quality: 'Очень высокое',
+              toolUse: true,
+            },
             'llama-3-8b': {
               id: 'Llama-3-8B-Instruct-q4f32_1-MLC',
               name: 'Llama-3-8B-Instruct',
@@ -1421,7 +1504,6 @@
               vramRequired: '6GB',
               speed: 'Средняя',
               quality: 'Высокое',
-              recommended: true,
               toolUse: true,
             },
             'mistral-7b': {
@@ -1455,19 +1537,18 @@
               vramRequired: '3.5GB',
               speed: 'Быстрая',
               quality: 'Высокое',
-              recommended: true,
               toolUse: true,
             },
-            'qwen-3-8b': {
-              id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
-              name: 'Qwen-3-8B-Instruct',
+            'smollm2-1.7b': {
+              id: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC',
+              name: 'SmolLM2-1.7B',
               description:
-                'Многоязычная модель от Alibaba с отличным пониманием контекста.',
-              size: '4.5GB',
-              vramRequired: '6GB',
-              speed: 'Быстрая',
-              quality: 'Очень высокое',
-              toolUse: true,
+                'Ультра-компактная модель. Минимальные требования к памяти.',
+              size: '1.0GB',
+              vramRequired: '2GB',
+              speed: 'Мгновенная',
+              quality: 'Базовое',
+              toolUse: false,
             },
             demo: {
               id: null,
@@ -1598,9 +1679,15 @@
 
             // Переключаемся на демо-режим при ошибке
             setTimeout(() => {
-              this.modelSelect.value = 'demo';
-              this.handleModelChange();
-              this.loadSelectedModel();
+              this.selectedModelId = 'demo';
+              this.currentModel = 'demo';
+              // Обновляем UI dropdown
+              const demoOption = document.querySelector('[data-model="demo"]');
+              if (demoOption) {
+                this.selectModel(demoOption);
+              }
+              this.setStatus('ready', 'Демо-режим активирован из-за ошибки загрузки');
+              this.enableChat();
             }, 3000);
           } finally {
             this.isModelLoading = false;
@@ -1831,6 +1918,10 @@
 
       window.clearChat = function () {
         window.webLLMChat.clearChat();
+      };
+
+      window.closeSettingsModal = function () {
+        document.getElementById('settingsModal').classList.remove('show');
       };
 
       // Инициализация приложения
