@@ -27,6 +27,9 @@
     История изменений:
     2025-01-26: Первоначальная версия WebLLM Chat
     2025-12-12: Добавлен Tool Calling с 6 API интеграциями
+    2025-12-12: Добавлена история чатов с хранением в localStorage
+              Интерфейс переделан в стиле ChatGPT
+              Настройки модели скрыты в выдвижную панель
   -->
 
     <style>
@@ -139,7 +142,258 @@
         overflow: hidden;
       }
 
+      /* Chat History Sidebar (ChatGPT style) */
+      .chat-history-sidebar {
+        width: 260px;
+        background: #171717;
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        transition: transform 0.3s ease, width 0.3s ease;
+      }
+
+      .chat-history-sidebar.collapsed {
+        width: 0;
+        transform: translateX(-260px);
+        overflow: hidden;
+      }
+
+      .sidebar-header {
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .new-chat-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-color);
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+      }
+
+      .new-chat-btn:hover {
+        background: var(--chat-bg);
+      }
+
+      .toggle-sidebar-btn {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: 8px;
+        margin-left: 8px;
+        transition: all 0.2s ease;
+      }
+
+      .toggle-sidebar-btn:hover {
+        background: var(--chat-bg);
+        color: var(--text-color);
+      }
+
+      .chat-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+      }
+
+      .chat-list-item {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: 4px;
+        position: relative;
+      }
+
+      .chat-list-item:hover {
+        background: var(--chat-bg);
+      }
+
+      .chat-list-item.active {
+        background: var(--chat-bg);
+      }
+
+      .chat-list-item .chat-icon {
+        width: 20px;
+        margin-right: 12px;
+        color: var(--text-secondary);
+      }
+
+      .chat-list-item .chat-title {
+        flex: 1;
+        font-size: 0.9rem;
+        color: var(--text-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .chat-list-item .chat-delete {
+        opacity: 0;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+      }
+
+      .chat-list-item:hover .chat-delete {
+        opacity: 1;
+      }
+
+      .chat-list-item .chat-delete:hover {
+        background: var(--border-color);
+        color: var(--error-color);
+      }
+
+      .sidebar-footer {
+        padding: 12px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .sidebar-footer-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        color: var(--text-color);
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+      }
+
+      .sidebar-footer-btn:hover {
+        background: var(--chat-bg);
+      }
+
+      .sidebar-footer-btn i {
+        width: 20px;
+        color: var(--text-secondary);
+      }
+
+      /* Model Settings Sidebar (hidden by default) */
+      .model-sidebar {
+        width: 320px;
+        background: var(--card-bg);
+        border-left: 1px solid var(--border-color);
+        padding: 15px;
+        overflow-y: auto;
+        min-height: 0;
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        z-index: 200;
+      }
+
+      .model-sidebar.show {
+        transform: translateX(0);
+      }
+
+      .model-sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        z-index: 199;
+      }
+
+      .model-sidebar-overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .model-sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .model-sidebar-close {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+      }
+
+      .model-sidebar-close:hover {
+        background: var(--bg-color);
+        color: var(--text-color);
+      }
+
+      /* Expand sidebar button (when collapsed) */
+      .expand-sidebar-btn {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        width: 40px;
+        height: 40px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-color);
+        cursor: pointer;
+        border-radius: 8px;
+        z-index: 100;
+        transition: all 0.2s ease;
+      }
+
+      .expand-sidebar-btn.show {
+        display: flex;
+      }
+
+      .expand-sidebar-btn:hover {
+        background: var(--chat-bg);
+      }
+
+      /* Old sidebar (keep for compatibility but hide) */
       .sidebar {
+        display: none;
         width: 300px;
         background: var(--card-bg);
         border-right: 1px solid var(--border-color);
@@ -893,8 +1147,81 @@
         border-left: 4px solid var(--primary-color);
       }
 
-      /* Кнопка настроек */
+      /* Chat header */
+      .chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--card-bg);
+      }
+
+      .chat-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .chat-header-model {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        background: var(--bg-color);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .chat-header-model:hover {
+        background: var(--chat-bg);
+      }
+
+      .chat-header-model .model-name {
+        font-size: 0.95rem;
+        font-weight: 500;
+      }
+
+      .chat-header-model .model-status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--warning-color);
+      }
+
+      .chat-header-model .model-status.ready {
+        background: var(--success-color);
+      }
+
+      .chat-header-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .chat-header-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+      }
+
+      .chat-header-btn:hover {
+        background: var(--bg-color);
+        color: var(--text-color);
+      }
+
+      /* Hide old settings button */
       .settings-button {
+        display: none;
         position: fixed;
         top: 20px;
         right: 20px;
@@ -903,7 +1230,6 @@
         background: var(--primary-color);
         color: white;
         border-radius: 50%;
-        display: flex;
         align-items: center;
         justify-content: center;
         font-size: 1.5rem;
@@ -1041,14 +1367,25 @@
           flex-direction: column;
         }
 
-        .sidebar {
+        .chat-history-sidebar {
+          position: fixed;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          z-index: 300;
+          width: 280px;
+        }
+
+        .chat-history-sidebar.collapsed {
+          transform: translateX(-280px);
+        }
+
+        .model-sidebar {
           width: 100%;
-          max-height: 180px;
-          border-right: none;
-          border-bottom: 1px solid var(--border-color);
-          padding: 10px;
-          overflow-y: auto;
-          flex-shrink: 0;
+        }
+
+        .sidebar {
+          display: none;
         }
 
         .chat-messages {
@@ -1089,14 +1426,31 @@
         .setting-item {
           margin-bottom: 10px;
         }
+
+        .expand-sidebar-btn {
+          top: auto;
+          bottom: 90px;
+          left: 12px;
+        }
+
+        .chat-header {
+          padding: 10px 12px;
+        }
+
+        .chat-header-model .model-name {
+          max-width: 120px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
       }
     </style>
   </head>
   <body>
-    <!-- Кнопка настроек -->
-    <div class="settings-button" title="Настройки" tabindex="0">
-      <i class="fas fa-cog"></i>
-    </div>
+    <!-- Кнопка расширения sidebar -->
+    <button class="expand-sidebar-btn" id="expandSidebarBtn" title="Открыть историю чатов">
+      <i class="fas fa-bars"></i>
+    </button>
 
     <!-- Модальное окно настроек -->
     <div class="settings-modal" id="settingsModal" role="dialog" aria-labelledby="settingsTitle" aria-modal="true">
@@ -1119,304 +1473,346 @@
       </div>
     </div>
 
-    <div class="main-container">
-      <div class="sidebar">
-        <!-- App Header -->
-        <div class="app-header-section">
-          <h2 class="app-title">
-            <i class="fas fa-robot"></i>
-            WebLLM Chat
-          </h2>
-          <p class="app-subtitle">Локальный ИИ в браузере</p>
+    <!-- Model Settings Sidebar Overlay -->
+    <div class="model-sidebar-overlay" id="modelSidebarOverlay"></div>
+
+    <!-- Model Settings Sidebar (скрыта по умолчанию) -->
+    <div class="model-sidebar" id="modelSidebar">
+      <div class="model-sidebar-header">
+        <h3 class="section-title" style="margin: 0;">
+          <i class="fas fa-cog"></i>
+          Настройки модели
+        </h3>
+        <button class="model-sidebar-close" id="closeModelSidebar">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="model-section">
+        <h4 class="section-title">
+          <i class="fas fa-microchip"></i>
+          Выбор модели
+        </h4>
+
+        <div class="model-dropdown" id="modelDropdown">
+          <div class="model-dropdown-button" id="modelDropdownButton">
+            <span id="selectedModelText">Qwen-3-4B-Instruct (Рекомендуется)</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="model-dropdown-content" id="modelDropdownContent">
+            <div class="model-option selected" data-model="qwen-3-4b">
+              <div class="model-option-header">
+                <span>Qwen-3-4B-Instruct</span>
+                <span class="model-option-size">2.0GB</span>
+              </div>
+              <div class="model-option-desc">
+                Лучшая компактная модель от Alibaba. Отличное качество при небольшом размере.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">3GB VRAM</span>
+                <span class="model-spec-tag">Очень быстрая</span>
+                <span class="model-spec-tag">Рекомендуется</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="qwen-3-8b">
+              <div class="model-option-header">
+                <span>Qwen-3-8B-Instruct</span>
+                <span class="model-option-size">4.5GB</span>
+              </div>
+              <div class="model-option-desc">
+                Многоязычная модель от Alibaba с отличным пониманием контекста.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">6GB VRAM</span>
+                <span class="model-spec-tag">Быстрая</span>
+                <span class="model-spec-tag">Многоязычная</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="llama-3-8b">
+              <div class="model-option-header">
+                <span>Llama-3-8B-Instruct</span>
+                <span class="model-option-size">4.3GB</span>
+              </div>
+              <div class="model-option-desc">
+                Мощная модель от Meta. Отличное качество ответов и понимание контекста.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">6GB VRAM</span>
+                <span class="model-spec-tag">Высокое качество</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="mistral-7b">
+              <div class="model-option-header">
+                <span>Mistral-7B-Instruct</span>
+                <span class="model-option-size">3.8GB</span>
+              </div>
+              <div class="model-option-desc">
+                Быстрая и эффективная модель от Mistral AI. Хороший баланс скорости и качества.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">5GB VRAM</span>
+                <span class="model-spec-tag">Быстрая</span>
+                <span class="model-spec-tag">Высокое качество</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="phi-3-mini">
+              <div class="model-option-header">
+                <span>Phi-3-Mini-4K</span>
+                <span class="model-option-size">2.2GB</span>
+              </div>
+              <div class="model-option-desc">
+                Компактная модель от Microsoft. Идеальна для быстрых ответов и небольших задач.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">3GB VRAM</span>
+                <span class="model-spec-tag">Очень быстрая</span>
+                <span class="model-spec-tag">Компактная</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="gemma-3n-4b">
+              <div class="model-option-header">
+                <span>Gemma-3n-4B-Instruct</span>
+                <span class="model-option-size">2.5GB</span>
+              </div>
+              <div class="model-option-desc">
+                Компактная модель Google с адаптивной активацией параметров. 140+ языков.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">3.5GB VRAM</span>
+                <span class="model-spec-tag">Быстрая</span>
+                <span class="model-spec-tag">Многоязычная</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="smollm2-1.7b">
+              <div class="model-option-header">
+                <span>SmolLM2-1.7B</span>
+                <span class="model-option-size">1.0GB</span>
+              </div>
+              <div class="model-option-desc">
+                Ультра-компактная модель. Минимальные требования к памяти.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">2GB VRAM</span>
+                <span class="model-spec-tag">Мгновенная</span>
+                <span class="model-spec-tag">Ультра-компактная</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="demo">
+              <div class="model-option-header">
+                <span>Демо-режим</span>
+                <span class="model-option-size">0MB</span>
+              </div>
+              <div class="model-option-desc">
+                Демонстрационный режим без загрузки модели. Показывает примеры интерфейса.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">Без загрузки</span>
+                <span class="model-spec-tag">Мгновенная</span>
+                <span class="model-spec-tag">Тестирование UI</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="model-section">
+        <div class="status-indicator" id="statusIndicator">
+          <i class="fas fa-circle-notch fa-spin"></i>
+          <span>Инициализация...</span>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-text" id="progressText">Загрузка модели...</div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="action-btn" id="loadModelBtn" onclick="loadSelectedModel()">
+            <i class="fas fa-download"></i> Загрузить
+          </button>
+        </div>
+      </div>
+
+      <!-- Инструменты (Tool Calling) -->
+      <div class="accordion-item">
+        <div class="accordion-header active" onclick="toggleAccordion('toolsSettings')">
           <h3 class="section-title">
-            <i class="fas fa-microchip"></i>
-            Выбор модели
+            <i class="fas fa-tools"></i>
+            Инструменты
           </h3>
-
-          <div class="model-dropdown" id="modelDropdown">
-            <div class="model-dropdown-button" id="modelDropdownButton">
-              <span id="selectedModelText">Qwen-3-4B-Instruct (Рекомендуется)</span>
-              <i class="fas fa-chevron-down"></i>
-            </div>
-            <div class="model-dropdown-content" id="modelDropdownContent">
-              <div class="model-option selected" data-model="qwen-3-4b">
-                <div class="model-option-header">
-                  <span>Qwen-3-4B-Instruct</span>
-                  <span class="model-option-size">2.0GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Лучшая компактная модель от Alibaba. Отличное качество при небольшом размере.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">3GB VRAM</span>
-                  <span class="model-spec-tag">Очень быстрая</span>
-                  <span class="model-spec-tag">Рекомендуется</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="qwen-3-8b">
-                <div class="model-option-header">
-                  <span>Qwen-3-8B-Instruct</span>
-                  <span class="model-option-size">4.5GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Многоязычная модель от Alibaba с отличным пониманием контекста.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">6GB VRAM</span>
-                  <span class="model-spec-tag">Быстрая</span>
-                  <span class="model-spec-tag">Многоязычная</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="llama-3-8b">
-                <div class="model-option-header">
-                  <span>Llama-3-8B-Instruct</span>
-                  <span class="model-option-size">4.3GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Мощная модель от Meta. Отличное качество ответов и понимание контекста.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">6GB VRAM</span>
-                  <span class="model-spec-tag">Высокое качество</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="mistral-7b">
-                <div class="model-option-header">
-                  <span>Mistral-7B-Instruct</span>
-                  <span class="model-option-size">3.8GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Быстрая и эффективная модель от Mistral AI. Хороший баланс скорости и качества.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">5GB VRAM</span>
-                  <span class="model-spec-tag">Быстрая</span>
-                  <span class="model-spec-tag">Высокое качество</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="phi-3-mini">
-                <div class="model-option-header">
-                  <span>Phi-3-Mini-4K</span>
-                  <span class="model-option-size">2.2GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Компактная модель от Microsoft. Идеальна для быстрых ответов и небольших задач.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">3GB VRAM</span>
-                  <span class="model-spec-tag">Очень быстрая</span>
-                  <span class="model-spec-tag">Компактная</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="gemma-3n-4b">
-                <div class="model-option-header">
-                  <span>Gemma-3n-4B-Instruct</span>
-                  <span class="model-option-size">2.5GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Компактная модель Google с адаптивной активацией параметров. 140+ языков.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">3.5GB VRAM</span>
-                  <span class="model-spec-tag">Быстрая</span>
-                  <span class="model-spec-tag">Многоязычная</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="smollm2-1.7b">
-                <div class="model-option-header">
-                  <span>SmolLM2-1.7B</span>
-                  <span class="model-option-size">1.0GB</span>
-                </div>
-                <div class="model-option-desc">
-                  Ультра-компактная модель. Минимальные требования к памяти.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">2GB VRAM</span>
-                  <span class="model-spec-tag">Мгновенная</span>
-                  <span class="model-spec-tag">Ультра-компактная</span>
-                </div>
-              </div>
-
-              <div class="model-option" data-model="demo">
-                <div class="model-option-header">
-                  <span>Демо-режим</span>
-                  <span class="model-option-size">0MB</span>
-                </div>
-                <div class="model-option-desc">
-                  Демонстрационный режим без загрузки модели. Показывает примеры интерфейса.
-                </div>
-                <div class="model-option-specs">
-                  <span class="model-spec-tag">Без загрузки</span>
-                  <span class="model-spec-tag">Мгновенная</span>
-                  <span class="model-spec-tag">Тестирование UI</span>
-                </div>
-              </div>
-            </div>
+          <i class="fas fa-chevron-down accordion-icon"></i>
+        </div>
+        <div id="toolsSettings" class="accordion-content">
+          <div class="tools-grid" id="toolsGrid">
+            <label class="tool-item active" data-tool="wikipedia">
+              <input type="checkbox" checked>
+              <span class="tool-icon" style="background: #667eea; color: white;">
+                <i class="fab fa-wikipedia-w"></i>
+              </span>
+              <span class="tool-name">Wikipedia</span>
+              <span class="tool-check"></span>
+            </label>
+            <label class="tool-item active" data-tool="weather">
+              <input type="checkbox" checked>
+              <span class="tool-icon" style="background: #3498db; color: white;">
+                <i class="fas fa-cloud-sun"></i>
+              </span>
+              <span class="tool-name">Погода</span>
+              <span class="tool-check"></span>
+            </label>
+            <label class="tool-item active" data-tool="currency">
+              <input type="checkbox" checked>
+              <span class="tool-icon" style="background: #27ae60; color: white;">
+                <i class="fas fa-dollar-sign"></i>
+              </span>
+              <span class="tool-name">Валюты</span>
+              <span class="tool-check"></span>
+            </label>
+            <label class="tool-item active" data-tool="crypto">
+              <input type="checkbox" checked>
+              <span class="tool-icon" style="background: #f7931a; color: white;">
+                <i class="fab fa-bitcoin"></i>
+              </span>
+              <span class="tool-name">Крипто</span>
+              <span class="tool-check"></span>
+            </label>
+            <label class="tool-item active" data-tool="music">
+              <input type="checkbox" checked>
+              <span class="tool-icon" style="background: #9b59b6; color: white;">
+                <i class="fas fa-music"></i>
+              </span>
+              <span class="tool-name">Музыка</span>
+              <span class="tool-check"></span>
+            </label>
+            <label class="tool-item active" data-tool="sports">
+              <input type="checkbox" checked>
+              <span class="tool-icon" style="background: #e74c3c; color: white;">
+                <i class="fas fa-futbol"></i>
+              </span>
+              <span class="tool-name">Спорт</span>
+              <span class="tool-check"></span>
+            </label>
           </div>
-
-          <div class="status-indicator" id="statusIndicator">
-            <i class="fas fa-circle-notch fa-spin"></i>
-            <span>Инициализация...</span>
-          </div>
-
-          <div class="progress-container" id="progressContainer">
-            <div class="progress-bar">
-              <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <div class="progress-text" id="progressText">Загрузка модели...</div>
-          </div>
-
-          <div class="action-buttons">
-            <button class="action-btn" id="loadModelBtn" onclick="loadSelectedModel()">
-              <i class="fas fa-download"></i> Загрузить
-            </button>
-            <button class="action-btn" id="clearChatBtn" onclick="clearChat()">
-              <i class="fas fa-trash"></i> Очистить
-            </button>
+          <div class="tools-info">
+            <i class="fas fa-info-circle"></i>
+            ИИ автоматически вызывает инструменты для получения актуальных данных
           </div>
         </div>
+      </div>
 
-        <div class="settings-section">
-          <!-- Инструменты (Tool Calling) -->
-          <div class="accordion-item">
-            <div class="accordion-header active" onclick="toggleAccordion('toolsSettings')">
-              <h3 class="section-title">
-                <i class="fas fa-tools"></i>
-                Инструменты
-              </h3>
-              <i class="fas fa-chevron-down accordion-icon"></i>
-            </div>
-            <div id="toolsSettings" class="accordion-content">
-              <div class="tools-grid" id="toolsGrid">
-                <label class="tool-item active" data-tool="wikipedia">
-                  <input type="checkbox" checked>
-                  <span class="tool-icon" style="background: #667eea; color: white;">
-                    <i class="fab fa-wikipedia-w"></i>
-                  </span>
-                  <span class="tool-name">Wikipedia</span>
-                  <span class="tool-check"></span>
-                </label>
-                <label class="tool-item active" data-tool="weather">
-                  <input type="checkbox" checked>
-                  <span class="tool-icon" style="background: #3498db; color: white;">
-                    <i class="fas fa-cloud-sun"></i>
-                  </span>
-                  <span class="tool-name">Погода</span>
-                  <span class="tool-check"></span>
-                </label>
-                <label class="tool-item active" data-tool="currency">
-                  <input type="checkbox" checked>
-                  <span class="tool-icon" style="background: #27ae60; color: white;">
-                    <i class="fas fa-dollar-sign"></i>
-                  </span>
-                  <span class="tool-name">Валюты</span>
-                  <span class="tool-check"></span>
-                </label>
-                <label class="tool-item active" data-tool="crypto">
-                  <input type="checkbox" checked>
-                  <span class="tool-icon" style="background: #f7931a; color: white;">
-                    <i class="fab fa-bitcoin"></i>
-                  </span>
-                  <span class="tool-name">Крипто</span>
-                  <span class="tool-check"></span>
-                </label>
-                <label class="tool-item active" data-tool="music">
-                  <input type="checkbox" checked>
-                  <span class="tool-icon" style="background: #9b59b6; color: white;">
-                    <i class="fas fa-music"></i>
-                  </span>
-                  <span class="tool-name">Музыка</span>
-                  <span class="tool-check"></span>
-                </label>
-                <label class="tool-item active" data-tool="sports">
-                  <input type="checkbox" checked>
-                  <span class="tool-icon" style="background: #e74c3c; color: white;">
-                    <i class="fas fa-futbol"></i>
-                  </span>
-                  <span class="tool-name">Спорт</span>
-                  <span class="tool-check"></span>
-                </label>
-              </div>
-              <div class="tools-info">
-                <i class="fas fa-info-circle"></i>
-                ИИ автоматически вызывает инструменты для получения актуальных данных
-              </div>
-            </div>
+      <!-- Базовые настройки -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion('basicSettings')">
+          <h3 class="section-title">
+            <i class="fas fa-sliders-h"></i>
+            Параметры генерации
+          </h3>
+          <i class="fas fa-chevron-down accordion-icon"></i>
+        </div>
+        <div id="basicSettings" class="accordion-content collapsed">
+          <div class="setting-item">
+            <label for="temperature">Temperature (креативность):</label>
+            <input
+              type="range"
+              id="temperature"
+              class="setting-input"
+              min="0"
+              max="2"
+              step="0.1"
+              value="0.7"
+            />
+            <small style="color: var(--text-secondary)"
+              >Текущее: <span id="temperatureValue">0.7</span></small
+            >
           </div>
 
-          <!-- Базовые настройки -->
-          <div class="accordion-item">
-            <div class="accordion-header" onclick="toggleAccordion('basicSettings')">
-              <h3 class="section-title">
-                <i class="fas fa-cog"></i>
-                Настройки
-              </h3>
-              <i class="fas fa-chevron-down accordion-icon"></i>
-            </div>
-            <div id="basicSettings" class="accordion-content collapsed">
-              <div class="setting-item">
-                <label for="temperature">Temperature (креативность):</label>
-                <input
-                  type="range"
-                  id="temperature"
-                  class="setting-input"
-                  min="0"
-                  max="2"
-                  step="0.1"
-                  value="0.7"
-                />
-                <small style="color: var(--text-secondary)"
-                  >Текущее: <span id="temperatureValue">0.7</span></small
-                >
-              </div>
-
-              <div class="setting-item">
-                <label for="maxTokens">Максимум токенов:</label>
-                <input
-                  type="range"
-                  id="maxTokens"
-                  class="setting-input"
-                  min="50"
-                  max="2048"
-                  step="50"
-                  value="512"
-                />
-                <small style="color: var(--text-secondary)"
-                  >Текущее: <span id="maxTokensValue">512</span></small
-                >
-              </div>
-
-              <div class="setting-item">
-                <label for="systemPrompt">Системный промпт:</label>
-                <textarea
-                  id="systemPrompt"
-                  class="setting-input"
-                  rows="3"
-                  placeholder="Ты - полезный ИИ-ассистент..."
-                >
-Ты - полезный ИИ-ассистент. Отвечай кратко и по делу.</textarea
-                >
-              </div>
-            </div>
+          <div class="setting-item">
+            <label for="maxTokens">Максимум токенов:</label>
+            <input
+              type="range"
+              id="maxTokens"
+              class="setting-input"
+              min="50"
+              max="2048"
+              step="50"
+              value="512"
+            />
+            <small style="color: var(--text-secondary)"
+              >Текущее: <span id="maxTokensValue">512</span></small
+            >
           </div>
 
-          <button class="requirements-btn" onclick="showRequirements()">
-            <i class="fas fa-info-circle"></i>
-            Системные требования
+          <div class="setting-item">
+            <label for="systemPrompt">Системный промпт:</label>
+            <textarea
+              id="systemPrompt"
+              class="setting-input"
+              rows="3"
+              placeholder="Ты - полезный ИИ-ассистент..."
+            >Ты - полезный ИИ-ассистент. Отвечай кратко и по делу.</textarea>
+          </div>
+        </div>
+      </div>
+
+      <button class="requirements-btn" onclick="showRequirements()">
+        <i class="fas fa-info-circle"></i>
+        Системные требования
+      </button>
+    </div>
+
+    <div class="main-container">
+      <!-- Chat History Sidebar -->
+      <div class="chat-history-sidebar" id="chatHistorySidebar">
+        <div class="sidebar-header">
+          <button class="new-chat-btn" id="newChatBtn">
+            <i class="fas fa-plus"></i>
+            <span>Новый чат</span>
+          </button>
+          <button class="toggle-sidebar-btn" id="toggleSidebarBtn" title="Свернуть">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+        </div>
+
+        <div class="chat-list" id="chatList">
+          <!-- Chat history items will be rendered here -->
+        </div>
+
+        <div class="sidebar-footer">
+          <button class="sidebar-footer-btn" id="openSettingsBtn">
+            <i class="fas fa-cog"></i>
+            <span>Настройки модели</span>
+          </button>
+          <button class="sidebar-footer-btn" id="clearAllChatsBtn">
+            <i class="fas fa-trash-alt"></i>
+            <span>Очистить историю</span>
           </button>
         </div>
       </div>
 
       <div class="chat-container">
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="chat-header-model" id="chatHeaderModel" title="Открыть настройки модели">
+              <span class="model-status" id="modelStatusDot"></span>
+              <span class="model-name" id="headerModelName">WebLLM Chat</span>
+              <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: var(--text-secondary);"></i>
+            </div>
+          </div>
+          <div class="chat-header-right">
+            <button class="chat-header-btn" id="clearCurrentChatBtn" title="Очистить чат">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
         <div class="chat-messages" id="chatMessages">
           <div class="welcome-message" id="welcomeMessage">
             <i class="fas fa-comments"></i>
@@ -2181,6 +2577,181 @@
       // Глобальный экземпляр ToolManager
       window.toolManager = new ToolManager();
 
+      /**
+       * ChatHistoryManager - Менеджер истории чатов с хранением в localStorage
+       */
+      class ChatHistoryManager {
+        constructor() {
+          this.STORAGE_KEY = 'webllm_chat_history';
+          this.currentChatId = null;
+          this.chats = this.loadChats();
+        }
+
+        /**
+         * Загрузка чатов из localStorage
+         */
+        loadChats() {
+          try {
+            const stored = localStorage.getItem(this.STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+          } catch (e) {
+            console.error('Ошибка загрузки истории чатов:', e);
+            return [];
+          }
+        }
+
+        /**
+         * Сохранение чатов в localStorage
+         */
+        saveChats() {
+          try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.chats));
+          } catch (e) {
+            console.error('Ошибка сохранения истории чатов:', e);
+          }
+        }
+
+        /**
+         * Создание нового чата
+         */
+        createNewChat() {
+          const chatId = 'chat_' + Date.now();
+          const chat = {
+            id: chatId,
+            title: 'Новый чат',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            messages: []
+          };
+          this.chats.unshift(chat);
+          this.currentChatId = chatId;
+          this.saveChats();
+          return chat;
+        }
+
+        /**
+         * Получение текущего чата
+         */
+        getCurrentChat() {
+          if (!this.currentChatId) {
+            return this.createNewChat();
+          }
+          const chat = this.chats.find(c => c.id === this.currentChatId);
+          if (!chat) {
+            return this.createNewChat();
+          }
+          return chat;
+        }
+
+        /**
+         * Переключение на чат
+         */
+        switchToChat(chatId) {
+          const chat = this.chats.find(c => c.id === chatId);
+          if (chat) {
+            this.currentChatId = chatId;
+            return chat;
+          }
+          return null;
+        }
+
+        /**
+         * Добавление сообщения в текущий чат
+         */
+        addMessage(role, content) {
+          const chat = this.getCurrentChat();
+          const message = {
+            role,
+            content,
+            timestamp: new Date().toISOString()
+          };
+          chat.messages.push(message);
+          chat.updatedAt = new Date().toISOString();
+
+          // Обновляем название чата по первому сообщению пользователя
+          if (role === 'user' && chat.messages.filter(m => m.role === 'user').length === 1) {
+            chat.title = content.substring(0, 40) + (content.length > 40 ? '...' : '');
+          }
+
+          // Перемещаем чат в начало списка
+          const index = this.chats.findIndex(c => c.id === chat.id);
+          if (index > 0) {
+            this.chats.splice(index, 1);
+            this.chats.unshift(chat);
+          }
+
+          this.saveChats();
+          return message;
+        }
+
+        /**
+         * Удаление чата
+         */
+        deleteChat(chatId) {
+          const index = this.chats.findIndex(c => c.id === chatId);
+          if (index !== -1) {
+            this.chats.splice(index, 1);
+            this.saveChats();
+
+            // Если удалили текущий чат, переключаемся на первый или создаём новый
+            if (this.currentChatId === chatId) {
+              if (this.chats.length > 0) {
+                this.currentChatId = this.chats[0].id;
+              } else {
+                this.createNewChat();
+              }
+            }
+            return true;
+          }
+          return false;
+        }
+
+        /**
+         * Очистка всех чатов
+         */
+        clearAllChats() {
+          this.chats = [];
+          this.currentChatId = null;
+          this.saveChats();
+          this.createNewChat();
+        }
+
+        /**
+         * Очистка текущего чата (только сообщения)
+         */
+        clearCurrentChat() {
+          const chat = this.getCurrentChat();
+          chat.messages = [];
+          chat.title = 'Новый чат';
+          chat.updatedAt = new Date().toISOString();
+          this.saveChats();
+        }
+
+        /**
+         * Получение списка чатов для отображения
+         */
+        getChatList() {
+          return this.chats.map(chat => ({
+            id: chat.id,
+            title: chat.title,
+            updatedAt: chat.updatedAt,
+            messageCount: chat.messages.length,
+            isActive: chat.id === this.currentChatId
+          }));
+        }
+
+        /**
+         * Получение сообщений текущего чата
+         */
+        getCurrentMessages() {
+          const chat = this.getCurrentChat();
+          return chat.messages;
+        }
+      }
+
+      // Глобальный экземпляр ChatHistoryManager
+      window.chatHistoryManager = new ChatHistoryManager();
+
       // WebLLM Chat Application
       // Импорт WebLLM
       import * as webllm from 'https://esm.run/@mlc-ai/web-llm';
@@ -2591,6 +3162,14 @@
 
           this.statusIndicator.className = `status-indicator status-${type}`;
           this.statusIndicator.innerHTML = `<i class="${icon[type]}"></i><span>${message}</span>`;
+
+          // Обновляем статус в header
+          if (window.updateHeaderModelStatus) {
+            const modelName = this.currentModel && this.models[this.currentModel]
+              ? this.models[this.currentModel].name
+              : 'WebLLM Chat';
+            window.updateHeaderModelStatus(modelName, type === 'ready');
+          }
         }
 
         showProgress() {
@@ -2834,7 +3413,7 @@
           return mapping[toolName] || toolName;
         }
 
-        addMessage(role, content) {
+        addMessage(role, content, saveToHistory = true) {
           const messageDiv = document.createElement('div');
           messageDiv.className = `message ${role}`;
 
@@ -2869,6 +3448,16 @@
 
           this.chatMessages.appendChild(messageDiv);
           this.scrollToBottom();
+
+          // Сохраняем сообщение в историю чатов (только user и ai)
+          if (saveToHistory && (role === 'user' || role === 'ai')) {
+            const historyRole = role === 'ai' ? 'assistant' : role;
+            window.chatHistoryManager.addMessage(historyRole, content);
+            // Обновляем список чатов
+            if (window.renderChatList) {
+              window.renderChatList();
+            }
+          }
         }
 
         formatMessage(content) {
@@ -2900,6 +3489,14 @@
           this.chatMessages.appendChild(this.welcomeMessage);
           this.chatMessages.appendChild(this.typingIndicator);
           this.welcomeMessage.style.display = 'block';
+
+          // Очищаем текущий чат в истории
+          if (window.chatHistoryManager) {
+            window.chatHistoryManager.clearCurrentChat();
+          }
+          if (window.renderChatList) {
+            window.renderChatList();
+          }
         }
       }
 
@@ -2946,17 +3543,217 @@
         // Инициализируем настройки
         window.aiPagesSettings.init();
 
-        // Обработчики для кнопки настроек
-        const settingsButton = document.querySelector('.settings-button');
+        // ==== Элементы интерфейса ====
         const settingsModal = document.getElementById('settingsModal');
         const themeSwitch = document.getElementById('themeSwitch');
+        const modelSidebar = document.getElementById('modelSidebar');
+        const modelSidebarOverlay = document.getElementById('modelSidebarOverlay');
+        const chatHistorySidebar = document.getElementById('chatHistorySidebar');
+        const chatList = document.getElementById('chatList');
+        const expandSidebarBtn = document.getElementById('expandSidebarBtn');
+        const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
+        const clearAllChatsBtn = document.getElementById('clearAllChatsBtn');
+        const clearCurrentChatBtn = document.getElementById('clearCurrentChatBtn');
+        const chatHeaderModel = document.getElementById('chatHeaderModel');
+        const closeModelSidebar = document.getElementById('closeModelSidebar');
+        const headerModelName = document.getElementById('headerModelName');
+        const modelStatusDot = document.getElementById('modelStatusDot');
 
-        // Клик по кнопке настроек
-        settingsButton.addEventListener('click', () => {
-          settingsModal.classList.toggle('show');
+        // ==== Функции для управления UI ====
+
+        /**
+         * Рендеринг списка чатов
+         */
+        function renderChatList() {
+          const chats = window.chatHistoryManager.getChatList();
+          chatList.innerHTML = '';
+
+          if (chats.length === 0) {
+            chatList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">Нет сохранённых чатов</div>';
+            return;
+          }
+
+          chats.forEach(chat => {
+            const item = document.createElement('div');
+            item.className = `chat-list-item${chat.isActive ? ' active' : ''}`;
+            item.dataset.chatId = chat.id;
+            item.innerHTML = `
+              <i class="fas fa-comment chat-icon"></i>
+              <span class="chat-title">${escapeHtml(chat.title)}</span>
+              <button class="chat-delete" title="Удалить чат">
+                <i class="fas fa-trash"></i>
+              </button>
+            `;
+
+            // Клик для переключения на чат
+            item.addEventListener('click', (e) => {
+              if (!e.target.closest('.chat-delete')) {
+                switchToChat(chat.id);
+              }
+            });
+
+            // Клик для удаления чата
+            const deleteBtn = item.querySelector('.chat-delete');
+            deleteBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (confirm('Удалить этот чат?')) {
+                window.chatHistoryManager.deleteChat(chat.id);
+                renderChatList();
+                // Если удалили активный чат, загружаем текущий
+                if (chat.isActive) {
+                  loadCurrentChatMessages();
+                }
+              }
+            });
+
+            chatList.appendChild(item);
+          });
+        }
+
+        /**
+         * Escape HTML для безопасного рендеринга
+         */
+        function escapeHtml(text) {
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        }
+
+        /**
+         * Переключение на чат
+         */
+        function switchToChat(chatId) {
+          window.chatHistoryManager.switchToChat(chatId);
+          renderChatList();
+          loadCurrentChatMessages();
+
+          // На мобильных закрываем sidebar
+          if (window.innerWidth <= 768) {
+            chatHistorySidebar.classList.add('collapsed');
+            expandSidebarBtn.classList.add('show');
+          }
+        }
+
+        /**
+         * Загрузка сообщений текущего чата
+         */
+        function loadCurrentChatMessages() {
+          const chatMessages = document.getElementById('chatMessages');
+          const welcomeMessage = document.getElementById('welcomeMessage');
+          const typingIndicator = document.getElementById('typingIndicator');
+
+          // Очищаем сообщения
+          chatMessages.innerHTML = '';
+          chatMessages.appendChild(welcomeMessage);
+          chatMessages.appendChild(typingIndicator);
+
+          // Получаем сообщения текущего чата
+          const messages = window.chatHistoryManager.getCurrentMessages();
+
+          if (messages.length === 0) {
+            welcomeMessage.style.display = 'block';
+          } else {
+            welcomeMessage.style.display = 'none';
+            messages.forEach(msg => {
+              if (msg.role === 'user' || msg.role === 'ai' || msg.role === 'assistant') {
+                const role = msg.role === 'assistant' ? 'ai' : msg.role;
+                window.webLLMChat.addMessage(role, msg.content, false);
+              }
+            });
+          }
+
+          // Обновляем conversation history в WebLLMChat
+          if (window.webLLMChat) {
+            window.webLLMChat.conversationHistory = messages
+              .filter(m => m.role === 'user' || m.role === 'assistant' || m.role === 'ai')
+              .map(m => ({
+                role: m.role === 'ai' ? 'assistant' : m.role,
+                content: m.content
+              }));
+          }
+        }
+
+        /**
+         * Создание нового чата
+         */
+        function createNewChat() {
+          window.chatHistoryManager.createNewChat();
+          renderChatList();
+          loadCurrentChatMessages();
+
+          // На мобильных закрываем sidebar
+          if (window.innerWidth <= 768) {
+            chatHistorySidebar.classList.add('collapsed');
+            expandSidebarBtn.classList.add('show');
+          }
+        }
+
+        /**
+         * Открытие панели настроек модели
+         */
+        function openModelSettings() {
+          modelSidebar.classList.add('show');
+          modelSidebarOverlay.classList.add('show');
+        }
+
+        /**
+         * Закрытие панели настроек модели
+         */
+        function closeModelSettings() {
+          modelSidebar.classList.remove('show');
+          modelSidebarOverlay.classList.remove('show');
+        }
+
+        /**
+         * Переключение видимости sidebar истории чатов
+         */
+        function toggleChatHistorySidebar() {
+          const isCollapsed = chatHistorySidebar.classList.toggle('collapsed');
+          expandSidebarBtn.classList.toggle('show', isCollapsed);
+        }
+
+        // ==== Обработчики событий ====
+
+        // Кнопка нового чата
+        newChatBtn.addEventListener('click', createNewChat);
+
+        // Кнопка сворачивания sidebar
+        toggleSidebarBtn.addEventListener('click', toggleChatHistorySidebar);
+
+        // Кнопка разворачивания sidebar
+        expandSidebarBtn.addEventListener('click', toggleChatHistorySidebar);
+
+        // Кнопка открытия настроек модели (в sidebar)
+        openSettingsBtn.addEventListener('click', openModelSettings);
+
+        // Кнопка открытия настроек модели (в header)
+        chatHeaderModel.addEventListener('click', openModelSettings);
+
+        // Закрытие панели настроек модели
+        closeModelSidebar.addEventListener('click', closeModelSettings);
+        modelSidebarOverlay.addEventListener('click', closeModelSettings);
+
+        // Очистка текущего чата
+        clearCurrentChatBtn.addEventListener('click', () => {
+          if (confirm('Очистить текущий чат?')) {
+            window.chatHistoryManager.clearCurrentChat();
+            loadCurrentChatMessages();
+            renderChatList();
+          }
         });
 
-        // Закрытие модала по клику на фон
+        // Очистка всех чатов
+        clearAllChatsBtn.addEventListener('click', () => {
+          if (confirm('Удалить всю историю чатов?')) {
+            window.chatHistoryManager.clearAllChats();
+            renderChatList();
+            loadCurrentChatMessages();
+          }
+        });
+
+        // Закрытие модала настроек по клику на фон
         settingsModal.addEventListener('click', (e) => {
           if (e.target === settingsModal) {
             settingsModal.classList.remove('show');
@@ -2971,8 +3768,13 @@
 
         // Закрытие по Escape
         document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape' && settingsModal.classList.contains('show')) {
-            settingsModal.classList.remove('show');
+          if (e.key === 'Escape') {
+            if (settingsModal.classList.contains('show')) {
+              settingsModal.classList.remove('show');
+            }
+            if (modelSidebar.classList.contains('show')) {
+              closeModelSettings();
+            }
           }
         });
 
@@ -3006,10 +3808,30 @@
           });
         });
 
+        // ==== Инициализация WebLLMChat ====
         window.webLLMChat = new WebLLMChat();
+
+        // Обновление статуса модели в header
+        window.updateHeaderModelStatus = function(modelName, isReady) {
+          headerModelName.textContent = modelName || 'WebLLM Chat';
+          modelStatusDot.classList.toggle('ready', isReady);
+        };
+
+        // Начальная загрузка списка чатов
+        renderChatList();
+
+        // Если есть активный чат, загружаем его сообщения
+        if (window.chatHistoryManager.chats.length > 0) {
+          loadCurrentChatMessages();
+        }
+
+        // Экспортируем функции для использования в WebLLMChat
+        window.renderChatList = renderChatList;
+        window.loadCurrentChatMessages = loadCurrentChatMessages;
 
         console.log('🤖 WebLLM Chat готов! Выберите модель и начните общение.');
         console.log('🔧 Tool Calling включен. Доступные инструменты:', Object.keys(window.toolManager.enabledTools).filter(t => window.toolManager.enabledTools[t]));
+        console.log('📜 История чатов включена. Чатов сохранено:', window.chatHistoryManager.chats.length);
       });
     </script>
   </body>
