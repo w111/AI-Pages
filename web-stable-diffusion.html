@@ -14,7 +14,7 @@
       window.loadTransformers = async () => {
         try {
           const { AutoProcessor, MultiModalityCausalLM } = await import(
-            'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.1'
+            'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1'
           );
           window.AutoProcessor = AutoProcessor;
           window.MultiModalityCausalLM = MultiModalityCausalLM;
@@ -1903,13 +1903,17 @@
             this.progressText.textContent = 'Генерируем изображение с помощью ИИ...';
 
             // Генерируем изображение
-            const num_image_tokens = this.processor.num_image_tokens;
+            const num_image_tokens = this.processor.num_image_tokens || 576;
+            console.log('Generating with num_image_tokens:', num_image_tokens);
+
             const outputs = await this.model.generate_images({
               ...inputs,
               min_new_tokens: num_image_tokens,
               max_new_tokens: num_image_tokens,
               do_sample: true,
             });
+
+            console.log('Generation outputs:', outputs);
 
             this.progressFill.style.width = '100%';
             this.progressText.textContent = 'Обработка результата...';
@@ -1919,8 +1923,17 @@
               // Получаем первое сгенерированное изображение
               const generatedImage = outputs[0];
 
-              // Сохраняем изображение как blob и создаем URL
-              const imageBlob = await generatedImage.toBlob();
+              // Конвертируем RawImage в canvas, затем в blob
+              const canvas = generatedImage.toCanvas();
+              const imageBlob = await new Promise((resolve, reject) => {
+                canvas.toBlob((blob) => {
+                  if (blob) {
+                    resolve(blob);
+                  } else {
+                    reject(new Error('Не удалось создать blob из canvas'));
+                  }
+                }, 'image/png');
+              });
               const imageUrl = URL.createObjectURL(imageBlob);
 
               // Показываем результат
