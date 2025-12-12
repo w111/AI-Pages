@@ -1480,9 +1480,9 @@
           Минимальные требования:
         </h3>
         <ul class="requirements-list">
-          <li>
-            <strong>Браузер:</strong> Chrome 113+ или Edge 113+ с поддержкой WebGPU
-          </li>
+	          <li>
+	            <strong>Браузер:</strong> Chrome/Edge с WebGPU или Safari на iPadOS/iOS 17.4+ с WebGPU
+	          </li>
           <li>
             <strong>GPU:</strong> Минимум 6GB видеопамяти (рекомендуется 8GB+ для
             больших моделей)
@@ -1686,29 +1686,14 @@
 	         * Проверка, содержит ли ответ вызов инструмента
 	         */
 	        hasToolCall(response) {
-	          const trimmed = (response || '').trim();
-	          if (!trimmed) return false;
-	
-	          // 1) Явные теги <tool_call>...</tool_call>
-	          if (trimmed.includes('<tool_call>') && trimmed.includes('</tool_call>')) {
-	            return this.extractToolCall(trimmed) !== null;
-	          }
-	
-	          // 2) Некоторые модели (например, Qwen) часто возвращают "чистый" JSON без тегов
-	          // Поддерживаем только случаи, когда ответ начинается как JSON/код-блок,
-	          // чтобы не ловить ложные совпадения на случайных скобках в тексте.
-	          if (trimmed.startsWith('{') || trimmed.startsWith('```')) {
-	            return this.extractToolCall(trimmed) !== null;
-	          }
-	
-	          return false;
+	          return this.extractToolCall(response) !== null;
 	        }
 
 	        /**
 	         * Извлечение вызова инструмента из ответа
 	         */
 	        extractToolCall(response) {
-	          const text = (response || '').trim();
+	          const text = this.normalizeToolText(response);
 	          if (!text) return null;
 	
 	          // 1) Формат с тегами
@@ -1728,6 +1713,72 @@
 	          if (text.startsWith('{') && text.endsWith('}')) {
 	            const parsed = this.parseAndNormalizeToolCall(text);
 	            if (parsed) return parsed;
+	          }
+	
+	          // 4) JSON внутри текста (модели иногда добавляют слова/пробелы/невидимые символы)
+	          const embedded = this.findEmbeddedToolCallJson(text);
+	          if (embedded) return embedded;
+	
+	          return null;
+	        }
+	
+	        normalizeToolText(text) {
+	          // Убираем BOM/zero-width символы, которые ломают startsWith('{') у некоторых моделей
+	          return (text || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+	        }
+	
+	        findEmbeddedToolCallJson(text) {
+	          const toolNames = Object.values(this.toolDefinitions).map(def => def.name);
+	          const re = /"tool"\s*:\s*"([^"]+)"/g;
+	          let match;
+	          while ((match = re.exec(text))) {
+	            const toolName = match[1];
+	            if (!toolNames.includes(toolName)) continue;
+	
+	            const jsonText = this.extractBalancedJsonObject(text, match.index);
+	            if (!jsonText) continue;
+	
+	            const parsed = this.parseAndNormalizeToolCall(jsonText);
+	            if (parsed) return parsed;
+	          }
+	          return null;
+	        }
+	
+	        extractBalancedJsonObject(text, aroundIndex) {
+	          const start = text.lastIndexOf('{', aroundIndex);
+	          if (start === -1) return null;
+	
+	          let depth = 0;
+	          let inString = false;
+	          let escape = false;
+	
+	          for (let i = start; i < text.length; i++) {
+	            const ch = text[i];
+	
+	            if (inString) {
+	              if (escape) {
+	                escape = false;
+	              } else if (ch === '\\') {
+	                escape = true;
+	              } else if (ch === '"') {
+	                inString = false;
+	              }
+	              continue;
+	            }
+	
+	            if (ch === '"') {
+	              inString = true;
+	              continue;
+	            }
+	
+	            if (ch === '{') {
+	              depth++;
+	            } else if (ch === '}') {
+	              depth--;
+	              if (depth === 0) {
+	                return text.slice(start, i + 1);
+	              }
+	            }
 	          }
 	
 	          return null;
@@ -1902,30 +1953,32 @@
         /**
          * Currency API (ExchangeRate)
          */
-        async getCurrencyRate(from = 'USD', to = null, amount = null) {
-          try {
-            const url = `https://api.exchangerate-api.com/v4/latest/${from.toUpperCase()}`;
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data.error) {
-              return { error: data.error };
-            }
-
-            const result = {
-              source: 'ExchangeRate-API',
-              base: from.toUpperCase(),
-              date: data.date
-            };
-
-            if (to) {
-              const rate = data.rates[to.toUpperCase()];
-              if (rate) {
-                result.rate = `1 ${from.toUpperCase()} = ${rate.toFixed(4)} ${to.toUpperCase()}`;
-                if (amount) {
-                  result.converted = `${amount} ${from.toUpperCase()} = ${(amount * rate).toFixed(2)} ${to.toUpperCase()}`;
-                }
-              } else {
+	        async getCurrencyRate(from = 'USD', to = null, amount = null) {
+	          try {
+	            // CORS-friendly endpoint for browser apps
+	            const url = `https://open.er-api.com/v6/latest/${from.toUpperCase()}`;
+	            const response = await fetch(url);
+	            const data = await response.json();
+	
+	            // open.er-api.com returns { result: "error", "error-type": "..." }
+	            if (data.result && data.result !== 'success') {
+	              return { error: data['error-type'] || 'Ошибка Currency API' };
+	            }
+	
+	            const result = {
+	              source: 'ER-API',
+	              base: from.toUpperCase(),
+	              date: data.time_last_update_utc || data.time_last_update_unix || null
+	            };
+	
+	            if (to) {
+	              const rate = data.rates?.[to.toUpperCase()];
+	              if (rate) {
+	                result.rate = `1 ${from.toUpperCase()} = ${rate.toFixed(4)} ${to.toUpperCase()}`;
+	                if (amount) {
+	                  result.converted = `${amount} ${from.toUpperCase()} = ${(amount * rate).toFixed(2)} ${to.toUpperCase()}`;
+	                }
+	              } else {
                 result.error = `Валюта ${to} не найдена`;
               }
             } else {
@@ -1939,105 +1992,103 @@
               });
             }
 
-            return result;
-          } catch (error) {
-            return { error: `Ошибка Currency API: ${error.message}` };
-          }
-        }
+	            return result;
+	          } catch (error) {
+	            return { error: `Ошибка Currency API: ${error.message}` };
+	          }
+	        }
 
         /**
          * Crypto API (CoinGecko)
          */
-        async getCryptoPrice(coin = 'bitcoin') {
-          try {
-            const coinId = coin.toLowerCase().replace(/\s+/g, '-');
-            const url = `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&community_data=false&developer_data=false`;
-            const response = await fetch(url);
-
-            if (!response.ok) {
-              // Попробуем поиск
-              const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(coin)}`;
-              const searchResp = await fetch(searchUrl);
-              const searchData = await searchResp.json();
-
-              if (searchData.coins && searchData.coins.length > 0) {
-                return {
-                  error: `Криптовалюта "${coin}" не найдена. Возможно вы имели в виду: ${searchData.coins.slice(0, 3).map(c => c.name).join(', ')}`
-                };
-              }
-              return { error: `Криптовалюта "${coin}" не найдена` };
-            }
-
-            const data = await response.json();
-
-            return {
-              source: 'CoinGecko',
-              name: data.name,
-              symbol: data.symbol.toUpperCase(),
-              price_usd: `$${data.market_data.current_price.usd.toLocaleString()}`,
-              price_rub: `₽${data.market_data.current_price.rub?.toLocaleString() || 'N/A'}`,
-              change_24h: `${data.market_data.price_change_percentage_24h?.toFixed(2)}%`,
-              market_cap: `$${(data.market_data.market_cap.usd / 1e9).toFixed(2)}B`,
-              rank: `#${data.market_cap_rank}`
-            };
-          } catch (error) {
-            return { error: `Ошибка Crypto API: ${error.message}` };
-          }
-        }
+	        async getCryptoPrice(coin = 'bitcoin') {
+	          try {
+	            // CoinGecko часто блокирует CORS в браузере. Используем CoinCap (CORS OK).
+	            const coinQuery = coin.toLowerCase().trim();
+	            const normalized = coinQuery.replace(/\s+/g, '-');
+	            const url = `https://api.coincap.io/v2/assets?search=${encodeURIComponent(normalized)}`;
+	            const response = await fetch(url);
+	            const data = await response.json();
+	
+	            const assets = Array.isArray(data?.data) ? data.data : [];
+	            if (assets.length === 0) {
+	              return { error: `Криптовалюта "${coin}" не найдена` };
+	            }
+	
+	            // Берём самый релевантный матч
+	            const asset = assets[0];
+	            const priceUsd = Number(asset.priceUsd);
+	            const change24h = Number(asset.changePercent24Hr);
+	            const marketCapUsd = Number(asset.marketCapUsd);
+	
+	            return {
+	              source: 'CoinCap',
+	              name: asset.name,
+	              symbol: String(asset.symbol || '').toUpperCase(),
+	              price_usd: Number.isFinite(priceUsd) ? `$${priceUsd.toLocaleString(undefined, { maximumFractionDigits: 6 })}` : 'N/A',
+	              change_24h: Number.isFinite(change24h) ? `${change24h.toFixed(2)}%` : 'N/A',
+	              market_cap: Number.isFinite(marketCapUsd) ? `$${(marketCapUsd / 1e9).toFixed(2)}B` : 'N/A',
+	              rank: asset.rank ? `#${asset.rank}` : 'N/A',
+	              id: asset.id
+	            };
+	          } catch (error) {
+	            return { error: `Ошибка Crypto API: ${error.message}` };
+	          }
+	        }
 
         /**
          * Music API (MusicBrainz)
          */
-        async searchMusic(query, type = 'artist') {
-          try {
-            const searchType = type === 'album' ? 'release-group' : type === 'track' ? 'recording' : 'artist';
-            const url = `https://musicbrainz.org/ws/2/${searchType}?query=${encodeURIComponent(query)}&limit=5&fmt=json`;
-
-            const response = await fetch(url, {
-              headers: { 'User-Agent': 'WebLLM-Chat/1.0 (https://github.com/example)' }
-            });
-            const data = await response.json();
-
-            const results = data[searchType + 's'] || data.artists || data['release-groups'] || data.recordings || [];
-
-            if (results.length === 0) {
-              return { error: `По запросу "${query}" ничего не найдено` };
-            }
-
-            const formatResult = (item) => {
-              if (type === 'artist') {
-                return {
-                  name: item.name,
-                  type: item.type || 'Артист',
-                  country: item.country || 'Неизвестно',
-                  active: item['life-span']?.begin ? `с ${item['life-span'].begin}` : 'Неизвестно'
-                };
-              } else if (type === 'album') {
-                return {
-                  title: item.title,
-                  artist: item['artist-credit']?.[0]?.name || 'Неизвестен',
-                  type: item['primary-type'] || 'Альбом',
-                  year: item['first-release-date']?.substring(0, 4) || 'Неизвестно'
-                };
-              } else {
-                return {
-                  title: item.title,
-                  artist: item['artist-credit']?.[0]?.name || 'Неизвестен',
-                  duration: item.length ? `${Math.floor(item.length / 60000)}:${String(Math.floor((item.length % 60000) / 1000)).padStart(2, '0')}` : 'Неизвестно'
-                };
-              }
-            };
-
-            return {
-              source: 'MusicBrainz',
-              query: query,
-              type: type,
-              results: results.slice(0, 3).map(formatResult)
-            };
-          } catch (error) {
-            return { error: `Ошибка Music API: ${error.message}` };
-          }
-        }
+	        async searchMusic(query, type = 'artist') {
+	          try {
+	            // MusicBrainz требует User-Agent, который нельзя выставить из браузера.
+	            // Используем iTunes Search API (CORS-friendly) как лёгкую замену.
+	            const entity =
+	              type === 'album' ? 'album' : type === 'track' ? 'song' : 'musicArtist';
+	            const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=${entity}&limit=5`;
+	            const response = await fetch(url);
+	            const data = await response.json();
+	
+	            const results = Array.isArray(data?.results) ? data.results : [];
+	            if (results.length === 0) {
+	              return { error: `По запросу "${query}" ничего не найдено` };
+	            }
+	
+	            const mapped = results.slice(0, 3).map(item => {
+	              if (type === 'artist') {
+	                return {
+	                  name: item.artistName || item.collectionArtistName || 'Неизвестно',
+	                  genre: item.primaryGenreName || 'Неизвестно',
+	                  link: item.artistLinkUrl || 'N/A'
+	                };
+	              }
+	              if (type === 'album') {
+	                return {
+	                  title: item.collectionName || 'Неизвестно',
+	                  artist: item.artistName || 'Неизвестно',
+	                  year: item.releaseDate ? String(item.releaseDate).substring(0, 4) : 'Неизвестно',
+	                  link: item.collectionViewUrl || 'N/A'
+	                };
+	              }
+	              return {
+	                title: item.trackName || 'Неизвестно',
+	                artist: item.artistName || 'Неизвестно',
+	                album: item.collectionName || 'Неизвестно',
+	                duration: item.trackTimeMillis ? `${Math.floor(item.trackTimeMillis / 60000)}:${String(Math.floor((item.trackTimeMillis % 60000) / 1000)).padStart(2, '0')}` : 'Неизвестно',
+	                link: item.trackViewUrl || 'N/A'
+	              };
+	            });
+	
+	            return {
+	              source: 'iTunes',
+	              query: query,
+	              type: type,
+	              results: mapped
+	            };
+	          } catch (error) {
+	            return { error: `Ошибка Music API: ${error.message}` };
+	          }
+	        }
 
         /**
          * Sports API (TheSportsDB)
@@ -2134,19 +2185,48 @@
       // Импорт WebLLM
       import * as webllm from 'https://esm.run/@mlc-ai/web-llm';
 
-      class WebLLMChat {
-        constructor() {
-          this.engine = null;
-          this.isModelLoading = false;
-          this.currentModel = null;
-          this.conversationHistory = [];
-          this.selectedModelId = 'qwen-3-4b'; // По умолчанию выбираем Qwen 4B (лучшая модель)
+	      class WebLLMChat {
+	        constructor() {
+	          this.engine = null;
+	          this.isModelLoading = false;
+	          this.currentModel = null;
+	          this.conversationHistory = [];
+	          this.selectedModelId = 'qwen-3-4b'; // По умолчанию выбираем Qwen 4B (лучшая модель)
+	          this.lastLoadError = null;
 
-          this.initializeElements();
-          this.setupEventListeners();
-          this.initializeModels();
-          this.checkWebGPUSupport();
-        }
+	          this.initializeElements();
+	          this.setupEventListeners();
+	          this.initializeModels();
+	          this.applyPlatformDefaults();
+	          this.checkWebGPUSupport();
+	        }
+	
+	        getPlatformInfo() {
+	          const ua = navigator.userAgent || '';
+	          const isAppleMobile =
+	            /iPad|iPhone|iPod/i.test(ua) ||
+	            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+	          const isSafari = /safari/i.test(ua) && !/chrome|crios|edg|fxios/i.test(ua);
+	          return { isAppleMobile, isSafari, ua };
+	        }
+	
+	        parseGB(text) {
+	          const m = String(text || '').match(/([\d.]+)\s*GB/i);
+	          return m ? Number(m[1]) : null;
+	        }
+	
+	        applyPlatformDefaults() {
+	          const { isAppleMobile } = this.getPlatformInfo();
+	          if (!isAppleMobile) return;
+	
+	          // На iPad/iPhone большие модели часто не помещаются в память.
+	          // Выбираем лёгкую модель по умолчанию, если она есть.
+	          const lightId = 'smollm2-1.7b';
+	          const lightOption = document.querySelector(`[data-model="${lightId}"]`);
+	          if (lightOption) {
+	            this.selectModel(lightOption);
+	          }
+	        }
 
         initializeElements() {
           this.modelDropdown = document.querySelector('.model-dropdown');
@@ -2312,30 +2392,48 @@
           this.handleModelChange();
         }
 
-        async checkWebGPUSupport() {
-          try {
-            if (!navigator.gpu) {
-              this.setStatus(
-                'error',
-                'WebGPU не поддерживается. Используйте Chrome 113+ с включенным WebGPU.'
-              );
-              return;
-            }
+	        async checkWebGPUSupport() {
+	          try {
+	            if (!navigator.gpu) {
+	              const { isAppleMobile } = this.getPlatformInfo();
+	              this.setStatus(
+	                'error',
+	                isAppleMobile
+	                  ? 'WebGPU не поддерживается на этом iPad/iPhone. Для WebLLM нужен Safari с WebGPU (зависит от версии iPadOS).'
+	                  : 'WebGPU не поддерживается. Используйте Chrome/Edge с включенным WebGPU.'
+	              );
+	              return;
+	            }
 
-            const adapter = await navigator.gpu.requestAdapter();
-            if (!adapter) {
+	            const adapter = await navigator.gpu.requestAdapter();
+	            if (!adapter) {
               this.setStatus(
                 'error',
                 'WebGPU адаптер недоступен. Проверьте GPU драйверы.'
-              );
-              return;
-            }
+	              );
+	              return;
+	            }
 
-            this.setStatus('ready', 'WebGPU готов! Выберите модель для начала.');
-          } catch (error) {
-            this.setStatus('error', `Ошибка WebGPU: ${error.message}`);
-          }
-        }
+	            // Доп. проверка, что устройство реально выдаёт device
+	            try {
+	              const device = await adapter.requestDevice();
+	              device?.destroy?.();
+	            } catch (e) {
+	              this.setStatus('error', `WebGPU device недоступен: ${e.message || e}`);
+	              return;
+	            }
+	
+	            const { isAppleMobile } = this.getPlatformInfo();
+	            this.setStatus(
+	              'ready',
+	              isAppleMobile
+	                ? 'WebGPU готов! На iPad выбирайте лёгкие модели (например, SmolLM2-1.7B).'
+	                : 'WebGPU готов! Выберите модель для начала.'
+	            );
+	          } catch (error) {
+	            this.setStatus('error', `Ошибка WebGPU: ${error.message}`);
+	          }
+	        }
 
         toggleDropdown() {
           this.modelDropdownContent.style.display =
@@ -2381,9 +2479,9 @@
           // Оставляем для совместимости
         }
 
-        async loadSelectedModel() {
-          const modelId = this.selectedModelId || 'demo';
-          const model = this.models[modelId];
+	        async loadSelectedModel() {
+	          const modelId = this.selectedModelId || 'demo';
+	          const model = this.models[modelId];
 
           if (!model) return;
 
@@ -2394,12 +2492,33 @@
             return;
           }
 
-          if (this.isModelLoading) return;
+	          if (this.isModelLoading) return;
+	
+	          // Предупреждение для iPad/iPhone по большим моделям
+	          const { isAppleMobile } = this.getPlatformInfo();
+	          if (isAppleMobile) {
+	            const vramGB = this.parseGB(model.vramRequired);
+	            if (vramGB !== null && vramGB >= 5) {
+	              const proceed = confirm(
+	                `Модель требует примерно ${model.vramRequired} памяти и часто не загружается на iPad/iPhone.\n\nПопробовать всё равно?`
+	              );
+	              if (!proceed) {
+	                const lightOption = document.querySelector('[data-model="smollm2-1.7b"]');
+	                if (lightOption) {
+	                  this.selectModel(lightOption);
+	                  this.setStatus('ready', 'Выбрана лёгкая модель. Нажмите «Загрузить».');
+	                } else {
+	                  this.setStatus('ready', 'Выберите более лёгкую модель и нажмите «Загрузить».');
+	                }
+	                return;
+	              }
+	            }
+	          }
 
-          try {
-            this.isModelLoading = true;
-            this.loadModelBtn.disabled = true;
-            this.setStatus('loading', `Загружаем ${model.name}...`);
+	          try {
+	            this.isModelLoading = true;
+	            this.loadModelBtn.disabled = true;
+	            this.setStatus('loading', `Загружаем ${model.name}...`);
             this.showProgress();
 
             // Создаем движок WebLLM
@@ -2416,29 +2535,52 @@
             this.currentModel = modelId;
             this.hideProgress();
             this.setStatus('ready', `${model.name} загружена! Готов к общению.`);
-            this.enableChat();
-          } catch (error) {
-            console.error('Ошибка загрузки модели:', error);
-            this.hideProgress();
-            this.setStatus('error', `Ошибка загрузки: ${error.message}`);
+	            this.enableChat();
+	          } catch (error) {
+	            console.error('Ошибка загрузки модели:', error);
+	            this.lastLoadError = error;
+	            this.hideProgress();
+	
+	            const msg = String(error?.message || error || 'Неизвестная ошибка');
+	            const isOOM = /out of memory|oom|memory|allocation|exceeded|device lost|lost/i.test(msg.toLowerCase());
+	            const isQuota =
+	              String(error?.name || '').toLowerCase().includes('quota') ||
+	              /quota|quotaexceeded|exceeded the quota|not enough storage|storage/i.test(msg.toLowerCase());
+	            const { isAppleMobile } = this.getPlatformInfo();
+	            const hint = isQuota
+	              ? ' Похоже, браузеру не хватает места для кеша модели. Очистите данные сайта для этой страницы в Safari или выберите меньшую модель.'
+	              : isAppleMobile
+	                ? ' На iPad/iPhone часто не хватает памяти для 7B/8B — попробуйте SmolLM2-1.7B.'
+	                : '';
+	            this.setStatus('error', `Ошибка загрузки: ${msg}${hint}`);
 
-            // Переключаемся на демо-режим при ошибке
-            setTimeout(() => {
-              this.selectedModelId = 'demo';
-              this.currentModel = 'demo';
-              // Обновляем UI dropdown
-              const demoOption = document.querySelector('[data-model="demo"]');
-              if (demoOption) {
-                this.selectModel(demoOption);
-              }
-              this.setStatus('ready', 'Демо-режим активирован из-за ошибки загрузки');
-              this.enableChat();
-            }, 3000);
-          } finally {
-            this.isModelLoading = false;
-            this.loadModelBtn.disabled = false;
-          }
-        }
+	            // При OOM пробуем предложить лёгкую модель, иначе демо-режим
+	            setTimeout(() => {
+	              const lightOption = document.querySelector('[data-model="smollm2-1.7b"]');
+	              if ((isOOM || isQuota) && navigator.gpu && lightOption) {
+	                // Сбрасываем движок, оставляем чат отключённым до успешной загрузки
+	                this.engine = null;
+	                this.currentModel = null;
+	                this.selectedModelId = 'smollm2-1.7b';
+	                this.selectModel(lightOption);
+	                this.setStatus('ready', 'Выбрана лёгкая модель. Нажмите «Загрузить».');
+	              } else {
+	                this.selectedModelId = 'demo';
+	                this.currentModel = 'demo';
+	                // Обновляем UI dropdown
+	                const demoOption = document.querySelector('[data-model="demo"]');
+	                if (demoOption) {
+	                  this.selectModel(demoOption);
+	                }
+	                this.setStatus('ready', 'Демо-режим активирован из-за ошибки загрузки');
+	                this.enableChat();
+	              }
+	            }, 3000);
+	          } finally {
+	            this.isModelLoading = false;
+	            this.loadModelBtn.disabled = false;
+	          }
+	        }
 
         setStatus(type, message) {
           const icon = {
