@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<!--
+Техническое задание: Background Removal Tool - Удаление и замена фона
+
+Функциональность:
+1. ✅ Удаление фона с изображений с использованием AI модели
+2. ✅ Сегментация изображения через Transformers.js (RMBG-1.4)
+3. ✅ Загрузка изображений через drag-and-drop и выбор файла
+4. ✅ Замена фона на прозрачный, цвет или другое изображение
+5. ✅ Предпросмотр результата в реальном времени
+6. ✅ Экспорт результата в PNG с прозрачностью
+7. ✅ Темная и светлая тема оформления
+8. ✅ Адаптивный дизайн для мобильных устройств
+
+Технические детали:
+1. ✅ Использование Transformers.js для загрузки модели сегментации
+2. ✅ briaai/RMBG-1.4 - модель для удаления фона
+3. ✅ Canvas API для обработки изображений
+4. ✅ WebGPU для ускорения (fallback на WASM)
+5. ✅ Асинхронная обработка для неблокирующего UI
+6. ✅ Кэширование модели в браузере
+7. ✅ Сохранение настроек в localStorage
+
+Требования к браузеру:
+- Chrome 89+ или Edge 89+ (рекомендуется)
+- Firefox 76+ (с ограничениями)
+- Safari 14.1+ (с ограничениями)
+- WebAssembly поддержка
+
+Статус: Полностью реализовано
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Удаление фона - AI Background Removal | AI Pages</title>
+  <meta name="description" content="Удаляйте и заменяйте фон на фотографиях с помощью AI прямо в браузере. Бесплатно, без регистрации, конфиденциально.">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary-color: #8b5cf6;
+      --secondary-color: #a78bfa;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --error-color: #ef4444;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #0f172a;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --header-bg: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    }
+
+    body.dark-theme {
+      --primary-color: #a78bfa;
+      --secondary-color: #8b5cf6;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --error-color: #ef4444;
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-color: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+      --header-bg: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--header-bg);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .home-link {
+      color: white;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      opacity: 0.9;
+      transition: opacity 0.2s;
+    }
+
+    .home-link:hover {
+      opacity: 1;
+    }
+
+    /* Theme Toggle */
+    .theme-toggle {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.2s;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Main Container */
+    .main-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-icon {
+      font-size: 1.2rem;
+    }
+
+    .status-icon.ready { color: var(--success-color); }
+    .status-icon.loading { color: var(--warning-color); }
+    .status-icon.error { color: var(--error-color); }
+
+    .status-text {
+      font-size: 0.95rem;
+    }
+
+    /* Model Loading */
+    .model-loading {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .model-loading h3 {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      background: var(--border-color);
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--primary-color);
+      border-radius: 5px;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    /* Editor Layout */
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .editor-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Panels */
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      background: var(--border-color);
+      padding: 12px 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-body {
+      padding: 20px;
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: var(--primary-color);
+      background: rgba(139, 92, 246, 0.05);
+    }
+
+    .drop-zone i {
+      font-size: 3rem;
+      color: var(--primary-color);
+      margin-bottom: 15px;
+    }
+
+    .drop-zone h3 {
+      margin-bottom: 10px;
+    }
+
+    .drop-zone p {
+      color: var(--text-secondary);
+      margin-bottom: 15px;
+    }
+
+    .drop-zone input {
+      display: none;
+    }
+
+    .browse-btn {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+
+    .browse-btn:hover {
+      background: var(--secondary-color);
+    }
+
+    /* Image Preview */
+    .image-preview {
+      position: relative;
+      width: 100%;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: repeating-conic-gradient(#e2e8f0 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    body.dark-theme .image-preview {
+      background: repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50% / 20px 20px;
+    }
+
+    .image-preview img,
+    .image-preview canvas {
+      max-width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+    }
+
+    .image-actions {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .image-action-btn {
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .image-action-btn:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    /* Controls */
+    .controls-section {
+      margin-top: 20px;
+    }
+
+    .control-group {
+      margin-bottom: 20px;
+    }
+
+    .control-label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    /* Background Options */
+    .background-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .bg-option {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bg-option:hover {
+      transform: scale(1.1);
+    }
+
+    .bg-option.active {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+    }
+
+    .bg-transparent {
+      background: repeating-conic-gradient(#e2e8f0 0% 25%, #fff 0% 50%) 50% / 10px 10px;
+    }
+
+    body.dark-theme .bg-transparent {
+      background: repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50% / 10px 10px;
+    }
+
+    .bg-white { background: white; border: 1px solid #e2e8f0; }
+    .bg-black { background: black; }
+    .bg-red { background: #ef4444; }
+    .bg-green { background: #10b981; }
+    .bg-blue { background: #3b82f6; }
+    .bg-purple { background: #8b5cf6; }
+    .bg-yellow { background: #fbbf24; }
+
+    .bg-custom {
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bg-custom input[type="color"] {
+      width: 100%;
+      height: 100%;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .bg-image-upload {
+      background: var(--border-color);
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .action-btn {
+      flex: 1;
+      min-width: 120px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--secondary-color);
+    }
+
+    .btn-success {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+
+    .btn-secondary {
+      background: var(--border-color);
+      color: var(--text-color);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--text-secondary);
+      color: white;
+    }
+
+    /* Processing Overlay */
+    .processing-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      color: white;
+    }
+
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Tips Section */
+    .tips-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .tips-section h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .tips-list {
+      list-style: none;
+    }
+
+    .tips-list li {
+      padding: 8px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: var(--text-secondary);
+    }
+
+    .tips-list li i {
+      color: var(--primary-color);
+      margin-top: 3px;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .header h1 {
+        font-size: 1.2rem;
+      }
+
+      .panel-body {
+        padding: 15px;
+      }
+
+      .drop-zone {
+        padding: 20px;
+        min-height: 200px;
+      }
+
+      .drop-zone i {
+        font-size: 2rem;
+      }
+
+      .bg-option {
+        width: 40px;
+        height: 40px;
+      }
+
+      .action-btn {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Hidden */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1>
+        <i class="fas fa-magic"></i>
+        Удаление фона
+      </h1>
+      <div class="header-controls">
+        <a href="index.html" class="home-link">
+          <i class="fas fa-home"></i>
+          <span class="hide-mobile">На главную</span>
+        </a>
+        <button class="theme-toggle" id="themeToggle" title="Сменить тему">
+          <i class="fas fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-info">
+        <i class="fas fa-circle status-icon loading" id="statusIcon"></i>
+        <span class="status-text" id="statusText">Загрузка AI модели...</span>
+      </div>
+    </div>
+
+    <!-- Model Loading -->
+    <div class="model-loading" id="modelLoading">
+      <h3>
+        <i class="fas fa-brain"></i>
+        Загрузка AI модели
+      </h3>
+      <p>Это может занять несколько минут при первом запуске. Модель кэшируется в браузере.</p>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <p class="progress-text" id="progressText">Инициализация...</p>
+    </div>
+
+    <!-- Editor Layout -->
+    <div class="editor-layout hidden" id="editorLayout">
+      <!-- Original Image Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="fas fa-image"></i>
+          Исходное изображение
+        </div>
+        <div class="panel-body">
+          <!-- Drop Zone -->
+          <div class="drop-zone" id="dropZone">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <h3>Перетащите изображение сюда</h3>
+            <p>или нажмите для выбора файла</p>
+            <button class="browse-btn">Выбрать файл</button>
+            <input type="file" id="fileInput" accept="image/*">
+          </div>
+
+          <!-- Original Preview -->
+          <div class="image-preview hidden" id="originalPreview">
+            <img id="originalImage" alt="Исходное изображение">
+            <div class="image-actions">
+              <button class="image-action-btn" id="clearBtn" title="Очистить">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Process Button -->
+          <div class="action-buttons">
+            <button class="action-btn btn-primary" id="processBtn" disabled>
+              <i class="fas fa-wand-magic-sparkles"></i>
+              Удалить фон
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <i class="fas fa-check-circle"></i>
+          Результат
+        </div>
+        <div class="panel-body">
+          <!-- Result Preview -->
+          <div class="image-preview" id="resultPreview">
+            <canvas id="resultCanvas"></canvas>
+          </div>
+
+          <!-- Background Options -->
+          <div class="controls-section">
+            <div class="control-group">
+              <label class="control-label">Фон:</label>
+              <div class="background-options">
+                <div class="bg-option bg-transparent active" data-bg="transparent" title="Прозрачный">
+                  <i class="fas fa-ban" style="opacity: 0.3;"></i>
+                </div>
+                <div class="bg-option bg-white" data-bg="#ffffff" title="Белый"></div>
+                <div class="bg-option bg-black" data-bg="#000000" title="Черный"></div>
+                <div class="bg-option bg-red" data-bg="#ef4444" title="Красный"></div>
+                <div class="bg-option bg-green" data-bg="#10b981" title="Зеленый"></div>
+                <div class="bg-option bg-blue" data-bg="#3b82f6" title="Синий"></div>
+                <div class="bg-option bg-purple" data-bg="#8b5cf6" title="Фиолетовый"></div>
+                <div class="bg-option bg-yellow" data-bg="#fbbf24" title="Желтый"></div>
+                <div class="bg-option bg-custom" title="Свой цвет">
+                  <input type="color" id="customColor" value="#8b5cf6">
+                </div>
+                <div class="bg-option bg-image-upload" data-bg="image" title="Загрузить фон">
+                  <i class="fas fa-image"></i>
+                  <input type="file" id="bgImageInput" accept="image/*" style="display: none;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Export Buttons -->
+          <div class="action-buttons">
+            <button class="action-btn btn-success" id="downloadBtn" disabled>
+              <i class="fas fa-download"></i>
+              Скачать PNG
+            </button>
+            <button class="action-btn btn-secondary" id="copyBtn" disabled>
+              <i class="fas fa-copy"></i>
+              Копировать
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips Section -->
+    <div class="tips-section">
+      <h3>
+        <i class="fas fa-lightbulb"></i>
+        Советы
+      </h3>
+      <ul class="tips-list">
+        <li>
+          <i class="fas fa-check"></i>
+          Лучшие результаты получаются на фотографиях с четким контуром объекта
+        </li>
+        <li>
+          <i class="fas fa-check"></i>
+          Модель хорошо работает с портретами и силуэтами людей
+        </li>
+        <li>
+          <i class="fas fa-check"></i>
+          Все обработка происходит локально — ваши фото никуда не отправляются
+        </li>
+        <li>
+          <i class="fas fa-check"></i>
+          После первой загрузки модель кэшируется для быстрой работы
+        </li>
+      </ul>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>Сделано с <i class="fas fa-heart" style="color: #ef4444;"></i> с использованием Transformers.js</p>
+  </footer>
+
+  <!-- Processing Overlay -->
+  <div class="processing-overlay hidden" id="processingOverlay">
+    <div class="spinner"></div>
+    <p id="processingText">Обработка изображения...</p>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module">
+    import { AutoModel, AutoProcessor, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+
+    // Конфигурация Transformers.js
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+
+    /**
+     * @class BackgroundRemover
+     * @description Класс для удаления и замены фона на изображениях
+     */
+    class BackgroundRemover {
+      constructor() {
+        this.model = null;
+        this.processor = null;
+        this.isModelLoaded = false;
+        this.originalImage = null;
+        this.processedMask = null;
+        this.currentBackground = 'transparent';
+        this.customBgImage = null;
+
+        this.initElements();
+        this.attachEventListeners();
+        this.loadTheme();
+        this.loadModel();
+      }
+
+      /**
+       * @method initElements
+       * @description Инициализация DOM элементов
+       */
+      initElements() {
+        // Status
+        this.statusIcon = document.getElementById('statusIcon');
+        this.statusText = document.getElementById('statusText');
+        this.modelLoading = document.getElementById('modelLoading');
+        this.progressFill = document.getElementById('progressFill');
+        this.progressText = document.getElementById('progressText');
+        this.editorLayout = document.getElementById('editorLayout');
+
+        // Drop zone
+        this.dropZone = document.getElementById('dropZone');
+        this.fileInput = document.getElementById('fileInput');
+
+        // Images
+        this.originalPreview = document.getElementById('originalPreview');
+        this.originalImageEl = document.getElementById('originalImage');
+        this.resultCanvas = document.getElementById('resultCanvas');
+        this.ctx = this.resultCanvas.getContext('2d');
+
+        // Buttons
+        this.processBtn = document.getElementById('processBtn');
+        this.clearBtn = document.getElementById('clearBtn');
+        this.downloadBtn = document.getElementById('downloadBtn');
+        this.copyBtn = document.getElementById('copyBtn');
+        this.themeToggle = document.getElementById('themeToggle');
+
+        // Background options
+        this.bgOptions = document.querySelectorAll('.bg-option');
+        this.customColor = document.getElementById('customColor');
+        this.bgImageInput = document.getElementById('bgImageInput');
+
+        // Overlay
+        this.processingOverlay = document.getElementById('processingOverlay');
+        this.processingText = document.getElementById('processingText');
+      }
+
+      /**
+       * @method attachEventListeners
+       * @description Привязка обработчиков событий
+       */
+      attachEventListeners() {
+        // Drag and drop
+        this.dropZone.addEventListener('click', () => this.fileInput.click());
+        this.dropZone.addEventListener('dragover', (e) => this.handleDragOver(e));
+        this.dropZone.addEventListener('dragleave', () => this.dropZone.classList.remove('dragover'));
+        this.dropZone.addEventListener('drop', (e) => this.handleDrop(e));
+        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+
+        // Buttons
+        this.processBtn.addEventListener('click', () => this.processImage());
+        this.clearBtn.addEventListener('click', () => this.clearImage());
+        this.downloadBtn.addEventListener('click', () => this.downloadResult());
+        this.copyBtn.addEventListener('click', () => this.copyToClipboard());
+        this.themeToggle.addEventListener('click', () => this.toggleTheme());
+
+        // Background options
+        this.bgOptions.forEach(option => {
+          option.addEventListener('click', () => this.selectBackground(option));
+        });
+        this.customColor.addEventListener('input', (e) => {
+          this.currentBackground = e.target.value;
+          this.updateResult();
+        });
+        this.bgImageInput.addEventListener('change', (e) => this.handleBgImageSelect(e));
+      }
+
+      /**
+       * @method loadTheme
+       * @description Загрузка сохраненной темы
+       */
+      loadTheme() {
+        const isDark = localStorage.getItem('bg-remover-dark-theme') === 'true';
+        if (isDark) {
+          document.body.classList.add('dark-theme');
+          this.themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        }
+      }
+
+      /**
+       * @method toggleTheme
+       * @description Переключение темы
+       */
+      toggleTheme() {
+        const isDark = document.body.classList.toggle('dark-theme');
+        localStorage.setItem('bg-remover-dark-theme', isDark);
+        this.themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+      }
+
+      /**
+       * @method loadModel
+       * @description Загрузка AI модели для сегментации
+       */
+      async loadModel() {
+        try {
+          this.updateStatus('loading', 'Загрузка AI модели...');
+
+          const modelId = 'briaai/RMBG-1.4';
+
+          // Загружаем модель и процессор с прогрессом
+          this.model = await AutoModel.from_pretrained(modelId, {
+            device: 'webgpu',
+            progress_callback: (progress) => {
+              if (progress.status === 'progress') {
+                const percent = Math.round((progress.loaded / progress.total) * 100);
+                this.progressFill.style.width = `${percent}%`;
+                this.progressText.textContent = `Загрузка модели: ${percent}%`;
+              } else if (progress.status === 'done') {
+                this.progressText.textContent = 'Загрузка завершена';
+              }
+            }
+          }).catch(async () => {
+            // Fallback на WASM если WebGPU недоступен
+            console.log('WebGPU недоступен, используем WASM');
+            return await AutoModel.from_pretrained(modelId, {
+              progress_callback: (progress) => {
+                if (progress.status === 'progress') {
+                  const percent = Math.round((progress.loaded / progress.total) * 100);
+                  this.progressFill.style.width = `${percent}%`;
+                  this.progressText.textContent = `Загрузка модели: ${percent}%`;
+                }
+              }
+            });
+          });
+
+          this.processor = await AutoProcessor.from_pretrained(modelId);
+
+          this.isModelLoaded = true;
+          this.modelLoading.classList.add('hidden');
+          this.editorLayout.classList.remove('hidden');
+          this.updateStatus('ready', 'Модель загружена. Выберите изображение.');
+
+        } catch (error) {
+          console.error('Ошибка загрузки модели:', error);
+          this.updateStatus('error', `Ошибка загрузки: ${error.message}`);
+          this.progressText.textContent = `Ошибка: ${error.message}`;
+        }
+      }
+
+      /**
+       * @method updateStatus
+       * @description Обновление статуса
+       * @param {string} status - Статус (ready, loading, error)
+       * @param {string} text - Текст статуса
+       */
+      updateStatus(status, text) {
+        this.statusIcon.className = `fas fa-circle status-icon ${status}`;
+        this.statusText.textContent = text;
+      }
+
+      /**
+       * @method handleDragOver
+       * @description Обработка перетаскивания
+       * @param {DragEvent} e - Событие
+       */
+      handleDragOver(e) {
+        e.preventDefault();
+        this.dropZone.classList.add('dragover');
+      }
+
+      /**
+       * @method handleDrop
+       * @description Обработка сброса файла
+       * @param {DragEvent} e - Событие
+       */
+      handleDrop(e) {
+        e.preventDefault();
+        this.dropZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.startsWith('image/')) {
+          this.loadImage(files[0]);
+        }
+      }
+
+      /**
+       * @method handleFileSelect
+       * @description Обработка выбора файла
+       * @param {Event} e - Событие
+       */
+      handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+          this.loadImage(file);
+        }
+      }
+
+      /**
+       * @method loadImage
+       * @description Загрузка изображения
+       * @param {File} file - Файл изображения
+       */
+      loadImage(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            this.originalImage = img;
+            this.originalImageEl.src = e.target.result;
+            this.dropZone.classList.add('hidden');
+            this.originalPreview.classList.remove('hidden');
+            this.processBtn.disabled = false;
+            this.updateStatus('ready', 'Изображение загружено. Нажмите "Удалить фон".');
+
+            // Очистка предыдущего результата
+            this.processedMask = null;
+            this.clearCanvas();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      /**
+       * @method clearImage
+       * @description Очистка изображения
+       */
+      clearImage() {
+        this.originalImage = null;
+        this.processedMask = null;
+        this.originalImageEl.src = '';
+        this.dropZone.classList.remove('hidden');
+        this.originalPreview.classList.add('hidden');
+        this.processBtn.disabled = true;
+        this.downloadBtn.disabled = true;
+        this.copyBtn.disabled = true;
+        this.fileInput.value = '';
+        this.clearCanvas();
+        this.updateStatus('ready', 'Модель загружена. Выберите изображение.');
+      }
+
+      /**
+       * @method clearCanvas
+       * @description Очистка канваса результата
+       */
+      clearCanvas() {
+        this.resultCanvas.width = 1;
+        this.resultCanvas.height = 1;
+        this.ctx.clearRect(0, 0, 1, 1);
+      }
+
+      /**
+       * @method processImage
+       * @description Обработка изображения - удаление фона
+       */
+      async processImage() {
+        if (!this.originalImage || !this.isModelLoaded) return;
+
+        try {
+          this.showProcessing('Анализ изображения...');
+
+          // Загрузка изображения для модели
+          const image = await RawImage.fromURL(this.originalImageEl.src);
+
+          this.showProcessing('Сегментация...');
+
+          // Препроцессинг
+          const { pixel_values } = await this.processor(image);
+
+          this.showProcessing('Применение AI модели...');
+
+          // Запуск модели
+          const { output } = await this.model({ input: pixel_values });
+
+          this.showProcessing('Создание маски...');
+
+          // Получение маски
+          const maskData = output[0].tolist();
+
+          // Интерполяция маски до размера оригинала
+          this.processedMask = this.interpolateMask(
+            maskData,
+            this.originalImage.width,
+            this.originalImage.height
+          );
+
+          // Обновление результата
+          this.updateResult();
+
+          this.downloadBtn.disabled = false;
+          this.copyBtn.disabled = false;
+          this.hideProcessing();
+          this.updateStatus('ready', 'Фон удален! Выберите новый фон или скачайте результат.');
+
+        } catch (error) {
+          console.error('Ошибка обработки:', error);
+          this.hideProcessing();
+          this.updateStatus('error', `Ошибка обработки: ${error.message}`);
+        }
+      }
+
+      /**
+       * @method interpolateMask
+       * @description Интерполяция маски до нужного размера
+       * @param {Array} mask - Маска от модели
+       * @param {number} width - Целевая ширина
+       * @param {number} height - Целевая высота
+       * @returns {Float32Array} Интерполированная маска
+       */
+      interpolateMask(mask, width, height) {
+        const inputHeight = mask.length;
+        const inputWidth = mask[0].length;
+        const output = new Float32Array(width * height);
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            // Билинейная интерполяция
+            const srcX = (x / width) * inputWidth;
+            const srcY = (y / height) * inputHeight;
+
+            const x0 = Math.floor(srcX);
+            const x1 = Math.min(x0 + 1, inputWidth - 1);
+            const y0 = Math.floor(srcY);
+            const y1 = Math.min(y0 + 1, inputHeight - 1);
+
+            const xLerp = srcX - x0;
+            const yLerp = srcY - y0;
+
+            const top = mask[y0][x0] * (1 - xLerp) + mask[y0][x1] * xLerp;
+            const bottom = mask[y1][x0] * (1 - xLerp) + mask[y1][x1] * xLerp;
+
+            output[y * width + x] = top * (1 - yLerp) + bottom * yLerp;
+          }
+        }
+
+        return output;
+      }
+
+      /**
+       * @method updateResult
+       * @description Обновление результата с текущим фоном
+       */
+      updateResult() {
+        if (!this.originalImage || !this.processedMask) return;
+
+        const { width, height } = this.originalImage;
+
+        this.resultCanvas.width = width;
+        this.resultCanvas.height = height;
+
+        // Рисуем фон
+        if (this.currentBackground === 'transparent') {
+          this.ctx.clearRect(0, 0, width, height);
+        } else if (this.currentBackground === 'image' && this.customBgImage) {
+          this.ctx.drawImage(this.customBgImage, 0, 0, width, height);
+        } else {
+          this.ctx.fillStyle = this.currentBackground;
+          this.ctx.fillRect(0, 0, width, height);
+        }
+
+        // Рисуем изображение с маской
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        tempCtx.drawImage(this.originalImage, 0, 0);
+        const imageData = tempCtx.getImageData(0, 0, width, height);
+
+        // Применяем маску к альфа-каналу
+        for (let i = 0; i < this.processedMask.length; i++) {
+          imageData.data[i * 4 + 3] = Math.round(this.processedMask[i] * 255);
+        }
+
+        tempCtx.putImageData(imageData, 0, 0);
+        this.ctx.drawImage(tempCanvas, 0, 0);
+      }
+
+      /**
+       * @method selectBackground
+       * @description Выбор фона
+       * @param {HTMLElement} option - Элемент опции
+       */
+      selectBackground(option) {
+        this.bgOptions.forEach(o => o.classList.remove('active'));
+        option.classList.add('active');
+
+        const bg = option.dataset.bg;
+        if (bg === 'image') {
+          this.bgImageInput.click();
+        } else {
+          this.currentBackground = bg;
+          this.customBgImage = null;
+          this.updateResult();
+        }
+      }
+
+      /**
+       * @method handleBgImageSelect
+       * @description Обработка выбора фонового изображения
+       * @param {Event} e - Событие
+       */
+      handleBgImageSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              this.customBgImage = img;
+              this.currentBackground = 'image';
+              this.updateResult();
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      /**
+       * @method downloadResult
+       * @description Скачивание результата
+       */
+      downloadResult() {
+        const link = document.createElement('a');
+        link.download = 'background-removed.png';
+        link.href = this.resultCanvas.toDataURL('image/png');
+        link.click();
+      }
+
+      /**
+       * @method copyToClipboard
+       * @description Копирование в буфер обмена
+       */
+      async copyToClipboard() {
+        try {
+          const blob = await new Promise(resolve => {
+            this.resultCanvas.toBlob(resolve, 'image/png');
+          });
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          this.updateStatus('ready', 'Скопировано в буфер обмена!');
+        } catch (error) {
+          console.error('Ошибка копирования:', error);
+          this.updateStatus('error', 'Не удалось скопировать');
+        }
+      }
+
+      /**
+       * @method showProcessing
+       * @description Показ оверлея обработки
+       * @param {string} text - Текст
+       */
+      showProcessing(text) {
+        this.processingOverlay.classList.remove('hidden');
+        this.processingText.textContent = text;
+      }
+
+      /**
+       * @method hideProcessing
+       * @description Скрытие оверлея обработки
+       */
+      hideProcessing() {
+        this.processingOverlay.classList.add('hidden');
+      }
+    }
+
+    // Запуск приложения
+    window.addEventListener('DOMContentLoaded', () => {
+      new BackgroundRemover();
+    });
+  </script>
+</body>
+</html>
