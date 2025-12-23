@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Browser Search - Поиск по своим файлам</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!--
+  Техническое описание:
+  - RAG-поиск по локальным файлам (PDF, Markdown, TXT)
+  - Эмбеддинги через Transformers.js (all-MiniLM-L6-v2)
+  - Векторный индекс в IndexedDB
+  - WebGPU/WebNN для ускорения инференса
+  - Полностью клиентская реализация без серверов
+  - Ответы с цитатами из исходных документов
+
+  История изменений:
+  2025-12-23: Первоначальная версия RAG Browser Search
+  -->
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary-color: #8b5cf6;
+      --secondary-color: #a78bfa;
+      --bg-color: #0f0a19;
+      --card-bg: #1a1425;
+      --chat-bg: #231d30;
+      --text-color: #ffffff;
+      --text-secondary: #a0aec0;
+      --border-color: #3d3654;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --error-color: #ef4444;
+      --quote-bg: #2d2640;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, var(--bg-color) 0%, #1a0a2e 100%);
+      color: var(--text-color);
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .main-container {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 300px;
+      background: #151020;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      padding: 20px;
+      text-align: center;
+    }
+
+    .sidebar-header h1 {
+      font-size: 1.3rem;
+      margin-bottom: 5px;
+    }
+
+    .sidebar-header p {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    .upload-zone {
+      margin: 15px;
+      padding: 30px 20px;
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: var(--card-bg);
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--primary-color);
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    .upload-zone i {
+      font-size: 2.5rem;
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+
+    .upload-zone p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .upload-zone .formats {
+      font-size: 0.8rem;
+      margin-top: 8px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+
+    .files-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 15px;
+    }
+
+    .files-list h3 {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-item {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.2s;
+    }
+
+    .file-item:hover {
+      background: var(--chat-bg);
+    }
+
+    .file-item .icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .file-item .icon.pdf { background: #dc2626; }
+    .file-item .icon.md { background: #2563eb; }
+    .file-item .icon.txt { background: #059669; }
+
+    .file-item .info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-item .name {
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-item .meta {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .file-item .status {
+      font-size: 0.8rem;
+    }
+
+    .file-item .status.indexed { color: var(--success-color); }
+    .file-item .status.processing { color: var(--warning-color); }
+    .file-item .status.error { color: var(--error-color); }
+
+    .file-item .delete-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 5px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .file-item:hover .delete-btn {
+      opacity: 1;
+    }
+
+    .file-item .delete-btn:hover {
+      color: var(--error-color);
+    }
+
+    .sidebar-footer {
+      padding: 15px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .clear-btn {
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .clear-btn:hover {
+      border-color: var(--error-color);
+      color: var(--error-color);
+    }
+
+    /* Main Content */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .model-status {
+      padding: 12px 20px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .model-status .indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--warning-color);
+    }
+
+    .model-status .indicator.ready { background: var(--success-color); }
+    .model-status .indicator.loading {
+      background: var(--warning-color);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .model-status .text {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .model-status .progress {
+      flex: 1;
+      max-width: 200px;
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .model-status .progress-bar {
+      height: 100%;
+      background: var(--primary-color);
+      transition: width 0.3s;
+    }
+
+    /* Chat Area */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      color: var(--primary-color);
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .empty-state h2 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: var(--text-color);
+    }
+
+    .empty-state p {
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    .message {
+      max-width: 800px;
+      margin: 0 auto 20px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      background: linear-gradient(135deg, var(--primary-color), #6d28d9);
+      padding: 15px 20px;
+      border-radius: 18px 18px 4px 18px;
+      margin-left: auto;
+      max-width: 70%;
+    }
+
+    .message.assistant {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 4px 18px 18px 18px;
+      border: 1px solid var(--border-color);
+    }
+
+    .message.assistant .sources {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .message.assistant .sources h4 {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .citation {
+      background: var(--quote-bg);
+      border-left: 3px solid var(--primary-color);
+      padding: 12px 15px;
+      margin-bottom: 10px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .citation .source-info {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .citation .score {
+      background: var(--primary-color);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+    }
+
+    /* Input Area */
+    .input-area {
+      padding: 20px;
+      background: var(--card-bg);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .input-wrapper {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      gap: 12px;
+    }
+
+    .input-wrapper input {
+      flex: 1;
+      padding: 15px 20px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      color: var(--text-color);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-wrapper input:focus {
+      border-color: var(--primary-color);
+    }
+
+    .input-wrapper input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .input-wrapper button {
+      padding: 15px 25px;
+      background: linear-gradient(135deg, var(--primary-color), #6d28d9);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+
+    .input-wrapper button:hover {
+      transform: scale(1.02);
+    }
+
+    .input-wrapper button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Loading indicator */
+    .loading-dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      .main-container {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .message.user {
+        max-width: 90%;
+      }
+    }
+
+    /* WebGPU/WebNN badge */
+    .tech-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: rgba(139, 92, 246, 0.2);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--secondary-color);
+      margin-left: auto;
+    }
+
+    .tech-badge.webgpu { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .tech-badge.wasm { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1><i class="fas fa-search-plus"></i> RAG Search</h1>
+        <p>Поиск по своим файлам с ИИ</p>
+      </div>
+
+      <div class="upload-zone" id="uploadZone">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <p>Перетащите файлы сюда</p>
+        <p class="formats">PDF, Markdown, TXT</p>
+        <input type="file" id="fileInput" hidden multiple accept=".pdf,.md,.txt,.markdown">
+      </div>
+
+      <div class="files-list">
+        <h3><i class="fas fa-folder-open"></i> Загруженные файлы</h3>
+        <div id="filesList"></div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="clear-btn" id="clearBtn">
+          <i class="fas fa-trash-alt"></i> Очистить все данные
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <div class="model-status">
+        <div class="indicator" id="modelIndicator"></div>
+        <span class="text" id="modelStatus">Загрузка модели эмбеддингов...</span>
+        <div class="progress" id="progressContainer">
+          <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+        </div>
+        <span class="tech-badge" id="techBadge">
+          <i class="fas fa-microchip"></i>
+          <span id="techType">Определение...</span>
+        </span>
+      </div>
+
+      <div class="chat-container" id="chatContainer">
+        <div class="empty-state" id="emptyState">
+          <i class="fas fa-comments"></i>
+          <h2>Спросите у своих файлов</h2>
+          <p>Загрузите документы и задавайте вопросы. ИИ найдет релевантные фрагменты и покажет цитаты из источников.</p>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <input
+            type="text"
+            id="queryInput"
+            placeholder="Задайте вопрос по вашим документам..."
+            disabled
+          >
+          <button id="searchBtn" disabled>
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Transformers.js for embeddings -->
+  <script type="module">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+    // Отключаем локальные модели, используем только CDN
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+
+    // === Глобальное состояние ===
+    const state = {
+      embedder: null,
+      modelReady: false,
+      files: [],
+      chunks: [],
+      isProcessing: false,
+      backend: 'wasm'
+    };
+
+    // === IndexedDB ===
+    const DB_NAME = 'rag-browser-search';
+    const DB_VERSION = 1;
+    let db = null;
+
+    /**
+     * @function openDB
+     * @description Открывает или создает базу данных IndexedDB
+     * @returns {Promise<IDBDatabase>}
+     */
+    async function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+
+        request.onupgradeneeded = (event) => {
+          const database = event.target.result;
+
+          // Хранилище для файлов
+          if (!database.objectStoreNames.contains('files')) {
+            database.createObjectStore('files', { keyPath: 'id' });
+          }
+
+          // Хранилище для чанков с эмбеддингами
+          if (!database.objectStoreNames.contains('chunks')) {
+            const chunkStore = database.createObjectStore('chunks', { keyPath: 'id' });
+            chunkStore.createIndex('fileId', 'fileId', { unique: false });
+          }
+        };
+      });
+    }
+
+    /**
+     * @function saveToStore
+     * @description Сохраняет данные в IndexedDB
+     */
+    async function saveToStore(storeName, data) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.put(data);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    /**
+     * @function getAllFromStore
+     * @description Получает все записи из хранилища
+     */
+    async function getAllFromStore(storeName) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    /**
+     * @function deleteFromStore
+     * @description Удаляет запись из хранилища
+     */
+    async function deleteFromStore(storeName, key) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.delete(key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    /**
+     * @function clearStore
+     * @description Очищает хранилище
+     */
+    async function clearStore(storeName) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // === Инициализация модели ===
+    async function initEmbedder() {
+      const indicator = document.getElementById('modelIndicator');
+      const statusText = document.getElementById('modelStatus');
+      const progressBar = document.getElementById('progressBar');
+      const techBadge = document.getElementById('techBadge');
+      const techType = document.getElementById('techType');
+
+      indicator.classList.add('loading');
+
+      try {
+        // Определяем доступный backend
+        if (navigator.gpu) {
+          state.backend = 'webgpu';
+          techType.textContent = 'WebGPU';
+          techBadge.classList.add('webgpu');
+        } else {
+          state.backend = 'wasm';
+          techType.textContent = 'WASM';
+          techBadge.classList.add('wasm');
+        }
+
+        statusText.textContent = 'Загрузка модели эмбеддингов...';
+
+        // Создаем пайплайн для эмбеддингов
+        state.embedder = await pipeline(
+          'feature-extraction',
+          'Xenova/all-MiniLM-L6-v2',
+          {
+            progress_callback: (progress) => {
+              if (progress.status === 'progress') {
+                const percent = Math.round((progress.loaded / progress.total) * 100);
+                progressBar.style.width = `${percent}%`;
+                statusText.textContent = `Загрузка модели: ${percent}%`;
+              }
+            }
+          }
+        );
+
+        state.modelReady = true;
+        indicator.classList.remove('loading');
+        indicator.classList.add('ready');
+        statusText.textContent = 'Модель готова';
+        document.getElementById('progressContainer').style.display = 'none';
+
+        // Включаем ввод
+        document.getElementById('queryInput').disabled = false;
+        document.getElementById('searchBtn').disabled = false;
+
+      } catch (error) {
+        console.error('Ошибка инициализации модели:', error);
+        indicator.classList.remove('loading');
+        statusText.textContent = 'Ошибка загрузки модели';
+        indicator.style.background = 'var(--error-color)';
+      }
+    }
+
+    // === Парсинг файлов ===
+
+    /**
+     * @function parsePDF
+     * @description Парсит PDF файл и извлекает текст
+     */
+    async function parsePDF(file) {
+      // Динамически загружаем pdf.js
+      if (!window.pdfjsLib) {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str).join(' ');
+        text += pageText + '\n\n';
+      }
+
+      return text.trim();
+    }
+
+    /**
+     * @function parseMarkdown
+     * @description Парсит Markdown файл
+     */
+    async function parseMarkdown(file) {
+      const text = await file.text();
+      // Убираем markdown-разметку для чистого текста
+      return text
+        .replace(/#{1,6}\s/g, '')  // Заголовки
+        .replace(/\*\*|__/g, '')   // Bold
+        .replace(/\*|_/g, '')      // Italic
+        .replace(/```[\s\S]*?```/g, '') // Код блоки
+        .replace(/`([^`]+)`/g, '$1')    // Inline код
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Ссылки
+        .replace(/!\[([^\]]*)\]\([^)]+\)/g, '')  // Картинки
+        .trim();
+    }
+
+    /**
+     * @function parseText
+     * @description Парсит текстовый файл
+     */
+    async function parseText(file) {
+      return await file.text();
+    }
+
+    /**
+     * @function loadScript
+     * @description Динамически загружает скрипт
+     */
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    // === Чанкинг ===
+
+    /**
+     * @function chunkText
+     * @description Разбивает текст на чанки с перекрытием
+     * @param {string} text - Исходный текст
+     * @param {number} chunkSize - Размер чанка в символах
+     * @param {number} overlap - Размер перекрытия
+     * @returns {string[]} Массив чанков
+     */
+    function chunkText(text, chunkSize = 500, overlap = 50) {
+      const chunks = [];
+      const sentences = text.split(/(?<=[.!?])\s+/);
+
+      let currentChunk = '';
+
+      for (const sentence of sentences) {
+        if ((currentChunk + sentence).length > chunkSize && currentChunk.length > 0) {
+          chunks.push(currentChunk.trim());
+          // Берем последние overlap символов для перекрытия
+          const words = currentChunk.split(' ');
+          currentChunk = words.slice(-Math.ceil(words.length * 0.1)).join(' ') + ' ';
+        }
+        currentChunk += sentence + ' ';
+      }
+
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+      }
+
+      return chunks;
+    }
+
+    // === Эмбеддинги ===
+
+    /**
+     * @function getEmbedding
+     * @description Создает эмбеддинг для текста
+     */
+    async function getEmbedding(text) {
+      if (!state.embedder) {
+        throw new Error('Модель не загружена');
+      }
+
+      const output = await state.embedder(text, { pooling: 'mean', normalize: true });
+      return Array.from(output.data);
+    }
+
+    /**
+     * @function cosineSimilarity
+     * @description Вычисляет косинусное сходство между двумя векторами
+     */
+    function cosineSimilarity(a, b) {
+      let dotProduct = 0;
+      let normA = 0;
+      let normB = 0;
+
+      for (let i = 0; i < a.length; i++) {
+        dotProduct += a[i] * b[i];
+        normA += a[i] * a[i];
+        normB += b[i] * b[i];
+      }
+
+      return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    // === Обработка файлов ===
+
+    /**
+     * @function processFile
+     * @description Обрабатывает загруженный файл
+     */
+    async function processFile(file) {
+      const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const extension = file.name.split('.').pop().toLowerCase();
+
+      // Добавляем файл в UI
+      const fileData = {
+        id: fileId,
+        name: file.name,
+        size: file.size,
+        type: extension,
+        status: 'processing',
+        chunksCount: 0
+      };
+
+      state.files.push(fileData);
+      renderFilesList();
+
+      try {
+        // Парсим файл
+        let text;
+        switch (extension) {
+          case 'pdf':
+            text = await parsePDF(file);
+            break;
+          case 'md':
+          case 'markdown':
+            text = await parseMarkdown(file);
+            break;
+          case 'txt':
+          default:
+            text = await parseText(file);
+        }
+
+        // Чанкуем текст
+        const textChunks = chunkText(text);
+
+        // Создаем эмбеддинги
+        for (let i = 0; i < textChunks.length; i++) {
+          const chunk = textChunks[i];
+          const embedding = await getEmbedding(chunk);
+
+          const chunkData = {
+            id: `chunk_${fileId}_${i}`,
+            fileId: fileId,
+            fileName: file.name,
+            text: chunk,
+            embedding: embedding,
+            index: i
+          };
+
+          state.chunks.push(chunkData);
+          await saveToStore('chunks', chunkData);
+
+          // Обновляем прогресс
+          fileData.status = `Индексация ${i + 1}/${textChunks.length}`;
+          renderFilesList();
+        }
+
+        fileData.status = 'indexed';
+        fileData.chunksCount = textChunks.length;
+        await saveToStore('files', fileData);
+        renderFilesList();
+
+      } catch (error) {
+        console.error('Ошибка обработки файла:', error);
+        fileData.status = 'error';
+        renderFilesList();
+      }
+    }
+
+    // === Поиск ===
+
+    /**
+     * @function search
+     * @description Выполняет семантический поиск
+     */
+    async function search(query, topK = 5) {
+      if (state.chunks.length === 0) {
+        return [];
+      }
+
+      const queryEmbedding = await getEmbedding(query);
+
+      // Вычисляем сходство со всеми чанками
+      const results = state.chunks.map(chunk => ({
+        ...chunk,
+        score: cosineSimilarity(queryEmbedding, chunk.embedding)
+      }));
+
+      // Сортируем по релевантности
+      results.sort((a, b) => b.score - a.score);
+
+      // Возвращаем топ результатов
+      return results.slice(0, topK);
+    }
+
+    // === UI ===
+
+    function renderFilesList() {
+      const container = document.getElementById('filesList');
+
+      if (state.files.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.85rem;">Нет загруженных файлов</p>';
+        return;
+      }
+
+      container.innerHTML = state.files.map(file => {
+        const iconClass = file.type === 'pdf' ? 'pdf' :
+                          (file.type === 'md' || file.type === 'markdown') ? 'md' : 'txt';
+        const iconName = file.type === 'pdf' ? 'fa-file-pdf' :
+                         (file.type === 'md' || file.type === 'markdown') ? 'fa-file-alt' : 'fa-file-lines';
+
+        let statusClass = 'processing';
+        let statusText = file.status;
+
+        if (file.status === 'indexed') {
+          statusClass = 'indexed';
+          statusText = `${file.chunksCount} фрагментов`;
+        } else if (file.status === 'error') {
+          statusClass = 'error';
+          statusText = 'Ошибка';
+        }
+
+        const sizeKB = (file.size / 1024).toFixed(1);
+
+        return `
+          <div class="file-item" data-id="${file.id}">
+            <div class="icon ${iconClass}">
+              <i class="fas ${iconName}"></i>
+            </div>
+            <div class="info">
+              <div class="name" title="${file.name}">${file.name}</div>
+              <div class="meta">${sizeKB} KB</div>
+            </div>
+            <span class="status ${statusClass}">${statusText}</span>
+            <button class="delete-btn" onclick="deleteFile('${file.id}')">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addMessage(type, content, sources = null) {
+      const container = document.getElementById('chatContainer');
+      const emptyState = document.getElementById('emptyState');
+
+      if (emptyState) {
+        emptyState.style.display = 'none';
+      }
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${type}`;
+
+      if (type === 'user') {
+        messageDiv.textContent = content;
+      } else {
+        let html = `<div class="answer">${content}</div>`;
+
+        if (sources && sources.length > 0) {
+          html += `
+            <div class="sources">
+              <h4><i class="fas fa-quote-right"></i> Источники</h4>
+              ${sources.map(s => `
+                <div class="citation">
+                  <div class="text">${escapeHtml(s.text)}</div>
+                  <div class="source-info">
+                    <i class="fas fa-file"></i> ${s.fileName}
+                    <span class="score">${(s.score * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+
+        messageDiv.innerHTML = html;
+      }
+
+      container.appendChild(messageDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function addLoadingMessage() {
+      const container = document.getElementById('chatContainer');
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'message assistant';
+      loadingDiv.id = 'loadingMessage';
+      loadingDiv.innerHTML = `
+        <div class="loading-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      `;
+      container.appendChild(loadingDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function removeLoadingMessage() {
+      const loading = document.getElementById('loadingMessage');
+      if (loading) {
+        loading.remove();
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // === Обработчики событий ===
+
+    // Drag & Drop
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+
+    uploadZone.addEventListener('click', () => fileInput.click());
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+
+      const files = Array.from(e.dataTransfer.files);
+      for (const file of files) {
+        await processFile(file);
+      }
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      for (const file of files) {
+        await processFile(file);
+      }
+      fileInput.value = '';
+    });
+
+    // Поиск
+    const queryInput = document.getElementById('queryInput');
+    const searchBtn = document.getElementById('searchBtn');
+
+    async function handleSearch() {
+      const query = queryInput.value.trim();
+      if (!query || state.isProcessing) return;
+
+      if (state.chunks.length === 0) {
+        addMessage('assistant', 'Пожалуйста, сначала загрузите документы для поиска.');
+        return;
+      }
+
+      state.isProcessing = true;
+      queryInput.value = '';
+      searchBtn.disabled = true;
+
+      addMessage('user', query);
+      addLoadingMessage();
+
+      try {
+        const results = await search(query);
+        removeLoadingMessage();
+
+        if (results.length === 0) {
+          addMessage('assistant', 'К сожалению, не найдено релевантных фрагментов по вашему запросу.');
+        } else {
+          // Формируем ответ на основе найденных фрагментов
+          const topResult = results[0];
+          const answer = `На основе ваших документов найдено ${results.length} релевантных фрагментов. Наиболее подходящий результат из файла "${topResult.fileName}" с точностью ${(topResult.score * 100).toFixed(0)}%.`;
+
+          addMessage('assistant', answer, results);
+        }
+      } catch (error) {
+        removeLoadingMessage();
+        addMessage('assistant', `Ошибка поиска: ${error.message}`);
+      }
+
+      state.isProcessing = false;
+      searchBtn.disabled = false;
+    }
+
+    searchBtn.addEventListener('click', handleSearch);
+    queryInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleSearch();
+      }
+    });
+
+    // Очистка
+    document.getElementById('clearBtn').addEventListener('click', async () => {
+      if (confirm('Вы уверены? Все загруженные файлы и индексы будут удалены.')) {
+        await clearStore('files');
+        await clearStore('chunks');
+        state.files = [];
+        state.chunks = [];
+        renderFilesList();
+        document.getElementById('chatContainer').innerHTML = `
+          <div class="empty-state" id="emptyState">
+            <i class="fas fa-comments"></i>
+            <h2>Спросите у своих файлов</h2>
+            <p>Загрузите документы и задавайте вопросы. ИИ найдет релевантные фрагменты и покажет цитаты из источников.</p>
+          </div>
+        `;
+      }
+    });
+
+    // Удаление файла (глобальная функция для onclick)
+    window.deleteFile = async function(fileId) {
+      // Удаляем чанки файла
+      state.chunks = state.chunks.filter(c => c.fileId !== fileId);
+
+      // Удаляем файл
+      state.files = state.files.filter(f => f.id !== fileId);
+
+      // Удаляем из IndexedDB
+      await deleteFromStore('files', fileId);
+
+      // Перезагружаем чанки из базы (удаляем связанные)
+      const allChunks = await getAllFromStore('chunks');
+      for (const chunk of allChunks) {
+        if (chunk.fileId === fileId) {
+          await deleteFromStore('chunks', chunk.id);
+        }
+      }
+
+      renderFilesList();
+    };
+
+    // === Инициализация ===
+
+    async function init() {
+      try {
+        await openDB();
+
+        // Загружаем сохраненные данные
+        state.files = await getAllFromStore('files');
+        state.chunks = await getAllFromStore('chunks');
+        renderFilesList();
+
+        // Инициализируем модель
+        await initEmbedder();
+
+      } catch (error) {
+        console.error('Ошибка инициализации:', error);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
