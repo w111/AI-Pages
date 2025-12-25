@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивный E-Commerce Dashboard с аналитикой продаж.
+
+Функциональные требования:
+1. Демо-данные продаж:
+   - JSON-структура с продажами по датам
+   - Категории товаров
+   - Данные воронки продаж
+
+2. Графики и визуализации:
+   - Выручка по периодам (Chart.js - линейный/столбчатый)
+   - Топ товаров (Chart.js - горизонтальная гистограмма)
+   - Воронка продаж (D3.js)
+   - KPI карточки с анимацией
+
+3. Фильтры:
+   - Фильтр по дате (7д, 30д, 90д, год)
+   - Фильтр по категории товаров
+   - Обновление всех графиков при изменении фильтров
+
+4. Анимации:
+   - Плавные переходы при смене данных
+   - Анимация KPI счетчиков
+   - Hover эффекты на графиках
+
+Технические требования:
+1. Chart.js для графиков
+2. D3.js для воронки продаж
+3. Vanilla JavaScript
+4. Адаптивный дизайн
+5. Темная/светлая тема
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Commerce Dashboard | Аналитика продаж</title>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    :root {
+      --bg-color: #f0f4f8;
+      --text-color: #1a202c;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --primary-color: #6366f1;
+      --primary-hover: #4f46e5;
+      --secondary-color: #64748b;
+      --success-color: #22c55e;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --info-color: #3b82f6;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                   0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #0f172a;
+      --text-color: #e2e8f0;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+      --primary-color: #818cf8;
+      --primary-hover: #a5b4fc;
+      --secondary-color: #94a3b8;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3),
+                0 2px 4px -1px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3),
+                   0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                   Oxygen, Ubuntu, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .header-left h1 {
+      font-size: 1.8rem;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-left .subtitle {
+      color: var(--secondary-color);
+      font-size: 0.95rem;
+      margin-top: 5px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    /* Theme toggle */
+    .theme-toggle {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--primary-color);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease, background-color 0.3s ease;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.1);
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 25px;
+      padding: 20px;
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-group label {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+      font-weight: 500;
+    }
+
+    .filter-group select,
+    .filter-group input {
+      padding: 10px 15px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .filter-group select:hover,
+    .filter-group input:hover {
+      border-color: var(--primary-color);
+    }
+
+    .filter-group select:focus,
+    .filter-group input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+
+    .kpi-card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+    }
+
+    .kpi-card.revenue::before { background-color: var(--primary-color); }
+    .kpi-card.orders::before { background-color: var(--success-color); }
+    .kpi-card.avg-check::before { background-color: var(--warning-color); }
+    .kpi-card.conversion::before { background-color: var(--info-color); }
+
+    .kpi-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .kpi-title {
+      font-size: 0.9rem;
+      color: var(--secondary-color);
+      font-weight: 500;
+    }
+
+    .kpi-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .kpi-card.revenue .kpi-icon {
+      background-color: rgba(99, 102, 241, 0.1);
+      color: var(--primary-color);
+    }
+    .kpi-card.orders .kpi-icon {
+      background-color: rgba(34, 197, 94, 0.1);
+      color: var(--success-color);
+    }
+    .kpi-card.avg-check .kpi-icon {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: var(--warning-color);
+    }
+    .kpi-card.conversion .kpi-icon {
+      background-color: rgba(59, 130, 246, 0.1);
+      color: var(--info-color);
+    }
+
+    .kpi-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-color);
+      margin-bottom: 5px;
+    }
+
+    .kpi-change {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .kpi-change.positive { color: var(--success-color); }
+    .kpi-change.negative { color: var(--danger-color); }
+
+    /* Charts Grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 25px;
+      margin-bottom: 25px;
+    }
+
+    @media (max-width: 1024px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .chart-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chart-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chart-title i {
+      color: var(--primary-color);
+    }
+
+    .chart-tabs {
+      display: flex;
+      gap: 5px;
+    }
+
+    .chart-tab {
+      padding: 6px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background-color: transparent;
+      color: var(--secondary-color);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chart-tab:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .chart-tab.active {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+
+    /* Funnel Chart */
+    .funnel-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 300px;
+    }
+
+    .funnel-stage {
+      text-anchor: middle;
+      transition: opacity 0.3s ease;
+    }
+
+    .funnel-stage:hover {
+      opacity: 0.8;
+    }
+
+    .funnel-label {
+      font-size: 12px;
+      fill: var(--text-color);
+      font-weight: 500;
+    }
+
+    .funnel-value {
+      font-size: 14px;
+      fill: var(--text-color);
+      font-weight: 700;
+    }
+
+    .funnel-percent {
+      font-size: 11px;
+      fill: var(--secondary-color);
+    }
+
+    /* Table */
+    .table-card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-table th {
+      font-weight: 600;
+      color: var(--secondary-color);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    .data-table tbody tr:hover {
+      background-color: rgba(99, 102, 241, 0.05);
+    }
+
+    .product-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .product-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .product-name {
+      font-weight: 500;
+    }
+
+    .product-category {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .badge.electronics { background-color: rgba(99, 102, 241, 0.1); color: #6366f1; }
+    .badge.clothing { background-color: rgba(236, 72, 153, 0.1); color: #ec4899; }
+    .badge.home { background-color: rgba(34, 197, 94, 0.1); color: #22c55e; }
+    .badge.sports { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    .badge.beauty { background-color: rgba(168, 85, 247, 0.1); color: #a855f7; }
+
+    .trend {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .trend.up { color: var(--success-color); }
+    .trend.down { color: var(--danger-color); }
+
+    /* Loading state */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--secondary-color);
+    }
+
+    .loading i {
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Animations */
+    @keyframes countUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-count {
+      animation: countUp 0.5s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .header-left h1 {
+        font-size: 1.5rem;
+      }
+
+      .filters {
+        flex-direction: column;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .filter-group select,
+      .filter-group input {
+        width: 100%;
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .chart-container {
+        height: 250px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="header-left">
+        <h1>
+          <i class="fas fa-chart-line"></i>
+          E-Commerce Dashboard
+        </h1>
+        <p class="subtitle">Аналитика продаж и ключевые метрики</p>
+      </div>
+      <div class="header-right">
+        <button class="theme-toggle" id="themeToggle" title="Переключить тему">
+          <i class="fas fa-moon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Filters -->
+    <div class="filters">
+      <div class="filter-group">
+        <label for="periodFilter">Период</label>
+        <select id="periodFilter">
+          <option value="7">Последние 7 дней</option>
+          <option value="30" selected>Последние 30 дней</option>
+          <option value="90">Последние 90 дней</option>
+          <option value="365">Последний год</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="categoryFilter">Категория</label>
+        <select id="categoryFilter">
+          <option value="all">Все категории</option>
+          <option value="electronics">Электроника</option>
+          <option value="clothing">Одежда</option>
+          <option value="home">Дом и сад</option>
+          <option value="sports">Спорт</option>
+          <option value="beauty">Красота</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="startDate">Начало периода</label>
+        <input type="date" id="startDate">
+      </div>
+      <div class="filter-group">
+        <label for="endDate">Конец периода</label>
+        <input type="date" id="endDate">
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card revenue">
+        <div class="kpi-header">
+          <span class="kpi-title">Выручка</span>
+          <div class="kpi-icon">
+            <i class="fas fa-dollar-sign"></i>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpiRevenue">0 ₽</div>
+        <div class="kpi-change positive" id="kpiRevenueChange">
+          <i class="fas fa-arrow-up"></i>
+          <span>+12.5% vs прошлый период</span>
+        </div>
+      </div>
+
+      <div class="kpi-card orders">
+        <div class="kpi-header">
+          <span class="kpi-title">Заказы</span>
+          <div class="kpi-icon">
+            <i class="fas fa-shopping-cart"></i>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpiOrders">0</div>
+        <div class="kpi-change positive" id="kpiOrdersChange">
+          <i class="fas fa-arrow-up"></i>
+          <span>+8.3% vs прошлый период</span>
+        </div>
+      </div>
+
+      <div class="kpi-card avg-check">
+        <div class="kpi-header">
+          <span class="kpi-title">Средний чек</span>
+          <div class="kpi-icon">
+            <i class="fas fa-receipt"></i>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpiAvgCheck">0 ₽</div>
+        <div class="kpi-change positive" id="kpiAvgCheckChange">
+          <i class="fas fa-arrow-up"></i>
+          <span>+3.8% vs прошлый период</span>
+        </div>
+      </div>
+
+      <div class="kpi-card conversion">
+        <div class="kpi-header">
+          <span class="kpi-title">Конверсия</span>
+          <div class="kpi-icon">
+            <i class="fas fa-percentage"></i>
+          </div>
+        </div>
+        <div class="kpi-value" id="kpiConversion">0%</div>
+        <div class="kpi-change negative" id="kpiConversionChange">
+          <i class="fas fa-arrow-down"></i>
+          <span>-0.5% vs прошлый период</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <!-- Revenue Chart -->
+      <div class="chart-card full-width">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-chart-area"></i>
+            Динамика выручки
+          </h3>
+          <div class="chart-tabs">
+            <button class="chart-tab active" data-type="line">Линия</button>
+            <button class="chart-tab" data-type="bar">Столбцы</button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="revenueChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Top Products Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-trophy"></i>
+            Топ товаров
+          </h3>
+        </div>
+        <div class="chart-container">
+          <canvas id="topProductsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Sales Funnel -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-filter"></i>
+            Воронка продаж
+          </h3>
+        </div>
+        <div class="funnel-container" id="funnelChart"></div>
+      </div>
+
+      <!-- Categories Distribution -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-pie-chart"></i>
+            Продажи по категориям
+          </h3>
+        </div>
+        <div class="chart-container">
+          <canvas id="categoriesChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Orders by Hour -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">
+            <i class="fas fa-clock"></i>
+            Заказы по часам
+          </h3>
+        </div>
+        <div class="chart-container">
+          <canvas id="hourlyChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Orders Table -->
+    <div class="table-card">
+      <div class="chart-header">
+        <h3 class="chart-title">
+          <i class="fas fa-list"></i>
+          Последние заказы
+        </h3>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Товар</th>
+            <th>Категория</th>
+            <th>Количество</th>
+            <th>Сумма</th>
+            <th>Тренд</th>
+          </tr>
+        </thead>
+        <tbody id="ordersTableBody">
+          <!-- Dynamic content -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * @description E-Commerce Dashboard - интерактивный дашборд аналитики продаж
+     * @requires Chart.js, D3.js
+     */
+
+    // Демо-данные продаж
+    const salesData = {
+      // Ежедневные продажи за последний год
+      daily: generateDailySales(365),
+
+      // Топ товаров
+      products: [
+        { id: 1, name: "iPhone 15 Pro", category: "electronics",
+          sales: 1250000, quantity: 125, trend: 15.3 },
+        { id: 2, name: "MacBook Air M3", category: "electronics",
+          sales: 980000, quantity: 49, trend: 8.7 },
+        { id: 3, name: "Кроссовки Nike Air Max", category: "clothing",
+          sales: 456000, quantity: 380, trend: -2.1 },
+        { id: 4, name: "Умные часы Galaxy Watch", category: "electronics",
+          sales: 378000, quantity: 126, trend: 22.5 },
+        { id: 5, name: "Диван угловой", category: "home",
+          sales: 345000, quantity: 23, trend: 5.8 },
+        { id: 6, name: "Беговая дорожка Pro", category: "sports",
+          sales: 289000, quantity: 17, trend: 12.3 },
+        { id: 7, name: "Набор косметики Luxury", category: "beauty",
+          sales: 234000, quantity: 156, trend: -5.2 },
+        { id: 8, name: "Куртка зимняя", category: "clothing",
+          sales: 198000, quantity: 132, trend: 18.9 }
+      ],
+
+      // Данные воронки
+      funnel: [
+        { stage: "Посетители", value: 50000, color: "#6366f1" },
+        { stage: "Просмотр товара", value: 25000, color: "#8b5cf6" },
+        { stage: "Добавление в корзину", value: 8000, color: "#a855f7" },
+        { stage: "Оформление заказа", value: 3500, color: "#d946ef" },
+        { stage: "Покупка", value: 2500, color: "#ec4899" }
+      ],
+
+      // Категории
+      categories: [
+        { name: "Электроника", value: 2608000, color: "#6366f1" },
+        { name: "Одежда", value: 654000, color: "#ec4899" },
+        { name: "Дом и сад", value: 345000, color: "#22c55e" },
+        { name: "Спорт", value: 289000, color: "#f59e0b" },
+        { name: "Красота", value: 234000, color: "#a855f7" }
+      ],
+
+      // Заказы по часам
+      hourly: Array.from({ length: 24 }, (_, i) => ({
+        hour: i,
+        orders: Math.floor(Math.random() * 100 + (i >= 9 && i <= 21 ? 50 : 10))
+      }))
+    };
+
+    /**
+     * @function generateDailySales
+     * @description Генерирует демо-данные ежедневных продаж
+     * @param {number} days - Количество дней
+     * @returns {Array} Массив данных продаж
+     */
+    function generateDailySales(days) {
+      const data = [];
+      const today = new Date();
+      const categories = ["electronics", "clothing", "home", "sports", "beauty"];
+
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+
+        // Базовые продажи с сезонностью и трендом
+        const baseRevenue = 100000 + Math.random() * 50000;
+        const dayOfWeek = date.getDay();
+        const weekendMultiplier = (dayOfWeek === 0 || dayOfWeek === 6) ? 1.3 : 1;
+        const trendMultiplier = 1 + (days - i) * 0.001; // Рост со временем
+
+        const revenue = Math.floor(baseRevenue * weekendMultiplier * trendMultiplier);
+        const orders = Math.floor(revenue / (2000 + Math.random() * 1000));
+
+        data.push({
+          date: date.toISOString().split("T")[0],
+          revenue,
+          orders,
+          category: categories[Math.floor(Math.random() * categories.length)]
+        });
+      }
+
+      return data;
+    }
+
+    // Глобальные переменные для графиков
+    let revenueChart, topProductsChart, categoriesChart, hourlyChart;
+    let currentChartType = "line";
+
+    /**
+     * @function initDashboard
+     * @description Инициализация дашборда
+     */
+    function initDashboard() {
+      initTheme();
+      initFilters();
+      updateDashboard();
+      initChartTabs();
+    }
+
+    /**
+     * @function initTheme
+     * @description Инициализация темы
+     */
+    function initTheme() {
+      const savedTheme = localStorage.getItem("dashboard-theme") || "light";
+      document.body.setAttribute("data-theme", savedTheme);
+      updateThemeIcon(savedTheme);
+
+      document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+    }
+
+    /**
+     * @function toggleTheme
+     * @description Переключение темы
+     */
+    function toggleTheme() {
+      const currentTheme = document.body.getAttribute("data-theme");
+      const newTheme = currentTheme === "dark" ? "light" : "dark";
+      document.body.setAttribute("data-theme", newTheme);
+      localStorage.setItem("dashboard-theme", newTheme);
+      updateThemeIcon(newTheme);
+      updateChartsTheme();
+    }
+
+    /**
+     * @function updateThemeIcon
+     * @description Обновление иконки темы
+     * @param {string} theme - Текущая тема
+     */
+    function updateThemeIcon(theme) {
+      const icon = document.querySelector("#themeToggle i");
+      icon.className = theme === "dark" ? "fas fa-sun" : "fas fa-moon";
+    }
+
+    /**
+     * @function updateChartsTheme
+     * @description Обновление темы графиков
+     */
+    function updateChartsTheme() {
+      const isDark = document.body.getAttribute("data-theme") === "dark";
+      const textColor = isDark ? "#e2e8f0" : "#1a202c";
+      const gridColor = isDark ? "#334155" : "#e2e8f0";
+
+      Chart.defaults.color = textColor;
+      Chart.defaults.borderColor = gridColor;
+
+      // Перерисовываем все графики
+      updateDashboard();
+    }
+
+    /**
+     * @function initFilters
+     * @description Инициализация фильтров
+     */
+    function initFilters() {
+      const periodFilter = document.getElementById("periodFilter");
+      const categoryFilter = document.getElementById("categoryFilter");
+      const startDate = document.getElementById("startDate");
+      const endDate = document.getElementById("endDate");
+
+      // Установка дат по умолчанию
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+
+      endDate.value = today.toISOString().split("T")[0];
+      startDate.value = thirtyDaysAgo.toISOString().split("T")[0];
+
+      // Слушатели событий
+      periodFilter.addEventListener("change", handlePeriodChange);
+      categoryFilter.addEventListener("change", () => updateDashboard());
+      startDate.addEventListener("change", () => updateDashboard());
+      endDate.addEventListener("change", () => updateDashboard());
+    }
+
+    /**
+     * @function handlePeriodChange
+     * @description Обработка изменения периода
+     */
+    function handlePeriodChange() {
+      const period = parseInt(document.getElementById("periodFilter").value);
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - period);
+
+      document.getElementById("startDate").value = startDate.toISOString().split("T")[0];
+      document.getElementById("endDate").value = today.toISOString().split("T")[0];
+
+      updateDashboard();
+    }
+
+    /**
+     * @function initChartTabs
+     * @description Инициализация табов графика выручки
+     */
+    function initChartTabs() {
+      document.querySelectorAll(".chart-tab").forEach(tab => {
+        tab.addEventListener("click", function() {
+          document.querySelectorAll(".chart-tab").forEach(t => t.classList.remove("active"));
+          this.classList.add("active");
+          currentChartType = this.dataset.type;
+          updateRevenueChart();
+        });
+      });
+    }
+
+    /**
+     * @function getFilteredData
+     * @description Получение отфильтрованных данных
+     * @returns {Object} Отфильтрованные данные
+     */
+    function getFilteredData() {
+      const startDate = new Date(document.getElementById("startDate").value);
+      const endDate = new Date(document.getElementById("endDate").value);
+      const category = document.getElementById("categoryFilter").value;
+
+      let filteredDaily = salesData.daily.filter(item => {
+        const itemDate = new Date(item.date);
+        return itemDate >= startDate && itemDate <= endDate;
+      });
+
+      if (category !== "all") {
+        filteredDaily = filteredDaily.filter(item => item.category === category);
+      }
+
+      const filteredProducts = category === "all"
+        ? salesData.products
+        : salesData.products.filter(p => p.category === category);
+
+      return {
+        daily: filteredDaily,
+        products: filteredProducts,
+        funnel: salesData.funnel,
+        categories: salesData.categories,
+        hourly: salesData.hourly
+      };
+    }
+
+    /**
+     * @function updateDashboard
+     * @description Обновление всего дашборда
+     */
+    function updateDashboard() {
+      const data = getFilteredData();
+
+      updateKPIs(data);
+      updateRevenueChart();
+      updateTopProductsChart(data);
+      updateCategoriesChart(data);
+      updateHourlyChart(data);
+      updateFunnelChart(data);
+      updateOrdersTable(data);
+    }
+
+    /**
+     * @function animateValue
+     * @description Анимация числового значения
+     * @param {HTMLElement} element - Элемент для анимации
+     * @param {number} start - Начальное значение
+     * @param {number} end - Конечное значение
+     * @param {number} duration - Длительность анимации
+     * @param {string} suffix - Суффикс (валюта и т.д.)
+     */
+    function animateValue(element, start, end, duration, suffix = "") {
+      const startTime = performance.now();
+
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Easing функция
+        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+        const current = Math.floor(start + (end - start) * easeOutQuart);
+
+        element.textContent = formatNumber(current) + suffix;
+
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    /**
+     * @function formatNumber
+     * @description Форматирование числа
+     * @param {number} num - Число
+     * @returns {string} Отформатированная строка
+     */
+    function formatNumber(num) {
+      return new Intl.NumberFormat("ru-RU").format(num);
+    }
+
+    /**
+     * @function updateKPIs
+     * @description Обновление KPI карточек
+     * @param {Object} data - Данные
+     */
+    function updateKPIs(data) {
+      const totalRevenue = data.daily.reduce((sum, d) => sum + d.revenue, 0);
+      const totalOrders = data.daily.reduce((sum, d) => sum + d.orders, 0);
+      const avgCheck = totalOrders > 0 ? Math.floor(totalRevenue / totalOrders) : 0;
+      const conversion = 5.2; // Демо значение
+
+      // Анимация значений
+      animateValue(document.getElementById("kpiRevenue"), 0, totalRevenue, 1000, " ₽");
+      animateValue(document.getElementById("kpiOrders"), 0, totalOrders, 1000, "");
+      animateValue(document.getElementById("kpiAvgCheck"), 0, avgCheck, 1000, " ₽");
+
+      const conversionEl = document.getElementById("kpiConversion");
+      conversionEl.classList.add("animate-count");
+      setTimeout(() => {
+        conversionEl.textContent = conversion.toFixed(1) + "%";
+      }, 100);
+    }
+
+    /**
+     * @function updateRevenueChart
+     * @description Обновление графика выручки
+     */
+    function updateRevenueChart() {
+      const data = getFilteredData();
+      const ctx = document.getElementById("revenueChart").getContext("2d");
+      const isDark = document.body.getAttribute("data-theme") === "dark";
+
+      // Агрегация данных по дням
+      const dailyData = {};
+      data.daily.forEach(item => {
+        if (!dailyData[item.date]) {
+          dailyData[item.date] = { revenue: 0, orders: 0 };
+        }
+        dailyData[item.date].revenue += item.revenue;
+        dailyData[item.date].orders += item.orders;
+      });
+
+      const labels = Object.keys(dailyData).sort();
+      const revenues = labels.map(date => dailyData[date].revenue);
+      const orders = labels.map(date => dailyData[date].orders);
+
+      // Форматирование меток дат
+      const formattedLabels = labels.map(date => {
+        const d = new Date(date);
+        return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+      });
+
+      if (revenueChart) {
+        revenueChart.destroy();
+      }
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, "rgba(99, 102, 241, 0.3)");
+      gradient.addColorStop(1, "rgba(99, 102, 241, 0)");
+
+      revenueChart = new Chart(ctx, {
+        type: currentChartType,
+        data: {
+          labels: formattedLabels,
+          datasets: [
+            {
+              label: "Выручка",
+              data: revenues,
+              borderColor: "#6366f1",
+              backgroundColor: currentChartType === "line" ? gradient : "#6366f1",
+              fill: currentChartType === "line",
+              tension: 0.4,
+              pointRadius: currentChartType === "line" ? 0 : undefined,
+              pointHoverRadius: currentChartType === "line" ? 6 : undefined
+            },
+            {
+              label: "Заказы",
+              data: orders,
+              borderColor: "#22c55e",
+              backgroundColor: "rgba(34, 197, 94, 0.5)",
+              type: "bar",
+              yAxisID: "y1",
+              hidden: currentChartType === "bar"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: "index",
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              position: "top",
+              labels: {
+                usePointStyle: true,
+                padding: 20
+              }
+            },
+            tooltip: {
+              backgroundColor: isDark ? "#1e293b" : "#ffffff",
+              titleColor: isDark ? "#e2e8f0" : "#1a202c",
+              bodyColor: isDark ? "#e2e8f0" : "#1a202c",
+              borderColor: isDark ? "#334155" : "#e2e8f0",
+              borderWidth: 1,
+              padding: 12,
+              callbacks: {
+                label: function(context) {
+                  const label = context.dataset.label;
+                  const value = context.raw;
+                  if (label === "Выручка") {
+                    return `${label}: ${formatNumber(value)} ₽`;
+                  }
+                  return `${label}: ${formatNumber(value)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              }
+            },
+            y: {
+              position: "left",
+              grid: {
+                color: isDark ? "#334155" : "#e2e8f0"
+              },
+              ticks: {
+                callback: value => formatNumber(value) + " ₽"
+              }
+            },
+            y1: {
+              position: "right",
+              grid: {
+                display: false
+              },
+              ticks: {
+                callback: value => formatNumber(value)
+              }
+            }
+          },
+          animation: {
+            duration: 750,
+            easing: "easeInOutQuart"
+          }
+        }
+      });
+    }
+
+    /**
+     * @function updateTopProductsChart
+     * @description Обновление графика топ товаров
+     * @param {Object} data - Данные
+     */
+    function updateTopProductsChart(data) {
+      const ctx = document.getElementById("topProductsChart").getContext("2d");
+      const isDark = document.body.getAttribute("data-theme") === "dark";
+
+      const sortedProducts = [...data.products]
+        .sort((a, b) => b.sales - a.sales)
+        .slice(0, 5);
+
+      if (topProductsChart) {
+        topProductsChart.destroy();
+      }
+
+      const colors = ["#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899"];
+
+      topProductsChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: sortedProducts.map(p => p.name.length > 20
+            ? p.name.substring(0, 20) + "..."
+            : p.name),
+          datasets: [{
+            label: "Продажи",
+            data: sortedProducts.map(p => p.sales),
+            backgroundColor: colors,
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: isDark ? "#1e293b" : "#ffffff",
+              titleColor: isDark ? "#e2e8f0" : "#1a202c",
+              bodyColor: isDark ? "#e2e8f0" : "#1a202c",
+              borderColor: isDark ? "#334155" : "#e2e8f0",
+              borderWidth: 1,
+              callbacks: {
+                label: context => `Продажи: ${formatNumber(context.raw)} ₽`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: isDark ? "#334155" : "#e2e8f0"
+              },
+              ticks: {
+                callback: value => formatNumber(value / 1000) + "K ₽"
+              }
+            },
+            y: {
+              grid: {
+                display: false
+              }
+            }
+          },
+          animation: {
+            duration: 750,
+            easing: "easeInOutQuart"
+          }
+        }
+      });
+    }
+
+    /**
+     * @function updateCategoriesChart
+     * @description Обновление графика категорий
+     * @param {Object} data - Данные
+     */
+    function updateCategoriesChart(data) {
+      const ctx = document.getElementById("categoriesChart").getContext("2d");
+      const isDark = document.body.getAttribute("data-theme") === "dark";
+
+      if (categoriesChart) {
+        categoriesChart.destroy();
+      }
+
+      categoriesChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: data.categories.map(c => c.name),
+          datasets: [{
+            data: data.categories.map(c => c.value),
+            backgroundColor: data.categories.map(c => c.color),
+            borderWidth: 0,
+            hoverOffset: 10
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "60%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                usePointStyle: true,
+                padding: 15
+              }
+            },
+            tooltip: {
+              backgroundColor: isDark ? "#1e293b" : "#ffffff",
+              titleColor: isDark ? "#e2e8f0" : "#1a202c",
+              bodyColor: isDark ? "#e2e8f0" : "#1a202c",
+              borderColor: isDark ? "#334155" : "#e2e8f0",
+              borderWidth: 1,
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percent = ((context.raw / total) * 100).toFixed(1);
+                  return `${formatNumber(context.raw)} ₽ (${percent}%)`;
+                }
+              }
+            }
+          },
+          animation: {
+            animateRotate: true,
+            animateScale: true,
+            duration: 750,
+            easing: "easeInOutQuart"
+          }
+        }
+      });
+    }
+
+    /**
+     * @function updateHourlyChart
+     * @description Обновление графика заказов по часам
+     * @param {Object} data - Данные
+     */
+    function updateHourlyChart(data) {
+      const ctx = document.getElementById("hourlyChart").getContext("2d");
+      const isDark = document.body.getAttribute("data-theme") === "dark";
+
+      if (hourlyChart) {
+        hourlyChart.destroy();
+      }
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 250);
+      gradient.addColorStop(0, "rgba(34, 197, 94, 0.4)");
+      gradient.addColorStop(1, "rgba(34, 197, 94, 0)");
+
+      hourlyChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: data.hourly.map(h => `${String(h.hour).padStart(2, "0")}:00`),
+          datasets: [{
+            label: "Заказы",
+            data: data.hourly.map(h => h.orders),
+            borderColor: "#22c55e",
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: isDark ? "#1e293b" : "#ffffff",
+              titleColor: isDark ? "#e2e8f0" : "#1a202c",
+              bodyColor: isDark ? "#e2e8f0" : "#1a202c",
+              borderColor: isDark ? "#334155" : "#e2e8f0",
+              borderWidth: 1
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              }
+            },
+            y: {
+              grid: {
+                color: isDark ? "#334155" : "#e2e8f0"
+              },
+              beginAtZero: true
+            }
+          },
+          animation: {
+            duration: 750,
+            easing: "easeInOutQuart"
+          }
+        }
+      });
+    }
+
+    /**
+     * @function updateFunnelChart
+     * @description Обновление воронки продаж (D3.js)
+     * @param {Object} data - Данные
+     */
+    function updateFunnelChart(data) {
+      const container = document.getElementById("funnelChart");
+      const isDark = document.body.getAttribute("data-theme") === "dark";
+
+      // Очистка предыдущей воронки
+      container.innerHTML = "";
+
+      const width = container.clientWidth;
+      const height = 300;
+      const margin = { top: 20, right: 100, bottom: 20, left: 100 };
+
+      const svg = d3.select(container)
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("class", "fade-in");
+
+      const funnelData = data.funnel;
+      const maxValue = funnelData[0].value;
+      const stageHeight = (height - margin.top - margin.bottom) / funnelData.length;
+
+      // Создание групп для каждого этапа
+      const stages = svg.selectAll(".funnel-stage")
+        .data(funnelData)
+        .enter()
+        .append("g")
+        .attr("class", "funnel-stage")
+        .attr("transform", (d, i) =>
+          `translate(${width / 2}, ${margin.top + i * stageHeight + stageHeight / 2})`);
+
+      // Трапеции воронки
+      stages.append("path")
+        .attr("d", (d, i) => {
+          const currentWidth = (d.value / maxValue) * (width - margin.left - margin.right);
+          const nextWidth = i < funnelData.length - 1
+            ? (funnelData[i + 1].value / maxValue) * (width - margin.left - margin.right)
+            : currentWidth * 0.6;
+
+          const topLeft = -currentWidth / 2;
+          const topRight = currentWidth / 2;
+          const bottomLeft = -nextWidth / 2;
+          const bottomRight = nextWidth / 2;
+
+          return `M ${topLeft} ${-stageHeight / 2 + 5}
+                  L ${topRight} ${-stageHeight / 2 + 5}
+                  L ${bottomRight} ${stageHeight / 2 - 5}
+                  L ${bottomLeft} ${stageHeight / 2 - 5} Z`;
+        })
+        .attr("fill", d => d.color)
+        .attr("opacity", 0.85)
+        .style("cursor", "pointer")
+        .on("mouseover", function() {
+          d3.select(this).attr("opacity", 1);
+        })
+        .on("mouseout", function() {
+          d3.select(this).attr("opacity", 0.85);
+        });
+
+      // Метки этапов (слева)
+      stages.append("text")
+        .attr("class", "funnel-label")
+        .attr("x", d => -(d.value / maxValue) * (width - margin.left - margin.right) / 2 - 10)
+        .attr("y", 0)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .style("fill", isDark ? "#e2e8f0" : "#1a202c")
+        .text(d => d.stage);
+
+      // Значения (справа)
+      stages.append("text")
+        .attr("class", "funnel-value")
+        .attr("x", d => (d.value / maxValue) * (width - margin.left - margin.right) / 2 + 10)
+        .attr("y", -5)
+        .attr("text-anchor", "start")
+        .attr("dominant-baseline", "middle")
+        .style("fill", isDark ? "#e2e8f0" : "#1a202c")
+        .text(d => formatNumber(d.value));
+
+      // Проценты конверсии
+      stages.append("text")
+        .attr("class", "funnel-percent")
+        .attr("x", d => (d.value / maxValue) * (width - margin.left - margin.right) / 2 + 10)
+        .attr("y", 12)
+        .attr("text-anchor", "start")
+        .attr("dominant-baseline", "middle")
+        .style("fill", isDark ? "#94a3b8" : "#64748b")
+        .text((d, i) => {
+          if (i === 0) return "100%";
+          return `${((d.value / funnelData[0].value) * 100).toFixed(1)}%`;
+        });
+    }
+
+    /**
+     * @function updateOrdersTable
+     * @description Обновление таблицы заказов
+     * @param {Object} data - Данные
+     */
+    function updateOrdersTable(data) {
+      const tbody = document.getElementById("ordersTableBody");
+
+      const categoryIcons = {
+        electronics: { icon: "fa-laptop", color: "#6366f1", bg: "rgba(99, 102, 241, 0.1)" },
+        clothing: { icon: "fa-tshirt", color: "#ec4899", bg: "rgba(236, 72, 153, 0.1)" },
+        home: { icon: "fa-couch", color: "#22c55e", bg: "rgba(34, 197, 94, 0.1)" },
+        sports: { icon: "fa-dumbbell", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" },
+        beauty: { icon: "fa-spa", color: "#a855f7", bg: "rgba(168, 85, 247, 0.1)" }
+      };
+
+      const categoryNames = {
+        electronics: "Электроника",
+        clothing: "Одежда",
+        home: "Дом и сад",
+        sports: "Спорт",
+        beauty: "Красота"
+      };
+
+      tbody.innerHTML = data.products.map(product => {
+        const catInfo = categoryIcons[product.category];
+        const trendClass = product.trend >= 0 ? "up" : "down";
+        const trendIcon = product.trend >= 0 ? "fa-arrow-up" : "fa-arrow-down";
+
+        return `
+          <tr class="fade-in">
+            <td>
+              <div class="product-info">
+                <div class="product-icon"
+                     style="background-color: ${catInfo.bg}; color: ${catInfo.color}">
+                  <i class="fas ${catInfo.icon}"></i>
+                </div>
+                <div>
+                  <div class="product-name">${product.name}</div>
+                  <div class="product-category">${product.quantity} шт.</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge ${product.category}">${categoryNames[product.category]}</span>
+            </td>
+            <td>${formatNumber(product.quantity)}</td>
+            <td>${formatNumber(product.sales)} ₽</td>
+            <td>
+              <span class="trend ${trendClass}">
+                <i class="fas ${trendIcon}"></i>
+                ${Math.abs(product.trend).toFixed(1)}%
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // Обработка изменения размера окна для воронки
+    let resizeTimeout;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        updateFunnelChart(getFilteredData());
+      }, 250);
+    });
+
+    // Инициализация при загрузке
+    document.addEventListener("DOMContentLoaded", initDashboard);
+  </script>
+</body>
+</html>
