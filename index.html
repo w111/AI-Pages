@@ -1579,6 +1579,33 @@
                         <a href="background-removal.html" class="view-btn">Открыть</a>
                     </div>
                 </div>
+
+                <div class="example-card" data-category="web-apps">
+                    <div class="card-header">
+                        <h3><i class="fas fa-film"></i> Movie Recommender</h3>
+                        <span class="new-badge">NEW</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Не знаете что посмотреть вечером?</p>
+                        <p>AI-система персональных рекомендаций фильмов. Оцените несколько фильмов, и алгоритм Cosine Similarity подберёт топ-10 фильмов специально для вас.</p>
+                        <ul class="features-list">
+                            <li>База из 150 популярных фильмов с постерами</li>
+                            <li>Cosine Similarity для точных рекомендаций</li>
+                            <li>Оценка фильмов от 1 до 5 звёзд</li>
+                            <li>Персонализированный топ-10 с процентом совпадения</li>
+                            <li>Фильтрация по жанрам и поиск</li>
+                        </ul>
+                        <div class="tech-list">
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">Cosine Similarity</span>
+                            <span class="tech-tag">OMDB API</span>
+                            <span class="tech-tag">LocalStorage</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="movie-recommender.html" class="view-btn">Открыть</a>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -2330,6 +2357,18 @@
                             "Обработка локально, конфиденциально"
                         ]
                     },
+                    movieRecommender: {
+                        title: "Movie Recommender",
+                        description: "AI-система персональных рекомендаций фильмов. Оцените несколько фильмов, и алгоритм Cosine Similarity подберёт топ-10 фильмов специально для вас.",
+                        problem: "Не знаете что посмотреть вечером?",
+                        features: [
+                            "База из 150 популярных фильмов с постерами",
+                            "Cosine Similarity для точных рекомендаций",
+                            "Оценка фильмов от 1 до 5 звёзд",
+                            "Персонализированный топ-10 с процентом совпадения",
+                            "Фильтрация по жанрам и поиск"
+                        ]
+                    },
                     // 3D Visualizations
                     threeDBalls: {
                         title: "3D Balls",
@@ -2826,6 +2865,18 @@
                             "Local processing, fully private"
                         ]
                     },
+                    movieRecommender: {
+                        title: "Movie Recommender",
+                        description: "AI-powered personalized movie recommendation system. Rate a few movies and let Cosine Similarity algorithm find your perfect top-10 matches.",
+                        problem: "Don't know what to watch tonight?",
+                        features: [
+                            "Database of 150 popular movies with posters",
+                            "Cosine Similarity for accurate recommendations",
+                            "Rate movies from 1 to 5 stars",
+                            "Personalized top-10 with match percentage",
+                            "Filter by genres and search"
+                        ]
+                    },
                     // 3D Visualizations
                     threeDBalls: {
                         title: "3D Balls",
@@ -3136,6 +3187,7 @@
                 if (webAppsCards.length > 8) updateCard(webAppsCards[8], 'macosWeb', '<i class="fab fa-apple"></i>');
                 if (webAppsCards.length > 9) updateCard(webAppsCards[9], 'iphoneIos', '<i class="fab fa-apple"></i>');
                 if (webAppsCards.length > 10) updateCard(webAppsCards[10], 'backgroundRemoval', '<i class="fas fa-magic"></i>');
+                if (webAppsCards.length > 11) updateCard(webAppsCards[11], 'movieRecommender', '<i class="fas fa-film"></i>');
             }
 
             // Четвертая категория: 3D Визуализации

@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать систему рекомендаций фильмов с использованием Cosine Similarity.
+
+Функциональные требования:
+1. База данных 150+ фильмов с жанрами и тегами
+2. Пользователь оценивает 5-10 фильмов по шкале 1-5
+3. Расчёт схожести через cosine similarity (dot product)
+4. Топ-10 рекомендаций с постерами
+5. Поддержка темной/светлой темы
+6. Адаптивный дизайн
+7. Многоязычность (русский/английский)
+
+Технические требования:
+1. Vanilla JavaScript без фреймворков
+2. OMDB API для постеров (бесплатный)
+3. Локальное хранение оценок в localStorage
+4. CSS Grid и Flexbox для верстки
+5. Анимации и переходы
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI-система рекомендаций фильмов на основе Cosine Similarity">
+  <title>Movie Recommender | Рекомендации фильмов</title>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #e50914;
+      --primary-dark: #b20710;
+      --secondary-color: #141414;
+      --accent-color: #f5c518;
+      --text-color: #ffffff;
+      --text-secondary: #b3b3b3;
+      --bg-color: #141414;
+      --card-bg: #1f1f1f;
+      --card-hover: #2a2a2a;
+      --border-color: #333333;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      --gradient: linear-gradient(135deg, #e50914 0%, #b20710 100%);
+      --star-color: #f5c518;
+      --star-empty: #555555;
+    }
+
+    [data-theme="light"] {
+      --primary-color: #e50914;
+      --primary-dark: #b20710;
+      --secondary-color: #f5f5f5;
+      --text-color: #141414;
+      --text-secondary: #666666;
+      --bg-color: #f5f5f5;
+      --card-bg: #ffffff;
+      --card-hover: #f0f0f0;
+      --border-color: #e0e0e0;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      --star-empty: #cccccc;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Header */
+    .header {
+      background: var(--gradient);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: white;
+      text-decoration: none;
+    }
+
+    .logo i {
+      font-size: 2rem;
+    }
+
+    .logo-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.3s;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Progress Bar */
+    .progress-section {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .progress-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .progress-count {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--gradient);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .progress-hint {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      color: var(--text-color);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--primary-color);
+    }
+
+    .tab-btn.active {
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    /* Search and Filter */
+    .search-filter {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 250px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.75rem;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--card-bg);
+      color: var(--text-color);
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+    }
+
+    .genre-filter {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .genre-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.3s;
+    }
+
+    .genre-btn:hover,
+    .genre-btn.active {
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    /* Movies Grid */
+    .movies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .movie-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .movie-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .movie-card.rated {
+      border: 3px solid var(--accent-color);
+    }
+
+    .movie-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .movie-poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .movie-poster .placeholder {
+      color: var(--text-secondary);
+      font-size: 3rem;
+    }
+
+    .movie-info {
+      padding: 1rem;
+    }
+
+    .movie-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .movie-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .movie-genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+
+    .genre-tag {
+      background: var(--border-color);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .user-rating {
+      display: flex;
+      justify-content: center;
+      gap: 0.25rem;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .star {
+      font-size: 1.25rem;
+      color: var(--star-empty);
+      cursor: pointer;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .star:hover,
+    .star.active {
+      color: var(--star-color);
+      transform: scale(1.2);
+    }
+
+    .star.hovered {
+      color: var(--star-color);
+    }
+
+    /* Recommendations Section */
+    .recommendations-section {
+      margin-top: 3rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title i {
+      color: var(--primary-color);
+    }
+
+    .get-recommendations-btn {
+      background: var(--gradient);
+      border: none;
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .get-recommendations-btn:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(229, 9, 20, 0.4);
+    }
+
+    .get-recommendations-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Recommendation Cards */
+    .recommendation-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .recommendation-card:hover {
+      transform: translateX(8px);
+      box-shadow: var(--shadow);
+    }
+
+    .recommendation-rank {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      min-width: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .recommendation-poster {
+      width: 80px;
+      height: 120px;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .recommendation-poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .recommendation-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .recommendation-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .recommendation-meta {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .similarity-score {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .similarity-bar {
+      flex: 1;
+      max-width: 200px;
+      height: 8px;
+      background: var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .similarity-fill {
+      height: 100%;
+      background: var(--gradient);
+      border-radius: 4px;
+    }
+
+    .similarity-value {
+      font-weight: 600;
+      color: var(--primary-color);
+      min-width: 50px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-color);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: 16px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.25rem;
+      z-index: 10;
+      transition: background 0.3s;
+    }
+
+    .modal-close:hover {
+      background: var(--primary-color);
+    }
+
+    .modal-content {
+      display: flex;
+      gap: 2rem;
+      padding: 2rem;
+    }
+
+    .modal-poster {
+      width: 250px;
+      flex-shrink: 0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .modal-poster img {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+    }
+
+    .modal-info {
+      flex: 1;
+    }
+
+    .modal-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-meta {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .modal-description {
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+      color: var(--text-secondary);
+    }
+
+    .modal-genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-genre-tag {
+      background: var(--primary-color);
+      color: white;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+    }
+
+    .modal-rating {
+      margin-top: 1.5rem;
+    }
+
+    .modal-rating-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .modal-stars {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .modal-stars .star {
+      font-size: 2rem;
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .movies-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+      }
+
+      .modal-content {
+        flex-direction: column;
+        padding: 1.5rem;
+      }
+
+      .modal-poster {
+        width: 100%;
+        max-width: 250px;
+        margin: 0 auto;
+      }
+
+      .recommendation-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .search-filter {
+        flex-direction: column;
+      }
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .movie-card {
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    .recommendation-card {
+      animation: fadeIn 0.5s ease forwards;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="#" class="logo">
+        <i class="fas fa-film"></i>
+        <span class="logo-text" data-i18n="logo">Movie Recommender</span>
+      </a>
+      <div class="header-controls">
+        <button class="control-btn" id="resetBtn" title="Сбросить оценки">
+          <i class="fas fa-redo"></i>
+          <span data-i18n="reset">Сбросить</span>
+        </button>
+        <button class="control-btn" id="themeBtn">
+          <i class="fas fa-moon"></i>
+        </button>
+        <button class="control-btn" id="langBtn">
+          <i class="fas fa-globe"></i>
+          <span>RU</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Progress Section -->
+    <section class="progress-section">
+      <div class="progress-header">
+        <h2 class="progress-title" data-i18n="progressTitle">Прогресс оценки</h2>
+        <span class="progress-count"><span id="ratedCount">0</span> / <span id="minRatings">5</span></span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <p class="progress-hint" data-i18n="progressHint">
+        Оцените минимум 5 фильмов, чтобы получить персональные рекомендации
+      </p>
+    </section>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="rate">
+        <i class="fas fa-star"></i>
+        <span data-i18n="tabRate">Оценить фильмы</span>
+      </button>
+      <button class="tab-btn" data-tab="recommendations">
+        <i class="fas fa-magic"></i>
+        <span data-i18n="tabRecommendations">Рекомендации</span>
+      </button>
+      <button class="tab-btn" data-tab="rated">
+        <i class="fas fa-check-circle"></i>
+        <span data-i18n="tabRated">Оценённые</span>
+      </button>
+    </div>
+
+    <!-- Rate Tab -->
+    <div id="rateTab" class="tab-content">
+      <div class="search-filter">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" data-i18n-placeholder="searchPlaceholder"
+                 placeholder="Поиск фильмов...">
+        </div>
+        <div class="genre-filter" id="genreFilter"></div>
+      </div>
+      <div class="movies-grid" id="moviesGrid"></div>
+    </div>
+
+    <!-- Recommendations Tab -->
+    <div id="recommendationsTab" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-wand-magic-sparkles"></i>
+          <span data-i18n="recommendationsTitle">Ваши рекомендации</span>
+        </h2>
+        <button class="get-recommendations-btn" id="getRecsBtn">
+          <i class="fas fa-sparkles"></i>
+          <span data-i18n="getRecommendations">Получить рекомендации</span>
+        </button>
+      </div>
+      <div id="recommendationsList"></div>
+    </div>
+
+    <!-- Rated Tab -->
+    <div id="ratedTab" class="tab-content" style="display: none;">
+      <div class="movies-grid" id="ratedGrid"></div>
+    </div>
+  </main>
+
+  <!-- Movie Modal -->
+  <div class="modal-overlay" id="movieModal">
+    <div class="modal">
+      <button class="modal-close" id="modalClose">
+        <i class="fas fa-times"></i>
+      </button>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Movie Recommender Application
+     * Использует Cosine Similarity для персональных рекомендаций
+     */
+
+    // База данных фильмов с жанрами и тегами
+    const MOVIES_DATABASE = [
+      // Action/Боевики
+      { id: 1, title: "The Dark Knight", titleRu: "Тёмный рыцарь", year: 2008, genres: ["action", "crime", "drama"], tags: ["superhero", "batman", "joker", "christopher-nolan"], imdbId: "tt0468569", rating: 9.0 },
+      { id: 2, title: "Inception", titleRu: "Начало", year: 2010, genres: ["action", "sci-fi", "thriller"], tags: ["dreams", "heist", "christopher-nolan", "mind-bending"], imdbId: "tt1375666", rating: 8.8 },
+      { id: 3, title: "The Matrix", titleRu: "Матрица", year: 1999, genres: ["action", "sci-fi"], tags: ["virtual-reality", "cyberpunk", "neo", "kung-fu"], imdbId: "tt0133093", rating: 8.7 },
+      { id: 4, title: "Mad Max: Fury Road", titleRu: "Безумный Макс: Дорога ярости", year: 2015, genres: ["action", "adventure", "sci-fi"], tags: ["post-apocalyptic", "cars", "desert", "feminist"], imdbId: "tt1392190", rating: 8.1 },
+      { id: 5, title: "John Wick", titleRu: "Джон Уик", year: 2014, genres: ["action", "crime", "thriller"], tags: ["assassin", "revenge", "keanu-reeves", "gun-fu"], imdbId: "tt2911666", rating: 7.4 },
+      { id: 6, title: "Die Hard", titleRu: "Крепкий орешек", year: 1988, genres: ["action", "thriller"], tags: ["christmas", "hostage", "bruce-willis", "80s"], imdbId: "tt0095016", rating: 8.2 },
+      { id: 7, title: "Gladiator", titleRu: "Гладиатор", year: 2000, genres: ["action", "adventure", "drama"], tags: ["rome", "revenge", "russell-crowe", "epic"], imdbId: "tt0172495", rating: 8.5 },
+      { id: 8, title: "Kill Bill: Vol. 1", titleRu: "Убить Билла", year: 2003, genres: ["action", "crime", "thriller"], tags: ["revenge", "tarantino", "martial-arts", "bride"], imdbId: "tt0266697", rating: 8.2 },
+
+      // Sci-Fi/Фантастика
+      { id: 9, title: "Interstellar", titleRu: "Интерстеллар", year: 2014, genres: ["adventure", "drama", "sci-fi"], tags: ["space", "time", "christopher-nolan", "father-daughter"], imdbId: "tt0816692", rating: 8.6 },
+      { id: 10, title: "Blade Runner 2049", titleRu: "Бегущий по лезвию 2049", year: 2017, genres: ["action", "drama", "sci-fi"], tags: ["dystopia", "replicants", "neo-noir", "denis-villeneuve"], imdbId: "tt1856101", rating: 8.0 },
+      { id: 11, title: "Arrival", titleRu: "Прибытие", year: 2016, genres: ["drama", "sci-fi"], tags: ["aliens", "linguistics", "time", "denis-villeneuve"], imdbId: "tt2543164", rating: 7.9 },
+      { id: 12, title: "Ex Machina", titleRu: "Из машины", year: 2014, genres: ["drama", "sci-fi", "thriller"], tags: ["ai", "robot", "turing-test", "psychological"], imdbId: "tt0470752", rating: 7.7 },
+      { id: 13, title: "The Martian", titleRu: "Марсианин", year: 2015, genres: ["adventure", "drama", "sci-fi"], tags: ["mars", "survival", "nasa", "matt-damon"], imdbId: "tt3659388", rating: 8.0 },
+      { id: 14, title: "Dune", titleRu: "Дюна", year: 2021, genres: ["action", "adventure", "sci-fi"], tags: ["desert", "prophecy", "denis-villeneuve", "epic"], imdbId: "tt1160419", rating: 8.0 },
+      { id: 15, title: "Avatar", titleRu: "Аватар", year: 2009, genres: ["action", "adventure", "sci-fi"], tags: ["aliens", "nature", "james-cameron", "3d"], imdbId: "tt0499549", rating: 7.9 },
+      { id: 16, title: "WALL-E", titleRu: "ВАЛЛ-И", year: 2008, genres: ["animation", "adventure", "sci-fi"], tags: ["robot", "love", "pixar", "environmental"], imdbId: "tt0910970", rating: 8.4 },
+
+      // Drama/Драма
+      { id: 17, title: "The Shawshank Redemption", titleRu: "Побег из Шоушенка", year: 1994, genres: ["drama"], tags: ["prison", "hope", "friendship", "stephen-king"], imdbId: "tt0111161", rating: 9.3 },
+      { id: 18, title: "Forrest Gump", titleRu: "Форрест Гамп", year: 1994, genres: ["drama", "romance"], tags: ["history", "love", "tom-hanks", "inspirational"], imdbId: "tt0109830", rating: 8.8 },
+      { id: 19, title: "The Godfather", titleRu: "Крёстный отец", year: 1972, genres: ["crime", "drama"], tags: ["mafia", "family", "coppola", "italian"], imdbId: "tt0068646", rating: 9.2 },
+      { id: 20, title: "Fight Club", titleRu: "Бойцовский клуб", year: 1999, genres: ["drama"], tags: ["twist", "consumerism", "brad-pitt", "david-fincher"], imdbId: "tt0137523", rating: 8.8 },
+      { id: 21, title: "Schindler's List", titleRu: "Список Шиндлера", year: 1993, genres: ["biography", "drama", "history"], tags: ["holocaust", "war", "spielberg", "oscar"], imdbId: "tt0108052", rating: 9.0 },
+      { id: 22, title: "The Green Mile", titleRu: "Зелёная миля", year: 1999, genres: ["crime", "drama", "fantasy"], tags: ["prison", "supernatural", "stephen-king", "tom-hanks"], imdbId: "tt0120689", rating: 8.6 },
+      { id: 23, title: "Whiplash", titleRu: "Одержимость", year: 2014, genres: ["drama", "music"], tags: ["jazz", "ambition", "teacher", "damien-chazelle"], imdbId: "tt2582802", rating: 8.5 },
+      { id: 24, title: "Parasite", titleRu: "Паразиты", year: 2019, genres: ["comedy", "drama", "thriller"], tags: ["class", "korea", "bong-joon-ho", "oscar"], imdbId: "tt6751668", rating: 8.5 },
+
+      // Comedy/Комедии
+      { id: 25, title: "The Grand Budapest Hotel", titleRu: "Отель «Гранд Будапешт»", year: 2014, genres: ["adventure", "comedy", "crime"], tags: ["wes-anderson", "quirky", "hotel", "europe"], imdbId: "tt2278388", rating: 8.1 },
+      { id: 26, title: "Superbad", titleRu: "Суперперцы", year: 2007, genres: ["comedy"], tags: ["teen", "party", "friendship", "high-school"], imdbId: "tt0829482", rating: 7.6 },
+      { id: 27, title: "The Hangover", titleRu: "Мальчишник в Вегасе", year: 2009, genres: ["comedy"], tags: ["vegas", "bachelor-party", "amnesia", "wild"], imdbId: "tt1119646", rating: 7.7 },
+      { id: 28, title: "Groundhog Day", titleRu: "День сурка", year: 1993, genres: ["comedy", "fantasy", "romance"], tags: ["time-loop", "bill-murray", "self-improvement", "classic"], imdbId: "tt0107048", rating: 8.1 },
+      { id: 29, title: "The Big Lebowski", titleRu: "Большой Лебовски", year: 1998, genres: ["comedy", "crime"], tags: ["coen-brothers", "bowling", "cult", "dude"], imdbId: "tt0118715", rating: 8.1 },
+      { id: 30, title: "In Bruges", titleRu: "Залечь на дно в Брюгге", year: 2008, genres: ["comedy", "crime", "drama"], tags: ["hitmen", "belgium", "dark-comedy", "martin-mcdonagh"], imdbId: "tt0780536", rating: 7.9 },
+      { id: 31, title: "Jojo Rabbit", titleRu: "Кролик Джоджо", year: 2019, genres: ["comedy", "drama", "war"], tags: ["wwii", "satire", "taika-waititi", "hitler"], imdbId: "tt2584384", rating: 7.9 },
+      { id: 32, title: "Knives Out", titleRu: "Достать ножи", year: 2019, genres: ["comedy", "crime", "drama"], tags: ["mystery", "whodunit", "rian-johnson", "family"], imdbId: "tt8946378", rating: 7.9 },
+
+      // Horror/Ужасы
+      { id: 33, title: "The Shining", titleRu: "Сияние", year: 1980, genres: ["drama", "horror"], tags: ["hotel", "kubrick", "stephen-king", "psychological"], imdbId: "tt0081505", rating: 8.4 },
+      { id: 34, title: "Get Out", titleRu: "Прочь", year: 2017, genres: ["horror", "mystery", "thriller"], tags: ["racism", "jordan-peele", "social", "twist"], imdbId: "tt5052448", rating: 7.7 },
+      { id: 35, title: "A Quiet Place", titleRu: "Тихое место", year: 2018, genres: ["drama", "horror", "sci-fi"], tags: ["silence", "monsters", "family", "survival"], imdbId: "tt6644200", rating: 7.5 },
+      { id: 36, title: "Hereditary", titleRu: "Реинкарнация", year: 2018, genres: ["drama", "horror", "mystery"], tags: ["family", "occult", "ari-aster", "grief"], imdbId: "tt7784604", rating: 7.3 },
+      { id: 37, title: "The Conjuring", titleRu: "Заклятие", year: 2013, genres: ["horror", "mystery", "thriller"], tags: ["haunted-house", "warren", "demon", "james-wan"], imdbId: "tt1457767", rating: 7.5 },
+      { id: 38, title: "It", titleRu: "Оно", year: 2017, genres: ["horror"], tags: ["clown", "stephen-king", "kids", "pennywise"], imdbId: "tt1396484", rating: 7.3 },
+      { id: 39, title: "Midsommar", titleRu: "Солнцестояние", year: 2019, genres: ["drama", "horror", "mystery"], tags: ["cult", "sweden", "ari-aster", "folk-horror"], imdbId: "tt8772262", rating: 7.1 },
+      { id: 40, title: "The Babadook", titleRu: "Бабадук", year: 2014, genres: ["drama", "horror"], tags: ["grief", "monster", "motherhood", "psychological"], imdbId: "tt2321549", rating: 6.8 },
+
+      // Thriller/Триллеры
+      { id: 41, title: "Se7en", titleRu: "Семь", year: 1995, genres: ["crime", "drama", "mystery"], tags: ["serial-killer", "david-fincher", "dark", "twist"], imdbId: "tt0114369", rating: 8.6 },
+      { id: 42, title: "Silence of the Lambs", titleRu: "Молчание ягнят", year: 1991, genres: ["crime", "drama", "thriller"], tags: ["hannibal", "fbi", "serial-killer", "oscar"], imdbId: "tt0102926", rating: 8.6 },
+      { id: 43, title: "Zodiac", titleRu: "Зодиак", year: 2007, genres: ["crime", "drama", "mystery"], tags: ["serial-killer", "david-fincher", "true-story", "obsession"], imdbId: "tt0443706", rating: 7.7 },
+      { id: 44, title: "Gone Girl", titleRu: "Исчезнувшая", year: 2014, genres: ["drama", "mystery", "thriller"], tags: ["marriage", "david-fincher", "twist", "media"], imdbId: "tt2267998", rating: 8.1 },
+      { id: 45, title: "Shutter Island", titleRu: "Остров проклятых", year: 2010, genres: ["mystery", "thriller"], tags: ["asylum", "scorsese", "twist", "psychological"], imdbId: "tt1130884", rating: 8.2 },
+      { id: 46, title: "Prisoners", titleRu: "Пленницы", year: 2013, genres: ["crime", "drama", "mystery"], tags: ["kidnapping", "denis-villeneuve", "dark", "moral"], imdbId: "tt1392214", rating: 8.1 },
+      { id: 47, title: "Nightcrawler", titleRu: "Стрингер", year: 2014, genres: ["crime", "drama", "thriller"], tags: ["journalism", "sociopath", "jake-gyllenhaal", "dark"], imdbId: "tt2872718", rating: 7.8 },
+      { id: 48, title: "The Prestige", titleRu: "Престиж", year: 2006, genres: ["drama", "mystery", "sci-fi"], tags: ["magic", "christopher-nolan", "rivalry", "twist"], imdbId: "tt0482571", rating: 8.5 },
+
+      // Romance/Романтика
+      { id: 49, title: "The Notebook", titleRu: "Дневник памяти", year: 2004, genres: ["drama", "romance"], tags: ["love", "memory", "ryan-gosling", "tearjerker"], imdbId: "tt0332280", rating: 7.8 },
+      { id: 50, title: "La La Land", titleRu: "Ла-Ла Ленд", year: 2016, genres: ["comedy", "drama", "music"], tags: ["musical", "dreams", "damien-chazelle", "oscar"], imdbId: "tt3783958", rating: 8.0 },
+      { id: 51, title: "Pride & Prejudice", titleRu: "Гордость и предубеждение", year: 2005, genres: ["drama", "romance"], tags: ["jane-austen", "period", "england", "keira-knightley"], imdbId: "tt0414387", rating: 7.8 },
+      { id: 52, title: "Eternal Sunshine of the Spotless Mind", titleRu: "Вечное сияние чистого разума", year: 2004, genres: ["drama", "romance", "sci-fi"], tags: ["memory", "love", "jim-carrey", "charlie-kaufman"], imdbId: "tt0338013", rating: 8.3 },
+      { id: 53, title: "Before Sunrise", titleRu: "Перед рассветом", year: 1995, genres: ["drama", "romance"], tags: ["vienna", "conversation", "richard-linklater", "indie"], imdbId: "tt0112471", rating: 8.1 },
+      { id: 54, title: "500 Days of Summer", titleRu: "500 дней лета", year: 2009, genres: ["comedy", "drama", "romance"], tags: ["indie", "non-linear", "breakup", "expectations"], imdbId: "tt1022603", rating: 7.7 },
+      { id: 55, title: "About Time", titleRu: "Бойфренд из будущего", year: 2013, genres: ["comedy", "drama", "romance"], tags: ["time-travel", "family", "british", "richard-curtis"], imdbId: "tt2194499", rating: 7.8 },
+      { id: 56, title: "The Shape of Water", titleRu: "Форма воды", year: 2017, genres: ["adventure", "drama", "fantasy"], tags: ["creature", "guillermo-del-toro", "oscar", "love"], imdbId: "tt5580390", rating: 7.3 },
+
+      // Animation/Анимация
+      { id: 57, title: "Spirited Away", titleRu: "Унесённые призраками", year: 2001, genres: ["animation", "adventure", "family"], tags: ["ghibli", "miyazaki", "japan", "fantasy"], imdbId: "tt0245429", rating: 8.6 },
+      { id: 58, title: "Spider-Man: Into the Spider-Verse", titleRu: "Человек-паук: Через вселенные", year: 2018, genres: ["animation", "action", "adventure"], tags: ["superhero", "miles-morales", "multiverse", "visually-stunning"], imdbId: "tt4633694", rating: 8.4 },
+      { id: 59, title: "Toy Story", titleRu: "История игрушек", year: 1995, genres: ["animation", "adventure", "comedy"], tags: ["pixar", "toys", "friendship", "classic"], imdbId: "tt0114709", rating: 8.3 },
+      { id: 60, title: "Finding Nemo", titleRu: "В поисках Немо", year: 2003, genres: ["animation", "adventure", "comedy"], tags: ["pixar", "ocean", "fish", "family"], imdbId: "tt0266543", rating: 8.2 },
+      { id: 61, title: "Coco", titleRu: "Тайна Коко", year: 2017, genres: ["animation", "adventure", "family"], tags: ["pixar", "mexico", "music", "death"], imdbId: "tt2380307", rating: 8.4 },
+      { id: 62, title: "Your Name", titleRu: "Твоё имя", year: 2016, genres: ["animation", "drama", "fantasy"], tags: ["japan", "body-swap", "romance", "makoto-shinkai"], imdbId: "tt5311514", rating: 8.4 },
+      { id: 63, title: "The Lion King", titleRu: "Король Лев", year: 1994, genres: ["animation", "adventure", "drama"], tags: ["disney", "africa", "lions", "classic"], imdbId: "tt0110357", rating: 8.5 },
+      { id: 64, title: "Up", titleRu: "Вверх", year: 2009, genres: ["animation", "adventure", "comedy"], tags: ["pixar", "adventure", "elderly", "balloons"], imdbId: "tt1049413", rating: 8.3 },
+
+      // Adventure/Приключения
+      { id: 65, title: "Indiana Jones: Raiders of the Lost Ark", titleRu: "Индиана Джонс: В поисках утраченного ковчега", year: 1981, genres: ["action", "adventure"], tags: ["treasure", "spielberg", "archaeology", "classic"], imdbId: "tt0082971", rating: 8.4 },
+      { id: 66, title: "The Lord of the Rings: Fellowship", titleRu: "Властелин колец: Братство кольца", year: 2001, genres: ["action", "adventure", "drama"], tags: ["tolkien", "fantasy", "epic", "peter-jackson"], imdbId: "tt0120737", rating: 8.8 },
+      { id: 67, title: "Pirates of the Caribbean", titleRu: "Пираты Карибского моря: Проклятие Чёрной жемчужины", year: 2003, genres: ["action", "adventure", "fantasy"], tags: ["pirates", "jack-sparrow", "disney", "johnny-depp"], imdbId: "tt0325980", rating: 8.1 },
+      { id: 68, title: "Jurassic Park", titleRu: "Парк Юрского периода", year: 1993, genres: ["action", "adventure", "sci-fi"], tags: ["dinosaurs", "spielberg", "island", "classic"], imdbId: "tt0107290", rating: 8.2 },
+      { id: 69, title: "The Princess Bride", titleRu: "Принцесса-невеста", year: 1987, genres: ["adventure", "comedy", "family"], tags: ["fairy-tale", "romance", "cult", "classic"], imdbId: "tt0093779", rating: 8.0 },
+      { id: 70, title: "Life of Pi", titleRu: "Жизнь Пи", year: 2012, genres: ["adventure", "drama", "fantasy"], tags: ["survival", "ocean", "tiger", "ang-lee"], imdbId: "tt0454876", rating: 7.9 },
+      { id: 71, title: "The Revenant", titleRu: "Выживший", year: 2015, genres: ["action", "adventure", "drama"], tags: ["survival", "revenge", "leonardo-dicaprio", "oscar"], imdbId: "tt1663202", rating: 8.0 },
+      { id: 72, title: "Into the Wild", titleRu: "В диких условиях", year: 2007, genres: ["adventure", "biography", "drama"], tags: ["nature", "freedom", "true-story", "sean-penn"], imdbId: "tt0758758", rating: 8.1 },
+
+      // War/Военные
+      { id: 73, title: "Saving Private Ryan", titleRu: "Спасти рядового Райана", year: 1998, genres: ["drama", "war"], tags: ["wwii", "spielberg", "d-day", "soldiers"], imdbId: "tt0120815", rating: 8.6 },
+      { id: 74, title: "Dunkirk", titleRu: "Дюнкерк", year: 2017, genres: ["action", "drama", "history"], tags: ["wwii", "christopher-nolan", "evacuation", "survival"], imdbId: "tt5013056", rating: 7.8 },
+      { id: 75, title: "1917", titleRu: "1917", year: 2019, genres: ["drama", "war"], tags: ["wwi", "one-shot", "sam-mendes", "mission"], imdbId: "tt8579674", rating: 8.3 },
+      { id: 76, title: "Apocalypse Now", titleRu: "Апокалипсис сегодня", year: 1979, genres: ["drama", "mystery", "war"], tags: ["vietnam", "coppola", "madness", "classic"], imdbId: "tt0078788", rating: 8.5 },
+      { id: 77, title: "Full Metal Jacket", titleRu: "Цельнометаллическая оболочка", year: 1987, genres: ["drama", "war"], tags: ["vietnam", "kubrick", "training", "psychological"], imdbId: "tt0093058", rating: 8.3 },
+      { id: 78, title: "Hacksaw Ridge", titleRu: "По соображениям совести", year: 2016, genres: ["biography", "drama", "war"], tags: ["wwii", "pacifist", "mel-gibson", "true-story"], imdbId: "tt2119532", rating: 8.1 },
+      { id: 79, title: "Platoon", titleRu: "Взвод", year: 1986, genres: ["drama", "war"], tags: ["vietnam", "oliver-stone", "soldiers", "oscar"], imdbId: "tt0091763", rating: 8.1 },
+      { id: 80, title: "The Hurt Locker", titleRu: "Повелитель бури", year: 2008, genres: ["drama", "thriller", "war"], tags: ["iraq", "bomb-disposal", "kathryn-bigelow", "oscar"], imdbId: "tt0887912", rating: 7.5 },
+
+      // Superhero/Супергеройские
+      { id: 81, title: "The Avengers", titleRu: "Мстители", year: 2012, genres: ["action", "adventure", "sci-fi"], tags: ["marvel", "superhero", "team", "joss-whedon"], imdbId: "tt0848228", rating: 8.0 },
+      { id: 82, title: "Iron Man", titleRu: "Железный человек", year: 2008, genres: ["action", "adventure", "sci-fi"], tags: ["marvel", "tony-stark", "origin", "robert-downey-jr"], imdbId: "tt0371746", rating: 7.9 },
+      { id: 83, title: "Black Panther", titleRu: "Чёрная Пантера", year: 2018, genres: ["action", "adventure", "sci-fi"], tags: ["marvel", "wakanda", "africa", "representation"], imdbId: "tt1825683", rating: 7.3 },
+      { id: 84, title: "Logan", titleRu: "Логан", year: 2017, genres: ["action", "drama", "sci-fi"], tags: ["x-men", "wolverine", "farewell", "western"], imdbId: "tt3315342", rating: 8.1 },
+      { id: 85, title: "Guardians of the Galaxy", titleRu: "Стражи Галактики", year: 2014, genres: ["action", "adventure", "comedy"], tags: ["marvel", "space", "music", "team"], imdbId: "tt2015381", rating: 8.0 },
+      { id: 86, title: "Wonder Woman", titleRu: "Чудо-женщина", year: 2017, genres: ["action", "adventure", "fantasy"], tags: ["dc", "amazon", "wwi", "gal-gadot"], imdbId: "tt0451279", rating: 7.4 },
+      { id: 87, title: "Deadpool", titleRu: "Дэдпул", year: 2016, genres: ["action", "comedy"], tags: ["marvel", "r-rated", "fourth-wall", "ryan-reynolds"], imdbId: "tt1431045", rating: 8.0 },
+      { id: 88, title: "Joker", titleRu: "Джокер", year: 2019, genres: ["crime", "drama", "thriller"], tags: ["dc", "villain", "psychological", "joaquin-phoenix"], imdbId: "tt7286456", rating: 8.4 },
+
+      // Crime/Криминал
+      { id: 89, title: "Pulp Fiction", titleRu: "Криминальное чтиво", year: 1994, genres: ["crime", "drama"], tags: ["tarantino", "non-linear", "dialogue", "cult"], imdbId: "tt0110912", rating: 8.9 },
+      { id: 90, title: "Goodfellas", titleRu: "Славные парни", year: 1990, genres: ["biography", "crime", "drama"], tags: ["mafia", "scorsese", "gangster", "true-story"], imdbId: "tt0099685", rating: 8.7 },
+      { id: 91, title: "The Departed", titleRu: "Отступники", year: 2006, genres: ["crime", "drama", "thriller"], tags: ["mafia", "scorsese", "undercover", "oscar"], imdbId: "tt0407887", rating: 8.5 },
+      { id: 92, title: "No Country for Old Men", titleRu: "Старикам тут не место", year: 2007, genres: ["crime", "drama", "thriller"], tags: ["coen-brothers", "hitman", "chase", "oscar"], imdbId: "tt0477348", rating: 8.2 },
+      { id: 93, title: "Heat", titleRu: "Схватка", year: 1995, genres: ["action", "crime", "drama"], tags: ["heist", "de-niro", "pacino", "michael-mann"], imdbId: "tt0113277", rating: 8.3 },
+      { id: 94, title: "The Town", titleRu: "Город воров", year: 2010, genres: ["crime", "drama", "thriller"], tags: ["heist", "boston", "ben-affleck", "robbery"], imdbId: "tt0840361", rating: 7.5 },
+      { id: 95, title: "Sicario", titleRu: "Убийца", year: 2015, genres: ["action", "crime", "drama"], tags: ["cartel", "denis-villeneuve", "border", "dark"], imdbId: "tt3397884", rating: 7.6 },
+      { id: 96, title: "City of God", titleRu: "Город Бога", year: 2002, genres: ["crime", "drama"], tags: ["brazil", "favela", "gangs", "poverty"], imdbId: "tt0317248", rating: 8.6 },
+
+      // Biography/Биографии
+      { id: 97, title: "The Social Network", titleRu: "Социальная сеть", year: 2010, genres: ["biography", "drama"], tags: ["facebook", "david-fincher", "startup", "friendship"], imdbId: "tt1285016", rating: 7.8 },
+      { id: 98, title: "Bohemian Rhapsody", titleRu: "Богемская рапсодия", year: 2018, genres: ["biography", "drama", "music"], tags: ["queen", "freddie-mercury", "music", "oscar"], imdbId: "tt1727824", rating: 7.9 },
+      { id: 99, title: "A Beautiful Mind", titleRu: "Игры разума", year: 2001, genres: ["biography", "drama"], tags: ["genius", "schizophrenia", "ron-howard", "oscar"], imdbId: "tt0268978", rating: 8.2 },
+      { id: 100, title: "The Imitation Game", titleRu: "Игра в имитацию", year: 2014, genres: ["biography", "drama", "thriller"], tags: ["turing", "wwii", "codebreaking", "benedict-cumberbatch"], imdbId: "tt2084970", rating: 8.0 },
+      { id: 101, title: "Catch Me If You Can", titleRu: "Поймай меня, если сможешь", year: 2002, genres: ["biography", "crime", "drama"], tags: ["con-artist", "spielberg", "leonardo-dicaprio", "cat-and-mouse"], imdbId: "tt0264464", rating: 8.1 },
+      { id: 102, title: "The Wolf of Wall Street", titleRu: "Волк с Уолл-стрит", year: 2013, genres: ["biography", "comedy", "crime"], tags: ["finance", "scorsese", "excess", "leonardo-dicaprio"], imdbId: "tt0993846", rating: 8.2 },
+      { id: 103, title: "Steve Jobs", titleRu: "Стив Джобс", year: 2015, genres: ["biography", "drama"], tags: ["apple", "danny-boyle", "tech", "michael-fassbender"], imdbId: "tt2080374", rating: 7.2 },
+      { id: 104, title: "The Theory of Everything", titleRu: "Вселенная Стивена Хокинга", year: 2014, genres: ["biography", "drama", "romance"], tags: ["hawking", "science", "love", "eddie-redmayne"], imdbId: "tt2980516", rating: 7.7 },
+
+      // Sports/Спортивные
+      { id: 105, title: "Rocky", titleRu: "Рокки", year: 1976, genres: ["drama", "sport"], tags: ["boxing", "underdog", "stallone", "oscar"], imdbId: "tt0075148", rating: 8.1 },
+      { id: 106, title: "Raging Bull", titleRu: "Бешеный бык", year: 1980, genres: ["biography", "drama", "sport"], tags: ["boxing", "scorsese", "de-niro", "black-and-white"], imdbId: "tt0081398", rating: 8.2 },
+      { id: 107, title: "The Fighter", titleRu: "Боец", year: 2010, genres: ["biography", "drama", "sport"], tags: ["boxing", "family", "christian-bale", "oscar"], imdbId: "tt0964517", rating: 7.8 },
+      { id: 108, title: "Creed", titleRu: "Крид: Наследие Рокки", year: 2015, genres: ["drama", "sport"], tags: ["boxing", "rocky", "michael-b-jordan", "legacy"], imdbId: "tt3076658", rating: 7.6 },
+      { id: 109, title: "Moneyball", titleRu: "Человек, который изменил всё", year: 2011, genres: ["biography", "drama", "sport"], tags: ["baseball", "analytics", "brad-pitt", "underdog"], imdbId: "tt1210166", rating: 7.6 },
+      { id: 110, title: "Rush", titleRu: "Гонка", year: 2013, genres: ["action", "biography", "drama"], tags: ["f1", "rivalry", "ron-howard", "racing"], imdbId: "tt1979320", rating: 8.1 },
+      { id: 111, title: "Ford v Ferrari", titleRu: "Ford против Ferrari", year: 2019, genres: ["action", "biography", "drama"], tags: ["racing", "le-mans", "matt-damon", "christian-bale"], imdbId: "tt1950186", rating: 8.1 },
+      { id: 112, title: "Million Dollar Baby", titleRu: "Малышка на миллион", year: 2004, genres: ["drama", "sport"], tags: ["boxing", "clint-eastwood", "oscar", "tragedy"], imdbId: "tt0405159", rating: 8.1 },
+
+      // Musical/Мюзиклы
+      { id: 113, title: "The Greatest Showman", titleRu: "Величайший шоумен", year: 2017, genres: ["biography", "drama", "music"], tags: ["circus", "musical", "hugh-jackman", "barnum"], imdbId: "tt1485796", rating: 7.6 },
+      { id: 114, title: "Les Misérables", titleRu: "Отверженные", year: 2012, genres: ["drama", "music", "romance"], tags: ["musical", "france", "revolution", "hugo"], imdbId: "tt1707386", rating: 7.6 },
+      { id: 115, title: "Chicago", titleRu: "Чикаго", year: 2002, genres: ["comedy", "crime", "music"], tags: ["musical", "jazz", "1920s", "oscar"], imdbId: "tt0299658", rating: 7.2 },
+      { id: 116, title: "Moulin Rouge!", titleRu: "Мулен Руж!", year: 2001, genres: ["drama", "music", "romance"], tags: ["musical", "paris", "baz-luhrmann", "love"], imdbId: "tt0203009", rating: 7.6 },
+      { id: 117, title: "Sing Street", titleRu: "Синг Стрит", year: 2016, genres: ["comedy", "drama", "music"], tags: ["80s", "ireland", "band", "teen"], imdbId: "tt3544112", rating: 7.9 },
+      { id: 118, title: "A Star Is Born", titleRu: "Звезда родилась", year: 2018, genres: ["drama", "music", "romance"], tags: ["musical", "fame", "lady-gaga", "bradley-cooper"], imdbId: "tt1517451", rating: 7.6 },
+      { id: 119, title: "Hamilton", titleRu: "Гамильтон", year: 2020, genres: ["biography", "drama", "history"], tags: ["broadway", "hip-hop", "lin-manuel-miranda", "musical"], imdbId: "tt8503618", rating: 8.4 },
+      { id: 120, title: "Rocketman", titleRu: "Рокетмен", year: 2019, genres: ["biography", "drama", "music"], tags: ["elton-john", "musical", "fantasy", "taron-egerton"], imdbId: "tt2066051", rating: 7.3 },
+
+      // Western/Вестерны
+      { id: 121, title: "Django Unchained", titleRu: "Джанго освобождённый", year: 2012, genres: ["drama", "western"], tags: ["tarantino", "slavery", "revenge", "bounty-hunter"], imdbId: "tt1853728", rating: 8.4 },
+      { id: 122, title: "The Good, the Bad and the Ugly", titleRu: "Хороший, плохой, злой", year: 1966, genres: ["adventure", "western"], tags: ["sergio-leone", "clint-eastwood", "civil-war", "classic"], imdbId: "tt0060196", rating: 8.8 },
+      { id: 123, title: "True Grit", titleRu: "Железная хватка", year: 2010, genres: ["adventure", "drama", "western"], tags: ["coen-brothers", "revenge", "bounty-hunter", "remake"], imdbId: "tt1403865", rating: 7.6 },
+      { id: 124, title: "The Hateful Eight", titleRu: "Омерзительная восьмёрка", year: 2015, genres: ["crime", "drama", "mystery"], tags: ["tarantino", "blizzard", "70mm", "dialogue"], imdbId: "tt3460252", rating: 7.8 },
+      { id: 125, title: "Unforgiven", titleRu: "Непрощённый", year: 1992, genres: ["drama", "western"], tags: ["clint-eastwood", "redemption", "oscar", "revisionist"], imdbId: "tt0105695", rating: 8.2 },
+      { id: 126, title: "3:10 to Yuma", titleRu: "Поезд на Юму", year: 2007, genres: ["action", "crime", "drama"], tags: ["remake", "christian-bale", "russell-crowe", "outlaw"], imdbId: "tt0381849", rating: 7.7 },
+      { id: 127, title: "Tombstone", titleRu: "Тумстоун: Легенда дикого Запада", year: 1993, genres: ["action", "biography", "drama"], tags: ["wyatt-earp", "doc-holliday", "gunfight", "val-kilmer"], imdbId: "tt0108358", rating: 7.8 },
+      { id: 128, title: "Hell or High Water", titleRu: "Любой ценой", year: 2016, genres: ["crime", "drama", "thriller"], tags: ["modern-western", "bank-robbery", "brothers", "taylor-sheridan"], imdbId: "tt2582782", rating: 7.6 },
+
+      // Mystery/Детективы
+      { id: 129, title: "Memento", titleRu: "Помни", year: 2000, genres: ["mystery", "thriller"], tags: ["christopher-nolan", "memory", "reverse", "twist"], imdbId: "tt0209144", rating: 8.4 },
+      { id: 130, title: "The Usual Suspects", titleRu: "Подозрительные лица", year: 1995, genres: ["crime", "drama", "mystery"], tags: ["twist", "keyser-soze", "heist", "unreliable-narrator"], imdbId: "tt0114814", rating: 8.5 },
+      { id: 131, title: "The Sixth Sense", titleRu: "Шестое чувство", year: 1999, genres: ["drama", "mystery", "thriller"], tags: ["twist", "ghost", "m-night-shyamalan", "bruce-willis"], imdbId: "tt0167404", rating: 8.2 },
+      { id: 132, title: "Oldboy", titleRu: "Олдбой", year: 2003, genres: ["action", "drama", "mystery"], tags: ["korean", "revenge", "twist", "park-chan-wook"], imdbId: "tt0364569", rating: 8.4 },
+      { id: 133, title: "The Girl with the Dragon Tattoo", titleRu: "Девушка с татуировкой дракона", year: 2011, genres: ["crime", "drama", "mystery"], tags: ["david-fincher", "hacker", "journalist", "sweden"], imdbId: "tt1568346", rating: 7.8 },
+      { id: 134, title: "Mystic River", titleRu: "Таинственная река", year: 2003, genres: ["crime", "drama", "mystery"], tags: ["clint-eastwood", "childhood", "tragedy", "boston"], imdbId: "tt0327056", rating: 7.9 },
+      { id: 135, title: "Murder on the Orient Express", titleRu: "Убийство в Восточном экспрессе", year: 2017, genres: ["crime", "drama", "mystery"], tags: ["agatha-christie", "poirot", "train", "whodunit"], imdbId: "tt3402236", rating: 6.5 },
+      { id: 136, title: "Identity", titleRu: "Идентификация", year: 2003, genres: ["mystery", "thriller"], tags: ["twist", "motel", "storm", "psychological"], imdbId: "tt0309698", rating: 7.3 },
+
+      // Family/Семейные
+      { id: 137, title: "E.T. the Extra-Terrestrial", titleRu: "Инопланетянин", year: 1982, genres: ["adventure", "family", "sci-fi"], tags: ["spielberg", "alien", "friendship", "classic"], imdbId: "tt0083866", rating: 7.9 },
+      { id: 138, title: "Home Alone", titleRu: "Один дома", year: 1990, genres: ["comedy", "family"], tags: ["christmas", "kevin", "traps", "classic"], imdbId: "tt0099785", rating: 7.7 },
+      { id: 139, title: "Harry Potter and the Sorcerer's Stone", titleRu: "Гарри Поттер и философский камень", year: 2001, genres: ["adventure", "family", "fantasy"], tags: ["magic", "hogwarts", "wizard", "jk-rowling"], imdbId: "tt0241527", rating: 7.6 },
+      { id: 140, title: "The Incredibles", titleRu: "Суперсемейка", year: 2004, genres: ["animation", "action", "adventure"], tags: ["pixar", "superhero", "family", "brad-bird"], imdbId: "tt0317705", rating: 8.0 },
+      { id: 141, title: "Shrek", titleRu: "Шрек", year: 2001, genres: ["animation", "adventure", "comedy"], tags: ["dreamworks", "fairy-tale", "ogre", "parody"], imdbId: "tt0126029", rating: 7.9 },
+      { id: 142, title: "The Wizard of Oz", titleRu: "Волшебник страны Оз", year: 1939, genres: ["adventure", "family", "fantasy"], tags: ["classic", "musical", "dorothy", "technicolor"], imdbId: "tt0032138", rating: 8.1 },
+      { id: 143, title: "Mary Poppins", titleRu: "Мэри Поппинс", year: 1964, genres: ["comedy", "family", "fantasy"], tags: ["disney", "musical", "nanny", "classic"], imdbId: "tt0058331", rating: 7.8 },
+      { id: 144, title: "Paddington 2", titleRu: "Приключения Паддингтона 2", year: 2017, genres: ["adventure", "comedy", "family"], tags: ["bear", "british", "wholesome", "prison"], imdbId: "tt4468740", rating: 7.8 },
+
+      // Historical Drama/Историческое
+      { id: 145, title: "Braveheart", titleRu: "Храброе сердце", year: 1995, genres: ["biography", "drama", "history"], tags: ["scotland", "freedom", "mel-gibson", "epic"], imdbId: "tt0112573", rating: 8.4 },
+      { id: 146, title: "Titanic", titleRu: "Титаник", year: 1997, genres: ["drama", "romance"], tags: ["ship", "disaster", "james-cameron", "oscar"], imdbId: "tt0120338", rating: 7.9 },
+      { id: 147, title: "12 Years a Slave", titleRu: "12 лет рабства", year: 2013, genres: ["biography", "drama", "history"], tags: ["slavery", "true-story", "oscar", "steve-mcqueen"], imdbId: "tt2024544", rating: 8.1 },
+      { id: 148, title: "The King's Speech", titleRu: "Король говорит!", year: 2010, genres: ["biography", "drama", "history"], tags: ["royalty", "speech", "wwii", "oscar"], imdbId: "tt1504320", rating: 8.0 },
+      { id: 149, title: "Lincoln", titleRu: "Линкольн", year: 2012, genres: ["biography", "drama", "history"], tags: ["civil-war", "spielberg", "president", "daniel-day-lewis"], imdbId: "tt0443272", rating: 7.3 },
+      { id: 150, title: "The Last Samurai", titleRu: "Последний самурай", year: 2003, genres: ["action", "drama", "history"], tags: ["japan", "samurai", "tom-cruise", "honor"], imdbId: "tt0325710", rating: 7.8 }
+    ];
+
+    // Все уникальные жанры
+    const ALL_GENRES = [...new Set(MOVIES_DATABASE.flatMap(m => m.genres))].sort();
+
+    // Переводы
+    const translations = {
+      ru: {
+        logo: "Рекомендатор фильмов",
+        reset: "Сбросить",
+        progressTitle: "Прогресс оценки",
+        progressHint: "Оцените минимум 5 фильмов, чтобы получить персональные рекомендации",
+        tabRate: "Оценить фильмы",
+        tabRecommendations: "Рекомендации",
+        tabRated: "Оценённые",
+        searchPlaceholder: "Поиск фильмов...",
+        recommendationsTitle: "Ваши рекомендации",
+        getRecommendations: "Получить рекомендации",
+        emptyRated: "Вы ещё не оценили ни одного фильма",
+        emptyRatedHint: "Перейдите на вкладку \"Оценить фильмы\" и поставьте оценки",
+        emptyRecommendations: "Недостаточно оценок",
+        emptyRecommendationsHint: "Оцените минимум 5 фильмов для получения рекомендаций",
+        similarity: "Совместимость",
+        rateMovie: "Оцените фильм",
+        yourRating: "Ваша оценка",
+        allGenres: "Все",
+        genres: {
+          action: "Боевик",
+          adventure: "Приключения",
+          animation: "Анимация",
+          biography: "Биография",
+          comedy: "Комедия",
+          crime: "Криминал",
+          drama: "Драма",
+          family: "Семейный",
+          fantasy: "Фэнтези",
+          history: "Исторический",
+          horror: "Ужасы",
+          music: "Музыкальный",
+          mystery: "Детектив",
+          romance: "Романтика",
+          "sci-fi": "Фантастика",
+          sport: "Спорт",
+          thriller: "Триллер",
+          war: "Военный",
+          western: "Вестерн"
+        }
+      },
+      en: {
+        logo: "Movie Recommender",
+        reset: "Reset",
+        progressTitle: "Rating Progress",
+        progressHint: "Rate at least 5 movies to get personalized recommendations",
+        tabRate: "Rate Movies",
+        tabRecommendations: "Recommendations",
+        tabRated: "Rated",
+        searchPlaceholder: "Search movies...",
+        recommendationsTitle: "Your Recommendations",
+        getRecommendations: "Get Recommendations",
+        emptyRated: "You haven't rated any movies yet",
+        emptyRatedHint: "Go to 'Rate Movies' tab and rate some films",
+        emptyRecommendations: "Not enough ratings",
+        emptyRecommendationsHint: "Rate at least 5 movies to get recommendations",
+        similarity: "Match",
+        rateMovie: "Rate this movie",
+        yourRating: "Your rating",
+        allGenres: "All",
+        genres: {
+          action: "Action",
+          adventure: "Adventure",
+          animation: "Animation",
+          biography: "Biography",
+          comedy: "Comedy",
+          crime: "Crime",
+          drama: "Drama",
+          family: "Family",
+          fantasy: "Fantasy",
+          history: "History",
+          horror: "Horror",
+          music: "Music",
+          mystery: "Mystery",
+          romance: "Romance",
+          "sci-fi": "Sci-Fi",
+          sport: "Sport",
+          thriller: "Thriller",
+          war: "War",
+          western: "Western"
+        }
+      }
+    };
+
+    // Состояние приложения
+    let currentLang = localStorage.getItem("movieRecLang") || "ru";
+    let currentTheme = localStorage.getItem("movieRecTheme") || "dark";
+    let userRatings = JSON.parse(localStorage.getItem("movieRatings") || "{}");
+    let currentGenreFilter = null;
+    let currentSearchQuery = "";
+
+    /**
+     * Инициализация приложения
+     */
+    function init() {
+      applyTheme();
+      applyLanguage();
+      renderGenreFilter();
+      renderMovies();
+      updateProgress();
+      setupEventListeners();
+    }
+
+    /**
+     * Применение темы
+     */
+    function applyTheme() {
+      document.body.setAttribute("data-theme", currentTheme);
+      const icon = document.querySelector("#themeBtn i");
+      icon.className = currentTheme === "dark" ? "fas fa-sun" : "fas fa-moon";
+    }
+
+    /**
+     * Применение языка
+     */
+    function applyLanguage() {
+      const t = translations[currentLang];
+
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.dataset.i18n;
+        if (t[key]) el.textContent = t[key];
+      });
+
+      document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        if (t[key]) el.placeholder = t[key];
+      });
+
+      document.querySelector("#langBtn span").textContent = currentLang.toUpperCase();
+    }
+
+    /**
+     * Отрисовка фильтра жанров
+     */
+    function renderGenreFilter() {
+      const container = document.getElementById("genreFilter");
+      const t = translations[currentLang];
+
+      let html = `<button class="genre-btn ${!currentGenreFilter ? 'active' : ''}"
+                          data-genre="">${t.allGenres}</button>`;
+
+      ALL_GENRES.forEach(genre => {
+        const genreName = t.genres[genre] || genre;
+        html += `<button class="genre-btn ${currentGenreFilter === genre ? 'active' : ''}"
+                         data-genre="${genre}">${genreName}</button>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    /**
+     * Получить отфильтрованные фильмы
+     */
+    function getFilteredMovies() {
+      return MOVIES_DATABASE.filter(movie => {
+        // Фильтр по жанру
+        if (currentGenreFilter && !movie.genres.includes(currentGenreFilter)) {
+          return false;
+        }
+
+        // Фильтр по поиску
+        if (currentSearchQuery) {
+          const query = currentSearchQuery.toLowerCase();
+          const title = (currentLang === "ru" ? movie.titleRu : movie.title).toLowerCase();
+          const tags = movie.tags.join(" ").toLowerCase();
+          const genres = movie.genres.join(" ").toLowerCase();
+
+          if (!title.includes(query) && !tags.includes(query) && !genres.includes(query)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+    }
+
+    /**
+     * Отрисовка карточек фильмов
+     */
+    function renderMovies() {
+      const container = document.getElementById("moviesGrid");
+      const movies = getFilteredMovies();
+      const t = translations[currentLang];
+
+      if (movies.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column: 1/-1;">
+            <i class="fas fa-film"></i>
+            <h3>Фильмы не найдены</h3>
+            <p>Попробуйте изменить параметры поиска</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = movies.map((movie, index) => {
+        const title = currentLang === "ru" ? movie.titleRu : movie.title;
+        const rating = userRatings[movie.id] || 0;
+        const posterUrl = `https://img.omdbapi.com/?apikey=4a3b711b&i=${movie.imdbId}`;
+
+        return `
+          <div class="movie-card ${rating > 0 ? 'rated' : ''}"
+               data-id="${movie.id}"
+               style="animation-delay: ${index * 0.05}s">
+            <div class="movie-poster" onclick="openModal(${movie.id})">
+              <img src="${posterUrl}"
+                   alt="${title}"
+                   onerror="this.parentElement.innerHTML='<i class=\\'fas fa-film placeholder\\'></i>'"
+                   loading="lazy">
+            </div>
+            <div class="movie-info">
+              <h3 class="movie-title" onclick="openModal(${movie.id})">${title}</h3>
+              <div class="movie-meta">
+                <span>${movie.year}</span>
+                <span>★ ${movie.rating}</span>
+              </div>
+              <div class="movie-genres">
+                ${movie.genres.slice(0, 2).map(g =>
+                  `<span class="genre-tag">${t.genres[g] || g}</span>`
+                ).join("")}
+              </div>
+            </div>
+            <div class="user-rating">
+              ${[1,2,3,4,5].map(star => `
+                <span class="star ${star <= rating ? 'active' : ''}"
+                      data-movie="${movie.id}"
+                      data-star="${star}">★</span>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    /**
+     * Отрисовка оценённых фильмов
+     */
+    function renderRatedMovies() {
+      const container = document.getElementById("ratedGrid");
+      const t = translations[currentLang];
+
+      const ratedMovies = MOVIES_DATABASE.filter(m => userRatings[m.id] > 0)
+        .sort((a, b) => userRatings[b.id] - userRatings[a.id]);
+
+      if (ratedMovies.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column: 1/-1;">
+            <i class="fas fa-star"></i>
+            <h3>${t.emptyRated}</h3>
+            <p>${t.emptyRatedHint}</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = ratedMovies.map((movie, index) => {
+        const title = currentLang === "ru" ? movie.titleRu : movie.title;
+        const rating = userRatings[movie.id];
+        const posterUrl = `https://img.omdbapi.com/?apikey=4a3b711b&i=${movie.imdbId}`;
+
+        return `
+          <div class="movie-card rated"
+               data-id="${movie.id}"
+               style="animation-delay: ${index * 0.05}s">
+            <div class="movie-poster" onclick="openModal(${movie.id})">
+              <img src="${posterUrl}"
+                   alt="${title}"
+                   onerror="this.parentElement.innerHTML='<i class=\\'fas fa-film placeholder\\'></i>'"
+                   loading="lazy">
+            </div>
+            <div class="movie-info">
+              <h3 class="movie-title" onclick="openModal(${movie.id})">${title}</h3>
+              <div class="movie-meta">
+                <span>${movie.year}</span>
+                <span>★ ${movie.rating}</span>
+              </div>
+              <div class="movie-genres">
+                ${movie.genres.slice(0, 2).map(g =>
+                  `<span class="genre-tag">${t.genres[g] || g}</span>`
+                ).join("")}
+              </div>
+            </div>
+            <div class="user-rating">
+              ${[1,2,3,4,5].map(star => `
+                <span class="star ${star <= rating ? 'active' : ''}"
+                      data-movie="${movie.id}"
+                      data-star="${star}">★</span>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    /**
+     * Создание вектора признаков для фильма
+     * Использует жанры и теги как признаки
+     */
+    function createFeatureVector(movie) {
+      const allTags = [...new Set(MOVIES_DATABASE.flatMap(m => [...m.genres, ...m.tags]))];
+      const vector = new Array(allTags.length).fill(0);
+
+      [...movie.genres, ...movie.tags].forEach(feature => {
+        const idx = allTags.indexOf(feature);
+        if (idx !== -1) {
+          vector[idx] = 1;
+        }
+      });
+
+      return vector;
+    }
+
+    /**
+     * Cosine Similarity через dot product
+     */
+    function cosineSimilarity(vecA, vecB) {
+      let dotProduct = 0;
+      let magnitudeA = 0;
+      let magnitudeB = 0;
+
+      for (let i = 0; i < vecA.length; i++) {
+        dotProduct += vecA[i] * vecB[i];
+        magnitudeA += vecA[i] * vecA[i];
+        magnitudeB += vecB[i] * vecB[i];
+      }
+
+      magnitudeA = Math.sqrt(magnitudeA);
+      magnitudeB = Math.sqrt(magnitudeB);
+
+      if (magnitudeA === 0 || magnitudeB === 0) return 0;
+
+      return dotProduct / (magnitudeA * magnitudeB);
+    }
+
+    /**
+     * Создание профиля пользователя на основе оценок
+     */
+    function createUserProfile() {
+      const allTags = [...new Set(MOVIES_DATABASE.flatMap(m => [...m.genres, ...m.tags]))];
+      const profile = new Array(allTags.length).fill(0);
+
+      let totalWeight = 0;
+
+      Object.entries(userRatings).forEach(([movieId, rating]) => {
+        const movie = MOVIES_DATABASE.find(m => m.id === parseInt(movieId));
+        if (!movie) return;
+
+        // Нормализуем рейтинг (1-5 -> -2 до 2)
+        const weight = rating - 3;
+        totalWeight += Math.abs(weight);
+
+        [...movie.genres, ...movie.tags].forEach(feature => {
+          const idx = allTags.indexOf(feature);
+          if (idx !== -1) {
+            profile[idx] += weight;
+          }
+        });
+      });
+
+      // Нормализация профиля
+      if (totalWeight > 0) {
+        for (let i = 0; i < profile.length; i++) {
+          profile[i] /= totalWeight;
+        }
+      }
+
+      return profile;
+    }
+
+    /**
+     * Получение рекомендаций
+     */
+    function getRecommendations() {
+      const ratedCount = Object.keys(userRatings).length;
+      const t = translations[currentLang];
+      const container = document.getElementById("recommendationsList");
+
+      if (ratedCount < 5) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-magic"></i>
+            <h3>${t.emptyRecommendations}</h3>
+            <p>${t.emptyRecommendationsHint}</p>
+          </div>
+        `;
+        return;
+      }
+
+      const userProfile = createUserProfile();
+
+      // Вычисляем схожесть для всех неоценённых фильмов
+      const recommendations = MOVIES_DATABASE
+        .filter(movie => !userRatings[movie.id])
+        .map(movie => {
+          const movieVector = createFeatureVector(movie);
+          const similarity = cosineSimilarity(userProfile, movieVector);
+          return { movie, similarity };
+        })
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 10);
+
+      container.innerHTML = recommendations.map((rec, index) => {
+        const movie = rec.movie;
+        const title = currentLang === "ru" ? movie.titleRu : movie.title;
+        const posterUrl = `https://img.omdbapi.com/?apikey=4a3b711b&i=${movie.imdbId}`;
+        const similarityPercent = Math.round(rec.similarity * 100);
+
+        return `
+          <div class="recommendation-card" style="animation-delay: ${index * 0.1}s">
+            <div class="recommendation-rank">#${index + 1}</div>
+            <div class="recommendation-poster">
+              <img src="${posterUrl}"
+                   alt="${title}"
+                   onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 120%22><rect fill=%22%23333%22 width=%2280%22 height=%22120%22/><text fill=%22%23666%22 x=%2240%22 y=%2260%22 text-anchor=%22middle%22 font-size=%2224%22>🎬</text></svg>'"
+                   loading="lazy">
+            </div>
+            <div class="recommendation-details">
+              <h3 class="recommendation-title">${title}</h3>
+              <div class="recommendation-meta">
+                ${movie.year} • ★ ${movie.rating} •
+                ${movie.genres.slice(0, 2).map(g => t.genres[g] || g).join(", ")}
+              </div>
+              <div class="similarity-score">
+                <span>${t.similarity}:</span>
+                <div class="similarity-bar">
+                  <div class="similarity-fill" style="width: ${similarityPercent}%"></div>
+                </div>
+                <span class="similarity-value">${similarityPercent}%</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    /**
+     * Обновление прогресса
+     */
+    function updateProgress() {
+      const ratedCount = Object.keys(userRatings).length;
+      const minRatings = 5;
+      const progress = Math.min(100, (ratedCount / minRatings) * 100);
+
+      document.getElementById("ratedCount").textContent = ratedCount;
+      document.getElementById("minRatings").textContent = minRatings;
+      document.getElementById("progressFill").style.width = `${progress}%`;
+
+      const recsBtn = document.getElementById("getRecsBtn");
+      recsBtn.disabled = ratedCount < minRatings;
+    }
+
+    /**
+     * Установка оценки фильму
+     */
+    function rateMovie(movieId, rating) {
+      if (userRatings[movieId] === rating) {
+        delete userRatings[movieId];
+      } else {
+        userRatings[movieId] = rating;
+      }
+
+      localStorage.setItem("movieRatings", JSON.stringify(userRatings));
+      updateProgress();
+
+      // Обновляем звёзды на карточке
+      document.querySelectorAll(`.star[data-movie="${movieId}"]`).forEach(star => {
+        const starValue = parseInt(star.dataset.star);
+        star.classList.toggle("active", starValue <= (userRatings[movieId] || 0));
+      });
+
+      // Обновляем класс rated на карточке
+      const card = document.querySelector(`.movie-card[data-id="${movieId}"]`);
+      if (card) {
+        card.classList.toggle("rated", userRatings[movieId] > 0);
+      }
+    }
+
+    /**
+     * Открытие модального окна с деталями фильма
+     */
+    function openModal(movieId) {
+      const movie = MOVIES_DATABASE.find(m => m.id === movieId);
+      if (!movie) return;
+
+      const t = translations[currentLang];
+      const title = currentLang === "ru" ? movie.titleRu : movie.title;
+      const rating = userRatings[movie.id] || 0;
+      const posterUrl = `https://img.omdbapi.com/?apikey=4a3b711b&i=${movie.imdbId}`;
+
+      document.getElementById("modalContent").innerHTML = `
+        <div class="modal-poster">
+          <img src="${posterUrl}"
+               alt="${title}"
+               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 250 375%22><rect fill=%22%23333%22 width=%22250%22 height=%22375%22/><text fill=%22%23666%22 x=%22125%22 y=%22187%22 text-anchor=%22middle%22 font-size=%2248%22>🎬</text></svg>'">
+        </div>
+        <div class="modal-info">
+          <h2 class="modal-title">${title}</h2>
+          <div class="modal-meta">
+            <span><i class="fas fa-calendar"></i> ${movie.year}</span>
+            <span><i class="fas fa-star" style="color: var(--accent-color)"></i> ${movie.rating}/10</span>
+          </div>
+          <div class="modal-genres">
+            ${movie.genres.map(g =>
+              `<span class="modal-genre-tag">${t.genres[g] || g}</span>`
+            ).join("")}
+          </div>
+          <p class="modal-description">
+            <strong>Теги:</strong> ${movie.tags.join(", ")}
+          </p>
+          <div class="modal-rating">
+            <h4 class="modal-rating-title">${t.yourRating}</h4>
+            <div class="modal-stars">
+              ${[1,2,3,4,5].map(star => `
+                <span class="star ${star <= rating ? 'active' : ''}"
+                      data-movie="${movie.id}"
+                      data-star="${star}">★</span>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById("movieModal").classList.add("active");
+    }
+
+    /**
+     * Закрытие модального окна
+     */
+    function closeModal() {
+      document.getElementById("movieModal").classList.remove("active");
+    }
+
+    /**
+     * Переключение вкладок
+     */
+    function switchTab(tabName) {
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === tabName);
+      });
+
+      document.querySelectorAll(".tab-content").forEach(content => {
+        content.style.display = "none";
+      });
+
+      document.getElementById(`${tabName}Tab`).style.display = "block";
+
+      if (tabName === "rated") {
+        renderRatedMovies();
+      } else if (tabName === "recommendations") {
+        getRecommendations();
+      }
+    }
+
+    /**
+     * Настройка обработчиков событий
+     */
+    function setupEventListeners() {
+      // Переключение темы
+      document.getElementById("themeBtn").addEventListener("click", () => {
+        currentTheme = currentTheme === "dark" ? "light" : "dark";
+        localStorage.setItem("movieRecTheme", currentTheme);
+        applyTheme();
+      });
+
+      // Переключение языка
+      document.getElementById("langBtn").addEventListener("click", () => {
+        currentLang = currentLang === "ru" ? "en" : "ru";
+        localStorage.setItem("movieRecLang", currentLang);
+        applyLanguage();
+        renderGenreFilter();
+        renderMovies();
+
+        const activeTab = document.querySelector(".tab-btn.active").dataset.tab;
+        if (activeTab === "rated") {
+          renderRatedMovies();
+        } else if (activeTab === "recommendations") {
+          getRecommendations();
+        }
+      });
+
+      // Сброс оценок
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        if (confirm(currentLang === "ru"
+          ? "Вы уверены, что хотите сбросить все оценки?"
+          : "Are you sure you want to reset all ratings?")) {
+          userRatings = {};
+          localStorage.removeItem("movieRatings");
+          updateProgress();
+          renderMovies();
+          renderRatedMovies();
+          getRecommendations();
+        }
+      });
+
+      // Вкладки
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+      });
+
+      // Поиск
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        currentSearchQuery = e.target.value;
+        renderMovies();
+      });
+
+      // Фильтр по жанрам
+      document.getElementById("genreFilter").addEventListener("click", (e) => {
+        if (e.target.classList.contains("genre-btn")) {
+          currentGenreFilter = e.target.dataset.genre || null;
+          renderGenreFilter();
+          renderMovies();
+        }
+      });
+
+      // Оценка фильмов (делегирование)
+      document.addEventListener("click", (e) => {
+        if (e.target.classList.contains("star")) {
+          const movieId = parseInt(e.target.dataset.movie);
+          const starValue = parseInt(e.target.dataset.star);
+          rateMovie(movieId, starValue);
+        }
+      });
+
+      // Hover эффект для звёзд
+      document.addEventListener("mouseover", (e) => {
+        if (e.target.classList.contains("star")) {
+          const movieId = e.target.dataset.movie;
+          const starValue = parseInt(e.target.dataset.star);
+
+          document.querySelectorAll(`.star[data-movie="${movieId}"]`).forEach(star => {
+            const sv = parseInt(star.dataset.star);
+            star.classList.toggle("hovered", sv <= starValue);
+          });
+        }
+      });
+
+      document.addEventListener("mouseout", (e) => {
+        if (e.target.classList.contains("star")) {
+          const movieId = e.target.dataset.movie;
+          document.querySelectorAll(`.star[data-movie="${movieId}"]`).forEach(star => {
+            star.classList.remove("hovered");
+          });
+        }
+      });
+
+      // Получить рекомендации
+      document.getElementById("getRecsBtn").addEventListener("click", getRecommendations);
+
+      // Закрытие модального окна
+      document.getElementById("modalClose").addEventListener("click", closeModal);
+      document.getElementById("movieModal").addEventListener("click", (e) => {
+        if (e.target.id === "movieModal") closeModal();
+      });
+
+      // Закрытие по Escape
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
+      });
+    }
+
+    // Запуск приложения
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
