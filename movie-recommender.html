@@ -2,11 +2,11 @@
 <!--
 ТЕХНИЧЕСКОЕ ЗАДАНИЕ
 
-Цель: Создать систему рекомендаций фильмов с использованием Cosine Similarity.
+Цель: Создать систему рекомендаций сериалов с использованием Cosine Similarity.
 
 Функциональные требования:
-1. База данных 150+ фильмов с жанрами и тегами
-2. Пользователь оценивает 5-10 фильмов по шкале 1-5
+1. База данных сериалов из API
+2. Пользователь оценивает 5-10 сериалов по шкале 1-5
 3. Расчёт схожести через cosine similarity (dot product)
 4. Топ-10 рекомендаций с постерами
 5. Поддержка темной/светлой темы
@@ -15,7 +15,7 @@
 
 Технические требования:
 1. Vanilla JavaScript без фреймворков
-2. OMDB API для постеров (бесплатный)
+2. TVMaze API для списка сериалов (без ключа)
 3. Локальное хранение оценок в localStorage
 4. CSS Grid и Flexbox для верстки
 5. Анимации и переходы
@@ -24,8 +24,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="AI-система рекомендаций фильмов на основе Cosine Similarity">
-  <title>Movie Recommender | Рекомендации фильмов</title>
+  <meta name="description" content="AI-система рекомендаций сериалов на основе Cosine Similarity">
+  <title>Show Recommender | Рекомендации сериалов</title>
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -266,6 +266,35 @@
       flex-wrap: wrap;
     }
 
+    .year-filter {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .year-label,
+    .year-separator {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .year-filter select {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      transition: border-color 0.3s;
+      min-width: 120px;
+    }
+
+    .year-filter select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
     .genre-btn {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -328,6 +357,37 @@
     .movie-poster .placeholder {
       color: var(--text-secondary);
       font-size: 3rem;
+    }
+
+    .movie-poster .placeholder-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--card-bg) 0%, #1a1a2e 100%);
+      padding: 1rem;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .movie-poster .placeholder-text .title {
+      color: var(--text-color);
+      font-size: 0.9rem;
+      font-weight: 600;
+      line-height: 1.3;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      max-height: 80%;
+      overflow: hidden;
+    }
+
+    .movie-poster .placeholder-text .icon {
+      color: var(--primary-color);
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.7;
     }
 
     .movie-info {
@@ -748,7 +808,7 @@
     <div class="header-content">
       <a href="#" class="logo">
         <i class="fas fa-film"></i>
-        <span class="logo-text" data-i18n="logo">Movie Recommender</span>
+        <span class="logo-text" data-i18n="logo">Show Recommender</span>
       </a>
       <div class="header-controls">
         <button class="control-btn" id="resetBtn" title="Сбросить оценки">
@@ -777,7 +837,7 @@
         <div class="progress-fill" id="progressFill" style="width: 0%"></div>
       </div>
       <p class="progress-hint" data-i18n="progressHint">
-        Оцените минимум 5 фильмов, чтобы получить персональные рекомендации
+        Оцените минимум 5 сериалов, чтобы получить персональные рекомендации
       </p>
     </section>
 
@@ -785,7 +845,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="rate">
         <i class="fas fa-star"></i>
-        <span data-i18n="tabRate">Оценить фильмы</span>
+        <span data-i18n="tabRate">Оценить сериалы</span>
       </button>
       <button class="tab-btn" data-tab="recommendations">
         <i class="fas fa-magic"></i>
@@ -803,9 +863,15 @@
         <div class="search-box">
           <i class="fas fa-search"></i>
           <input type="text" id="searchInput" data-i18n-placeholder="searchPlaceholder"
-                 placeholder="Поиск фильмов...">
+                 placeholder="Поиск сериалов...">
         </div>
         <div class="genre-filter" id="genreFilter"></div>
+        <div class="year-filter">
+          <span class="year-label" data-i18n="yearLabel">Год</span>
+          <select id="yearFrom" aria-label="Год от"></select>
+          <span class="year-separator">—</span>
+          <select id="yearTo" aria-label="Год до"></select>
+        </div>
       </div>
       <div class="movies-grid" id="moviesGrid"></div>
     </div>
@@ -843,224 +909,324 @@
 
   <script>
     /**
-     * Movie Recommender Application
+     * Show Recommender Application
      * Использует Cosine Similarity для персональных рекомендаций
      */
 
-    // База данных фильмов с жанрами и тегами
-    const MOVIES_DATABASE = [
-      // Action/Боевики
-      { id: 1, title: "The Dark Knight", titleRu: "Тёмный рыцарь", year: 2008, genres: ["action", "crime", "drama"], tags: ["superhero", "batman", "joker", "christopher-nolan"], imdbId: "tt0468569", rating: 9.0 },
-      { id: 2, title: "Inception", titleRu: "Начало", year: 2010, genres: ["action", "sci-fi", "thriller"], tags: ["dreams", "heist", "christopher-nolan", "mind-bending"], imdbId: "tt1375666", rating: 8.8 },
-      { id: 3, title: "The Matrix", titleRu: "Матрица", year: 1999, genres: ["action", "sci-fi"], tags: ["virtual-reality", "cyberpunk", "neo", "kung-fu"], imdbId: "tt0133093", rating: 8.7 },
-      { id: 4, title: "Mad Max: Fury Road", titleRu: "Безумный Макс: Дорога ярости", year: 2015, genres: ["action", "adventure", "sci-fi"], tags: ["post-apocalyptic", "cars", "desert", "feminist"], imdbId: "tt1392190", rating: 8.1 },
-      { id: 5, title: "John Wick", titleRu: "Джон Уик", year: 2014, genres: ["action", "crime", "thriller"], tags: ["assassin", "revenge", "keanu-reeves", "gun-fu"], imdbId: "tt2911666", rating: 7.4 },
-      { id: 6, title: "Die Hard", titleRu: "Крепкий орешек", year: 1988, genres: ["action", "thriller"], tags: ["christmas", "hostage", "bruce-willis", "80s"], imdbId: "tt0095016", rating: 8.2 },
-      { id: 7, title: "Gladiator", titleRu: "Гладиатор", year: 2000, genres: ["action", "adventure", "drama"], tags: ["rome", "revenge", "russell-crowe", "epic"], imdbId: "tt0172495", rating: 8.5 },
-      { id: 8, title: "Kill Bill: Vol. 1", titleRu: "Убить Билла", year: 2003, genres: ["action", "crime", "thriller"], tags: ["revenge", "tarantino", "martial-arts", "bride"], imdbId: "tt0266697", rating: 8.2 },
-
-      // Sci-Fi/Фантастика
-      { id: 9, title: "Interstellar", titleRu: "Интерстеллар", year: 2014, genres: ["adventure", "drama", "sci-fi"], tags: ["space", "time", "christopher-nolan", "father-daughter"], imdbId: "tt0816692", rating: 8.6 },
-      { id: 10, title: "Blade Runner 2049", titleRu: "Бегущий по лезвию 2049", year: 2017, genres: ["action", "drama", "sci-fi"], tags: ["dystopia", "replicants", "neo-noir", "denis-villeneuve"], imdbId: "tt1856101", rating: 8.0 },
-      { id: 11, title: "Arrival", titleRu: "Прибытие", year: 2016, genres: ["drama", "sci-fi"], tags: ["aliens", "linguistics", "time", "denis-villeneuve"], imdbId: "tt2543164", rating: 7.9 },
-      { id: 12, title: "Ex Machina", titleRu: "Из машины", year: 2014, genres: ["drama", "sci-fi", "thriller"], tags: ["ai", "robot", "turing-test", "psychological"], imdbId: "tt0470752", rating: 7.7 },
-      { id: 13, title: "The Martian", titleRu: "Марсианин", year: 2015, genres: ["adventure", "drama", "sci-fi"], tags: ["mars", "survival", "nasa", "matt-damon"], imdbId: "tt3659388", rating: 8.0 },
-      { id: 14, title: "Dune", titleRu: "Дюна", year: 2021, genres: ["action", "adventure", "sci-fi"], tags: ["desert", "prophecy", "denis-villeneuve", "epic"], imdbId: "tt1160419", rating: 8.0 },
-      { id: 15, title: "Avatar", titleRu: "Аватар", year: 2009, genres: ["action", "adventure", "sci-fi"], tags: ["aliens", "nature", "james-cameron", "3d"], imdbId: "tt0499549", rating: 7.9 },
-      { id: 16, title: "WALL-E", titleRu: "ВАЛЛ-И", year: 2008, genres: ["animation", "adventure", "sci-fi"], tags: ["robot", "love", "pixar", "environmental"], imdbId: "tt0910970", rating: 8.4 },
-
-      // Drama/Драма
-      { id: 17, title: "The Shawshank Redemption", titleRu: "Побег из Шоушенка", year: 1994, genres: ["drama"], tags: ["prison", "hope", "friendship", "stephen-king"], imdbId: "tt0111161", rating: 9.3 },
-      { id: 18, title: "Forrest Gump", titleRu: "Форрест Гамп", year: 1994, genres: ["drama", "romance"], tags: ["history", "love", "tom-hanks", "inspirational"], imdbId: "tt0109830", rating: 8.8 },
-      { id: 19, title: "The Godfather", titleRu: "Крёстный отец", year: 1972, genres: ["crime", "drama"], tags: ["mafia", "family", "coppola", "italian"], imdbId: "tt0068646", rating: 9.2 },
-      { id: 20, title: "Fight Club", titleRu: "Бойцовский клуб", year: 1999, genres: ["drama"], tags: ["twist", "consumerism", "brad-pitt", "david-fincher"], imdbId: "tt0137523", rating: 8.8 },
-      { id: 21, title: "Schindler's List", titleRu: "Список Шиндлера", year: 1993, genres: ["biography", "drama", "history"], tags: ["holocaust", "war", "spielberg", "oscar"], imdbId: "tt0108052", rating: 9.0 },
-      { id: 22, title: "The Green Mile", titleRu: "Зелёная миля", year: 1999, genres: ["crime", "drama", "fantasy"], tags: ["prison", "supernatural", "stephen-king", "tom-hanks"], imdbId: "tt0120689", rating: 8.6 },
-      { id: 23, title: "Whiplash", titleRu: "Одержимость", year: 2014, genres: ["drama", "music"], tags: ["jazz", "ambition", "teacher", "damien-chazelle"], imdbId: "tt2582802", rating: 8.5 },
-      { id: 24, title: "Parasite", titleRu: "Паразиты", year: 2019, genres: ["comedy", "drama", "thriller"], tags: ["class", "korea", "bong-joon-ho", "oscar"], imdbId: "tt6751668", rating: 8.5 },
-
-      // Comedy/Комедии
-      { id: 25, title: "The Grand Budapest Hotel", titleRu: "Отель «Гранд Будапешт»", year: 2014, genres: ["adventure", "comedy", "crime"], tags: ["wes-anderson", "quirky", "hotel", "europe"], imdbId: "tt2278388", rating: 8.1 },
-      { id: 26, title: "Superbad", titleRu: "Суперперцы", year: 2007, genres: ["comedy"], tags: ["teen", "party", "friendship", "high-school"], imdbId: "tt0829482", rating: 7.6 },
-      { id: 27, title: "The Hangover", titleRu: "Мальчишник в Вегасе", year: 2009, genres: ["comedy"], tags: ["vegas", "bachelor-party", "amnesia", "wild"], imdbId: "tt1119646", rating: 7.7 },
-      { id: 28, title: "Groundhog Day", titleRu: "День сурка", year: 1993, genres: ["comedy", "fantasy", "romance"], tags: ["time-loop", "bill-murray", "self-improvement", "classic"], imdbId: "tt0107048", rating: 8.1 },
-      { id: 29, title: "The Big Lebowski", titleRu: "Большой Лебовски", year: 1998, genres: ["comedy", "crime"], tags: ["coen-brothers", "bowling", "cult", "dude"], imdbId: "tt0118715", rating: 8.1 },
-      { id: 30, title: "In Bruges", titleRu: "Залечь на дно в Брюгге", year: 2008, genres: ["comedy", "crime", "drama"], tags: ["hitmen", "belgium", "dark-comedy", "martin-mcdonagh"], imdbId: "tt0780536", rating: 7.9 },
-      { id: 31, title: "Jojo Rabbit", titleRu: "Кролик Джоджо", year: 2019, genres: ["comedy", "drama", "war"], tags: ["wwii", "satire", "taika-waititi", "hitler"], imdbId: "tt2584384", rating: 7.9 },
-      { id: 32, title: "Knives Out", titleRu: "Достать ножи", year: 2019, genres: ["comedy", "crime", "drama"], tags: ["mystery", "whodunit", "rian-johnson", "family"], imdbId: "tt8946378", rating: 7.9 },
-
-      // Horror/Ужасы
-      { id: 33, title: "The Shining", titleRu: "Сияние", year: 1980, genres: ["drama", "horror"], tags: ["hotel", "kubrick", "stephen-king", "psychological"], imdbId: "tt0081505", rating: 8.4 },
-      { id: 34, title: "Get Out", titleRu: "Прочь", year: 2017, genres: ["horror", "mystery", "thriller"], tags: ["racism", "jordan-peele", "social", "twist"], imdbId: "tt5052448", rating: 7.7 },
-      { id: 35, title: "A Quiet Place", titleRu: "Тихое место", year: 2018, genres: ["drama", "horror", "sci-fi"], tags: ["silence", "monsters", "family", "survival"], imdbId: "tt6644200", rating: 7.5 },
-      { id: 36, title: "Hereditary", titleRu: "Реинкарнация", year: 2018, genres: ["drama", "horror", "mystery"], tags: ["family", "occult", "ari-aster", "grief"], imdbId: "tt7784604", rating: 7.3 },
-      { id: 37, title: "The Conjuring", titleRu: "Заклятие", year: 2013, genres: ["horror", "mystery", "thriller"], tags: ["haunted-house", "warren", "demon", "james-wan"], imdbId: "tt1457767", rating: 7.5 },
-      { id: 38, title: "It", titleRu: "Оно", year: 2017, genres: ["horror"], tags: ["clown", "stephen-king", "kids", "pennywise"], imdbId: "tt1396484", rating: 7.3 },
-      { id: 39, title: "Midsommar", titleRu: "Солнцестояние", year: 2019, genres: ["drama", "horror", "mystery"], tags: ["cult", "sweden", "ari-aster", "folk-horror"], imdbId: "tt8772262", rating: 7.1 },
-      { id: 40, title: "The Babadook", titleRu: "Бабадук", year: 2014, genres: ["drama", "horror"], tags: ["grief", "monster", "motherhood", "psychological"], imdbId: "tt2321549", rating: 6.8 },
-
-      // Thriller/Триллеры
-      { id: 41, title: "Se7en", titleRu: "Семь", year: 1995, genres: ["crime", "drama", "mystery"], tags: ["serial-killer", "david-fincher", "dark", "twist"], imdbId: "tt0114369", rating: 8.6 },
-      { id: 42, title: "Silence of the Lambs", titleRu: "Молчание ягнят", year: 1991, genres: ["crime", "drama", "thriller"], tags: ["hannibal", "fbi", "serial-killer", "oscar"], imdbId: "tt0102926", rating: 8.6 },
-      { id: 43, title: "Zodiac", titleRu: "Зодиак", year: 2007, genres: ["crime", "drama", "mystery"], tags: ["serial-killer", "david-fincher", "true-story", "obsession"], imdbId: "tt0443706", rating: 7.7 },
-      { id: 44, title: "Gone Girl", titleRu: "Исчезнувшая", year: 2014, genres: ["drama", "mystery", "thriller"], tags: ["marriage", "david-fincher", "twist", "media"], imdbId: "tt2267998", rating: 8.1 },
-      { id: 45, title: "Shutter Island", titleRu: "Остров проклятых", year: 2010, genres: ["mystery", "thriller"], tags: ["asylum", "scorsese", "twist", "psychological"], imdbId: "tt1130884", rating: 8.2 },
-      { id: 46, title: "Prisoners", titleRu: "Пленницы", year: 2013, genres: ["crime", "drama", "mystery"], tags: ["kidnapping", "denis-villeneuve", "dark", "moral"], imdbId: "tt1392214", rating: 8.1 },
-      { id: 47, title: "Nightcrawler", titleRu: "Стрингер", year: 2014, genres: ["crime", "drama", "thriller"], tags: ["journalism", "sociopath", "jake-gyllenhaal", "dark"], imdbId: "tt2872718", rating: 7.8 },
-      { id: 48, title: "The Prestige", titleRu: "Престиж", year: 2006, genres: ["drama", "mystery", "sci-fi"], tags: ["magic", "christopher-nolan", "rivalry", "twist"], imdbId: "tt0482571", rating: 8.5 },
-
-      // Romance/Романтика
-      { id: 49, title: "The Notebook", titleRu: "Дневник памяти", year: 2004, genres: ["drama", "romance"], tags: ["love", "memory", "ryan-gosling", "tearjerker"], imdbId: "tt0332280", rating: 7.8 },
-      { id: 50, title: "La La Land", titleRu: "Ла-Ла Ленд", year: 2016, genres: ["comedy", "drama", "music"], tags: ["musical", "dreams", "damien-chazelle", "oscar"], imdbId: "tt3783958", rating: 8.0 },
-      { id: 51, title: "Pride & Prejudice", titleRu: "Гордость и предубеждение", year: 2005, genres: ["drama", "romance"], tags: ["jane-austen", "period", "england", "keira-knightley"], imdbId: "tt0414387", rating: 7.8 },
-      { id: 52, title: "Eternal Sunshine of the Spotless Mind", titleRu: "Вечное сияние чистого разума", year: 2004, genres: ["drama", "romance", "sci-fi"], tags: ["memory", "love", "jim-carrey", "charlie-kaufman"], imdbId: "tt0338013", rating: 8.3 },
-      { id: 53, title: "Before Sunrise", titleRu: "Перед рассветом", year: 1995, genres: ["drama", "romance"], tags: ["vienna", "conversation", "richard-linklater", "indie"], imdbId: "tt0112471", rating: 8.1 },
-      { id: 54, title: "500 Days of Summer", titleRu: "500 дней лета", year: 2009, genres: ["comedy", "drama", "romance"], tags: ["indie", "non-linear", "breakup", "expectations"], imdbId: "tt1022603", rating: 7.7 },
-      { id: 55, title: "About Time", titleRu: "Бойфренд из будущего", year: 2013, genres: ["comedy", "drama", "romance"], tags: ["time-travel", "family", "british", "richard-curtis"], imdbId: "tt2194499", rating: 7.8 },
-      { id: 56, title: "The Shape of Water", titleRu: "Форма воды", year: 2017, genres: ["adventure", "drama", "fantasy"], tags: ["creature", "guillermo-del-toro", "oscar", "love"], imdbId: "tt5580390", rating: 7.3 },
-
-      // Animation/Анимация
-      { id: 57, title: "Spirited Away", titleRu: "Унесённые призраками", year: 2001, genres: ["animation", "adventure", "family"], tags: ["ghibli", "miyazaki", "japan", "fantasy"], imdbId: "tt0245429", rating: 8.6 },
-      { id: 58, title: "Spider-Man: Into the Spider-Verse", titleRu: "Человек-паук: Через вселенные", year: 2018, genres: ["animation", "action", "adventure"], tags: ["superhero", "miles-morales", "multiverse", "visually-stunning"], imdbId: "tt4633694", rating: 8.4 },
-      { id: 59, title: "Toy Story", titleRu: "История игрушек", year: 1995, genres: ["animation", "adventure", "comedy"], tags: ["pixar", "toys", "friendship", "classic"], imdbId: "tt0114709", rating: 8.3 },
-      { id: 60, title: "Finding Nemo", titleRu: "В поисках Немо", year: 2003, genres: ["animation", "adventure", "comedy"], tags: ["pixar", "ocean", "fish", "family"], imdbId: "tt0266543", rating: 8.2 },
-      { id: 61, title: "Coco", titleRu: "Тайна Коко", year: 2017, genres: ["animation", "adventure", "family"], tags: ["pixar", "mexico", "music", "death"], imdbId: "tt2380307", rating: 8.4 },
-      { id: 62, title: "Your Name", titleRu: "Твоё имя", year: 2016, genres: ["animation", "drama", "fantasy"], tags: ["japan", "body-swap", "romance", "makoto-shinkai"], imdbId: "tt5311514", rating: 8.4 },
-      { id: 63, title: "The Lion King", titleRu: "Король Лев", year: 1994, genres: ["animation", "adventure", "drama"], tags: ["disney", "africa", "lions", "classic"], imdbId: "tt0110357", rating: 8.5 },
-      { id: 64, title: "Up", titleRu: "Вверх", year: 2009, genres: ["animation", "adventure", "comedy"], tags: ["pixar", "adventure", "elderly", "balloons"], imdbId: "tt1049413", rating: 8.3 },
-
-      // Adventure/Приключения
-      { id: 65, title: "Indiana Jones: Raiders of the Lost Ark", titleRu: "Индиана Джонс: В поисках утраченного ковчега", year: 1981, genres: ["action", "adventure"], tags: ["treasure", "spielberg", "archaeology", "classic"], imdbId: "tt0082971", rating: 8.4 },
-      { id: 66, title: "The Lord of the Rings: Fellowship", titleRu: "Властелин колец: Братство кольца", year: 2001, genres: ["action", "adventure", "drama"], tags: ["tolkien", "fantasy", "epic", "peter-jackson"], imdbId: "tt0120737", rating: 8.8 },
-      { id: 67, title: "Pirates of the Caribbean", titleRu: "Пираты Карибского моря: Проклятие Чёрной жемчужины", year: 2003, genres: ["action", "adventure", "fantasy"], tags: ["pirates", "jack-sparrow", "disney", "johnny-depp"], imdbId: "tt0325980", rating: 8.1 },
-      { id: 68, title: "Jurassic Park", titleRu: "Парк Юрского периода", year: 1993, genres: ["action", "adventure", "sci-fi"], tags: ["dinosaurs", "spielberg", "island", "classic"], imdbId: "tt0107290", rating: 8.2 },
-      { id: 69, title: "The Princess Bride", titleRu: "Принцесса-невеста", year: 1987, genres: ["adventure", "comedy", "family"], tags: ["fairy-tale", "romance", "cult", "classic"], imdbId: "tt0093779", rating: 8.0 },
-      { id: 70, title: "Life of Pi", titleRu: "Жизнь Пи", year: 2012, genres: ["adventure", "drama", "fantasy"], tags: ["survival", "ocean", "tiger", "ang-lee"], imdbId: "tt0454876", rating: 7.9 },
-      { id: 71, title: "The Revenant", titleRu: "Выживший", year: 2015, genres: ["action", "adventure", "drama"], tags: ["survival", "revenge", "leonardo-dicaprio", "oscar"], imdbId: "tt1663202", rating: 8.0 },
-      { id: 72, title: "Into the Wild", titleRu: "В диких условиях", year: 2007, genres: ["adventure", "biography", "drama"], tags: ["nature", "freedom", "true-story", "sean-penn"], imdbId: "tt0758758", rating: 8.1 },
-
-      // War/Военные
-      { id: 73, title: "Saving Private Ryan", titleRu: "Спасти рядового Райана", year: 1998, genres: ["drama", "war"], tags: ["wwii", "spielberg", "d-day", "soldiers"], imdbId: "tt0120815", rating: 8.6 },
-      { id: 74, title: "Dunkirk", titleRu: "Дюнкерк", year: 2017, genres: ["action", "drama", "history"], tags: ["wwii", "christopher-nolan", "evacuation", "survival"], imdbId: "tt5013056", rating: 7.8 },
-      { id: 75, title: "1917", titleRu: "1917", year: 2019, genres: ["drama", "war"], tags: ["wwi", "one-shot", "sam-mendes", "mission"], imdbId: "tt8579674", rating: 8.3 },
-      { id: 76, title: "Apocalypse Now", titleRu: "Апокалипсис сегодня", year: 1979, genres: ["drama", "mystery", "war"], tags: ["vietnam", "coppola", "madness", "classic"], imdbId: "tt0078788", rating: 8.5 },
-      { id: 77, title: "Full Metal Jacket", titleRu: "Цельнометаллическая оболочка", year: 1987, genres: ["drama", "war"], tags: ["vietnam", "kubrick", "training", "psychological"], imdbId: "tt0093058", rating: 8.3 },
-      { id: 78, title: "Hacksaw Ridge", titleRu: "По соображениям совести", year: 2016, genres: ["biography", "drama", "war"], tags: ["wwii", "pacifist", "mel-gibson", "true-story"], imdbId: "tt2119532", rating: 8.1 },
-      { id: 79, title: "Platoon", titleRu: "Взвод", year: 1986, genres: ["drama", "war"], tags: ["vietnam", "oliver-stone", "soldiers", "oscar"], imdbId: "tt0091763", rating: 8.1 },
-      { id: 80, title: "The Hurt Locker", titleRu: "Повелитель бури", year: 2008, genres: ["drama", "thriller", "war"], tags: ["iraq", "bomb-disposal", "kathryn-bigelow", "oscar"], imdbId: "tt0887912", rating: 7.5 },
-
-      // Superhero/Супергеройские
-      { id: 81, title: "The Avengers", titleRu: "Мстители", year: 2012, genres: ["action", "adventure", "sci-fi"], tags: ["marvel", "superhero", "team", "joss-whedon"], imdbId: "tt0848228", rating: 8.0 },
-      { id: 82, title: "Iron Man", titleRu: "Железный человек", year: 2008, genres: ["action", "adventure", "sci-fi"], tags: ["marvel", "tony-stark", "origin", "robert-downey-jr"], imdbId: "tt0371746", rating: 7.9 },
-      { id: 83, title: "Black Panther", titleRu: "Чёрная Пантера", year: 2018, genres: ["action", "adventure", "sci-fi"], tags: ["marvel", "wakanda", "africa", "representation"], imdbId: "tt1825683", rating: 7.3 },
-      { id: 84, title: "Logan", titleRu: "Логан", year: 2017, genres: ["action", "drama", "sci-fi"], tags: ["x-men", "wolverine", "farewell", "western"], imdbId: "tt3315342", rating: 8.1 },
-      { id: 85, title: "Guardians of the Galaxy", titleRu: "Стражи Галактики", year: 2014, genres: ["action", "adventure", "comedy"], tags: ["marvel", "space", "music", "team"], imdbId: "tt2015381", rating: 8.0 },
-      { id: 86, title: "Wonder Woman", titleRu: "Чудо-женщина", year: 2017, genres: ["action", "adventure", "fantasy"], tags: ["dc", "amazon", "wwi", "gal-gadot"], imdbId: "tt0451279", rating: 7.4 },
-      { id: 87, title: "Deadpool", titleRu: "Дэдпул", year: 2016, genres: ["action", "comedy"], tags: ["marvel", "r-rated", "fourth-wall", "ryan-reynolds"], imdbId: "tt1431045", rating: 8.0 },
-      { id: 88, title: "Joker", titleRu: "Джокер", year: 2019, genres: ["crime", "drama", "thriller"], tags: ["dc", "villain", "psychological", "joaquin-phoenix"], imdbId: "tt7286456", rating: 8.4 },
-
-      // Crime/Криминал
-      { id: 89, title: "Pulp Fiction", titleRu: "Криминальное чтиво", year: 1994, genres: ["crime", "drama"], tags: ["tarantino", "non-linear", "dialogue", "cult"], imdbId: "tt0110912", rating: 8.9 },
-      { id: 90, title: "Goodfellas", titleRu: "Славные парни", year: 1990, genres: ["biography", "crime", "drama"], tags: ["mafia", "scorsese", "gangster", "true-story"], imdbId: "tt0099685", rating: 8.7 },
-      { id: 91, title: "The Departed", titleRu: "Отступники", year: 2006, genres: ["crime", "drama", "thriller"], tags: ["mafia", "scorsese", "undercover", "oscar"], imdbId: "tt0407887", rating: 8.5 },
-      { id: 92, title: "No Country for Old Men", titleRu: "Старикам тут не место", year: 2007, genres: ["crime", "drama", "thriller"], tags: ["coen-brothers", "hitman", "chase", "oscar"], imdbId: "tt0477348", rating: 8.2 },
-      { id: 93, title: "Heat", titleRu: "Схватка", year: 1995, genres: ["action", "crime", "drama"], tags: ["heist", "de-niro", "pacino", "michael-mann"], imdbId: "tt0113277", rating: 8.3 },
-      { id: 94, title: "The Town", titleRu: "Город воров", year: 2010, genres: ["crime", "drama", "thriller"], tags: ["heist", "boston", "ben-affleck", "robbery"], imdbId: "tt0840361", rating: 7.5 },
-      { id: 95, title: "Sicario", titleRu: "Убийца", year: 2015, genres: ["action", "crime", "drama"], tags: ["cartel", "denis-villeneuve", "border", "dark"], imdbId: "tt3397884", rating: 7.6 },
-      { id: 96, title: "City of God", titleRu: "Город Бога", year: 2002, genres: ["crime", "drama"], tags: ["brazil", "favela", "gangs", "poverty"], imdbId: "tt0317248", rating: 8.6 },
-
-      // Biography/Биографии
-      { id: 97, title: "The Social Network", titleRu: "Социальная сеть", year: 2010, genres: ["biography", "drama"], tags: ["facebook", "david-fincher", "startup", "friendship"], imdbId: "tt1285016", rating: 7.8 },
-      { id: 98, title: "Bohemian Rhapsody", titleRu: "Богемская рапсодия", year: 2018, genres: ["biography", "drama", "music"], tags: ["queen", "freddie-mercury", "music", "oscar"], imdbId: "tt1727824", rating: 7.9 },
-      { id: 99, title: "A Beautiful Mind", titleRu: "Игры разума", year: 2001, genres: ["biography", "drama"], tags: ["genius", "schizophrenia", "ron-howard", "oscar"], imdbId: "tt0268978", rating: 8.2 },
-      { id: 100, title: "The Imitation Game", titleRu: "Игра в имитацию", year: 2014, genres: ["biography", "drama", "thriller"], tags: ["turing", "wwii", "codebreaking", "benedict-cumberbatch"], imdbId: "tt2084970", rating: 8.0 },
-      { id: 101, title: "Catch Me If You Can", titleRu: "Поймай меня, если сможешь", year: 2002, genres: ["biography", "crime", "drama"], tags: ["con-artist", "spielberg", "leonardo-dicaprio", "cat-and-mouse"], imdbId: "tt0264464", rating: 8.1 },
-      { id: 102, title: "The Wolf of Wall Street", titleRu: "Волк с Уолл-стрит", year: 2013, genres: ["biography", "comedy", "crime"], tags: ["finance", "scorsese", "excess", "leonardo-dicaprio"], imdbId: "tt0993846", rating: 8.2 },
-      { id: 103, title: "Steve Jobs", titleRu: "Стив Джобс", year: 2015, genres: ["biography", "drama"], tags: ["apple", "danny-boyle", "tech", "michael-fassbender"], imdbId: "tt2080374", rating: 7.2 },
-      { id: 104, title: "The Theory of Everything", titleRu: "Вселенная Стивена Хокинга", year: 2014, genres: ["biography", "drama", "romance"], tags: ["hawking", "science", "love", "eddie-redmayne"], imdbId: "tt2980516", rating: 7.7 },
-
-      // Sports/Спортивные
-      { id: 105, title: "Rocky", titleRu: "Рокки", year: 1976, genres: ["drama", "sport"], tags: ["boxing", "underdog", "stallone", "oscar"], imdbId: "tt0075148", rating: 8.1 },
-      { id: 106, title: "Raging Bull", titleRu: "Бешеный бык", year: 1980, genres: ["biography", "drama", "sport"], tags: ["boxing", "scorsese", "de-niro", "black-and-white"], imdbId: "tt0081398", rating: 8.2 },
-      { id: 107, title: "The Fighter", titleRu: "Боец", year: 2010, genres: ["biography", "drama", "sport"], tags: ["boxing", "family", "christian-bale", "oscar"], imdbId: "tt0964517", rating: 7.8 },
-      { id: 108, title: "Creed", titleRu: "Крид: Наследие Рокки", year: 2015, genres: ["drama", "sport"], tags: ["boxing", "rocky", "michael-b-jordan", "legacy"], imdbId: "tt3076658", rating: 7.6 },
-      { id: 109, title: "Moneyball", titleRu: "Человек, который изменил всё", year: 2011, genres: ["biography", "drama", "sport"], tags: ["baseball", "analytics", "brad-pitt", "underdog"], imdbId: "tt1210166", rating: 7.6 },
-      { id: 110, title: "Rush", titleRu: "Гонка", year: 2013, genres: ["action", "biography", "drama"], tags: ["f1", "rivalry", "ron-howard", "racing"], imdbId: "tt1979320", rating: 8.1 },
-      { id: 111, title: "Ford v Ferrari", titleRu: "Ford против Ferrari", year: 2019, genres: ["action", "biography", "drama"], tags: ["racing", "le-mans", "matt-damon", "christian-bale"], imdbId: "tt1950186", rating: 8.1 },
-      { id: 112, title: "Million Dollar Baby", titleRu: "Малышка на миллион", year: 2004, genres: ["drama", "sport"], tags: ["boxing", "clint-eastwood", "oscar", "tragedy"], imdbId: "tt0405159", rating: 8.1 },
-
-      // Musical/Мюзиклы
-      { id: 113, title: "The Greatest Showman", titleRu: "Величайший шоумен", year: 2017, genres: ["biography", "drama", "music"], tags: ["circus", "musical", "hugh-jackman", "barnum"], imdbId: "tt1485796", rating: 7.6 },
-      { id: 114, title: "Les Misérables", titleRu: "Отверженные", year: 2012, genres: ["drama", "music", "romance"], tags: ["musical", "france", "revolution", "hugo"], imdbId: "tt1707386", rating: 7.6 },
-      { id: 115, title: "Chicago", titleRu: "Чикаго", year: 2002, genres: ["comedy", "crime", "music"], tags: ["musical", "jazz", "1920s", "oscar"], imdbId: "tt0299658", rating: 7.2 },
-      { id: 116, title: "Moulin Rouge!", titleRu: "Мулен Руж!", year: 2001, genres: ["drama", "music", "romance"], tags: ["musical", "paris", "baz-luhrmann", "love"], imdbId: "tt0203009", rating: 7.6 },
-      { id: 117, title: "Sing Street", titleRu: "Синг Стрит", year: 2016, genres: ["comedy", "drama", "music"], tags: ["80s", "ireland", "band", "teen"], imdbId: "tt3544112", rating: 7.9 },
-      { id: 118, title: "A Star Is Born", titleRu: "Звезда родилась", year: 2018, genres: ["drama", "music", "romance"], tags: ["musical", "fame", "lady-gaga", "bradley-cooper"], imdbId: "tt1517451", rating: 7.6 },
-      { id: 119, title: "Hamilton", titleRu: "Гамильтон", year: 2020, genres: ["biography", "drama", "history"], tags: ["broadway", "hip-hop", "lin-manuel-miranda", "musical"], imdbId: "tt8503618", rating: 8.4 },
-      { id: 120, title: "Rocketman", titleRu: "Рокетмен", year: 2019, genres: ["biography", "drama", "music"], tags: ["elton-john", "musical", "fantasy", "taron-egerton"], imdbId: "tt2066051", rating: 7.3 },
-
-      // Western/Вестерны
-      { id: 121, title: "Django Unchained", titleRu: "Джанго освобождённый", year: 2012, genres: ["drama", "western"], tags: ["tarantino", "slavery", "revenge", "bounty-hunter"], imdbId: "tt1853728", rating: 8.4 },
-      { id: 122, title: "The Good, the Bad and the Ugly", titleRu: "Хороший, плохой, злой", year: 1966, genres: ["adventure", "western"], tags: ["sergio-leone", "clint-eastwood", "civil-war", "classic"], imdbId: "tt0060196", rating: 8.8 },
-      { id: 123, title: "True Grit", titleRu: "Железная хватка", year: 2010, genres: ["adventure", "drama", "western"], tags: ["coen-brothers", "revenge", "bounty-hunter", "remake"], imdbId: "tt1403865", rating: 7.6 },
-      { id: 124, title: "The Hateful Eight", titleRu: "Омерзительная восьмёрка", year: 2015, genres: ["crime", "drama", "mystery"], tags: ["tarantino", "blizzard", "70mm", "dialogue"], imdbId: "tt3460252", rating: 7.8 },
-      { id: 125, title: "Unforgiven", titleRu: "Непрощённый", year: 1992, genres: ["drama", "western"], tags: ["clint-eastwood", "redemption", "oscar", "revisionist"], imdbId: "tt0105695", rating: 8.2 },
-      { id: 126, title: "3:10 to Yuma", titleRu: "Поезд на Юму", year: 2007, genres: ["action", "crime", "drama"], tags: ["remake", "christian-bale", "russell-crowe", "outlaw"], imdbId: "tt0381849", rating: 7.7 },
-      { id: 127, title: "Tombstone", titleRu: "Тумстоун: Легенда дикого Запада", year: 1993, genres: ["action", "biography", "drama"], tags: ["wyatt-earp", "doc-holliday", "gunfight", "val-kilmer"], imdbId: "tt0108358", rating: 7.8 },
-      { id: 128, title: "Hell or High Water", titleRu: "Любой ценой", year: 2016, genres: ["crime", "drama", "thriller"], tags: ["modern-western", "bank-robbery", "brothers", "taylor-sheridan"], imdbId: "tt2582782", rating: 7.6 },
-
-      // Mystery/Детективы
-      { id: 129, title: "Memento", titleRu: "Помни", year: 2000, genres: ["mystery", "thriller"], tags: ["christopher-nolan", "memory", "reverse", "twist"], imdbId: "tt0209144", rating: 8.4 },
-      { id: 130, title: "The Usual Suspects", titleRu: "Подозрительные лица", year: 1995, genres: ["crime", "drama", "mystery"], tags: ["twist", "keyser-soze", "heist", "unreliable-narrator"], imdbId: "tt0114814", rating: 8.5 },
-      { id: 131, title: "The Sixth Sense", titleRu: "Шестое чувство", year: 1999, genres: ["drama", "mystery", "thriller"], tags: ["twist", "ghost", "m-night-shyamalan", "bruce-willis"], imdbId: "tt0167404", rating: 8.2 },
-      { id: 132, title: "Oldboy", titleRu: "Олдбой", year: 2003, genres: ["action", "drama", "mystery"], tags: ["korean", "revenge", "twist", "park-chan-wook"], imdbId: "tt0364569", rating: 8.4 },
-      { id: 133, title: "The Girl with the Dragon Tattoo", titleRu: "Девушка с татуировкой дракона", year: 2011, genres: ["crime", "drama", "mystery"], tags: ["david-fincher", "hacker", "journalist", "sweden"], imdbId: "tt1568346", rating: 7.8 },
-      { id: 134, title: "Mystic River", titleRu: "Таинственная река", year: 2003, genres: ["crime", "drama", "mystery"], tags: ["clint-eastwood", "childhood", "tragedy", "boston"], imdbId: "tt0327056", rating: 7.9 },
-      { id: 135, title: "Murder on the Orient Express", titleRu: "Убийство в Восточном экспрессе", year: 2017, genres: ["crime", "drama", "mystery"], tags: ["agatha-christie", "poirot", "train", "whodunit"], imdbId: "tt3402236", rating: 6.5 },
-      { id: 136, title: "Identity", titleRu: "Идентификация", year: 2003, genres: ["mystery", "thriller"], tags: ["twist", "motel", "storm", "psychological"], imdbId: "tt0309698", rating: 7.3 },
-
-      // Family/Семейные
-      { id: 137, title: "E.T. the Extra-Terrestrial", titleRu: "Инопланетянин", year: 1982, genres: ["adventure", "family", "sci-fi"], tags: ["spielberg", "alien", "friendship", "classic"], imdbId: "tt0083866", rating: 7.9 },
-      { id: 138, title: "Home Alone", titleRu: "Один дома", year: 1990, genres: ["comedy", "family"], tags: ["christmas", "kevin", "traps", "classic"], imdbId: "tt0099785", rating: 7.7 },
-      { id: 139, title: "Harry Potter and the Sorcerer's Stone", titleRu: "Гарри Поттер и философский камень", year: 2001, genres: ["adventure", "family", "fantasy"], tags: ["magic", "hogwarts", "wizard", "jk-rowling"], imdbId: "tt0241527", rating: 7.6 },
-      { id: 140, title: "The Incredibles", titleRu: "Суперсемейка", year: 2004, genres: ["animation", "action", "adventure"], tags: ["pixar", "superhero", "family", "brad-bird"], imdbId: "tt0317705", rating: 8.0 },
-      { id: 141, title: "Shrek", titleRu: "Шрек", year: 2001, genres: ["animation", "adventure", "comedy"], tags: ["dreamworks", "fairy-tale", "ogre", "parody"], imdbId: "tt0126029", rating: 7.9 },
-      { id: 142, title: "The Wizard of Oz", titleRu: "Волшебник страны Оз", year: 1939, genres: ["adventure", "family", "fantasy"], tags: ["classic", "musical", "dorothy", "technicolor"], imdbId: "tt0032138", rating: 8.1 },
-      { id: 143, title: "Mary Poppins", titleRu: "Мэри Поппинс", year: 1964, genres: ["comedy", "family", "fantasy"], tags: ["disney", "musical", "nanny", "classic"], imdbId: "tt0058331", rating: 7.8 },
-      { id: 144, title: "Paddington 2", titleRu: "Приключения Паддингтона 2", year: 2017, genres: ["adventure", "comedy", "family"], tags: ["bear", "british", "wholesome", "prison"], imdbId: "tt4468740", rating: 7.8 },
-
-      // Historical Drama/Историческое
-      { id: 145, title: "Braveheart", titleRu: "Храброе сердце", year: 1995, genres: ["biography", "drama", "history"], tags: ["scotland", "freedom", "mel-gibson", "epic"], imdbId: "tt0112573", rating: 8.4 },
-      { id: 146, title: "Titanic", titleRu: "Титаник", year: 1997, genres: ["drama", "romance"], tags: ["ship", "disaster", "james-cameron", "oscar"], imdbId: "tt0120338", rating: 7.9 },
-      { id: 147, title: "12 Years a Slave", titleRu: "12 лет рабства", year: 2013, genres: ["biography", "drama", "history"], tags: ["slavery", "true-story", "oscar", "steve-mcqueen"], imdbId: "tt2024544", rating: 8.1 },
-      { id: 148, title: "The King's Speech", titleRu: "Король говорит!", year: 2010, genres: ["biography", "drama", "history"], tags: ["royalty", "speech", "wwii", "oscar"], imdbId: "tt1504320", rating: 8.0 },
-      { id: 149, title: "Lincoln", titleRu: "Линкольн", year: 2012, genres: ["biography", "drama", "history"], tags: ["civil-war", "spielberg", "president", "daniel-day-lewis"], imdbId: "tt0443272", rating: 7.3 },
-      { id: 150, title: "The Last Samurai", titleRu: "Последний самурай", year: 2003, genres: ["action", "drama", "history"], tags: ["japan", "samurai", "tom-cruise", "honor"], imdbId: "tt0325710", rating: 7.8 }
-    ];
+    // База данных сериалов из TVMaze
+    let MOVIES_DATABASE = [];
 
     // Все уникальные жанры
-    const ALL_GENRES = [...new Set(MOVIES_DATABASE.flatMap(m => m.genres))].sort();
+    let ALL_GENRES = [...new Set(MOVIES_DATABASE.flatMap(m => m.genres || []))].sort();
+
+    const TVMAZE_API_BASE = "https://api.tvmaze.com/shows?page=";
+    const TVMAZE_CACHE_KEY = "tvmazeShowsCache";
+    const TVMAZE_CACHE_VERSION = 4;
+    const TVMAZE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+    const TVMAZE_MAX_PAGE_PROBE = 512;
+    const TVMAZE_RECENT_PAGES = 2;
+    const GENRE_MAP = {
+      "science-fiction": "sci-fi",
+      "science fiction": "sci-fi",
+      "sci-fi": "sci-fi",
+      "sci fi": "sci-fi",
+      "sports": "sport",
+      "sport": "sport",
+      "children": "family",
+      "anime": "animation"
+    };
+
+    function normalizeGenre(genre) {
+      if (!genre) return null;
+      const normalized = genre.toLowerCase().trim();
+      const slug = normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      return GENRE_MAP[normalized] || GENRE_MAP[slug] || slug;
+    }
+
+    function slugifyTag(value) {
+      if (!value) return null;
+      return value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+
+    function mapShowToMovie(show) {
+      const genres = (show.genres || [])
+        .map(normalizeGenre)
+        .filter(Boolean);
+      const tags = [
+        ...genres,
+        show.type,
+        show.language,
+        show.status,
+        show.network && show.network.name,
+        show.webChannel && show.webChannel.name
+      ]
+        .map(slugifyTag)
+        .filter(Boolean);
+
+      return {
+        id: show.id,
+        title: show.name,
+        titleRu: show.name,
+        year: show.premiered ? show.premiered.slice(0, 4) : "—",
+        premiered: show.premiered || "",
+        genres,
+        tags: tags.length ? tags : ["tv"],
+        rating: typeof show.rating?.average === "number" ? show.rating.average : null,
+        posterUrl: show.image?.medium || show.image?.original || ""
+      };
+    }
+
+    function getPosterUrl(movie) {
+      if (movie.posterUrl) return movie.posterUrl;
+      return "";
+    }
+
+    function hasPoster(movie) {
+      return Boolean(movie.posterUrl);
+    }
+
+    function renderPosterContent(movie, title) {
+      if (hasPoster(movie)) {
+        return `<img src="${movie.posterUrl}"
+                     alt="${title}"
+                     onerror="this.parentElement.innerHTML=createPlaceholderHTML('${escapeHtml(title)}')"
+                     loading="lazy">`;
+      }
+      return `<div class="placeholder-text">
+                <i class="fas fa-film icon"></i>
+                <span class="title">${title}</span>
+              </div>`;
+    }
+
+    function createPlaceholderHTML(title) {
+      return "<div class=\"placeholder-text\"><i class=\"fas fa-film icon\"></i><span class=\"title\">" + title + "</span></div>";
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function formatRating(value) {
+      const parsed = typeof value === "number" ? value : parseFloat(value);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed.toFixed(1) : "—";
+    }
+
+    function getReleaseTimestamp(movie) {
+      if (movie.premiered) {
+        const dateValue = Date.parse(movie.premiered);
+        if (!Number.isNaN(dateValue)) {
+          return dateValue;
+        }
+      }
+      const yearValue = parseInt(movie.year, 10);
+      if (Number.isFinite(yearValue)) {
+        return Date.UTC(yearValue, 0, 1);
+      }
+      return 0;
+    }
+
+    function getRatedCount() {
+      return MOVIES_DATABASE.reduce((count, movie) => {
+        return count + (userRatings[movie.id] ? 1 : 0);
+      }, 0);
+    }
+
+    function syncRatings() {
+      const validIds = new Set(MOVIES_DATABASE.map(movie => movie.id));
+      const cleaned = {};
+      Object.entries(userRatings).forEach(([movieId, rating]) => {
+        if (validIds.has(parseInt(movieId, 10))) {
+          cleaned[movieId] = rating;
+        }
+      });
+      if (Object.keys(cleaned).length !== Object.keys(userRatings).length) {
+        userRatings = cleaned;
+        localStorage.setItem("movieRatings", JSON.stringify(userRatings));
+      }
+    }
+
+    function readShowsCache(allowStale = false) {
+      try {
+        const raw = localStorage.getItem(TVMAZE_CACHE_KEY);
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        if (!cached || cached.version !== TVMAZE_CACHE_VERSION) return null;
+        if (!Array.isArray(cached.data) || typeof cached.timestamp !== "number") return null;
+        if (!allowStale && Date.now() - cached.timestamp > TVMAZE_CACHE_TTL_MS) return null;
+        return cached.data;
+      } catch (error) {
+        console.warn("Failed to read TVMaze cache.", error);
+        return null;
+      }
+    }
+
+    function writeShowsCache(data) {
+      try {
+        const payload = {
+          version: TVMAZE_CACHE_VERSION,
+          timestamp: Date.now(),
+          data
+        };
+        localStorage.setItem(TVMAZE_CACHE_KEY, JSON.stringify(payload));
+      } catch (error) {
+        console.warn("Failed to write TVMaze cache.", error);
+      }
+    }
+
+    function applyShowsData(movies) {
+      if (!Array.isArray(movies) || movies.length === 0) return;
+      MOVIES_DATABASE = movies;
+      ALL_GENRES = [...new Set(MOVIES_DATABASE.flatMap(m => m.genres || []))].sort();
+
+      if (currentGenreFilter && !ALL_GENRES.includes(currentGenreFilter)) {
+        currentGenreFilter = null;
+      }
+
+      syncRatings();
+      renderGenreFilter();
+      renderYearFilter();
+      renderMovies();
+      updateProgress();
+
+      const activeTab = document.querySelector(".tab-btn.active")?.dataset.tab;
+      if (activeTab === "rated") {
+        renderRatedMovies();
+      } else if (activeTab === "recommendations") {
+        getRecommendations();
+      }
+    }
+
+    async function fetchShowsPage(page) {
+      try {
+        const response = await fetch(`${TVMAZE_API_BASE}${page}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) return null;
+        return data;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    async function findLastPage() {
+      let lowPage = 0;
+      let lowData = null;
+      let highPage = 1;
+
+      let data = await fetchShowsPage(highPage);
+      if (!data) {
+        return null;
+      }
+
+      lowPage = highPage;
+      lowData = data;
+
+      while (highPage < TVMAZE_MAX_PAGE_PROBE) {
+        highPage *= 2;
+        data = await fetchShowsPage(highPage);
+        if (data) {
+          lowPage = highPage;
+          lowData = data;
+        } else {
+          break;
+        }
+      }
+
+      if (highPage >= TVMAZE_MAX_PAGE_PROBE && data) {
+        return { page: lowPage, data: lowData };
+      }
+
+      let left = lowPage + 1;
+      let right = highPage - 1;
+
+      while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+        const midData = await fetchShowsPage(mid);
+        if (midData) {
+          lowPage = mid;
+          lowData = midData;
+          left = mid + 1;
+        } else {
+          right = mid - 1;
+        }
+      }
+
+      return lowData ? { page: lowPage, data: lowData } : null;
+    }
+
+    async function loadShows() {
+      const cached = readShowsCache();
+      if (cached) {
+        applyShowsData(cached);
+        return;
+      }
+
+      try {
+        const lastPageResult = await findLastPage();
+        if (!lastPageResult) {
+          throw new Error("Failed to locate latest TVMaze page.");
+        }
+
+        const { page: lastPage, data: lastPageData } = lastPageResult;
+        const collected = [];
+
+        if (lastPageData) {
+          collected.push(...lastPageData);
+        }
+
+        const startPage = Math.max(0, lastPage - (TVMAZE_RECENT_PAGES - 1));
+        for (let page = lastPage - 1; page >= startPage; page--) {
+          const pageData = await fetchShowsPage(page);
+          if (pageData) {
+            collected.push(...pageData);
+          }
+        }
+
+        const mapped = collected.map(mapShowToMovie).filter(movie => movie.title);
+        const deduped = Array.from(new Map(mapped.map(movie => [movie.id, movie])).values());
+
+        if (deduped.length > 0) {
+          writeShowsCache(deduped);
+          applyShowsData(deduped);
+        }
+      } catch (error) {
+        const stale = readShowsCache(true);
+        if (stale) {
+          applyShowsData(stale);
+        }
+        console.warn("Failed to load TVMaze shows, using cached/fallback list.", error);
+      }
+    }
 
     // Переводы
     const translations = {
       ru: {
-        logo: "Рекомендатор фильмов",
+        logo: "Рекомендатор сериалов",
         reset: "Сбросить",
         progressTitle: "Прогресс оценки",
-        progressHint: "Оцените минимум 5 фильмов, чтобы получить персональные рекомендации",
-        tabRate: "Оценить фильмы",
+        progressHint: "Оцените минимум 5 сериалов, чтобы получить персональные рекомендации",
+        tabRate: "Оценить сериалы",
         tabRecommendations: "Рекомендации",
         tabRated: "Оценённые",
-        searchPlaceholder: "Поиск фильмов...",
+        searchPlaceholder: "Поиск сериалов...",
+        yearLabel: "Год",
+        yearFrom: "Год от",
+        yearTo: "Год до",
+        noResultsTitle: "Сериалы не найдены",
+        noResultsHint: "Попробуйте изменить параметры поиска",
         recommendationsTitle: "Ваши рекомендации",
         getRecommendations: "Получить рекомендации",
-        emptyRated: "Вы ещё не оценили ни одного фильма",
-        emptyRatedHint: "Перейдите на вкладку \"Оценить фильмы\" и поставьте оценки",
+        emptyRated: "Вы ещё не оценили ни одного сериала",
+        emptyRatedHint: "Перейдите на вкладку \"Оценить сериалы\" и поставьте оценки",
         emptyRecommendations: "Недостаточно оценок",
-        emptyRecommendationsHint: "Оцените минимум 5 фильмов для получения рекомендаций",
+        emptyRecommendationsHint: "Оцените минимум 5 сериалов для получения рекомендаций",
         similarity: "Совместимость",
-        rateMovie: "Оцените фильм",
+        rateMovie: "Оцените сериал",
         yourRating: "Ваша оценка",
+        tagsLabel: "Теги",
         allGenres: "Все",
         genres: {
           action: "Боевик",
@@ -1085,23 +1251,29 @@
         }
       },
       en: {
-        logo: "Movie Recommender",
+        logo: "Show Recommender",
         reset: "Reset",
         progressTitle: "Rating Progress",
-        progressHint: "Rate at least 5 movies to get personalized recommendations",
-        tabRate: "Rate Movies",
+        progressHint: "Rate at least 5 shows to get personalized recommendations",
+        tabRate: "Rate Shows",
         tabRecommendations: "Recommendations",
         tabRated: "Rated",
-        searchPlaceholder: "Search movies...",
+        searchPlaceholder: "Search shows...",
+        yearLabel: "Year",
+        yearFrom: "Year from",
+        yearTo: "Year to",
+        noResultsTitle: "No shows found",
+        noResultsHint: "Try adjusting your search",
         recommendationsTitle: "Your Recommendations",
         getRecommendations: "Get Recommendations",
-        emptyRated: "You haven't rated any movies yet",
-        emptyRatedHint: "Go to 'Rate Movies' tab and rate some films",
+        emptyRated: "You haven't rated any shows yet",
+        emptyRatedHint: "Go to 'Rate Shows' tab and rate some shows",
         emptyRecommendations: "Not enough ratings",
-        emptyRecommendationsHint: "Rate at least 5 movies to get recommendations",
+        emptyRecommendationsHint: "Rate at least 5 shows to get recommendations",
         similarity: "Match",
-        rateMovie: "Rate this movie",
+        rateMovie: "Rate this show",
         yourRating: "Your rating",
+        tagsLabel: "Tags",
         allGenres: "All",
         genres: {
           action: "Action",
@@ -1133,6 +1305,8 @@
     let userRatings = JSON.parse(localStorage.getItem("movieRatings") || "{}");
     let currentGenreFilter = null;
     let currentSearchQuery = "";
+    let currentYearFrom = localStorage.getItem("showYearFrom") || "";
+    let currentYearTo = localStorage.getItem("showYearTo") || "";
 
     /**
      * Инициализация приложения
@@ -1141,9 +1315,11 @@
       applyTheme();
       applyLanguage();
       renderGenreFilter();
+      renderYearFilter();
       renderMovies();
       updateProgress();
       setupEventListeners();
+      loadShows();
     }
 
     /**
@@ -1193,24 +1369,109 @@
       container.innerHTML = html;
     }
 
+    function persistYearFilters() {
+      if (currentYearFrom) {
+        localStorage.setItem("showYearFrom", currentYearFrom);
+      } else {
+        localStorage.removeItem("showYearFrom");
+      }
+
+      if (currentYearTo) {
+        localStorage.setItem("showYearTo", currentYearTo);
+      } else {
+        localStorage.removeItem("showYearTo");
+      }
+    }
+
+    function getAvailableYears() {
+      const years = new Set();
+      MOVIES_DATABASE.forEach(movie => {
+        const yearValue = parseInt(movie.year, 10);
+        if (Number.isFinite(yearValue)) {
+          years.add(yearValue);
+        }
+      });
+      return Array.from(years).sort((a, b) => b - a);
+    }
+
+    function renderYearFilter() {
+      const fromSelect = document.getElementById("yearFrom");
+      const toSelect = document.getElementById("yearTo");
+      if (!fromSelect || !toSelect) return;
+
+      const t = translations[currentLang];
+      const years = getAvailableYears();
+      const fromValue = parseInt(currentYearFrom, 10);
+      const toValue = parseInt(currentYearTo, 10);
+
+      if (Number.isFinite(fromValue) && !years.includes(fromValue)) {
+        years.push(fromValue);
+      }
+      if (Number.isFinite(toValue) && !years.includes(toValue)) {
+        years.push(toValue);
+      }
+
+      years.sort((a, b) => b - a);
+
+      currentYearFrom = Number.isFinite(fromValue) ? String(fromValue) : "";
+      currentYearTo = Number.isFinite(toValue) ? String(toValue) : "";
+
+      if (currentYearFrom && currentYearTo && parseInt(currentYearFrom, 10) > parseInt(currentYearTo, 10)) {
+        currentYearTo = currentYearFrom;
+      }
+
+      fromSelect.innerHTML = [
+        `<option value="">${t.yearFrom}</option>`,
+        ...years.map(year => `<option value="${year}">${year}</option>`)
+      ].join("");
+
+      toSelect.innerHTML = [
+        `<option value="">${t.yearTo}</option>`,
+        ...years.map(year => `<option value="${year}">${year}</option>`)
+      ].join("");
+
+      fromSelect.value = currentYearFrom;
+      toSelect.value = currentYearTo;
+
+      fromSelect.disabled = years.length === 0;
+      toSelect.disabled = years.length === 0;
+      fromSelect.setAttribute("aria-label", t.yearFrom);
+      toSelect.setAttribute("aria-label", t.yearTo);
+
+      persistYearFilters();
+    }
+
     /**
      * Получить отфильтрованные фильмы
      */
     function getFilteredMovies() {
       return MOVIES_DATABASE.filter(movie => {
         // Фильтр по жанру
-        if (currentGenreFilter && !movie.genres.includes(currentGenreFilter)) {
+        if (currentGenreFilter && !(movie.genres || []).includes(currentGenreFilter)) {
           return false;
         }
 
         // Фильтр по поиску
         if (currentSearchQuery) {
           const query = currentSearchQuery.toLowerCase();
-          const title = (currentLang === "ru" ? movie.titleRu : movie.title).toLowerCase();
-          const tags = movie.tags.join(" ").toLowerCase();
-          const genres = movie.genres.join(" ").toLowerCase();
+          const title = (currentLang === "ru" ? (movie.titleRu || movie.title) : movie.title).toLowerCase();
+          const tags = (movie.tags || []).join(" ").toLowerCase();
+          const genres = (movie.genres || []).join(" ").toLowerCase();
 
           if (!title.includes(query) && !tags.includes(query) && !genres.includes(query)) {
+            return false;
+          }
+        }
+
+        if (currentYearFrom || currentYearTo) {
+          const yearValue = parseInt(movie.year, 10);
+          if (!Number.isFinite(yearValue)) {
+            return false;
+          }
+          if (currentYearFrom && yearValue < parseInt(currentYearFrom, 10)) {
+            return false;
+          }
+          if (currentYearTo && yearValue > parseInt(currentYearTo, 10)) {
             return false;
           }
         }
@@ -1220,44 +1481,43 @@
     }
 
     /**
-     * Отрисовка карточек фильмов
+     * Отрисовка карточек фильмовc
      */
     function renderMovies() {
       const container = document.getElementById("moviesGrid");
-      const movies = getFilteredMovies();
+      const movies = getFilteredMovies()
+        .slice()
+        .sort((a, b) => getReleaseTimestamp(b) - getReleaseTimestamp(a));
       const t = translations[currentLang];
 
       if (movies.length === 0) {
         container.innerHTML = `
           <div class="empty-state" style="grid-column: 1/-1;">
             <i class="fas fa-film"></i>
-            <h3>Фильмы не найдены</h3>
-            <p>Попробуйте изменить параметры поиска</p>
+            <h3>${t.noResultsTitle}</h3>
+            <p>${t.noResultsHint}</p>
           </div>
         `;
         return;
       }
 
       container.innerHTML = movies.map((movie, index) => {
-        const title = currentLang === "ru" ? movie.titleRu : movie.title;
+        const title = currentLang === "ru" ? (movie.titleRu || movie.title) : movie.title;
         const rating = userRatings[movie.id] || 0;
-        const posterUrl = `https://img.omdbapi.com/?apikey=4a3b711b&i=${movie.imdbId}`;
+        const displayRating = formatRating(movie.rating);
 
         return `
           <div class="movie-card ${rating > 0 ? 'rated' : ''}"
                data-id="${movie.id}"
                style="animation-delay: ${index * 0.05}s">
             <div class="movie-poster" onclick="openModal(${movie.id})">
-              <img src="${posterUrl}"
-                   alt="${title}"
-                   onerror="this.parentElement.innerHTML='<i class=\\'fas fa-film placeholder\\'></i>'"
-                   loading="lazy">
+              ${renderPosterContent(movie, title)}
             </div>
             <div class="movie-info">
               <h3 class="movie-title" onclick="openModal(${movie.id})">${title}</h3>
               <div class="movie-meta">
                 <span>${movie.year}</span>
-                <span>★ ${movie.rating}</span>
+                <span>★ ${displayRating}</span>
               </div>
               <div class="movie-genres">
                 ${movie.genres.slice(0, 2).map(g =>
@@ -1299,25 +1559,22 @@
       }
 
       container.innerHTML = ratedMovies.map((movie, index) => {
-        const title = currentLang === "ru" ? movie.titleRu : movie.title;
+        const title = currentLang === "ru" ? (movie.titleRu || movie.title) : movie.title;
         const rating = userRatings[movie.id];
-        const posterUrl = `https://img.omdbapi.com/?apikey=4a3b711b&i=${movie.imdbId}`;
+        const displayRating = formatRating(movie.rating);
 
         return `
           <div class="movie-card rated"
                data-id="${movie.id}"
                style="animation-delay: ${index * 0.05}s">
             <div class="movie-poster" onclick="openModal(${movie.id})">
-              <img src="${posterUrl}"
-                   alt="${title}"
-                   onerror="this.parentElement.innerHTML='<i class=\\'fas fa-film placeholder\\'></i>'"
-                   loading="lazy">
+              ${renderPosterContent(movie, title)}
             </div>
             <div class="movie-info">
               <h3 class="movie-title" onclick="openModal(${movie.id})">${title}</h3>
               <div class="movie-meta">
                 <span>${movie.year}</span>
-                <span>★ ${movie.rating}</span>
+                <span>★ ${displayRating}</span>
               </div>
               <div class="movie-genres">
                 ${movie.genres.slice(0, 2).map(g =>
@@ -1342,10 +1599,10 @@
      * Использует жанры и теги как признаки
      */
     function createFeatureVector(movie) {
-      const allTags = [...new Set(MOVIES_DATABASE.flatMap(m => [...m.genres, ...m.tags]))];
+      const allTags = [...new Set(MOVIES_DATABASE.flatMap(m => [...(m.genres || []), ...(m.tags || [])]))];
       const vector = new Array(allTags.length).fill(0);
 
-      [...movie.genres, ...movie.tags].forEach(feature => {
+      [...(movie.genres || []), ...(movie.tags || [])].forEach(feature => {
         const idx = allTags.indexOf(feature);
         if (idx !== -1) {
           vector[idx] = 1;
@@ -1381,7 +1638,7 @@
      * Создание профиля пользователя на основе оценок
      */
     function createUserProfile() {
-      const allTags = [...new Set(MOVIES_DATABASE.flatMap(m => [...m.genres, ...m.tags]))];
+      const allTags = [...new Set(MOVIES_DATABASE.flatMap(m => [...(m.genres || []), ...(m.tags || [])]))];
       const profile = new Array(allTags.length).fill(0);
 
       let totalWeight = 0;
@@ -1394,7 +1651,7 @@
         const weight = rating - 3;
         totalWeight += Math.abs(weight);
 
-        [...movie.genres, ...movie.tags].forEach(feature => {
+        [...(movie.genres || []), ...(movie.tags || [])].forEach(feature => {
           const idx = allTags.indexOf(feature);
           if (idx !== -1) {
             profile[idx] += weight;
@@ -1416,7 +1673,7 @@
      * Получение рекомендаций
      */
     function getRecommendations() {
-      const ratedCount = Object.keys(userRatings).length;
+      const ratedCount = getRatedCount();
       const t = translations[currentLang];
       const container = document.getElementById("recommendationsList");
 
@@ -1446,8 +1703,9 @@
 
       container.innerHTML = recommendations.map((rec, index) => {
         const movie = rec.movie;
-        const title = currentLang === "ru" ? movie.titleRu : movie.title;
-        const posterUrl = `https://img.omdbapi.com/?apikey=4a3b711b&i=${movie.imdbId}`;
+        const title = currentLang === "ru" ? (movie.titleRu || movie.title) : movie.title;
+        const posterUrl = getPosterUrl(movie);
+        const displayRating = formatRating(movie.rating);
         const similarityPercent = Math.round(rec.similarity * 100);
 
         return `
@@ -1462,7 +1720,7 @@
             <div class="recommendation-details">
               <h3 class="recommendation-title">${title}</h3>
               <div class="recommendation-meta">
-                ${movie.year} • ★ ${movie.rating} •
+                ${movie.year} • ★ ${displayRating} •
                 ${movie.genres.slice(0, 2).map(g => t.genres[g] || g).join(", ")}
               </div>
               <div class="similarity-score">
@@ -1482,7 +1740,7 @@
      * Обновление прогресса
      */
     function updateProgress() {
-      const ratedCount = Object.keys(userRatings).length;
+      const ratedCount = getRatedCount();
       const minRatings = 5;
       const progress = Math.min(100, (ratedCount / minRatings) * 100);
 
@@ -1528,9 +1786,13 @@
       if (!movie) return;
 
       const t = translations[currentLang];
-      const title = currentLang === "ru" ? movie.titleRu : movie.title;
+      const title = currentLang === "ru" ? (movie.titleRu || movie.title) : movie.title;
       const rating = userRatings[movie.id] || 0;
-      const posterUrl = `https://img.omdbapi.com/?apikey=4a3b711b&i=${movie.imdbId}`;
+      const posterUrl = getPosterUrl(movie);
+      const displayRating = formatRating(movie.rating);
+      const ratingLabel = displayRating === "—" ? "—" : `${displayRating}/10`;
+      const tags = (movie.tags || []).join(", ");
+      const tagsLabel = t.tagsLabel || "Tags";
 
       document.getElementById("modalContent").innerHTML = `
         <div class="modal-poster">
@@ -1542,7 +1804,7 @@
           <h2 class="modal-title">${title}</h2>
           <div class="modal-meta">
             <span><i class="fas fa-calendar"></i> ${movie.year}</span>
-            <span><i class="fas fa-star" style="color: var(--accent-color)"></i> ${movie.rating}/10</span>
+            <span><i class="fas fa-star" style="color: var(--accent-color)"></i> ${ratingLabel}</span>
           </div>
           <div class="modal-genres">
             ${movie.genres.map(g =>
@@ -1550,7 +1812,7 @@
             ).join("")}
           </div>
           <p class="modal-description">
-            <strong>Теги:</strong> ${movie.tags.join(", ")}
+            <strong>${tagsLabel}:</strong> ${tags || "—"}
           </p>
           <div class="modal-rating">
             <h4 class="modal-rating-title">${t.yourRating}</h4>
@@ -1613,6 +1875,7 @@
         localStorage.setItem("movieRecLang", currentLang);
         applyLanguage();
         renderGenreFilter();
+        renderYearFilter();
         renderMovies();
 
         const activeTab = document.querySelector(".tab-btn.active").dataset.tab;
@@ -1655,6 +1918,27 @@
           renderGenreFilter();
           renderMovies();
         }
+      });
+
+      // Фильтр по годам
+      document.getElementById("yearFrom").addEventListener("change", (e) => {
+        currentYearFrom = e.target.value;
+        if (currentYearFrom && currentYearTo && parseInt(currentYearFrom, 10) > parseInt(currentYearTo, 10)) {
+          currentYearTo = currentYearFrom;
+          document.getElementById("yearTo").value = currentYearTo;
+        }
+        persistYearFilters();
+        renderMovies();
+      });
+
+      document.getElementById("yearTo").addEventListener("change", (e) => {
+        currentYearTo = e.target.value;
+        if (currentYearFrom && currentYearTo && parseInt(currentYearTo, 10) < parseInt(currentYearFrom, 10)) {
+          currentYearFrom = currentYearTo;
+          document.getElementById("yearFrom").value = currentYearFrom;
+        }
+        persistYearFilters();
+        renderMovies();
       });
 
       // Оценка фильмов (делегирование)
