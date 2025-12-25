@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--
+    ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+    Цель: Интерактивный лендинг-квиз с кинематографичными переходами
+
+    Функциональные требования:
+    1. Приветственный экран с анимированным заголовком и кнопкой старта
+    2. Серия вопросов квиза с вариантами ответов
+    3. Плавные кинематографичные переходы между экранами через View Transitions API
+    4. Прогресс-бар показывающий текущий этап квиза
+    5. Страница результатов с персонализированным итогом
+    6. Возможность пройти квиз заново
+    7. Адаптивный дизайн для мобильных устройств
+    8. Сохранение результатов в localStorage
+
+    Технические требования:
+    1. View Transitions API для плавных переходов состояний (SPA-стиль)
+    2. CSS-анимации для кинематографичности
+    3. Vanilla JavaScript без фреймворков
+    4. Самодостаточный HTML-файл со встроенными стилями и скриптами
+    5. Fallback для браузеров без поддержки View Transitions
+
+    Дизайн:
+    - Минималистичный современный стиль
+    - Градиентные фоны
+    - Микро-анимации при взаимодействии
+    - Элементы параллакса
+  -->
+  <title>Интерактивный Квиз | AI Pages</title>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --secondary: #ec4899;
+      --accent: #06b6d4;
+      --bg-dark: #0f172a;
+      --bg-light: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* View Transitions API styles */
+    @view-transition {
+      navigation: auto;
+    }
+
+    ::view-transition-old(root) {
+      animation: fade-out 0.4s ease-out forwards;
+    }
+
+    ::view-transition-new(root) {
+      animation: fade-in 0.4s ease-in forwards;
+    }
+
+    ::view-transition-old(slide-up) {
+      animation: slide-out-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    ::view-transition-new(slide-up) {
+      animation: slide-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    ::view-transition-old(zoom) {
+      animation: zoom-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    ::view-transition-new(zoom) {
+      animation: zoom-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes fade-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slide-out-up {
+      from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.95);
+      }
+    }
+
+    @keyframes slide-in-up {
+      from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes zoom-out {
+      from {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+      }
+      to {
+        opacity: 0;
+        transform: scale(1.1);
+        filter: blur(10px);
+      }
+    }
+
+    @keyframes zoom-in {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+        filter: blur(10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+      }
+    }
+
+    /* Main container */
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Animated background */
+    .background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .bg-gradient {
+      position: absolute;
+      width: 150%;
+      height: 150%;
+      top: -25%;
+      left: -25%;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(236, 72, 153, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(6, 182, 212, 0.15) 0%, transparent 60%);
+      animation: gradient-drift 20s ease-in-out infinite;
+    }
+
+    @keyframes gradient-drift {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(2%, 2%) rotate(1deg); }
+      50% { transform: translate(-1%, 1%) rotate(-1deg); }
+      75% { transform: translate(1%, -2%) rotate(0.5deg); }
+    }
+
+    .floating-shapes {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+    }
+
+    .shape {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.1;
+      animation: float 15s ease-in-out infinite;
+    }
+
+    .shape-1 {
+      width: 300px;
+      height: 300px;
+      background: var(--primary);
+      top: 10%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+
+    .shape-2 {
+      width: 200px;
+      height: 200px;
+      background: var(--secondary);
+      top: 60%;
+      right: 15%;
+      animation-delay: -5s;
+    }
+
+    .shape-3 {
+      width: 150px;
+      height: 150px;
+      background: var(--accent);
+      bottom: 20%;
+      left: 30%;
+      animation-delay: -10s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-30px) rotate(180deg); }
+    }
+
+    /* Progress bar */
+    .progress-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, transparent 100%);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: 2px;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 10px var(--primary);
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    /* Screen container */
+    .screen {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+      min-height: 100vh;
+      view-transition-name: slide-up;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* Welcome screen */
+    .welcome-content {
+      text-align: center;
+      max-width: 600px;
+    }
+
+    .welcome-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid var(--primary);
+      border-radius: 50px;
+      font-size: 0.875rem;
+      color: var(--primary);
+      margin-bottom: 2rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.02); }
+    }
+
+    .welcome-title {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, var(--text) 0%, var(--primary) 50%, var(--secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: title-glow 3s ease-in-out infinite;
+    }
+
+    @keyframes title-glow {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.2); }
+    }
+
+    .welcome-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      margin-bottom: 3rem;
+      line-height: 1.6;
+    }
+
+    .start-btn {
+      position: relative;
+      padding: 1rem 3rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .start-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
+    }
+
+    .start-btn:hover::before {
+      left: 100%;
+    }
+
+    .start-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Question screen */
+    .question-container {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .question-number {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: rgba(6, 182, 212, 0.2);
+      border: 1px solid var(--accent);
+      border-radius: 50px;
+      font-size: 0.875rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .question-text {
+      font-size: clamp(1.5rem, 4vw, 2.25rem);
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 2.5rem;
+    }
+
+    .options-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .option-btn {
+      position: relative;
+      padding: 1.25rem 1.5rem;
+      font-size: 1rem;
+      text-align: left;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .option-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .option-btn span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .option-btn:hover {
+      border-color: var(--primary);
+      transform: translateX(8px);
+    }
+
+    .option-btn:hover::before {
+      opacity: 0.1;
+    }
+
+    .option-btn.selected {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.2);
+    }
+
+    .option-btn.selected::before {
+      opacity: 0.15;
+    }
+
+    .option-letter {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin-right: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .option-btn:hover .option-letter,
+    .option-btn.selected .option-letter {
+      background: var(--primary);
+    }
+
+    /* Result screen */
+    .result-content {
+      text-align: center;
+      max-width: 600px;
+      view-transition-name: zoom;
+    }
+
+    .result-icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 2rem;
+      background: linear-gradient(135deg, var(--success), var(--accent));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      box-shadow: 0 20px 60px rgba(16, 185, 129, 0.3);
+    }
+
+    @keyframes bounce-in {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .result-title {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--success), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .result-type {
+      font-size: 1.5rem;
+      color: var(--text);
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+
+    .result-description {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .result-stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .restart-btn {
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      background: transparent;
+      border: 2px solid var(--primary);
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .restart-btn:hover {
+      background: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .share-btn {
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .share-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(236, 72, 153, 0.3);
+    }
+
+    /* Hidden state */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .progress-container {
+        padding: 0.75rem 1rem;
+      }
+
+      .screen {
+        padding: 1.5rem;
+      }
+
+      .result-stats {
+        gap: 1.5rem;
+      }
+
+      .stat-value {
+        font-size: 2rem;
+      }
+    }
+
+    /* Particles effect */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0.5;
+      animation: particle-float 10s linear infinite;
+    }
+
+    @keyframes particle-float {
+      0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 0.5;
+      }
+      90% {
+        opacity: 0.5;
+      }
+      100% {
+        transform: translateY(-100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    /* Screen transitions for fallback */
+    .screen-enter {
+      animation: screen-enter 0.5s ease-out forwards;
+    }
+
+    @keyframes screen-enter {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Loading indicator */
+    .loading {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Animated Background -->
+    <div class="background">
+      <div class="bg-gradient"></div>
+      <div class="floating-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+      </div>
+    </div>
+
+    <!-- Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Progress Bar -->
+    <div class="progress-container hidden" id="progress">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <div class="progress-text">
+        <span id="progressStep">Вопрос 1 из 5</span>
+        <span id="progressPercent">0%</span>
+      </div>
+    </div>
+
+    <!-- Welcome Screen -->
+    <div class="screen active" id="welcomeScreen">
+      <div class="welcome-content">
+        <div class="welcome-badge">Интерактивный опыт</div>
+        <h1 class="welcome-title">Узнайте свой технологический профиль</h1>
+        <p class="welcome-subtitle">
+          Пройдите короткий квиз и узнайте, какой тип разработчика вам ближе всего.
+          Всего 5 вопросов с кинематографичными переходами.
+        </p>
+        <button class="start-btn" id="startBtn">
+          Начать квиз
+        </button>
+      </div>
+    </div>
+
+    <!-- Question Screen -->
+    <div class="screen" id="questionScreen">
+      <div class="question-container">
+        <div class="question-number" id="questionNumber">Вопрос 1 из 5</div>
+        <h2 class="question-text" id="questionText"></h2>
+        <div class="options-grid" id="optionsGrid"></div>
+      </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div class="screen" id="resultScreen">
+      <div class="result-content">
+        <div class="result-icon">
+          <span id="resultEmoji"></span>
+        </div>
+        <h2 class="result-title">Ваш результат</h2>
+        <div class="result-type" id="resultType"></div>
+        <p class="result-description" id="resultDescription"></p>
+        <div class="result-stats">
+          <div class="stat">
+            <span class="stat-value" id="statQuestions">5</span>
+            <span class="stat-label">вопросов</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="statTime">0:00</span>
+            <span class="stat-label">время</span>
+          </div>
+        </div>
+        <div class="result-actions">
+          <button class="restart-btn" id="restartBtn">Пройти заново</button>
+          <button class="share-btn" id="shareBtn">Поделиться</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * @description Данные квиза - вопросы и варианты ответов
+     */
+    const quizData = {
+      questions: [
+        {
+          text: "Какой тип проектов вас привлекает больше всего?",
+          options: [
+            { text: "Веб-приложения с богатым интерфейсом", type: "frontend" },
+            { text: "Серверная логика и базы данных", type: "backend" },
+            { text: "Мобильные приложения", type: "mobile" },
+            { text: "Машинное обучение и анализ данных", type: "data" }
+          ]
+        },
+        {
+          text: "Как вы предпочитаете решать сложные задачи?",
+          options: [
+            { text: "Визуализирую и делаю наброски", type: "frontend" },
+            { text: "Разбиваю на алгоритмы и схемы", type: "backend" },
+            { text: "Прототипирую и тестирую", type: "mobile" },
+            { text: "Анализирую данные и ищу паттерны", type: "data" }
+          ]
+        },
+        {
+          text: "Что вас больше мотивирует в работе?",
+          options: [
+            { text: "Красивый дизайн и UX", type: "frontend" },
+            { text: "Эффективность и масштабируемость", type: "backend" },
+            { text: "Мобильность и доступность", type: "mobile" },
+            { text: "Инсайты из данных", type: "data" }
+          ]
+        },
+        {
+          text: "Какие технологии вам ближе?",
+          options: [
+            { text: "React, Vue, CSS-анимации", type: "frontend" },
+            { text: "Node.js, Python, SQL", type: "backend" },
+            { text: "Swift, Kotlin, Flutter", type: "mobile" },
+            { text: "TensorFlow, pandas, Jupyter", type: "data" }
+          ]
+        },
+        {
+          text: "Каким вы видите своё развитие?",
+          options: [
+            { text: "Создавать интерактивные интерфейсы", type: "frontend" },
+            { text: "Архитектор распределённых систем", type: "backend" },
+            { text: "Эксперт мобильной разработки", type: "mobile" },
+            { text: "Data Scientist или ML Engineer", type: "data" }
+          ]
+        }
+      ],
+      results: {
+        frontend: {
+          emoji: "🎨",
+          type: "Frontend-разработчик",
+          description: "Вы креативная натура с отличным чувством дизайна. Вам нравится " +
+            "создавать красивые интерфейсы и делать пользовательский опыт незабываемым. " +
+            "React, Vue и CSS-анимации — ваши лучшие друзья!"
+        },
+        backend: {
+          emoji: "⚙️",
+          type: "Backend-разработчик",
+          description: "Вы системный мыслитель, которому нравится работать с логикой и " +
+            "архитектурой. Оптимизация запросов, микросервисы и масштабируемость — " +
+            "это ваша стихия!"
+        },
+        mobile: {
+          emoji: "📱",
+          type: "Mobile-разработчик",
+          description: "Вы цените мобильность и доступность. Создание приложений, " +
+            "которые всегда под рукой у пользователя — ваше призвание. " +
+            "Swift, Kotlin или Flutter ждут вас!"
+        },
+        data: {
+          emoji: "📊",
+          type: "Data Scientist",
+          description: "Вы аналитик по натуре, находите красоту в данных и паттернах. " +
+            "Machine Learning, визуализация и статистика — ваши инструменты " +
+            "для понимания мира!"
+        }
+      }
+    };
+
+    /**
+     * @class QuizApp
+     * @description Основной класс приложения квиза
+     */
+    class QuizApp {
+      constructor() {
+        this.currentQuestion = 0;
+        this.answers = [];
+        this.startTime = null;
+        this.endTime = null;
+
+        this.initElements();
+        this.initParticles();
+        this.bindEvents();
+        this.loadState();
+      }
+
+      /**
+       * @description Инициализация DOM-элементов
+       */
+      initElements() {
+        this.welcomeScreen = document.getElementById("welcomeScreen");
+        this.questionScreen = document.getElementById("questionScreen");
+        this.resultScreen = document.getElementById("resultScreen");
+        this.progressContainer = document.getElementById("progress");
+        this.progressFill = document.getElementById("progressFill");
+        this.progressStep = document.getElementById("progressStep");
+        this.progressPercent = document.getElementById("progressPercent");
+        this.questionNumber = document.getElementById("questionNumber");
+        this.questionText = document.getElementById("questionText");
+        this.optionsGrid = document.getElementById("optionsGrid");
+        this.startBtn = document.getElementById("startBtn");
+        this.restartBtn = document.getElementById("restartBtn");
+        this.shareBtn = document.getElementById("shareBtn");
+        this.loading = document.getElementById("loading");
+      }
+
+      /**
+       * @description Создание частиц для фонового эффекта
+       */
+      initParticles() {
+        const container = document.getElementById("particles");
+        const particleCount = 20;
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement("div");
+          particle.className = "particle";
+          particle.style.left = Math.random() * 100 + "%";
+          particle.style.animationDelay = Math.random() * 10 + "s";
+          particle.style.animationDuration = (10 + Math.random() * 10) + "s";
+
+          const colors = ["#6366f1", "#ec4899", "#06b6d4"];
+          particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+          container.appendChild(particle);
+        }
+      }
+
+      /**
+       * @description Привязка обработчиков событий
+       */
+      bindEvents() {
+        this.startBtn.addEventListener("click", () => this.startQuiz());
+        this.restartBtn.addEventListener("click", () => this.restartQuiz());
+        this.shareBtn.addEventListener("click", () => this.shareResult());
+      }
+
+      /**
+       * @description Загрузка сохранённого состояния из localStorage
+       */
+      loadState() {
+        const saved = localStorage.getItem("quizState");
+        if (saved) {
+          try {
+            const state = JSON.parse(saved);
+            if (state.completed) {
+              this.showResult(state.result);
+            }
+          } catch (e) {
+            localStorage.removeItem("quizState");
+          }
+        }
+      }
+
+      /**
+       * @description Сохранение состояния в localStorage
+       * @param {Object} state - объект состояния
+       */
+      saveState(state) {
+        localStorage.setItem("quizState", JSON.stringify(state));
+      }
+
+      /**
+       * @description Переход между экранами с View Transitions API
+       * @param {HTMLElement} from - исходный экран
+       * @param {HTMLElement} to - целевой экран
+       * @param {Function} callback - функция обратного вызова
+       */
+      async transition(from, to, callback) {
+        // Проверяем поддержку View Transitions API
+        if (document.startViewTransition) {
+          const transition = document.startViewTransition(() => {
+            from.classList.remove("active");
+            to.classList.add("active");
+            if (callback) callback();
+          });
+
+          await transition.finished;
+        } else {
+          // Fallback для браузеров без поддержки
+          from.classList.remove("active");
+          to.classList.add("active");
+          to.classList.add("screen-enter");
+
+          setTimeout(() => {
+            to.classList.remove("screen-enter");
+          }, 500);
+
+          if (callback) callback();
+        }
+      }
+
+      /**
+       * @description Начало квиза
+       */
+      async startQuiz() {
+        this.startTime = Date.now();
+        this.currentQuestion = 0;
+        this.answers = [];
+
+        this.progressContainer.classList.remove("hidden");
+
+        await this.transition(this.welcomeScreen, this.questionScreen, () => {
+          this.showQuestion(0);
+        });
+      }
+
+      /**
+       * @description Отображение вопроса
+       * @param {number} index - индекс вопроса
+       */
+      showQuestion(index) {
+        const question = quizData.questions[index];
+        const total = quizData.questions.length;
+
+        this.questionNumber.textContent = `Вопрос ${index + 1} из ${total}`;
+        this.questionText.textContent = question.text;
+
+        this.optionsGrid.innerHTML = "";
+
+        const letters = ["A", "B", "C", "D"];
+        question.options.forEach((option, i) => {
+          const btn = document.createElement("button");
+          btn.className = "option-btn";
+          btn.innerHTML = `
+            <span class="option-letter">${letters[i]}</span>
+            <span>${option.text}</span>
+          `;
+          btn.addEventListener("click", () => this.selectOption(option.type));
+          this.optionsGrid.appendChild(btn);
+        });
+
+        this.updateProgress(index, total);
+      }
+
+      /**
+       * @description Обновление прогресс-бара
+       * @param {number} current - текущий вопрос
+       * @param {number} total - всего вопросов
+       */
+      updateProgress(current, total) {
+        const percent = ((current + 1) / total) * 100;
+        this.progressFill.style.width = percent + "%";
+        this.progressStep.textContent = `Вопрос ${current + 1} из ${total}`;
+        this.progressPercent.textContent = Math.round(percent) + "%";
+      }
+
+      /**
+       * @description Обработка выбора варианта ответа
+       * @param {string} type - тип ответа
+       */
+      async selectOption(type) {
+        this.answers.push(type);
+
+        const buttons = this.optionsGrid.querySelectorAll(".option-btn");
+        buttons.forEach(btn => btn.classList.remove("selected"));
+        event.currentTarget.classList.add("selected");
+
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        this.currentQuestion++;
+
+        if (this.currentQuestion < quizData.questions.length) {
+          // Переход к следующему вопросу
+          if (document.startViewTransition) {
+            document.startViewTransition(() => {
+              this.showQuestion(this.currentQuestion);
+            });
+          } else {
+            this.showQuestion(this.currentQuestion);
+          }
+        } else {
+          // Показ результатов
+          this.endTime = Date.now();
+          const result = this.calculateResult();
+
+          this.saveState({
+            completed: true,
+            result: result,
+            time: this.endTime - this.startTime
+          });
+
+          await this.transition(this.questionScreen, this.resultScreen, () => {
+            this.displayResult(result);
+          });
+
+          this.progressContainer.classList.add("hidden");
+        }
+      }
+
+      /**
+       * @description Подсчёт результата квиза
+       * @returns {string} - тип результата
+       */
+      calculateResult() {
+        const counts = {};
+        this.answers.forEach(type => {
+          counts[type] = (counts[type] || 0) + 1;
+        });
+
+        let maxType = "frontend";
+        let maxCount = 0;
+
+        for (const [type, count] of Object.entries(counts)) {
+          if (count > maxCount) {
+            maxCount = count;
+            maxType = type;
+          }
+        }
+
+        return maxType;
+      }
+
+      /**
+       * @description Отображение результата
+       * @param {string} resultType - тип результата
+       */
+      displayResult(resultType) {
+        const result = quizData.results[resultType];
+
+        document.getElementById("resultEmoji").textContent = result.emoji;
+        document.getElementById("resultType").textContent = result.type;
+        document.getElementById("resultDescription").textContent = result.description;
+
+        const duration = this.endTime - this.startTime;
+        const minutes = Math.floor(duration / 60000);
+        const seconds = Math.floor((duration % 60000) / 1000);
+        document.getElementById("statTime").textContent =
+          `${minutes}:${seconds.toString().padStart(2, "0")}`;
+      }
+
+      /**
+       * @description Показ результата из сохранённого состояния
+       * @param {string} resultType - тип результата
+       */
+      showResult(resultType) {
+        this.welcomeScreen.classList.remove("active");
+        this.resultScreen.classList.add("active");
+        this.displayResult(resultType);
+      }
+
+      /**
+       * @description Перезапуск квиза
+       */
+      async restartQuiz() {
+        localStorage.removeItem("quizState");
+
+        await this.transition(this.resultScreen, this.welcomeScreen);
+
+        this.currentQuestion = 0;
+        this.answers = [];
+        this.startTime = null;
+        this.endTime = null;
+      }
+
+      /**
+       * @description Поделиться результатом
+       */
+      async shareResult() {
+        const resultType = this.calculateResult() || "frontend";
+        const result = quizData.results[resultType];
+        const text = `Мой результат в технологическом квизе: ${result.type}! ${result.emoji}`;
+
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: "Технологический квиз",
+              text: text,
+              url: window.location.href
+            });
+          } catch (e) {
+            this.copyToClipboard(text);
+          }
+        } else {
+          this.copyToClipboard(text);
+        }
+      }
+
+      /**
+       * @description Копирование текста в буфер обмена
+       * @param {string} text - текст для копирования
+       */
+      copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = this.shareBtn;
+          const originalText = btn.textContent;
+          btn.textContent = "Скопировано!";
+          setTimeout(() => {
+            btn.textContent = originalText;
+          }, 2000);
+        });
+      }
+    }
+
+    // Инициализация приложения
+    document.addEventListener("DOMContentLoaded", () => {
+      new QuizApp();
+    });
+  </script>
+</body>
+</html>
