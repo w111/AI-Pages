@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать GPU-ускоренный видеоредактор в браузере с real-time эффектами.
+
+Функциональные требования:
+1. Загрузка видео с устройства или демо-видео
+2. Real-time обработка видео с помощью WebGPU compute shaders:
+   - Гауссово размытие (blur)
+   - Пикселизация (mosaic/censorship)
+   - Замена фона (chroma key)
+   - Цветокоррекция (яркость, контраст, насыщенность)
+   - Виньетирование
+3. Выделение областей для локальных эффектов (цензура)
+4. Экспорт через WebCodecs API
+5. Поддержка темной/светлой темы
+6. Адаптивный интерфейс
+
+Технические требования:
+1. WebGPU для GPU-ускоренной обработки
+2. WebCodecs для экспорта видео
+3. Чистый JavaScript без фреймворков
+4. Современный CSS с переменными
+5. Fallback на Canvas 2D если WebGPU недоступен
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPU Video Editor - Real-time видеоэффекты в браузере</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-primary: #0f0f0f;
+      --bg-secondary: #1a1a2e;
+      --bg-tertiary: #16213e;
+      --accent: #e94560;
+      --accent-hover: #ff6b6b;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0a0;
+      --border-color: #2d2d44;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --panel-bg: rgba(26, 26, 46, 0.95);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .logo i {
+      color: var(--accent);
+    }
+
+    .logo span {
+      background: linear-gradient(135deg, var(--accent), #ff9a8b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .gpu-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg-tertiary);
+      border-radius: 20px;
+      font-size: 0.85rem;
+    }
+
+    .gpu-badge.active {
+      background: linear-gradient(135deg, #059669, #10b981);
+    }
+
+    .gpu-badge.inactive {
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+    }
+
+    /* Main Layout */
+    .main-container {
+      display: grid;
+      grid-template-columns: 280px 1fr 300px;
+      height: calc(100vh - 70px);
+    }
+
+    /* Left Panel - Effects */
+    .effects-panel {
+      background: var(--panel-bg);
+      border-right: 1px solid var(--border-color);
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    .panel-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .effect-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .effect-group h4 {
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+      color: var(--text-primary);
+    }
+
+    .effect-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .effect-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: translateX(4px);
+    }
+
+    .effect-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .effect-btn i {
+      width: 20px;
+      text-align: center;
+    }
+
+    /* Slider Controls */
+    .slider-control {
+      margin-bottom: 1rem;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .slider-value {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      -webkit-appearance: none;
+      background: var(--bg-tertiary);
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Canvas Area */
+    .canvas-area {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+    }
+
+    .video-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #videoCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .drop-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.8);
+      border: 3px dashed var(--border-color);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(233, 69, 96, 0.1);
+    }
+
+    .drop-zone i {
+      font-size: 4rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .drop-zone h3 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .drop-zone p {
+      color: var(--text-secondary);
+    }
+
+    .drop-zone.hidden {
+      display: none;
+    }
+
+    /* Timeline */
+    .timeline {
+      height: 80px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .timeline-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .timeline-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .timeline-btn:hover {
+      background: var(--accent);
+      transform: scale(1.1);
+    }
+
+    .timeline-btn.play-btn {
+      width: 50px;
+      height: 50px;
+      background: var(--accent);
+    }
+
+    .timeline-track {
+      flex: 1;
+      height: 40px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .timeline-progress {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #ff9a8b);
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .timeline-time {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      min-width: 100px;
+      text-align: right;
+    }
+
+    /* Right Panel - Properties */
+    .properties-panel {
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border-color);
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    .color-picker-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .color-picker-group label {
+      flex: 1;
+      font-size: 0.85rem;
+    }
+
+    input[type="color"] {
+      width: 40px;
+      height: 30px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    /* Mask Drawing */
+    .mask-tools {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .mask-tool-btn {
+      flex: 1;
+      padding: 0.5rem;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mask-tool-btn:hover, .mask-tool-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Export Panel */
+    .export-section {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .export-btn {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, var(--accent), #ff9a8b);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s;
+    }
+
+    .export-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(233, 69, 96, 0.4);
+    }
+
+    .export-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .export-progress {
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .export-progress.active {
+      display: block;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #ff9a8b);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+
+    /* Notifications */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transform: translateX(120%);
+      transition: transform 0.3s;
+      z-index: 1000;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success {
+      border-color: var(--success);
+    }
+
+    .notification.error {
+      border-color: var(--accent);
+    }
+
+    .notification i {
+      font-size: 1.2rem;
+    }
+
+    .notification.success i {
+      color: var(--success);
+    }
+
+    .notification.error i {
+      color: var(--accent);
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid var(--bg-tertiary);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      margin-top: 1.5rem;
+      font-size: 1.1rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .main-container {
+        grid-template-columns: 250px 1fr;
+      }
+      .properties-panel {
+        display: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+      .effects-panel {
+        display: none;
+      }
+      .header {
+        padding: 0.75rem 1rem;
+      }
+    }
+
+    /* Hidden video element */
+    #sourceVideo {
+      display: none;
+    }
+
+    /* Mask canvas overlay */
+    #maskCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    #maskCanvas.drawing {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+
+    /* Region selection */
+    .region-rect {
+      position: absolute;
+      border: 2px dashed var(--accent);
+      background: rgba(233, 69, 96, 0.2);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Инициализация WebGPU...</div>
+  </div>
+
+  <!-- Notification -->
+  <div id="notification" class="notification">
+    <i class="fas fa-check-circle"></i>
+    <span id="notificationText">Сообщение</span>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <i class="fas fa-film"></i>
+      <span>GPU Video Editor</span>
+    </div>
+    <div class="header-actions">
+      <div id="gpuBadge" class="gpu-badge inactive">
+        <i class="fas fa-microchip"></i>
+        <span id="gpuStatus">Проверка GPU...</span>
+      </div>
+      <button class="effect-btn" onclick="loadDemoVideo()" style="width: auto;">
+        <i class="fas fa-play-circle"></i> Демо-видео
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Left Panel - Effects -->
+    <aside class="effects-panel">
+      <div class="panel-title">
+        <i class="fas fa-magic"></i> Эффекты
+      </div>
+
+      <div class="effect-group">
+        <h4><i class="fas fa-adjust"></i> Размытие</h4>
+        <div class="slider-control">
+          <div class="slider-label">
+            <span>Интенсивность</span>
+            <span class="slider-value" id="blurValue">0</span>
+          </div>
+          <input type="range" id="blurSlider" min="0" max="20" value="0" step="1">
+        </div>
+      </div>
+
+      <div class="effect-group">
+        <h4><i class="fas fa-th-large"></i> Пикселизация (Цензура)</h4>
+        <div class="slider-control">
+          <div class="slider-label">
+            <span>Размер блока</span>
+            <span class="slider-value" id="pixelateValue">1</span>
+          </div>
+          <input type="range" id="pixelateSlider" min="1" max="32" value="1" step="1">
+        </div>
+      </div>
+
+      <div class="effect-group">
+        <h4><i class="fas fa-palette"></i> Цветокоррекция</h4>
+        <div class="slider-control">
+          <div class="slider-label">
+            <span>Яркость</span>
+            <span class="slider-value" id="brightnessValue">0</span>
+          </div>
+          <input type="range" id="brightnessSlider" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-control">
+          <div class="slider-label">
+            <span>Контраст</span>
+            <span class="slider-value" id="contrastValue">0</span>
+          </div>
+          <input type="range" id="contrastSlider" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-control">
+          <div class="slider-label">
+            <span>Насыщенность</span>
+            <span class="slider-value" id="saturationValue">0</span>
+          </div>
+          <input type="range" id="saturationSlider" min="-100" max="100" value="0">
+        </div>
+      </div>
+
+      <div class="effect-group">
+        <h4><i class="fas fa-circle"></i> Виньетка</h4>
+        <div class="slider-control">
+          <div class="slider-label">
+            <span>Интенсивность</span>
+            <span class="slider-value" id="vignetteValue">0</span>
+          </div>
+          <input type="range" id="vignetteSlider" min="0" max="100" value="0">
+        </div>
+      </div>
+
+      <div class="effect-group">
+        <h4><i class="fas fa-fill-drip"></i> Замена фона (Chroma Key)</h4>
+        <button class="effect-btn" id="chromaKeyToggle">
+          <i class="fas fa-toggle-off"></i> Включить
+        </button>
+        <div class="color-picker-group" style="margin-top: 0.75rem;">
+          <label>Цвет ключа:</label>
+          <input type="color" id="chromaColor" value="#00ff00">
+        </div>
+        <div class="slider-control">
+          <div class="slider-label">
+            <span>Допуск</span>
+            <span class="slider-value" id="chromaToleranceValue">30</span>
+          </div>
+          <input type="range" id="chromaToleranceSlider" min="1" max="100" value="30">
+        </div>
+        <div class="color-picker-group">
+          <label>Новый фон:</label>
+          <input type="color" id="chromaBackground" value="#0f0f0f">
+        </div>
+      </div>
+
+      <div class="effect-group">
+        <button class="effect-btn" id="resetEffects" style="background: #dc2626; border-color: #dc2626;">
+          <i class="fas fa-undo"></i> Сбросить все эффекты
+        </button>
+      </div>
+    </aside>
+
+    <!-- Canvas Area -->
+    <main class="canvas-area">
+      <div class="video-container" id="videoContainer">
+        <video id="sourceVideo" crossorigin="anonymous" playsinline></video>
+        <canvas id="videoCanvas"></canvas>
+        <canvas id="maskCanvas"></canvas>
+
+        <div class="drop-zone" id="dropZone">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <h3>Загрузите видео</h3>
+          <p>Перетащите файл или нажмите для выбора</p>
+          <input type="file" id="fileInput" accept="video/*" style="display: none;">
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="timeline">
+        <div class="timeline-controls">
+          <button class="timeline-btn" id="prevFrameBtn" title="Предыдущий кадр">
+            <i class="fas fa-step-backward"></i>
+          </button>
+          <button class="timeline-btn play-btn" id="playBtn" title="Воспроизведение">
+            <i class="fas fa-play" id="playIcon"></i>
+          </button>
+          <button class="timeline-btn" id="nextFrameBtn" title="Следующий кадр">
+            <i class="fas fa-step-forward"></i>
+          </button>
+        </div>
+        <div class="timeline-track" id="timelineTrack">
+          <div class="timeline-progress" id="timelineProgress"></div>
+        </div>
+        <div class="timeline-time">
+          <span id="currentTime">0:00</span> / <span id="totalTime">0:00</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Panel - Properties -->
+    <aside class="properties-panel">
+      <div class="panel-title">
+        <i class="fas fa-crop-alt"></i> Области цензуры
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+        Выделите области на видео для применения локальных эффектов (размытие/пикселизация).
+      </p>
+
+      <div class="mask-tools">
+        <button class="mask-tool-btn" id="rectTool" title="Прямоугольник">
+          <i class="fas fa-vector-square"></i>
+        </button>
+        <button class="mask-tool-btn" id="brushTool" title="Кисть">
+          <i class="fas fa-paint-brush"></i>
+        </button>
+        <button class="mask-tool-btn" id="eraserTool" title="Ластик">
+          <i class="fas fa-eraser"></i>
+        </button>
+        <button class="mask-tool-btn" id="clearMaskBtn" title="Очистить">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+
+      <div class="slider-control">
+        <div class="slider-label">
+          <span>Размер кисти</span>
+          <span class="slider-value" id="brushSizeValue">20</span>
+        </div>
+        <input type="range" id="brushSizeSlider" min="5" max="100" value="20">
+      </div>
+
+      <div class="effect-group">
+        <h4>Эффект для области:</h4>
+        <button class="effect-btn active" id="maskBlurEffect">
+          <i class="fas fa-water"></i> Размытие
+        </button>
+        <button class="effect-btn" id="maskPixelateEffect">
+          <i class="fas fa-th"></i> Пикселизация
+        </button>
+      </div>
+
+      <!-- Export Section -->
+      <div class="export-section">
+        <div class="panel-title">
+          <i class="fas fa-download"></i> Экспорт
+        </div>
+
+        <div class="slider-control">
+          <div class="slider-label">
+            <span>Качество</span>
+            <span class="slider-value" id="qualityValue">80%</span>
+          </div>
+          <input type="range" id="qualitySlider" min="10" max="100" value="80">
+        </div>
+
+        <button class="export-btn" id="exportBtn" disabled>
+          <i class="fas fa-file-video"></i> Экспорт видео
+        </button>
+
+        <div class="export-progress" id="exportProgress">
+          <div class="progress-bar">
+            <div class="progress-fill" id="exportProgressFill"></div>
+          </div>
+          <div class="progress-text" id="exportProgressText">Экспорт: 0%</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    /**
+     * GPU Video Editor
+     * Real-time видеоэффекты с использованием WebGPU
+     */
+
+    // Глобальные переменные
+    let device = null;
+    let context = null;
+    let pipeline = null;
+    let sampler = null;
+    let uniformBuffer = null;
+    let maskTexture = null;
+    let isWebGPUAvailable = false;
+    let isPlaying = false;
+    let animationFrameId = null;
+
+    // Видео элементы
+    const sourceVideo = document.getElementById("sourceVideo");
+    const videoCanvas = document.getElementById("videoCanvas");
+    const maskCanvas = document.getElementById("maskCanvas");
+    const ctx2d = videoCanvas.getContext("2d");
+    const maskCtx = maskCanvas.getContext("2d");
+
+    // UI элементы
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    const notification = document.getElementById("notification");
+    const notificationText = document.getElementById("notificationText");
+
+    // Параметры эффектов
+    const effects = {
+      blur: 0,
+      pixelate: 1,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      vignette: 0,
+      chromaKey: false,
+      chromaColor: [0, 1, 0],
+      chromaTolerance: 0.3,
+      chromaBackground: [0.06, 0.06, 0.06]
+    };
+
+    // Маска для локальных эффектов
+    let maskData = null;
+    let isDrawingMask = false;
+    let currentMaskTool = null;
+    let maskEffect = "blur";
+    let brushSize = 20;
+    let lastMaskPos = null;
+
+    /**
+     * Инициализация WebGPU
+     */
+    async function initWebGPU() {
+      try {
+        if (!navigator.gpu) {
+          throw new Error("WebGPU не поддерживается в этом браузере");
+        }
+
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          throw new Error("Не удалось получить GPU адаптер");
+        }
+
+        device = await adapter.requestDevice();
+
+        // Проверяем поддержку
+        isWebGPUAvailable = true;
+        document.getElementById("gpuBadge").classList.remove("inactive");
+        document.getElementById("gpuBadge").classList.add("active");
+        document.getElementById("gpuStatus").textContent = "WebGPU активен";
+
+        showNotification("WebGPU инициализирован успешно", "success");
+
+      } catch (error) {
+        console.warn("WebGPU недоступен, используем Canvas 2D:", error);
+        document.getElementById("gpuStatus").textContent = "Canvas 2D (fallback)";
+        showNotification("WebGPU недоступен, используется Canvas 2D", "error");
+      }
+
+      loadingOverlay.classList.add("hidden");
+    }
+
+    /**
+     * Показать уведомление
+     */
+    function showNotification(message, type = "success") {
+      notification.className = `notification ${type} show`;
+      notificationText.textContent = message;
+      notification.querySelector("i").className = type === "success"
+        ? "fas fa-check-circle"
+        : "fas fa-exclamation-circle";
+
+      setTimeout(() => {
+        notification.classList.remove("show");
+      }, 3000);
+    }
+
+    /**
+     * Загрузка видео
+     */
+    function loadVideo(file) {
+      const url = URL.createObjectURL(file);
+      sourceVideo.src = url;
+
+      sourceVideo.onloadedmetadata = () => {
+        videoCanvas.width = sourceVideo.videoWidth;
+        videoCanvas.height = sourceVideo.videoHeight;
+        maskCanvas.width = sourceVideo.videoWidth;
+        maskCanvas.height = sourceVideo.videoHeight;
+
+        // Инициализация маски
+        maskData = new Uint8Array(sourceVideo.videoWidth * sourceVideo.videoHeight);
+
+        dropZone.classList.add("hidden");
+        document.getElementById("exportBtn").disabled = false;
+
+        // Отображаем первый кадр
+        sourceVideo.currentTime = 0;
+        updateTotalTime();
+        showNotification("Видео загружено: " + file.name, "success");
+      };
+
+      sourceVideo.ontimeupdate = updateTimeline;
+
+      sourceVideo.onended = () => {
+        isPlaying = false;
+        updatePlayButton();
+      };
+    }
+
+    /**
+     * Загрузка демо-видео
+     */
+    function loadDemoVideo() {
+      // Создаем демо-видео с градиентом
+      const demoCanvas = document.createElement("canvas");
+      demoCanvas.width = 640;
+      demoCanvas.height = 360;
+      const demoCtx = demoCanvas.getContext("2d");
+
+      const frames = [];
+      const totalFrames = 150; // 5 секунд при 30fps
+
+      for (let i = 0; i < totalFrames; i++) {
+        const hue = (i * 2) % 360;
+        const gradient = demoCtx.createLinearGradient(0, 0, demoCanvas.width, demoCanvas.height);
+        gradient.addColorStop(0, `hsl(${hue}, 70%, 50%)`);
+        gradient.addColorStop(0.5, `hsl(${(hue + 60) % 360}, 70%, 50%)`);
+        gradient.addColorStop(1, `hsl(${(hue + 120) % 360}, 70%, 50%)`);
+
+        demoCtx.fillStyle = gradient;
+        demoCtx.fillRect(0, 0, demoCanvas.width, demoCanvas.height);
+
+        // Добавляем движущиеся круги
+        for (let j = 0; j < 5; j++) {
+          const x = (Math.sin(i * 0.05 + j) * 0.3 + 0.5) * demoCanvas.width;
+          const y = (Math.cos(i * 0.03 + j * 2) * 0.3 + 0.5) * demoCanvas.height;
+          const radius = 30 + Math.sin(i * 0.1 + j) * 20;
+
+          demoCtx.beginPath();
+          demoCtx.arc(x, y, radius, 0, Math.PI * 2);
+          demoCtx.fillStyle = `hsla(${(hue + j * 72) % 360}, 80%, 60%, 0.7)`;
+          demoCtx.fill();
+        }
+
+        // Текст
+        demoCtx.fillStyle = "white";
+        demoCtx.font = "bold 24px Arial";
+        demoCtx.textAlign = "center";
+        demoCtx.fillText("GPU Video Editor Demo", demoCanvas.width / 2, 50);
+        demoCtx.font = "16px Arial";
+        demoCtx.fillText(`Кадр: ${i + 1}/${totalFrames}`, demoCanvas.width / 2, demoCanvas.height - 30);
+      }
+
+      // Создаем видео из canvas используя MediaRecorder
+      const stream = demoCanvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const file = new File([blob], "demo.webm", { type: "video/webm" });
+        loadVideo(file);
+      };
+
+      recorder.start();
+
+      let frameIndex = 0;
+      function renderDemoFrame() {
+        if (frameIndex >= totalFrames) {
+          recorder.stop();
+          return;
+        }
+
+        const hue = (frameIndex * 2) % 360;
+        const gradient = demoCtx.createLinearGradient(0, 0, demoCanvas.width, demoCanvas.height);
+        gradient.addColorStop(0, `hsl(${hue}, 70%, 50%)`);
+        gradient.addColorStop(0.5, `hsl(${(hue + 60) % 360}, 70%, 50%)`);
+        gradient.addColorStop(1, `hsl(${(hue + 120) % 360}, 70%, 50%)`);
+
+        demoCtx.fillStyle = gradient;
+        demoCtx.fillRect(0, 0, demoCanvas.width, demoCanvas.height);
+
+        for (let j = 0; j < 5; j++) {
+          const x = (Math.sin(frameIndex * 0.05 + j) * 0.3 + 0.5) * demoCanvas.width;
+          const y = (Math.cos(frameIndex * 0.03 + j * 2) * 0.3 + 0.5) * demoCanvas.height;
+          const radius = 30 + Math.sin(frameIndex * 0.1 + j) * 20;
+
+          demoCtx.beginPath();
+          demoCtx.arc(x, y, radius, 0, Math.PI * 2);
+          demoCtx.fillStyle = `hsla(${(hue + j * 72) % 360}, 80%, 60%, 0.7)`;
+          demoCtx.fill();
+        }
+
+        demoCtx.fillStyle = "white";
+        demoCtx.font = "bold 24px Arial";
+        demoCtx.textAlign = "center";
+        demoCtx.fillText("GPU Video Editor Demo", demoCanvas.width / 2, 50);
+        demoCtx.font = "16px Arial";
+        demoCtx.fillText(`Кадр: ${frameIndex + 1}/${totalFrames}`, demoCanvas.width / 2, demoCanvas.height - 30);
+
+        frameIndex++;
+        requestAnimationFrame(renderDemoFrame);
+      }
+
+      showNotification("Генерация демо-видео...", "success");
+      renderDemoFrame();
+    }
+
+    /**
+     * Применение эффектов к кадру (Canvas 2D fallback)
+     */
+    function applyEffectsCanvas2D() {
+      if (sourceVideo.readyState < 2) return;
+
+      ctx2d.drawImage(sourceVideo, 0, 0);
+
+      const imageData = ctx2d.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+      const data = imageData.data;
+
+      // Применяем глобальные эффекты
+      for (let i = 0; i < data.length; i += 4) {
+        let r = data[i];
+        let g = data[i + 1];
+        let b = data[i + 2];
+
+        // Яркость
+        if (effects.brightness !== 0) {
+          const factor = effects.brightness / 100;
+          r += 255 * factor;
+          g += 255 * factor;
+          b += 255 * factor;
+        }
+
+        // Контраст
+        if (effects.contrast !== 0) {
+          const factor = (259 * (effects.contrast + 255)) / (255 * (259 - effects.contrast));
+          r = factor * (r - 128) + 128;
+          g = factor * (g - 128) + 128;
+          b = factor * (b - 128) + 128;
+        }
+
+        // Насыщенность
+        if (effects.saturation !== 0) {
+          const gray = 0.2989 * r + 0.587 * g + 0.114 * b;
+          const factor = 1 + effects.saturation / 100;
+          r = gray + factor * (r - gray);
+          g = gray + factor * (g - gray);
+          b = gray + factor * (b - gray);
+        }
+
+        // Chroma Key
+        if (effects.chromaKey) {
+          const keyR = effects.chromaColor[0] * 255;
+          const keyG = effects.chromaColor[1] * 255;
+          const keyB = effects.chromaColor[2] * 255;
+          const tolerance = effects.chromaTolerance * 255;
+
+          const diff = Math.sqrt(
+            Math.pow(r - keyR, 2) +
+            Math.pow(g - keyG, 2) +
+            Math.pow(b - keyB, 2)
+          );
+
+          if (diff < tolerance) {
+            r = effects.chromaBackground[0] * 255;
+            g = effects.chromaBackground[1] * 255;
+            b = effects.chromaBackground[2] * 255;
+          }
+        }
+
+        data[i] = Math.max(0, Math.min(255, r));
+        data[i + 1] = Math.max(0, Math.min(255, g));
+        data[i + 2] = Math.max(0, Math.min(255, b));
+      }
+
+      ctx2d.putImageData(imageData, 0, 0);
+
+      // Размытие через CSS filter (для демонстрации)
+      if (effects.blur > 0) {
+        ctx2d.filter = `blur(${effects.blur}px)`;
+        ctx2d.drawImage(videoCanvas, 0, 0);
+        ctx2d.filter = "none";
+      }
+
+      // Пикселизация
+      if (effects.pixelate > 1) {
+        const size = effects.pixelate;
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = videoCanvas.width / size;
+        tempCanvas.height = videoCanvas.height / size;
+        const tempCtx = tempCanvas.getContext("2d");
+
+        tempCtx.drawImage(videoCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
+        ctx2d.imageSmoothingEnabled = false;
+        ctx2d.drawImage(tempCanvas, 0, 0, videoCanvas.width, videoCanvas.height);
+        ctx2d.imageSmoothingEnabled = true;
+      }
+
+      // Виньетка
+      if (effects.vignette > 0) {
+        const gradient = ctx2d.createRadialGradient(
+          videoCanvas.width / 2, videoCanvas.height / 2,
+          Math.min(videoCanvas.width, videoCanvas.height) * 0.3,
+          videoCanvas.width / 2, videoCanvas.height / 2,
+          Math.max(videoCanvas.width, videoCanvas.height) * 0.7
+        );
+        gradient.addColorStop(0, "rgba(0,0,0,0)");
+        gradient.addColorStop(1, `rgba(0,0,0,${effects.vignette / 100})`);
+        ctx2d.fillStyle = gradient;
+        ctx2d.fillRect(0, 0, videoCanvas.width, videoCanvas.height);
+      }
+
+      // Применяем маску для локальных эффектов
+      applyMaskEffects();
+    }
+
+    /**
+     * Применение эффектов к маске
+     */
+    function applyMaskEffects() {
+      if (!maskData) return;
+
+      // Получаем данные маски
+      const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+      const maskPixels = maskImageData.data;
+
+      // Проверяем есть ли маска
+      let hasMask = false;
+      for (let i = 3; i < maskPixels.length; i += 4) {
+        if (maskPixels[i] > 0) {
+          hasMask = true;
+          break;
+        }
+      }
+
+      if (!hasMask) return;
+
+      const imageData = ctx2d.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+      const data = imageData.data;
+
+      // Применяем эффект к замаскированным областям
+      for (let y = 0; y < videoCanvas.height; y++) {
+        for (let x = 0; x < videoCanvas.width; x++) {
+          const idx = (y * videoCanvas.width + x) * 4;
+          const maskAlpha = maskPixels[idx + 3] / 255;
+
+          if (maskAlpha > 0) {
+            if (maskEffect === "blur") {
+              // Простое размытие - усредняем соседние пиксели
+              let r = 0, g = 0, b = 0, count = 0;
+              const radius = 5;
+
+              for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                  const nx = x + dx;
+                  const ny = y + dy;
+                  if (nx >= 0 && nx < videoCanvas.width && ny >= 0 && ny < videoCanvas.height) {
+                    const nidx = (ny * videoCanvas.width + nx) * 4;
+                    r += data[nidx];
+                    g += data[nidx + 1];
+                    b += data[nidx + 2];
+                    count++;
+                  }
+                }
+              }
+
+              data[idx] = r / count;
+              data[idx + 1] = g / count;
+              data[idx + 2] = b / count;
+            } else if (maskEffect === "pixelate") {
+              // Пикселизация
+              const blockSize = 10;
+              const bx = Math.floor(x / blockSize) * blockSize;
+              const by = Math.floor(y / blockSize) * blockSize;
+              const bidx = (by * videoCanvas.width + bx) * 4;
+
+              data[idx] = data[bidx];
+              data[idx + 1] = data[bidx + 1];
+              data[idx + 2] = data[bidx + 2];
+            }
+          }
+        }
+      }
+
+      ctx2d.putImageData(imageData, 0, 0);
+    }
+
+    /**
+     * Рендер кадра
+     */
+    function renderFrame() {
+      applyEffectsCanvas2D();
+
+      if (isPlaying) {
+        animationFrameId = requestAnimationFrame(renderFrame);
+      }
+    }
+
+    /**
+     * Воспроизведение/пауза
+     */
+    function togglePlay() {
+      if (sourceVideo.readyState < 2) return;
+
+      if (isPlaying) {
+        sourceVideo.pause();
+        isPlaying = false;
+        cancelAnimationFrame(animationFrameId);
+      } else {
+        sourceVideo.play();
+        isPlaying = true;
+        renderFrame();
+      }
+
+      updatePlayButton();
+    }
+
+    function updatePlayButton() {
+      const icon = document.getElementById("playIcon");
+      icon.className = isPlaying ? "fas fa-pause" : "fas fa-play";
+    }
+
+    /**
+     * Обновление таймлайна
+     */
+    function updateTimeline() {
+      const progress = (sourceVideo.currentTime / sourceVideo.duration) * 100;
+      document.getElementById("timelineProgress").style.width = progress + "%";
+      document.getElementById("currentTime").textContent = formatTime(sourceVideo.currentTime);
+
+      if (!isPlaying && sourceVideo.readyState >= 2) {
+        renderFrame();
+      }
+    }
+
+    function updateTotalTime() {
+      document.getElementById("totalTime").textContent = formatTime(sourceVideo.duration);
+    }
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, "0")}`;
+    }
+
+    /**
+     * Навигация по кадрам
+     */
+    function prevFrame() {
+      sourceVideo.currentTime = Math.max(0, sourceVideo.currentTime - 1/30);
+    }
+
+    function nextFrame() {
+      sourceVideo.currentTime = Math.min(sourceVideo.duration, sourceVideo.currentTime + 1/30);
+    }
+
+    /**
+     * Инструменты маски
+     */
+    function setupMaskTools() {
+      const videoContainer = document.getElementById("videoContainer");
+
+      maskCanvas.addEventListener("mousedown", (e) => {
+        if (!currentMaskTool) return;
+        isDrawingMask = true;
+        const rect = maskCanvas.getBoundingClientRect();
+        const scaleX = maskCanvas.width / rect.width;
+        const scaleY = maskCanvas.height / rect.height;
+        lastMaskPos = {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+        drawMask(lastMaskPos.x, lastMaskPos.y);
+      });
+
+      maskCanvas.addEventListener("mousemove", (e) => {
+        if (!isDrawingMask || !currentMaskTool) return;
+        const rect = maskCanvas.getBoundingClientRect();
+        const scaleX = maskCanvas.width / rect.width;
+        const scaleY = maskCanvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        drawMaskLine(lastMaskPos.x, lastMaskPos.y, x, y);
+        lastMaskPos = { x, y };
+      });
+
+      window.addEventListener("mouseup", () => {
+        isDrawingMask = false;
+        lastMaskPos = null;
+      });
+    }
+
+    function drawMask(x, y) {
+      if (currentMaskTool === "eraser") {
+        maskCtx.globalCompositeOperation = "destination-out";
+      } else {
+        maskCtx.globalCompositeOperation = "source-over";
+      }
+
+      maskCtx.fillStyle = "rgba(233, 69, 96, 0.5)";
+      maskCtx.beginPath();
+      maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+      maskCtx.fill();
+
+      if (!isPlaying) renderFrame();
+    }
+
+    function drawMaskLine(x1, y1, x2, y2) {
+      if (currentMaskTool === "eraser") {
+        maskCtx.globalCompositeOperation = "destination-out";
+      } else {
+        maskCtx.globalCompositeOperation = "source-over";
+      }
+
+      maskCtx.strokeStyle = "rgba(233, 69, 96, 0.5)";
+      maskCtx.lineWidth = brushSize;
+      maskCtx.lineCap = "round";
+      maskCtx.beginPath();
+      maskCtx.moveTo(x1, y1);
+      maskCtx.lineTo(x2, y2);
+      maskCtx.stroke();
+
+      if (!isPlaying) renderFrame();
+    }
+
+    function clearMask() {
+      maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+      if (!isPlaying) renderFrame();
+    }
+
+    function setMaskTool(tool) {
+      currentMaskTool = tool;
+
+      document.querySelectorAll(".mask-tool-btn").forEach(btn => {
+        btn.classList.remove("active");
+      });
+
+      if (tool === "rect") {
+        document.getElementById("rectTool").classList.add("active");
+      } else if (tool === "brush") {
+        document.getElementById("brushTool").classList.add("active");
+        maskCanvas.classList.add("drawing");
+      } else if (tool === "eraser") {
+        document.getElementById("eraserTool").classList.add("active");
+        maskCanvas.classList.add("drawing");
+      }
+
+      if (tool !== "brush" && tool !== "eraser") {
+        maskCanvas.classList.remove("drawing");
+      }
+    }
+
+    /**
+     * Экспорт видео
+     */
+    async function exportVideo() {
+      if (!sourceVideo.duration) return;
+
+      const exportBtn = document.getElementById("exportBtn");
+      const exportProgress = document.getElementById("exportProgress");
+      const exportProgressFill = document.getElementById("exportProgressFill");
+      const exportProgressText = document.getElementById("exportProgressText");
+
+      exportBtn.disabled = true;
+      exportProgress.classList.add("active");
+
+      const quality = parseInt(document.getElementById("qualitySlider").value) / 100;
+      const fps = 30;
+      const duration = sourceVideo.duration;
+      const totalFrames = Math.floor(duration * fps);
+
+      // Создаем MediaRecorder
+      const stream = videoCanvas.captureStream(fps);
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9"
+        : "video/webm";
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType: mimeType,
+        videoBitsPerSecond: quality * 8000000
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "edited_video.webm";
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+        exportBtn.disabled = false;
+        exportProgress.classList.remove("active");
+        showNotification("Видео успешно экспортировано!", "success");
+      };
+
+      recorder.start();
+
+      // Рендерим каждый кадр
+      sourceVideo.currentTime = 0;
+      let currentFrame = 0;
+
+      async function processFrame() {
+        if (currentFrame >= totalFrames) {
+          recorder.stop();
+          return;
+        }
+
+        sourceVideo.currentTime = currentFrame / fps;
+
+        await new Promise(resolve => {
+          sourceVideo.onseeked = resolve;
+        });
+
+        renderFrame();
+
+        const progress = (currentFrame / totalFrames) * 100;
+        exportProgressFill.style.width = progress + "%";
+        exportProgressText.textContent = `Экспорт: ${Math.round(progress)}%`;
+
+        currentFrame++;
+
+        // Даем браузеру передохнуть
+        await new Promise(resolve => setTimeout(resolve, 10));
+        processFrame();
+      }
+
+      processFrame();
+    }
+
+    /**
+     * Сброс эффектов
+     */
+    function resetEffects() {
+      effects.blur = 0;
+      effects.pixelate = 1;
+      effects.brightness = 0;
+      effects.contrast = 0;
+      effects.saturation = 0;
+      effects.vignette = 0;
+      effects.chromaKey = false;
+
+      document.getElementById("blurSlider").value = 0;
+      document.getElementById("blurValue").textContent = "0";
+      document.getElementById("pixelateSlider").value = 1;
+      document.getElementById("pixelateValue").textContent = "1";
+      document.getElementById("brightnessSlider").value = 0;
+      document.getElementById("brightnessValue").textContent = "0";
+      document.getElementById("contrastSlider").value = 0;
+      document.getElementById("contrastValue").textContent = "0";
+      document.getElementById("saturationSlider").value = 0;
+      document.getElementById("saturationValue").textContent = "0";
+      document.getElementById("vignetteSlider").value = 0;
+      document.getElementById("vignetteValue").textContent = "0";
+
+      const chromaToggle = document.getElementById("chromaKeyToggle");
+      chromaToggle.innerHTML = '<i class="fas fa-toggle-off"></i> Включить';
+      chromaToggle.classList.remove("active");
+
+      clearMask();
+
+      if (!isPlaying) renderFrame();
+      showNotification("Все эффекты сброшены", "success");
+    }
+
+    /**
+     * Инициализация обработчиков событий
+     */
+    function setupEventListeners() {
+      // Загрузка файла
+      dropZone.addEventListener("click", () => fileInput.click());
+
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+          loadVideo(e.target.files[0]);
+        }
+      });
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        if (e.dataTransfer.files.length > 0) {
+          loadVideo(e.dataTransfer.files[0]);
+        }
+      });
+
+      // Воспроизведение
+      document.getElementById("playBtn").addEventListener("click", togglePlay);
+      document.getElementById("prevFrameBtn").addEventListener("click", prevFrame);
+      document.getElementById("nextFrameBtn").addEventListener("click", nextFrame);
+
+      // Таймлайн
+      document.getElementById("timelineTrack").addEventListener("click", (e) => {
+        const rect = e.target.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        sourceVideo.currentTime = percent * sourceVideo.duration;
+      });
+
+      // Слайдеры эффектов
+      const sliderMappings = [
+        { id: "blurSlider", prop: "blur", valueId: "blurValue" },
+        { id: "pixelateSlider", prop: "pixelate", valueId: "pixelateValue" },
+        { id: "brightnessSlider", prop: "brightness", valueId: "brightnessValue" },
+        { id: "contrastSlider", prop: "contrast", valueId: "contrastValue" },
+        { id: "saturationSlider", prop: "saturation", valueId: "saturationValue" },
+        { id: "vignetteSlider", prop: "vignette", valueId: "vignetteValue" }
+      ];
+
+      sliderMappings.forEach(({ id, prop, valueId }) => {
+        document.getElementById(id).addEventListener("input", (e) => {
+          effects[prop] = parseFloat(e.target.value);
+          document.getElementById(valueId).textContent = e.target.value;
+          if (!isPlaying) renderFrame();
+        });
+      });
+
+      // Chroma Key
+      document.getElementById("chromaKeyToggle").addEventListener("click", (e) => {
+        effects.chromaKey = !effects.chromaKey;
+        e.target.innerHTML = effects.chromaKey
+          ? '<i class="fas fa-toggle-on"></i> Выключить'
+          : '<i class="fas fa-toggle-off"></i> Включить';
+        e.target.classList.toggle("active", effects.chromaKey);
+        if (!isPlaying) renderFrame();
+      });
+
+      document.getElementById("chromaColor").addEventListener("input", (e) => {
+        const hex = e.target.value;
+        effects.chromaColor = [
+          parseInt(hex.slice(1, 3), 16) / 255,
+          parseInt(hex.slice(3, 5), 16) / 255,
+          parseInt(hex.slice(5, 7), 16) / 255
+        ];
+        if (!isPlaying) renderFrame();
+      });
+
+      document.getElementById("chromaToleranceSlider").addEventListener("input", (e) => {
+        effects.chromaTolerance = parseFloat(e.target.value) / 100;
+        document.getElementById("chromaToleranceValue").textContent = e.target.value;
+        if (!isPlaying) renderFrame();
+      });
+
+      document.getElementById("chromaBackground").addEventListener("input", (e) => {
+        const hex = e.target.value;
+        effects.chromaBackground = [
+          parseInt(hex.slice(1, 3), 16) / 255,
+          parseInt(hex.slice(3, 5), 16) / 255,
+          parseInt(hex.slice(5, 7), 16) / 255
+        ];
+        if (!isPlaying) renderFrame();
+      });
+
+      // Инструменты маски
+      document.getElementById("rectTool").addEventListener("click", () => setMaskTool("rect"));
+      document.getElementById("brushTool").addEventListener("click", () => setMaskTool("brush"));
+      document.getElementById("eraserTool").addEventListener("click", () => setMaskTool("eraser"));
+      document.getElementById("clearMaskBtn").addEventListener("click", clearMask);
+
+      document.getElementById("brushSizeSlider").addEventListener("input", (e) => {
+        brushSize = parseInt(e.target.value);
+        document.getElementById("brushSizeValue").textContent = brushSize;
+      });
+
+      document.getElementById("maskBlurEffect").addEventListener("click", (e) => {
+        maskEffect = "blur";
+        document.getElementById("maskBlurEffect").classList.add("active");
+        document.getElementById("maskPixelateEffect").classList.remove("active");
+        if (!isPlaying) renderFrame();
+      });
+
+      document.getElementById("maskPixelateEffect").addEventListener("click", (e) => {
+        maskEffect = "pixelate";
+        document.getElementById("maskPixelateEffect").classList.add("active");
+        document.getElementById("maskBlurEffect").classList.remove("active");
+        if (!isPlaying) renderFrame();
+      });
+
+      // Качество экспорта
+      document.getElementById("qualitySlider").addEventListener("input", (e) => {
+        document.getElementById("qualityValue").textContent = e.target.value + "%";
+      });
+
+      // Экспорт
+      document.getElementById("exportBtn").addEventListener("click", exportVideo);
+
+      // Сброс
+      document.getElementById("resetEffects").addEventListener("click", resetEffects);
+
+      // Горячие клавиши
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          e.preventDefault();
+          togglePlay();
+        } else if (e.code === "ArrowLeft") {
+          prevFrame();
+        } else if (e.code === "ArrowRight") {
+          nextFrame();
+        }
+      });
+    }
+
+    /**
+     * Инициализация приложения
+     */
+    async function init() {
+      await initWebGPU();
+      setupEventListeners();
+      setupMaskTools();
+    }
+
+    init();
+  </script>
+</body>
+</html>
