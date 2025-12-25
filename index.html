@@ -1470,6 +1470,33 @@
                         <a href="iphone-ios.html" class="view-btn">Открыть</a>
                     </div>
                 </div>
+
+                <div class="example-card" data-category="web-apps">
+                    <div class="card-header">
+                        <h3><i class="fas fa-magic"></i> Удаление фона</h3>
+                        <span class="new-badge">NEW</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="problem-statement">Нужно удалить или заменить фон на фото?</p>
+                        <p>AI-инструмент для удаления и замены фона на изображениях прямо в браузере. Работает полностью локально — ваши фото никуда не отправляются.</p>
+                        <ul class="features-list">
+                            <li>Удаление фона с помощью AI модели RMBG-1.4</li>
+                            <li>Замена на прозрачный, цвет или другое изображение</li>
+                            <li>Drag-and-drop загрузка изображений</li>
+                            <li>Экспорт в PNG с прозрачностью</li>
+                            <li>Обработка локально, конфиденциально</li>
+                        </ul>
+                        <div class="tech-list">
+                            <span class="tech-tag">Transformers.js</span>
+                            <span class="tech-tag">WebGPU</span>
+                            <span class="tech-tag">Canvas API</span>
+                            <span class="tech-tag">RMBG-1.4</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="background-removal.html" class="view-btn">Открыть</a>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -2198,6 +2225,18 @@
                             "Пункт управления и настройки"
                         ]
                     },
+                    backgroundRemoval: {
+                        title: "Удаление фона",
+                        description: "AI-инструмент для удаления и замены фона на изображениях прямо в браузере. Работает полностью локально — ваши фото никуда не отправляются.",
+                        problem: "Нужно удалить или заменить фон на фото?",
+                        features: [
+                            "Удаление фона с помощью AI модели RMBG-1.4",
+                            "Замена на прозрачный, цвет или другое изображение",
+                            "Drag-and-drop загрузка изображений",
+                            "Экспорт в PNG с прозрачностью",
+                            "Обработка локально, конфиденциально"
+                        ]
+                    },
                     // 3D Visualizations
                     threeDBalls: {
                         title: "3D Balls",
@@ -2671,6 +2710,18 @@
                             "Control Center and Settings"
                         ]
                     },
+                    backgroundRemoval: {
+                        title: "Background Removal",
+                        description: "AI-powered tool for removing and replacing image backgrounds directly in browser. Works completely locally — your photos never leave your device.",
+                        problem: "Need to remove or replace photo background?",
+                        features: [
+                            "Background removal with AI model RMBG-1.4",
+                            "Replace with transparent, color, or custom image",
+                            "Drag-and-drop image upload",
+                            "Export to PNG with transparency",
+                            "Local processing, fully private"
+                        ]
+                    },
                     // 3D Visualizations
                     threeDBalls: {
                         title: "3D Balls",
@@ -2979,8 +3030,10 @@
                 if (webAppsCards.length > 6) updateCard(webAppsCards[6], 'cocktails', '<i class="fas fa-cocktail"></i>');
                 if (webAppsCards.length > 7) updateCard(webAppsCards[7], 'windowsWeb', '<i class="fab fa-windows"></i>');
                 if (webAppsCards.length > 8) updateCard(webAppsCards[8], 'macosWeb', '<i class="fab fa-apple"></i>');
+                if (webAppsCards.length > 9) updateCard(webAppsCards[9], 'iphoneIos', '<i class="fab fa-apple"></i>');
+                if (webAppsCards.length > 10) updateCard(webAppsCards[10], 'backgroundRemoval', '<i class="fas fa-magic"></i>');
             }
-            
+
             // Четвертая категория: 3D Визуализации
             const visualizationsCards = document.querySelectorAll('.category:nth-of-type(4) .example-card');
             if (visualizationsCards.length > 0) {
