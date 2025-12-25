@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<!--
+====================================================================================
+                        TECHNICAL SPECIFICATION (TS)
+                        Hand Gesture Theremin
+====================================================================================
+
+PROJECT OVERVIEW:
+Интерактивный терменвокс, управляемый жестами рук через веб-камеру.
+Использует MediaPipe Hands для отслеживания 21 точки каждой руки.
+
+CORE FEATURES:
+1. Захват камеры через getUserMedia API
+2. Отслеживание рук в реальном времени через MediaPipe Hands
+3. Отрисовка 21 точки руки и соединений на canvas
+4. Распознавание жестов (✌️ 👍 👎 🖐️) по углам между точками
+5. Генерация звука как терменвокс:
+   - Правая рука: X-координата управляет частотой (220-880 Гц)
+   - Левая рука: Y-координата управляет громкостью (0-1)
+6. Web Audio API для синтеза звука с осциллятором
+
+TECHNICAL REQUIREMENTS:
+- MediaPipe Hands через CDN
+- Web Audio API для генерации звука
+- Canvas API для визуализации
+- getUserMedia для доступа к камере
+
+AUTHOR: AI Assistant
+VERSION: 1.0
+LAST UPDATED: 2025
+====================================================================================
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hand Gesture Theremin - AI Pages</title>
+  <style>
+    :root {
+      --primary: #8b5cf6;
+      --secondary: #6366f1;
+      --bg-dark: #0f0f1a;
+      --bg-card: #1a1a2e;
+      --text: #e2e8f0;
+      --accent: #22d3ee;
+      --success: #10b981;
+      --warning: #f59e0b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    header {
+      text-align: center;
+      padding: 1.5rem 0;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 0 0 1rem 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .subtitle {
+      opacity: 0.9;
+      font-size: 1rem;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .video-section {
+      position: relative;
+      background: var(--bg-card);
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: #000;
+    }
+
+    #videoElement {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    #canvasElement {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform: scaleX(-1);
+    }
+
+    .gesture-display {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 2rem;
+      display: flex;
+      gap: 1rem;
+    }
+
+    .gesture-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.75rem;
+    }
+
+    .gesture-emoji {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .controls-panel {
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--secondary);
+      transform: translateY(-2px);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: black;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .panel h3 {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .sound-params {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .param-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .param-label {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .param-value {
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 1.1rem;
+      color: var(--accent);
+      min-width: 80px;
+      text-align: right;
+    }
+
+    .frequency-bar, .volume-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+
+    .frequency-bar-fill, .volume-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.1s ease;
+    }
+
+    .frequency-bar-fill {
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+    }
+
+    .volume-bar-fill {
+      background: linear-gradient(90deg, var(--success), var(--warning));
+    }
+
+    .waveform-select {
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--text);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    .instructions {
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    .instructions ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .instructions li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .instructions li:last-child {
+      border-bottom: none;
+    }
+
+    .hand-icon {
+      font-size: 1.5rem;
+    }
+
+    .gestures-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .gesture-card {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      text-align: center;
+    }
+
+    .gesture-card .emoji {
+      font-size: 1.75rem;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .gesture-card .name {
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+
+    .status-dot.active {
+      background: var(--success);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      z-index: 10;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(239, 68, 68, 0.9);
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      text-align: center;
+      max-width: 80%;
+      z-index: 20;
+    }
+
+    .error-message.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hand Gesture Theremin</h1>
+    <p class="subtitle">Управляйте звуком движениями рук как на терменвоксе</p>
+  </header>
+
+  <div class="container">
+    <div class="main-content">
+      <div class="video-section">
+        <div class="video-container">
+          <video id="videoElement" playsinline autoplay muted></video>
+          <canvas id="canvasElement"></canvas>
+
+          <div class="gesture-display">
+            <div class="gesture-item">
+              <span class="gesture-emoji" id="leftGesture">-</span>
+              <span>Левая</span>
+            </div>
+            <div class="gesture-item">
+              <span class="gesture-emoji" id="rightGesture">-</span>
+              <span>Правая</span>
+            </div>
+          </div>
+
+          <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Загрузка MediaPipe...</p>
+          </div>
+
+          <div class="error-message hidden" id="errorMessage">
+            <p>Ошибка доступа к камере</p>
+          </div>
+        </div>
+
+        <div class="controls-panel">
+          <button class="btn btn-primary" id="startBtn">
+            <span>▶</span> Запустить камеру
+          </button>
+          <button class="btn btn-success" id="soundBtn" disabled>
+            <span>🔊</span> Включить звук
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="panel">
+          <h3>📊 Параметры звука</h3>
+
+          <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Ожидание...</span>
+          </div>
+
+          <div class="sound-params">
+            <div>
+              <div class="param-row">
+                <span class="param-label">Частота (Hz)</span>
+                <span class="param-value" id="freqValue">0</span>
+              </div>
+              <div class="frequency-bar">
+                <div class="frequency-bar-fill" id="freqBar" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="param-row">
+                <span class="param-label">Громкость</span>
+                <span class="param-value" id="volValue">0%</span>
+              </div>
+              <div class="volume-bar">
+                <div class="volume-bar-fill" id="volBar" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="param-row">
+              <span class="param-label">Тип волны</span>
+            </div>
+            <select class="waveform-select" id="waveformSelect">
+              <option value="sine">Синусоида (мягкий)</option>
+              <option value="triangle">Треугольник (теплый)</option>
+              <option value="sawtooth">Пила (резкий)</option>
+              <option value="square">Квадрат (8-bit)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>👋 Инструкция</h3>
+          <div class="instructions">
+            <ul>
+              <li>
+                <span class="hand-icon">👉</span>
+                <span><strong>Правая рука:</strong> движение влево-вправо меняет частоту</span>
+              </li>
+              <li>
+                <span class="hand-icon">👈</span>
+                <span><strong>Левая рука:</strong> движение вверх-вниз меняет громкость</span>
+              </li>
+              <li>
+                <span class="hand-icon">✊</span>
+                <span><strong>Кулак:</strong> отключает звук</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>✋ Распознаваемые жесты</h3>
+          <div class="gestures-grid">
+            <div class="gesture-card">
+              <span class="emoji">🖐️</span>
+              <span class="name">Открытая ладонь</span>
+            </div>
+            <div class="gesture-card">
+              <span class="emoji">✌️</span>
+              <span class="name">Виктория</span>
+            </div>
+            <div class="gesture-card">
+              <span class="emoji">👍</span>
+              <span class="name">Палец вверх</span>
+            </div>
+            <div class="gesture-card">
+              <span class="emoji">👎</span>
+              <span class="name">Палец вниз</span>
+            </div>
+            <div class="gesture-card">
+              <span class="emoji">☝️</span>
+              <span class="name">Указатель</span>
+            </div>
+            <div class="gesture-card">
+              <span class="emoji">✊</span>
+              <span class="name">Кулак</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+  <script>
+    /**
+     * Hand Gesture Theremin
+     * Управление звуком через отслеживание рук с MediaPipe
+     */
+
+    // DOM элементы
+    const videoElement = document.getElementById("videoElement");
+    const canvasElement = document.getElementById("canvasElement");
+    const canvasCtx = canvasElement.getContext("2d");
+    const startBtn = document.getElementById("startBtn");
+    const soundBtn = document.getElementById("soundBtn");
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    const errorMessage = document.getElementById("errorMessage");
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const freqValue = document.getElementById("freqValue");
+    const volValue = document.getElementById("volValue");
+    const freqBar = document.getElementById("freqBar");
+    const volBar = document.getElementById("volBar");
+    const waveformSelect = document.getElementById("waveformSelect");
+    const leftGestureEl = document.getElementById("leftGesture");
+    const rightGestureEl = document.getElementById("rightGesture");
+
+    // Состояние приложения
+    let camera = null;
+    let hands = null;
+    let audioContext = null;
+    let oscillator = null;
+    let gainNode = null;
+    let isSoundEnabled = false;
+    let isRunning = false;
+
+    // Параметры звука
+    const MIN_FREQ = 130.81; // C3
+    const MAX_FREQ = 1046.50; // C6
+    const SMOOTHING = 0.15;
+    let currentFreq = MIN_FREQ;
+    let currentVol = 0;
+    let targetFreq = MIN_FREQ;
+    let targetVol = 0;
+
+    // Индексы точек руки MediaPipe
+    const LANDMARKS = {
+      WRIST: 0,
+      THUMB_CMC: 1, THUMB_MCP: 2, THUMB_IP: 3, THUMB_TIP: 4,
+      INDEX_MCP: 5, INDEX_PIP: 6, INDEX_DIP: 7, INDEX_TIP: 8,
+      MIDDLE_MCP: 9, MIDDLE_PIP: 10, MIDDLE_DIP: 11, MIDDLE_TIP: 12,
+      RING_MCP: 13, RING_PIP: 14, RING_DIP: 15, RING_TIP: 16,
+      PINKY_MCP: 17, PINKY_PIP: 18, PINKY_DIP: 19, PINKY_TIP: 20
+    };
+
+    /**
+     * Инициализация Web Audio API
+     */
+    function initAudio() {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      oscillator = audioContext.createOscillator();
+      gainNode = audioContext.createGain();
+
+      oscillator.type = waveformSelect.value;
+      oscillator.frequency.setValueAtTime(MIN_FREQ, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.start();
+    }
+
+    /**
+     * Обновление параметров звука
+     */
+    function updateSound() {
+      if (!audioContext || !isSoundEnabled) return;
+
+      // Плавная интерполяция
+      currentFreq += (targetFreq - currentFreq) * SMOOTHING;
+      currentVol += (targetVol - currentVol) * SMOOTHING;
+
+      oscillator.frequency.setValueAtTime(currentFreq, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(currentVol * 0.3, audioContext.currentTime);
+
+      // Обновление UI
+      const freqPercent = ((currentFreq - MIN_FREQ) / (MAX_FREQ - MIN_FREQ)) * 100;
+      freqValue.textContent = Math.round(currentFreq);
+      freqBar.style.width = freqPercent + "%";
+
+      volValue.textContent = Math.round(currentVol * 100) + "%";
+      volBar.style.width = (currentVol * 100) + "%";
+
+      requestAnimationFrame(updateSound);
+    }
+
+    /**
+     * Вычисление угла между тремя точками
+     */
+    function getAngle(p1, p2, p3) {
+      const rad = Math.atan2(p3.y - p2.y, p3.x - p2.x) -
+                  Math.atan2(p1.y - p2.y, p1.x - p2.x);
+      let deg = Math.abs(rad * 180 / Math.PI);
+      if (deg > 180) deg = 360 - deg;
+      return deg;
+    }
+
+    /**
+     * Проверка, согнут ли палец
+     */
+    function isFingerCurled(landmarks, fingerTip, fingerPip, fingerMcp) {
+      const tip = landmarks[fingerTip];
+      const pip = landmarks[fingerPip];
+      const mcp = landmarks[fingerMcp];
+      const wrist = landmarks[LANDMARKS.WRIST];
+
+      // Палец согнут если кончик ближе к запястью чем средний сустав
+      const tipDist = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+      const pipDist = Math.hypot(pip.x - wrist.x, pip.y - wrist.y);
+
+      return tipDist < pipDist * 1.1;
+    }
+
+    /**
+     * Проверка, выпрямлен ли палец
+     */
+    function isFingerExtended(landmarks, fingerTip, fingerPip, fingerMcp) {
+      return !isFingerCurled(landmarks, fingerTip, fingerPip, fingerMcp);
+    }
+
+    /**
+     * Распознавание жеста руки
+     */
+    function recognizeGesture(landmarks) {
+      const thumbExtended = isFingerExtended(
+        landmarks, LANDMARKS.THUMB_TIP, LANDMARKS.THUMB_IP, LANDMARKS.THUMB_MCP
+      );
+      const indexExtended = isFingerExtended(
+        landmarks, LANDMARKS.INDEX_TIP, LANDMARKS.INDEX_PIP, LANDMARKS.INDEX_MCP
+      );
+      const middleExtended = isFingerExtended(
+        landmarks, LANDMARKS.MIDDLE_TIP, LANDMARKS.MIDDLE_PIP, LANDMARKS.MIDDLE_MCP
+      );
+      const ringExtended = isFingerExtended(
+        landmarks, LANDMARKS.RING_TIP, LANDMARKS.RING_PIP, LANDMARKS.RING_MCP
+      );
+      const pinkyExtended = isFingerExtended(
+        landmarks, LANDMARKS.PINKY_TIP, LANDMARKS.PINKY_PIP, LANDMARKS.PINKY_MCP
+      );
+
+      // Открытая ладонь - все пальцы выпрямлены
+      if (thumbExtended && indexExtended && middleExtended &&
+          ringExtended && pinkyExtended) {
+        return { name: "open", emoji: "🖐️" };
+      }
+
+      // Виктория - указательный и средний выпрямлены
+      if (indexExtended && middleExtended &&
+          !ringExtended && !pinkyExtended) {
+        return { name: "victory", emoji: "✌️" };
+      }
+
+      // Указатель - только указательный выпрямлен
+      if (indexExtended && !middleExtended &&
+          !ringExtended && !pinkyExtended) {
+        return { name: "point", emoji: "☝️" };
+      }
+
+      // Палец вверх/вниз
+      if (thumbExtended && !indexExtended && !middleExtended &&
+          !ringExtended && !pinkyExtended) {
+        const thumbTip = landmarks[LANDMARKS.THUMB_TIP];
+        const wrist = landmarks[LANDMARKS.WRIST];
+        if (thumbTip.y < wrist.y) {
+          return { name: "thumbs_up", emoji: "👍" };
+        } else {
+          return { name: "thumbs_down", emoji: "👎" };
+        }
+      }
+
+      // Кулак - все пальцы согнуты
+      if (!thumbExtended && !indexExtended && !middleExtended &&
+          !ringExtended && !pinkyExtended) {
+        return { name: "fist", emoji: "✊" };
+      }
+
+      return { name: "unknown", emoji: "❓" };
+    }
+
+    /**
+     * Обработка результатов MediaPipe
+     */
+    function onResults(results) {
+      canvasElement.width = videoElement.videoWidth;
+      canvasElement.height = videoElement.videoHeight;
+
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+      let leftHand = null;
+      let rightHand = null;
+
+      if (results.multiHandLandmarks && results.multiHandedness) {
+        for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+          const landmarks = results.multiHandLandmarks[i];
+          const handedness = results.multiHandedness[i];
+
+          // MediaPipe возвращает "Left"/"Right" относительно зеркального изображения
+          const isRightHand = handedness.label === "Left"; // Инвертировано из-за зеркала
+
+          if (isRightHand) {
+            rightHand = landmarks;
+          } else {
+            leftHand = landmarks;
+          }
+
+          // Рисуем соединения
+          drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+            color: isRightHand ? "#8b5cf6" : "#22d3ee",
+            lineWidth: 3
+          });
+
+          // Рисуем точки
+          drawLandmarks(canvasCtx, landmarks, {
+            color: isRightHand ? "#c4b5fd" : "#67e8f9",
+            lineWidth: 1,
+            radius: 4
+          });
+
+          // Распознаем жест
+          const gesture = recognizeGesture(landmarks);
+          if (isRightHand) {
+            rightGestureEl.textContent = gesture.emoji;
+          } else {
+            leftGestureEl.textContent = gesture.emoji;
+          }
+        }
+      }
+
+      // Обновляем параметры звука на основе позиции рук
+      if (rightHand) {
+        // X-координата правой руки управляет частотой
+        const palmX = rightHand[LANDMARKS.WRIST].x;
+        targetFreq = MIN_FREQ + (1 - palmX) * (MAX_FREQ - MIN_FREQ);
+
+        // Проверяем жест - кулак отключает звук
+        const rightGesture = recognizeGesture(rightHand);
+        if (rightGesture.name === "fist") {
+          targetVol = 0;
+        }
+      }
+
+      if (leftHand) {
+        // Y-координата левой руки управляет громкостью
+        const palmY = leftHand[LANDMARKS.WRIST].y;
+        targetVol = Math.max(0, Math.min(1, 1 - palmY));
+
+        // Проверяем жест - кулак отключает звук
+        const leftGesture = recognizeGesture(leftHand);
+        if (leftGesture.name === "fist") {
+          targetVol = 0;
+        }
+      }
+
+      // Если нет рук в кадре
+      if (!leftHand && !rightHand) {
+        leftGestureEl.textContent = "-";
+        rightGestureEl.textContent = "-";
+        targetVol = 0;
+      }
+
+      // Обновляем статус
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        statusDot.classList.add("active");
+        const handCount = results.multiHandLandmarks.length;
+        statusText.textContent = `Обнаружено рук: ${handCount}`;
+      } else {
+        statusDot.classList.remove("active");
+        statusText.textContent = "Покажите руки камере";
+      }
+
+      canvasCtx.restore();
+    }
+
+    /**
+     * Инициализация MediaPipe Hands
+     */
+    async function initMediaPipe() {
+      hands = new Hands({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+        }
+      });
+
+      hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.5
+      });
+
+      hands.onResults(onResults);
+    }
+
+    /**
+     * Запуск камеры
+     */
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user"
+          }
+        });
+
+        videoElement.srcObject = stream;
+        await videoElement.play();
+
+        camera = new Camera(videoElement, {
+          onFrame: async () => {
+            await hands.send({ image: videoElement });
+          },
+          width: 1280,
+          height: 720
+        });
+
+        await camera.start();
+
+        loadingOverlay.classList.add("hidden");
+        startBtn.innerHTML = "<span>⏹</span> Остановить";
+        soundBtn.disabled = false;
+        isRunning = true;
+
+      } catch (error) {
+        console.error("Ошибка камеры:", error);
+        loadingOverlay.classList.add("hidden");
+        errorMessage.classList.remove("hidden");
+        errorMessage.querySelector("p").textContent =
+          "Ошибка доступа к камере. Разрешите доступ и перезагрузите страницу.";
+      }
+    }
+
+    /**
+     * Остановка камеры
+     */
+    function stopCamera() {
+      if (camera) {
+        camera.stop();
+        camera = null;
+      }
+
+      const stream = videoElement.srcObject;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        videoElement.srcObject = null;
+      }
+
+      startBtn.innerHTML = "<span>▶</span> Запустить камеру";
+      soundBtn.disabled = true;
+      isRunning = false;
+
+      // Отключаем звук
+      if (isSoundEnabled) {
+        toggleSound();
+      }
+    }
+
+    /**
+     * Переключение звука
+     */
+    function toggleSound() {
+      if (!audioContext) {
+        initAudio();
+      }
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+
+      isSoundEnabled = !isSoundEnabled;
+
+      if (isSoundEnabled) {
+        soundBtn.innerHTML = "<span>🔇</span> Выключить звук";
+        soundBtn.classList.remove("btn-success");
+        soundBtn.classList.add("btn-warning");
+        updateSound();
+      } else {
+        soundBtn.innerHTML = "<span>🔊</span> Включить звук";
+        soundBtn.classList.remove("btn-warning");
+        soundBtn.classList.add("btn-success");
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      }
+    }
+
+    // Обработчики событий
+    startBtn.addEventListener("click", async () => {
+      if (isRunning) {
+        stopCamera();
+      } else {
+        loadingOverlay.classList.remove("hidden");
+        await initMediaPipe();
+        await startCamera();
+      }
+    });
+
+    soundBtn.addEventListener("click", toggleSound);
+
+    waveformSelect.addEventListener("change", () => {
+      if (oscillator) {
+        oscillator.type = waveformSelect.value;
+      }
+    });
+
+    // Скрываем загрузку при старте
+    loadingOverlay.classList.add("hidden");
+  </script>
+</body>
+</html>
