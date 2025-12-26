@@ -748,6 +748,93 @@
       color: var(--text-secondary);
     }
 
+    .modal-summary {
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+      color: var(--text-color);
+      font-size: 0.95rem;
+    }
+
+    .modal-summary p {
+      margin: 0;
+    }
+
+    .modal-details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    .modal-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+    }
+
+    .modal-detail-item i {
+      color: var(--primary-color);
+      width: 16px;
+      text-align: center;
+    }
+
+    .modal-detail-item strong {
+      color: var(--text-color);
+    }
+
+    .modal-link {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .modal-link:hover {
+      text-decoration: underline;
+    }
+
+    .modal-loading {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal-loading .spinner-small {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-running {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .status-ended {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .status-other {
+      background: rgba(107, 114, 128, 0.2);
+      color: #6b7280;
+    }
+
     .modal-genres {
       display: flex;
       flex-wrap: wrap;
@@ -1275,6 +1362,23 @@
         rateMovie: "Оцените сериал",
         yourRating: "Ваша оценка",
         tagsLabel: "Теги",
+        loadingDetails: "Загрузка деталей...",
+        status: "Статус",
+        network: "Канал",
+        runtime: "Длительность",
+        minutes: "мин",
+        language: "Язык",
+        premiered: "Премьера",
+        ended: "Завершён",
+        schedule: "Расписание",
+        officialSite: "Официальный сайт",
+        statusLabels: {
+          running: "В эфире",
+          ended: "Завершён",
+          canceled: "Отменён",
+          "in development": "В разработке",
+          "to be determined": "TBD"
+        },
         allGenres: "Все",
         genres: {
           action: "Боевик",
@@ -1322,6 +1426,23 @@
         rateMovie: "Rate this show",
         yourRating: "Your rating",
         tagsLabel: "Tags",
+        loadingDetails: "Loading details...",
+        status: "Status",
+        network: "Network",
+        runtime: "Runtime",
+        minutes: "min",
+        language: "Language",
+        premiered: "Premiered",
+        ended: "Ended",
+        schedule: "Schedule",
+        officialSite: "Official site",
+        statusLabels: {
+          running: "Running",
+          ended: "Ended",
+          canceled: "Canceled",
+          "in development": "In Development",
+          "to be determined": "TBD"
+        },
         allGenres: "All",
         genres: {
           action: "Action",
@@ -1823,9 +1944,49 @@
     }
 
     /**
+     * Загрузка деталей сериала через TVMaze API
+     */
+    async function fetchShowDetails(showId) {
+      try {
+        const response = await fetch(`https://api.tvmaze.com/shows/${showId}`);
+        if (!response.ok) return null;
+        return await response.json();
+      } catch (error) {
+        console.warn("Failed to fetch show details:", error);
+        return null;
+      }
+    }
+
+    /**
+     * Получить класс для статуса сериала
+     */
+    function getStatusClass(status) {
+      if (!status) return "status-other";
+      const s = status.toLowerCase();
+      if (s === "running" || s === "in development") return "status-running";
+      if (s === "ended" || s === "canceled") return "status-ended";
+      return "status-other";
+    }
+
+    /**
+     * Форматирование расписания
+     */
+    function formatSchedule(schedule) {
+      if (!schedule) return null;
+      const parts = [];
+      if (schedule.days && schedule.days.length > 0) {
+        parts.push(schedule.days.join(", "));
+      }
+      if (schedule.time) {
+        parts.push(schedule.time);
+      }
+      return parts.length > 0 ? parts.join(" в ") : null;
+    }
+
+    /**
      * Открытие модального окна с деталями фильма
      */
-    function openModal(movieId) {
+    async function openModal(movieId) {
       const movie = MOVIES_DATABASE.find(m => m.id === movieId);
       if (!movie) return;
 
@@ -1834,9 +1995,8 @@
       const rating = userRatings[movie.id] || 0;
       const displayRating = formatRating(movie.rating);
       const ratingLabel = displayRating === "—" ? "—" : `${displayRating}/10`;
-      const tags = (movie.tags || []).join(", ");
-      const tagsLabel = t.tagsLabel || "Tags";
 
+      // Показываем модалку сразу с базовой информацией и индикатором загрузки
       document.getElementById("modalContent").innerHTML = `
         <div class="modal-poster">
           ${renderPosterContent(movie, title)}
@@ -1852,9 +2012,11 @@
               `<span class="modal-genre-tag">${t.genres[g] || g}</span>`
             ).join("")}
           </div>
-          <p class="modal-description">
-            <strong>${tagsLabel}:</strong> ${tags || "—"}
-          </p>
+          <div class="modal-loading" id="modalLoading">
+            <div class="spinner-small"></div>
+            <span>${t.loadingDetails || "Загрузка деталей..."}</span>
+          </div>
+          <div id="modalDetails"></div>
           <div class="modal-rating">
             <h4 class="modal-rating-title">${t.yourRating}</h4>
             <div class="modal-stars">
@@ -1869,6 +2031,113 @@
       `;
 
       document.getElementById("movieModal").classList.add("active");
+
+      // Загружаем детали асинхронно
+      const details = await fetchShowDetails(movieId);
+      const loadingEl = document.getElementById("modalLoading");
+      const detailsEl = document.getElementById("modalDetails");
+
+      if (loadingEl) loadingEl.style.display = "none";
+
+      if (details && detailsEl) {
+        const summary = details.summary || "";
+        const status = details.status || "";
+        const network = details.network?.name || details.webChannel?.name || "";
+        const runtime = details.runtime ? `${details.runtime} ${t.minutes || "мин"}` : "";
+        const premiered = details.premiered || "";
+        const ended = details.ended || "";
+        const schedule = formatSchedule(details.schedule);
+        const officialSite = details.officialSite || "";
+        const language = details.language || "";
+
+        let detailsHtml = "";
+
+        // Описание
+        if (summary) {
+          detailsHtml += `<div class="modal-summary">${summary}</div>`;
+        }
+
+        // Детали в сетке
+        detailsHtml += `<div class="modal-details">`;
+
+        if (status) {
+          const statusLabel = t.statusLabels?.[status.toLowerCase()] || status;
+          detailsHtml += `
+            <div class="modal-detail-item">
+              <i class="fas fa-info-circle"></i>
+              <span>${t.status || "Статус"}:</span>
+              <span class="status-badge ${getStatusClass(status)}">${statusLabel}</span>
+            </div>`;
+        }
+
+        if (network) {
+          detailsHtml += `
+            <div class="modal-detail-item">
+              <i class="fas fa-tv"></i>
+              <span>${t.network || "Канал"}:</span>
+              <strong>${network}</strong>
+            </div>`;
+        }
+
+        if (runtime) {
+          detailsHtml += `
+            <div class="modal-detail-item">
+              <i class="fas fa-clock"></i>
+              <span>${t.runtime || "Длительность"}:</span>
+              <strong>${runtime}</strong>
+            </div>`;
+        }
+
+        if (language) {
+          detailsHtml += `
+            <div class="modal-detail-item">
+              <i class="fas fa-language"></i>
+              <span>${t.language || "Язык"}:</span>
+              <strong>${language}</strong>
+            </div>`;
+        }
+
+        if (premiered) {
+          detailsHtml += `
+            <div class="modal-detail-item">
+              <i class="fas fa-play"></i>
+              <span>${t.premiered || "Премьера"}:</span>
+              <strong>${premiered}</strong>
+            </div>`;
+        }
+
+        if (ended) {
+          detailsHtml += `
+            <div class="modal-detail-item">
+              <i class="fas fa-stop"></i>
+              <span>${t.ended || "Завершён"}:</span>
+              <strong>${ended}</strong>
+            </div>`;
+        }
+
+        if (schedule) {
+          detailsHtml += `
+            <div class="modal-detail-item">
+              <i class="fas fa-calendar-alt"></i>
+              <span>${t.schedule || "Расписание"}:</span>
+              <strong>${schedule}</strong>
+            </div>`;
+        }
+
+        if (officialSite) {
+          detailsHtml += `
+            <div class="modal-detail-item">
+              <i class="fas fa-external-link-alt"></i>
+              <a href="${officialSite}" target="_blank" rel="noopener" class="modal-link">
+                ${t.officialSite || "Официальный сайт"}
+              </a>
+            </div>`;
+        }
+
+        detailsHtml += `</div>`;
+
+        detailsEl.innerHTML = detailsHtml;
+      }
     }
 
     /**
