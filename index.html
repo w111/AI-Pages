@@ -319,6 +319,23 @@
         }
 
         .container.list-view .card-preview {
+            display: block;
+            min-width: 120px;
+            max-width: 120px;
+            height: 80px;
+            flex-shrink: 0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .container.list-view .card-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .container.list-view .card-preview-overlay {
             display: none;
         }
 
@@ -756,6 +773,25 @@
         .list-view .features-list li {
             line-height: 1.1;
             margin-bottom: 0.3rem;
+        }
+
+        /* Превью в режиме списка */
+        .list-view .card-preview {
+            display: block;
+            width: 100%;
+            height: 100px;
+            flex-shrink: 0;
+        }
+
+        .list-view .card-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .list-view .card-preview-overlay {
+            display: none;
         }
     </style>
     <!-- Добавляем Font Awesome -->
