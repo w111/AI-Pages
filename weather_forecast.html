@@ -718,6 +718,68 @@
           font-size: 2.5rem;
         }
       }
+
+      /* Автодополнение */
+      .search-wrapper {
+        position: relative;
+        display: inline-block;
+      }
+
+      .autocomplete-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 300px;
+        overflow-y: auto;
+        background: var(--input-bg);
+        border: 2px solid var(--input-border);
+        border-top: none;
+        border-radius: 0 0 15px 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        display: none;
+      }
+
+      .autocomplete-list.active {
+        display: block;
+      }
+
+      .autocomplete-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.15s ease;
+        font-size: 0.9rem;
+        color: var(--text-color);
+      }
+
+      .autocomplete-item:last-child {
+        border-bottom: none;
+        border-radius: 0 0 13px 13px;
+      }
+
+      .autocomplete-item:hover,
+      .autocomplete-item.selected {
+        background: var(--primary-color);
+        color: #fff;
+      }
+
+      .autocomplete-item .city-name {
+        font-weight: 600;
+      }
+
+      .autocomplete-item .city-details {
+        font-size: 0.8rem;
+        opacity: 0.8;
+        margin-top: 2px;
+      }
+
+      .autocomplete-loading {
+        padding: 12px 15px;
+        text-align: center;
+        color: var(--text-secondary);
+      }
     </style>
   </head>
   <body>
@@ -748,13 +810,16 @@
 
       <!-- Поиск -->
       <div class="search-container">
-        <input
-          type="text"
-          class="search-input"
-          id="cityInput"
-          placeholder="Введите город..."
-          autocomplete="off"
-        />
+        <div class="search-wrapper">
+          <input
+            type="text"
+            class="search-input"
+            id="cityInput"
+            placeholder="Введите город..."
+            autocomplete="off"
+          />
+          <div class="autocomplete-list" id="autocompleteList"></div>
+        </div>
         <button class="search-btn" id="searchBtn">
           <i class="fas fa-search"></i> Найти
         </button>
@@ -965,6 +1030,211 @@
         cache.set(cacheKey, data[0]);
         return data[0];
       }
+
+      // === АВТОДОПОЛНЕНИЕ ГОРОДОВ ===
+      const autocomplete = {
+        minChars: 2,
+        debounceMs: 300,
+        selectedIndex: -1,
+        items: [],
+        debounceTimer: null,
+
+        /**
+         * @function debounce
+         * @description Задержка выполнения функции для оптимизации запросов
+         * @param {Function} fn - Функция для выполнения
+         * @param {number} delay - Задержка в миллисекундах
+         */
+        debounce(fn, delay) {
+          clearTimeout(this.debounceTimer);
+          this.debounceTimer = setTimeout(fn, delay);
+        },
+
+        /**
+         * @function searchCities
+         * @description Поиск городов через Nominatim API
+         * @param {string} query - Поисковый запрос
+         * @returns {Promise<Array>} Массив найденных городов
+         */
+        async searchCities(query) {
+          const cacheKey = 'autocomplete_' + query.toLowerCase().replace(/\s+/g, '_');
+          let results = cache.get(cacheKey);
+          if (results) return results;
+
+          const url = `https://nominatim.openstreetmap.org/search?format=json` +
+            `&q=${encodeURIComponent(query)}&limit=7&addressdetails=1&featuretype=city`;
+          const resp = await fetch(url);
+          results = await resp.json();
+          cache.set(cacheKey, results);
+          return results;
+        },
+
+        /**
+         * @function showList
+         * @description Отображает выпадающий список с результатами
+         * @param {Array} cities - Массив городов
+         */
+        showList(cities) {
+          const list = document.getElementById('autocompleteList');
+          this.items = cities;
+          this.selectedIndex = -1;
+
+          if (!cities.length) {
+            list.innerHTML = '<div class="autocomplete-loading">Ничего не найдено</div>';
+            list.classList.add('active');
+            return;
+          }
+
+          list.innerHTML = cities.map((city, index) => {
+            const parts = city.display_name.split(',');
+            const name = parts[0].trim();
+            const details = parts.slice(1, 3).join(',').trim();
+            return `
+              <div class="autocomplete-item" data-index="${index}">
+                <div class="city-name">${name}</div>
+                <div class="city-details">${details}</div>
+              </div>
+            `;
+          }).join('');
+
+          list.classList.add('active');
+        },
+
+        /**
+         * @function hideList
+         * @description Скрывает выпадающий список
+         */
+        hideList() {
+          const list = document.getElementById('autocompleteList');
+          list.classList.remove('active');
+          this.selectedIndex = -1;
+        },
+
+        /**
+         * @function showLoading
+         * @description Показывает индикатор загрузки
+         */
+        showLoading() {
+          const list = document.getElementById('autocompleteList');
+          list.innerHTML = '<div class="autocomplete-loading">Поиск...</div>';
+          list.classList.add('active');
+        },
+
+        /**
+         * @function selectItem
+         * @description Выбирает элемент из списка и выполняет поиск
+         * @param {number} index - Индекс элемента
+         */
+        selectItem(index) {
+          if (index >= 0 && index < this.items.length) {
+            const city = this.items[index];
+            const input = document.getElementById('cityInput');
+            const name = city.display_name.split(',')[0].trim();
+            input.value = name;
+            this.hideList();
+            loadWeather(name);
+          }
+        },
+
+        /**
+         * @function updateSelection
+         * @description Обновляет визуальное выделение элемента в списке
+         */
+        updateSelection() {
+          const items = document.querySelectorAll('.autocomplete-item');
+          items.forEach((item, index) => {
+            item.classList.toggle('selected', index === this.selectedIndex);
+          });
+        },
+
+        /**
+         * @function handleKeydown
+         * @description Обработка нажатий клавиш для навигации по списку
+         * @param {KeyboardEvent} e - Событие клавиатуры
+         */
+        handleKeydown(e) {
+          const list = document.getElementById('autocompleteList');
+          if (!list.classList.contains('active')) return;
+
+          switch (e.key) {
+            case 'ArrowDown':
+              e.preventDefault();
+              this.selectedIndex = Math.min(this.selectedIndex + 1, this.items.length - 1);
+              this.updateSelection();
+              break;
+            case 'ArrowUp':
+              e.preventDefault();
+              this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+              this.updateSelection();
+              break;
+            case 'Enter':
+              if (this.selectedIndex >= 0) {
+                e.preventDefault();
+                this.selectItem(this.selectedIndex);
+              }
+              break;
+            case 'Escape':
+              this.hideList();
+              break;
+          }
+        },
+
+        /**
+         * @function init
+         * @description Инициализация автодополнения
+         */
+        init() {
+          const input = document.getElementById('cityInput');
+          const list = document.getElementById('autocompleteList');
+
+          // Обработка ввода
+          input.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query.length < this.minChars) {
+              this.hideList();
+              return;
+            }
+
+            this.showLoading();
+            this.debounce(async () => {
+              try {
+                const cities = await this.searchCities(query);
+                this.showList(cities);
+              } catch (err) {
+                console.error('Ошибка автодополнения:', err);
+                this.hideList();
+              }
+            }, this.debounceMs);
+          });
+
+          // Обработка клавиш
+          input.addEventListener('keydown', (e) => this.handleKeydown(e));
+
+          // Клик по элементу списка
+          list.addEventListener('click', (e) => {
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+              const index = parseInt(item.dataset.index, 10);
+              this.selectItem(index);
+            }
+          });
+
+          // Скрытие при клике вне
+          document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-wrapper')) {
+              this.hideList();
+            }
+          });
+
+          // Показ при фокусе если есть текст
+          input.addEventListener('focus', () => {
+            const query = input.value.trim();
+            if (query.length >= this.minChars && this.items.length > 0) {
+              document.getElementById('autocompleteList').classList.add('active');
+            }
+          });
+        }
+      };
 
       // === ПОГОДА ===
       async function getWeather(lat, lon) {
@@ -1326,6 +1596,9 @@
         // Инициализация настроек
         window.aiPagesSettings.init();
 
+        // Инициализация автодополнения
+        autocomplete.init();
+
         // Элементы
         const cityInput = document.getElementById('cityInput');
         const searchBtn = document.getElementById('searchBtn');
@@ -1339,13 +1612,19 @@
         function searchCity() {
           const city = cityInput.value.trim();
           if (city) {
+            autocomplete.hideList();
             loadWeather(city);
           }
         }
 
         searchBtn.addEventListener('click', searchCity);
         cityInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') searchCity();
+          // Если автодополнение открыто и выбран элемент, Enter обрабатывается там
+          const list = document.getElementById('autocompleteList');
+          if (e.key === 'Enter' && (!list.classList.contains('active') || autocomplete.selectedIndex < 0)) {
+            autocomplete.hideList();
+            searchCity();
+          }
         });
 
         // Геолокация
