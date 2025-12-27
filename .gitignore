@@ -38,5 +38,11 @@ playwright-report-ci/
 *.temp
 *.log
 
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
 # Validation scripts
 validate_*.py
