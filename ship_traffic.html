@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивную визуализацию морского трафика в реальном времени с использованием AISStream.io API.
+
+Функциональные требования:
+1. Интерактивная карта:
+   - Отображение карты на базе Leaflet с OpenStreetMap тайлами
+   - Маркеры судов с ориентацией по курсу
+   - Обновление позиций в реальном времени через WebSocket
+   - Возможность масштабирования и перемещения по карте
+
+2. Данные о судах:
+   - Интеграция с AISStream.io API (бесплатный WebSocket)
+   - Отображение названия судна, MMSI, скорости, курса
+   - Навигационный статус судна
+   - Координаты и время последнего обновления
+
+3. Фильтрация:
+   - Фильтр по названию судна или MMSI
+   - Фильтр по диапазону скорости
+   - Сброс фильтров
+
+4. Детали судна:
+   - Клик по судну открывает панель с подробной информацией
+   - Отображение всех доступных параметров
+   - Визуальное выделение выбранного судна
+
+5. История маршрута:
+   - Отслеживание траектории выбранного судна
+   - Отображение линии маршрута на карте
+   - Очистка истории при выборе нового судна
+
+Технические требования:
+1. Использование Leaflet.js для отображения карты
+2. WebSocket API для подключения к AISStream.io
+3. LocalStorage для сохранения настроек пользователя
+4. Адаптивный дизайн для мобильных устройств
+5. Поддержка темной и светлой темы
+6. CSS-анимации для плавных переходов
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Морской трафик - Визуализация в реальном времени</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg-color: #f4f4f4;
+      --text-color: #333;
+      --panel-bg: #ffffff;
+      --panel-border: #ddd;
+      --input-bg: #fff;
+      --input-border: #ccc;
+      --primary-color: #0891b2;
+      --primary-hover: #0e7490;
+      --accent-color: #f59e0b;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #1a1a2e;
+      --text-color: #e0e0e0;
+      --panel-bg: #16213e;
+      --panel-border: #0f3460;
+      --input-bg: #1f2937;
+      --input-border: #374151;
+      --primary-color: #06b6d4;
+      --primary-hover: #22d3ee;
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+      overflow: hidden;
+    }
+
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+
+    /* Контрольная панель */
+    .control-panel {
+      position: absolute;
+      top: 10px;
+      left: 60px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      padding: 16px;
+      min-width: 300px;
+      max-width: 350px;
+      transition: all 0.3s ease;
+    }
+
+    .control-panel.collapsed {
+      min-width: auto;
+      padding: 10px;
+    }
+
+    .control-panel.collapsed .panel-content {
+      display: none;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .panel-header h2 {
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-header h2 i {
+      color: var(--primary-color);
+    }
+
+    .toggle-btn {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .toggle-btn:hover {
+      background: var(--input-bg);
+    }
+
+    .filter-group {
+      margin-bottom: 12px;
+    }
+
+    .filter-group label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: var(--text-color);
+      opacity: 0.8;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    .speed-range {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .speed-range input {
+      flex: 1;
+    }
+
+    .speed-range span {
+      color: var(--text-color);
+      opacity: 0.6;
+      font-size: 0.85rem;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 1px solid var(--input-border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--panel-border);
+    }
+
+    /* Статистика */
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-top: 1px solid var(--panel-border);
+      margin-top: 12px;
+      font-size: 0.85rem;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .stat-label {
+      opacity: 0.7;
+      font-size: 0.75rem;
+    }
+
+    /* Статус подключения */
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+
+    .connection-status.connected {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success-color);
+    }
+
+    .connection-status.disconnected {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger-color);
+    }
+
+    .connection-status.connecting {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--accent-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-dot.pulse {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Панель деталей судна */
+    .ship-details {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      width: 320px;
+      max-height: calc(100vh - 20px);
+      overflow-y: auto;
+      transform: translateX(350px);
+      transition: transform 0.3s ease;
+    }
+
+    .ship-details.visible {
+      transform: translateX(0);
+    }
+
+    .details-header {
+      padding: 16px;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+      color: white;
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .details-header h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.2rem;
+    }
+
+    .close-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .details-content {
+      padding: 16px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0.7;
+      font-size: 0.9rem;
+    }
+
+    .detail-label i {
+      width: 16px;
+      text-align: center;
+      color: var(--primary-color);
+    }
+
+    .detail-value {
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .track-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .track-btn:hover {
+      background: #d97706;
+    }
+
+    .track-btn.active {
+      background: var(--danger-color);
+    }
+
+    /* Тема переключатель */
+    .theme-toggle {
+      position: absolute;
+      bottom: 20px;
+      left: 10px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      border-radius: 50px;
+      padding: 8px 16px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-toggle button {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      cursor: pointer;
+      padding: 5px;
+      font-size: 1.1rem;
+      transition: transform 0.2s;
+    }
+
+    .theme-toggle button:hover {
+      transform: scale(1.1);
+    }
+
+    /* Легенда скорости */
+    .speed-legend {
+      position: absolute;
+      bottom: 70px;
+      left: 10px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: var(--card-shadow);
+      font-size: 0.8rem;
+    }
+
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    /* Кастомные маркеры судов */
+    .ship-marker {
+      font-size: 20px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease;
+    }
+
+    .ship-marker.selected {
+      font-size: 28px;
+      filter: drop-shadow(0 0 6px var(--accent-color));
+    }
+
+    /* Статус загрузки */
+    .loading-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: var(--panel-bg);
+      padding: 20px 40px;
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+
+    .loading-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--panel-border);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Уведомления */
+    .notification {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 2000;
+      background: var(--panel-bg);
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .notification.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .notification.error {
+      border-left: 4px solid var(--danger-color);
+    }
+
+    .notification.success {
+      border-left: 4px solid var(--success-color);
+    }
+
+    .notification.info {
+      border-left: 4px solid var(--primary-color);
+    }
+
+    /* API Key Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+
+    .modal-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--panel-bg);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 450px;
+      width: 90%;
+      box-shadow: var(--card-shadow);
+    }
+
+    .modal h3 {
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal h3 i {
+      color: var(--primary-color);
+    }
+
+    .modal p {
+      font-size: 0.9rem;
+      opacity: 0.8;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .modal a {
+      color: var(--primary-color);
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 1rem;
+      margin-bottom: 16px;
+    }
+
+    .modal .btn-group {
+      margin-top: 0;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+      .control-panel {
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+        max-width: none;
+      }
+
+      .ship-details {
+        left: 10px;
+        right: 10px;
+        width: auto;
+        top: auto;
+        bottom: 10px;
+        max-height: 50vh;
+        transform: translateY(100%);
+      }
+
+      .ship-details.visible {
+        transform: translateY(0);
+      }
+
+      .speed-legend {
+        display: none;
+      }
+    }
+
+    /* Leaflet popup кастомизация */
+    .leaflet-popup-content-wrapper {
+      background: var(--panel-bg);
+      color: var(--text-color);
+      border-radius: 8px;
+    }
+
+    .leaflet-popup-tip {
+      background: var(--panel-bg);
+    }
+
+    .ship-popup {
+      min-width: 180px;
+    }
+
+    .ship-popup h4 {
+      margin: 0 0 8px 0;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ship-popup p {
+      margin: 4px 0;
+      font-size: 0.85rem;
+    }
+
+    /* Трек маршрута */
+    .route-polyline {
+      stroke-dasharray: 5, 10;
+      animation: dash 1s linear infinite;
+    }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -15; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Контрольная панель -->
+  <div class="control-panel" id="controlPanel">
+    <div class="panel-header">
+      <h2><i class="fas fa-ship"></i> Морской трафик</h2>
+      <button class="toggle-btn" id="togglePanel" title="Свернуть/развернуть">
+        <i class="fas fa-chevron-up"></i>
+      </button>
+    </div>
+    <div class="panel-content">
+      <div class="connection-status disconnected" id="connectionStatus">
+        <span class="status-dot"></span>
+        <span id="statusText">Отключено</span>
+      </div>
+
+      <div class="filter-group">
+        <label for="shipFilter">
+          <i class="fas fa-search"></i> Поиск по названию/MMSI
+        </label>
+        <input type="text" id="shipFilter" placeholder="Название судна или MMSI...">
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <i class="fas fa-tachometer-alt"></i> Диапазон скорости (узлы)
+        </label>
+        <div class="speed-range">
+          <input type="number" id="speedMin" placeholder="Мин" min="0" max="50" step="1">
+          <span>—</span>
+          <input type="number" id="speedMax" placeholder="Макс" min="0" max="50" step="1">
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label for="navStatusFilter">
+          <i class="fas fa-anchor"></i> Навигационный статус
+        </label>
+        <select id="navStatusFilter">
+          <option value="">Все статусы</option>
+          <option value="0">На ходу с двигателем</option>
+          <option value="1">На якоре</option>
+          <option value="2">Не управляется</option>
+          <option value="3">Ограничена в маневрировании</option>
+          <option value="4">Ограничена осадкой</option>
+          <option value="5">Пришвартовано</option>
+          <option value="6">На мели</option>
+          <option value="7">Занято рыболовством</option>
+          <option value="8">На ходу под парусом</option>
+        </select>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="applyFilters">
+          <i class="fas fa-filter"></i> Применить
+        </button>
+        <button class="btn btn-secondary" id="resetFilters">
+          <i class="fas fa-undo"></i> Сброс
+        </button>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="openApiModal">
+          <i class="fas fa-key"></i> API ключ
+        </button>
+        <button class="btn btn-primary" id="connectBtn">
+          <i class="fas fa-plug"></i> Подключить
+        </button>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat-item">
+          <div class="stat-value" id="totalShips">0</div>
+          <div class="stat-label">Всего</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="filteredShips">0</div>
+          <div class="stat-label">Показано</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="lastUpdate">--:--</div>
+          <div class="stat-label">Обновлено</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Панель деталей судна -->
+  <div class="ship-details" id="shipDetails">
+    <div class="details-header">
+      <h3><i class="fas fa-info-circle"></i> <span id="shipName">---</span></h3>
+      <button class="close-btn" id="closeDetails">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="details-content">
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-fingerprint"></i> MMSI</span>
+        <span class="detail-value" id="detailMmsi">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-anchor"></i> Статус</span>
+        <span class="detail-value" id="detailStatus">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-tachometer-alt"></i> Скорость</span>
+        <span class="detail-value" id="detailSpeed">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-compass"></i> Курс (COG)</span>
+        <span class="detail-value" id="detailCog">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-location-arrow"></i> Направление</span>
+        <span class="detail-value" id="detailHeading">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-sync-alt"></i> Поворот</span>
+        <span class="detail-value" id="detailRot">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-map-marker-alt"></i> Координаты</span>
+        <span class="detail-value" id="detailCoords">---</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label"><i class="fas fa-clock"></i> Обновлено</span>
+        <span class="detail-value" id="detailTime">---</span>
+      </div>
+      <button class="btn track-btn" id="trackShip">
+        <i class="fas fa-route"></i> Отслеживать маршрут
+      </button>
+    </div>
+  </div>
+
+  <!-- Переключатель темы -->
+  <div class="theme-toggle">
+    <button id="themeLight" title="Светлая тема">
+      <i class="fas fa-sun"></i>
+    </button>
+    <button id="themeDark" title="Тёмная тема">
+      <i class="fas fa-moon"></i>
+    </button>
+  </div>
+
+  <!-- Легенда скорости -->
+  <div class="speed-legend">
+    <div class="legend-title">Скорость судна</div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #6b7280;"></span>
+      <span>Стоит (0 уз.)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #22c55e;"></span>
+      <span>&lt; 5 узлов</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #3b82f6;"></span>
+      <span>5-15 узлов</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #8b5cf6;"></span>
+      <span>15-25 узлов</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-color" style="background: #ef4444;"></span>
+      <span>&gt; 25 узлов</span>
+    </div>
+  </div>
+
+  <!-- Индикатор загрузки -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <span>Подключение...</span>
+  </div>
+
+  <!-- Уведомления -->
+  <div class="notification" id="notification">
+    <i class="fas fa-info-circle"></i>
+    <span id="notificationText">Сообщение</span>
+  </div>
+
+  <!-- Модальное окно API ключа -->
+  <div class="modal-overlay" id="apiModal">
+    <div class="modal">
+      <h3><i class="fas fa-key"></i> API ключ AISStream.io</h3>
+      <p>
+        Для получения данных о судах необходим бесплатный API ключ.
+        Зарегистрируйтесь на <a href="https://aisstream.io" target="_blank">aisstream.io</a>
+        и получите ключ в личном кабинете.
+      </p>
+      <input type="text" id="apiKeyInput" placeholder="Введите ваш API ключ...">
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="cancelApiModal">Отмена</button>
+        <button class="btn btn-primary" id="saveApiKey">
+          <i class="fas fa-save"></i> Сохранить
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    /**
+     * @description Приложение для визуализации морского трафика в реальном времени
+     * Использует AISStream.io WebSocket API для получения данных AIS
+     */
+    (function() {
+      "use strict";
+
+      // Конфигурация
+      const CONFIG = {
+        WS_URL: "wss://stream.aisstream.io/v0/stream",
+        DEFAULT_CENTER: [55.0, 20.0], // Балтика
+        DEFAULT_ZOOM: 6,
+        TRACK_HISTORY_LIMIT: 200,
+        RECONNECT_DELAY: 5000,
+        SHIP_TIMEOUT: 600000 // 10 минут - убираем неактивные суда
+      };
+
+      // Навигационные статусы
+      const NAV_STATUS = {
+        0: "На ходу с двигателем",
+        1: "На якоре",
+        2: "Не управляется",
+        3: "Ограничена в маневрировании",
+        4: "Ограничена осадкой",
+        5: "Пришвартовано",
+        6: "На мели",
+        7: "Занято рыболовством",
+        8: "На ходу под парусом",
+        9: "Зарезервировано (HSC)",
+        10: "Зарезервировано (WIG)",
+        11: "Буксир",
+        12: "Буксир",
+        13: "Зарезервировано",
+        14: "AIS-SART",
+        15: "Не определено"
+      };
+
+      // Состояние приложения
+      const state = {
+        map: null,
+        ws: null,
+        markers: new Map(),
+        allShips: new Map(),
+        filteredShips: new Map(),
+        selectedShip: null,
+        trackingMmsi: null,
+        trackHistory: [],
+        routePolyline: null,
+        apiKey: localStorage.getItem("aisstream_api_key") || "",
+        isConnected: false,
+        reconnectTimer: null,
+        cleanupTimer: null
+      };
+
+      /**
+       * @function initMap
+       * @description Инициализация карты Leaflet
+       */
+      function initMap() {
+        state.map = L.map("map", {
+          center: CONFIG.DEFAULT_CENTER,
+          zoom: CONFIG.DEFAULT_ZOOM,
+          zoomControl: true
+        });
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          maxZoom: 18
+        }).addTo(state.map);
+
+        loadMapPosition();
+        state.map.on("moveend zoomend", saveMapPosition);
+      }
+
+      /**
+       * @function saveMapPosition
+       * @description Сохранение позиции карты в localStorage
+       */
+      function saveMapPosition() {
+        const center = state.map.getCenter();
+        localStorage.setItem("ship_map_position", JSON.stringify({
+          lat: center.lat,
+          lng: center.lng,
+          zoom: state.map.getZoom()
+        }));
+      }
+
+      /**
+       * @function loadMapPosition
+       * @description Загрузка сохранённой позиции карты
+       */
+      function loadMapPosition() {
+        const saved = localStorage.getItem("ship_map_position");
+        if (saved) {
+          try {
+            const pos = JSON.parse(saved);
+            state.map.setView([pos.lat, pos.lng], pos.zoom);
+          } catch (e) {
+            console.warn("Не удалось загрузить позицию карты:", e);
+          }
+        }
+      }
+
+      /**
+       * @function getSpeedColor
+       * @description Получение цвета маркера на основе скорости
+       * @param {number} speed - Скорость в узлах
+       * @returns {string} CSS цвет
+       */
+      function getSpeedColor(speed) {
+        if (!speed || speed < 0.5) return "#6b7280"; // Стоит - серый
+        if (speed < 5) return "#22c55e"; // Медленно - зелёный
+        if (speed < 15) return "#3b82f6"; // Средняя - синий
+        if (speed < 25) return "#8b5cf6"; // Быстро - фиолетовый
+        return "#ef4444"; // Очень быстро - красный
+      }
+
+      /**
+       * @function createShipIcon
+       * @description Создание иконки судна с поворотом по курсу
+       * @param {number} heading - Курс в градусах
+       * @param {number} speed - Скорость в узлах
+       * @param {boolean} isSelected - Выбрано ли судно
+       * @returns {L.DivIcon} Иконка Leaflet
+       */
+      function createShipIcon(heading, speed, isSelected = false) {
+        const color = getSpeedColor(speed);
+        const size = isSelected ? 28 : 20;
+        const rotation = heading || 0;
+
+        return L.divIcon({
+          className: "ship-marker" + (isSelected ? " selected" : ""),
+          html: `<div style="transform: rotate(${rotation}deg); color: ${color}; font-size: ${size}px;
+                 text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
+                   <i class="fas fa-ship"></i>
+                 </div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2]
+        });
+      }
+
+      /**
+       * @function connectWebSocket
+       * @description Подключение к WebSocket API
+       */
+      function connectWebSocket() {
+        if (!state.apiKey) {
+          showApiModal();
+          return;
+        }
+
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          return;
+        }
+
+        updateConnectionStatus("connecting");
+        showLoading(true);
+
+        try {
+          state.ws = new WebSocket(CONFIG.WS_URL);
+
+          state.ws.onopen = function() {
+            console.log("WebSocket подключен");
+
+            // Получаем границы видимой области карты
+            const bounds = state.map.getBounds();
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+
+            const subscription = {
+              Apikey: state.apiKey,
+              BoundingBoxes: [[[sw.lat, sw.lng], [ne.lat, ne.lng]]],
+              FilterMessageTypes: ["PositionReport"]
+            };
+
+            state.ws.send(JSON.stringify(subscription));
+            updateConnectionStatus("connected");
+            showLoading(false);
+            showNotification("Подключено к AISStream", "success");
+            state.isConnected = true;
+
+            // Запускаем очистку неактивных судов
+            startCleanupTimer();
+          };
+
+          state.ws.onmessage = function(event) {
+            try {
+              const message = JSON.parse(event.data);
+              processAisMessage(message);
+            } catch (e) {
+              console.error("Ошибка парсинга сообщения:", e);
+            }
+          };
+
+          state.ws.onerror = function(error) {
+            console.error("WebSocket ошибка:", error);
+            showNotification("Ошибка подключения", "error");
+          };
+
+          state.ws.onclose = function(event) {
+            console.log("WebSocket закрыт:", event.code, event.reason);
+            updateConnectionStatus("disconnected");
+            showLoading(false);
+            state.isConnected = false;
+
+            // Автоматическое переподключение
+            if (state.apiKey && !event.wasClean) {
+              state.reconnectTimer = setTimeout(() => {
+                showNotification("Переподключение...", "info");
+                connectWebSocket();
+              }, CONFIG.RECONNECT_DELAY);
+            }
+          };
+        } catch (error) {
+          console.error("Ошибка создания WebSocket:", error);
+          showNotification("Не удалось создать подключение", "error");
+          showLoading(false);
+          updateConnectionStatus("disconnected");
+        }
+      }
+
+      /**
+       * @function disconnectWebSocket
+       * @description Отключение от WebSocket
+       */
+      function disconnectWebSocket() {
+        if (state.reconnectTimer) {
+          clearTimeout(state.reconnectTimer);
+          state.reconnectTimer = null;
+        }
+
+        if (state.cleanupTimer) {
+          clearInterval(state.cleanupTimer);
+          state.cleanupTimer = null;
+        }
+
+        if (state.ws) {
+          state.ws.close();
+          state.ws = null;
+        }
+
+        state.isConnected = false;
+        updateConnectionStatus("disconnected");
+        showNotification("Отключено", "info");
+      }
+
+      /**
+       * @function updateConnectionStatus
+       * @description Обновление статуса подключения
+       * @param {string} status - Статус (connected, disconnected, connecting)
+       */
+      function updateConnectionStatus(status) {
+        const statusEl = document.getElementById("connectionStatus");
+        const statusText = document.getElementById("statusText");
+        const statusDot = statusEl.querySelector(".status-dot");
+
+        statusEl.className = "connection-status " + status;
+
+        const texts = {
+          connected: "Подключено",
+          disconnected: "Отключено",
+          connecting: "Подключение..."
+        };
+
+        statusText.textContent = texts[status] || status;
+
+        if (status === "connecting") {
+          statusDot.classList.add("pulse");
+        } else {
+          statusDot.classList.remove("pulse");
+        }
+      }
+
+      /**
+       * @function processAisMessage
+       * @description Обработка AIS сообщения
+       * @param {Object} message - Сообщение от API
+       */
+      function processAisMessage(message) {
+        if (!message.Message || !message.Message.PositionReport) return;
+
+        const pos = message.Message.PositionReport;
+        const meta = message.MetaData;
+
+        if (!pos.Latitude || !pos.Longitude) return;
+
+        const ship = {
+          mmsi: meta.MMSI || pos.UserID,
+          name: meta.ShipName ? meta.ShipName.trim() : "",
+          latitude: pos.Latitude,
+          longitude: pos.Longitude,
+          cog: pos.Cog,
+          sog: pos.Sog,
+          heading: pos.TrueHeading === 511 ? null : pos.TrueHeading,
+          navStatus: pos.NavigationalStatus,
+          rot: pos.RateOfTurn,
+          timestamp: meta.time_utc || new Date().toISOString(),
+          lastUpdate: Date.now()
+        };
+
+        state.allShips.set(ship.mmsi, ship);
+        applyFilters();
+        updateStats();
+      }
+
+      /**
+       * @function startCleanupTimer
+       * @description Запуск таймера очистки неактивных судов
+       */
+      function startCleanupTimer() {
+        if (state.cleanupTimer) {
+          clearInterval(state.cleanupTimer);
+        }
+
+        state.cleanupTimer = setInterval(() => {
+          const now = Date.now();
+          let removed = 0;
+
+          state.allShips.forEach((ship, mmsi) => {
+            if (now - ship.lastUpdate > CONFIG.SHIP_TIMEOUT) {
+              state.allShips.delete(mmsi);
+              removed++;
+            }
+          });
+
+          if (removed > 0) {
+            applyFilters();
+            updateStats();
+          }
+        }, 60000); // Проверка каждую минуту
+      }
+
+      /**
+       * @function applyFilters
+       * @description Применение фильтров к списку судов
+       */
+      function applyFilters() {
+        const shipFilter = document.getElementById("shipFilter").value.toUpperCase();
+        const speedMin = parseFloat(document.getElementById("speedMin").value) || 0;
+        const speedMax = parseFloat(document.getElementById("speedMax").value) || Infinity;
+        const navStatusFilter = document.getElementById("navStatusFilter").value;
+
+        state.filteredShips.clear();
+
+        state.allShips.forEach((ship, mmsi) => {
+          // Фильтр по названию/MMSI
+          if (shipFilter) {
+            const nameMatch = ship.name && ship.name.toUpperCase().includes(shipFilter);
+            const mmsiMatch = String(mmsi).includes(shipFilter);
+            if (!nameMatch && !mmsiMatch) return;
+          }
+
+          // Фильтр по скорости
+          const speed = ship.sog || 0;
+          if (speed < speedMin || speed > speedMax) return;
+
+          // Фильтр по навигационному статусу
+          if (navStatusFilter !== "" && ship.navStatus !== parseInt(navStatusFilter)) return;
+
+          state.filteredShips.set(mmsi, ship);
+        });
+
+        updateMarkers();
+        updateStats();
+      }
+
+      /**
+       * @function updateMarkers
+       * @description Обновление маркеров на карте
+       */
+      function updateMarkers() {
+        const activeMMSIs = new Set(state.filteredShips.keys());
+
+        // Удаляем маркеры, которых нет в отфильтрованном списке
+        state.markers.forEach((marker, mmsi) => {
+          if (!activeMMSIs.has(mmsi)) {
+            state.map.removeLayer(marker);
+            state.markers.delete(mmsi);
+          }
+        });
+
+        // Обновляем или создаём маркеры
+        state.filteredShips.forEach((ship, mmsi) => {
+          const isSelected = state.selectedShip?.mmsi === mmsi;
+          const heading = ship.heading !== null ? ship.heading : ship.cog;
+          const icon = createShipIcon(heading, ship.sog, isSelected);
+
+          if (state.markers.has(mmsi)) {
+            const marker = state.markers.get(mmsi);
+            marker.setLatLng([ship.latitude, ship.longitude]);
+            marker.setIcon(icon);
+            marker.ship = ship;
+          } else {
+            const marker = L.marker([ship.latitude, ship.longitude], { icon })
+              .addTo(state.map);
+
+            marker.ship = ship;
+            marker.on("click", () => selectShip(ship));
+
+            marker.bindPopup(() => createPopupContent(ship), {
+              closeButton: false,
+              offset: [0, -10]
+            });
+            marker.on("mouseover", function() { this.openPopup(); });
+            marker.on("mouseout", function() { this.closePopup(); });
+
+            state.markers.set(mmsi, marker);
+          }
+        });
+
+        // Обновляем отслеживаемый маршрут
+        if (state.trackingMmsi) {
+          const trackedShip = state.filteredShips.get(state.trackingMmsi);
+          if (trackedShip) {
+            addTrackPoint(trackedShip);
+          }
+        }
+      }
+
+      /**
+       * @function createPopupContent
+       * @description Создание содержимого popup для судна
+       * @param {Object} ship - Данные судна
+       * @returns {string} HTML содержимое
+       */
+      function createPopupContent(ship) {
+        const speed = ship.sog !== null ? ship.sog.toFixed(1) + " уз." : "—";
+        const name = ship.name || "Без названия";
+
+        return `
+          <div class="ship-popup">
+            <h4><i class="fas fa-ship"></i> ${name}</h4>
+            <p><strong>MMSI:</strong> ${ship.mmsi}</p>
+            <p><strong>Скорость:</strong> ${speed}</p>
+            <p><strong>Статус:</strong> ${NAV_STATUS[ship.navStatus] || "—"}</p>
+          </div>
+        `;
+      }
+
+      /**
+       * @function selectShip
+       * @description Выбор судна для отображения деталей
+       * @param {Object} ship - Данные судна
+       */
+      function selectShip(ship) {
+        state.selectedShip = ship;
+
+        updateMarkers();
+
+        const heading = ship.heading !== null ? ship.heading : ship.cog;
+
+        document.getElementById("shipName").textContent = ship.name || "Без названия";
+        document.getElementById("detailMmsi").textContent = ship.mmsi;
+        document.getElementById("detailStatus").textContent = NAV_STATUS[ship.navStatus] || "—";
+        document.getElementById("detailSpeed").textContent = ship.sog !== null ?
+          `${ship.sog.toFixed(1)} узлов` : "—";
+        document.getElementById("detailCog").textContent = ship.cog !== null ?
+          `${ship.cog.toFixed(1)}°` : "—";
+        document.getElementById("detailHeading").textContent = heading !== null ?
+          `${Math.round(heading)}°` : "—";
+        document.getElementById("detailRot").textContent = ship.rot !== null ?
+          `${ship.rot}°/мин` : "—";
+        document.getElementById("detailCoords").textContent =
+          `${ship.latitude.toFixed(5)}, ${ship.longitude.toFixed(5)}`;
+        document.getElementById("detailTime").textContent = new Date(ship.timestamp)
+          .toLocaleTimeString("ru-RU");
+
+        // Обновляем кнопку отслеживания
+        const trackBtn = document.getElementById("trackShip");
+        if (state.trackingMmsi === ship.mmsi) {
+          trackBtn.classList.add("active");
+          trackBtn.innerHTML = '<i class="fas fa-stop"></i> Остановить отслеживание';
+        } else {
+          trackBtn.classList.remove("active");
+          trackBtn.innerHTML = '<i class="fas fa-route"></i> Отслеживать маршрут';
+        }
+
+        document.getElementById("shipDetails").classList.add("visible");
+      }
+
+      /**
+       * @function toggleTracking
+       * @description Переключение отслеживания маршрута
+       */
+      function toggleTracking() {
+        if (!state.selectedShip) return;
+
+        if (state.trackingMmsi === state.selectedShip.mmsi) {
+          stopTracking();
+        } else {
+          startTracking(state.selectedShip);
+        }
+
+        selectShip(state.selectedShip);
+      }
+
+      /**
+       * @function startTracking
+       * @description Начало отслеживания судна
+       * @param {Object} ship - Данные судна
+       */
+      function startTracking(ship) {
+        stopTracking();
+
+        state.trackingMmsi = ship.mmsi;
+        state.trackHistory = [[ship.latitude, ship.longitude]];
+
+        state.routePolyline = L.polyline(state.trackHistory, {
+          color: "#f59e0b",
+          weight: 3,
+          opacity: 0.8,
+          dashArray: "5, 10",
+          className: "route-polyline"
+        }).addTo(state.map);
+
+        showNotification(`Отслеживание ${ship.name || ship.mmsi}`, "info");
+      }
+
+      /**
+       * @function stopTracking
+       * @description Остановка отслеживания
+       */
+      function stopTracking() {
+        state.trackingMmsi = null;
+        state.trackHistory = [];
+
+        if (state.routePolyline) {
+          state.map.removeLayer(state.routePolyline);
+          state.routePolyline = null;
+        }
+      }
+
+      /**
+       * @function addTrackPoint
+       * @description Добавление точки в историю маршрута
+       * @param {Object} ship - Данные судна
+       */
+      function addTrackPoint(ship) {
+        if (!state.routePolyline) return;
+
+        const newPoint = [ship.latitude, ship.longitude];
+        const lastPoint = state.trackHistory[state.trackHistory.length - 1];
+
+        // Добавляем только если позиция изменилась
+        if (!lastPoint || lastPoint[0] !== newPoint[0] || lastPoint[1] !== newPoint[1]) {
+          state.trackHistory.push(newPoint);
+
+          if (state.trackHistory.length > CONFIG.TRACK_HISTORY_LIMIT) {
+            state.trackHistory.shift();
+          }
+
+          state.routePolyline.setLatLngs(state.trackHistory);
+        }
+      }
+
+      /**
+       * @function updateStats
+       * @description Обновление статистики
+       */
+      function updateStats() {
+        document.getElementById("totalShips").textContent = state.allShips.size;
+        document.getElementById("filteredShips").textContent = state.filteredShips.size;
+        document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString("ru-RU", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      /**
+       * @function showLoading
+       * @description Показ/скрытие индикатора загрузки
+       * @param {boolean} show - Показать или скрыть
+       */
+      function showLoading(show) {
+        document.getElementById("loadingOverlay").classList.toggle("visible", show);
+      }
+
+      /**
+       * @function showNotification
+       * @description Показ уведомления
+       * @param {string} message - Текст сообщения
+       * @param {string} type - Тип уведомления (info, success, error)
+       */
+      function showNotification(message, type = "info") {
+        const notification = document.getElementById("notification");
+        const text = document.getElementById("notificationText");
+
+        notification.className = "notification " + type;
+        text.textContent = message;
+
+        notification.classList.add("visible");
+
+        setTimeout(() => {
+          notification.classList.remove("visible");
+        }, 3000);
+      }
+
+      /**
+       * @function showApiModal
+       * @description Показ модального окна для ввода API ключа
+       */
+      function showApiModal() {
+        document.getElementById("apiKeyInput").value = state.apiKey;
+        document.getElementById("apiModal").classList.add("visible");
+      }
+
+      /**
+       * @function hideApiModal
+       * @description Скрытие модального окна API ключа
+       */
+      function hideApiModal() {
+        document.getElementById("apiModal").classList.remove("visible");
+      }
+
+      /**
+       * @function saveApiKey
+       * @description Сохранение API ключа
+       */
+      function saveApiKey() {
+        const key = document.getElementById("apiKeyInput").value.trim();
+        if (key) {
+          state.apiKey = key;
+          localStorage.setItem("aisstream_api_key", key);
+          hideApiModal();
+          showNotification("API ключ сохранён", "success");
+        } else {
+          showNotification("Введите API ключ", "error");
+        }
+      }
+
+      /**
+       * @function initTheme
+       * @description Инициализация темы оформления
+       */
+      function initTheme() {
+        const savedTheme = localStorage.getItem("ship_theme") || "light";
+        setTheme(savedTheme);
+      }
+
+      /**
+       * @function setTheme
+       * @description Установка темы оформления
+       * @param {string} theme - Название темы (light/dark)
+       */
+      function setTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("ship_theme", theme);
+      }
+
+      /**
+       * @function initEventListeners
+       * @description Инициализация обработчиков событий
+       */
+      function initEventListeners() {
+        // Свернуть/развернуть панель
+        document.getElementById("togglePanel").addEventListener("click", () => {
+          const panel = document.getElementById("controlPanel");
+          const icon = document.querySelector("#togglePanel i");
+          panel.classList.toggle("collapsed");
+          icon.classList.toggle("fa-chevron-up");
+          icon.classList.toggle("fa-chevron-down");
+        });
+
+        // Фильтры
+        document.getElementById("applyFilters").addEventListener("click", applyFilters);
+        document.getElementById("resetFilters").addEventListener("click", () => {
+          document.getElementById("shipFilter").value = "";
+          document.getElementById("speedMin").value = "";
+          document.getElementById("speedMax").value = "";
+          document.getElementById("navStatusFilter").value = "";
+          applyFilters();
+        });
+
+        // Подключение
+        document.getElementById("connectBtn").addEventListener("click", () => {
+          if (state.isConnected) {
+            disconnectWebSocket();
+          } else {
+            connectWebSocket();
+          }
+        });
+
+        // API ключ
+        document.getElementById("openApiModal").addEventListener("click", showApiModal);
+        document.getElementById("cancelApiModal").addEventListener("click", hideApiModal);
+        document.getElementById("saveApiKey").addEventListener("click", saveApiKey);
+
+        // Закрытие модального окна по клику вне его
+        document.getElementById("apiModal").addEventListener("click", (e) => {
+          if (e.target.id === "apiModal") hideApiModal();
+        });
+
+        // Закрытие панели деталей
+        document.getElementById("closeDetails").addEventListener("click", () => {
+          document.getElementById("shipDetails").classList.remove("visible");
+          state.selectedShip = null;
+          updateMarkers();
+        });
+
+        // Отслеживание маршрута
+        document.getElementById("trackShip").addEventListener("click", toggleTracking);
+
+        // Переключение темы
+        document.getElementById("themeLight").addEventListener("click", () => setTheme("light"));
+        document.getElementById("themeDark").addEventListener("click", () => setTheme("dark"));
+
+        // Переподключение при изменении области карты
+        state.map.on("moveend", () => {
+          if (state.isConnected && state.ws && state.ws.readyState === WebSocket.OPEN) {
+            // Обновляем подписку с новой областью
+            const bounds = state.map.getBounds();
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+
+            const subscription = {
+              Apikey: state.apiKey,
+              BoundingBoxes: [[[sw.lat, sw.lng], [ne.lat, ne.lng]]],
+              FilterMessageTypes: ["PositionReport"]
+            };
+
+            state.ws.send(JSON.stringify(subscription));
+          }
+        });
+
+        // Фильтрация по Enter
+        document.getElementById("shipFilter").addEventListener("keypress", (e) => {
+          if (e.key === "Enter") applyFilters();
+        });
+
+        // Enter для сохранения API ключа
+        document.getElementById("apiKeyInput").addEventListener("keypress", (e) => {
+          if (e.key === "Enter") saveApiKey();
+        });
+      }
+
+      /**
+       * @function init
+       * @description Инициализация приложения
+       */
+      function init() {
+        initTheme();
+        initMap();
+        initEventListeners();
+
+        // Если есть сохранённый API ключ, показываем подсказку
+        if (state.apiKey) {
+          showNotification("Нажмите 'Подключить' для начала", "info");
+        } else {
+          showApiModal();
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", init);
+    })();
+  </script>
+</body>
+</html>
