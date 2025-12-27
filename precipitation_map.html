@@ -784,6 +784,74 @@
         });
         popupOverlay.getElement().className = 'ol-popup';
         map.addOverlay(popupOverlay);
+
+        // Обработчик клика на карте для получения погодных данных
+        map.on('click', async function(evt) {
+          // Получаем координаты в формате lon/lat
+          const coords = ol.proj.toLonLat(evt.coordinate);
+          const lon = coords[0];
+          const lat = coords[1];
+
+          // Показываем индикатор загрузки
+          popupOverlay.getElement().innerHTML = '<i>Загрузка данных...</i>';
+          popupOverlay.setPosition(evt.coordinate);
+
+          try {
+            // Получаем погодные данные
+            const weather = await getWeather(lat, lon);
+
+            // Извлекаем данные
+            const precip =
+              weather &&
+              weather.hourly &&
+              weather.hourly.precipitation &&
+              weather.hourly.precipitation.length > 0
+                ? weather.hourly.precipitation[0]
+                : null;
+            const temp =
+              weather &&
+              weather.current_weather &&
+              typeof weather.current_weather.temperature !== 'undefined'
+                ? weather.current_weather.temperature
+                : null;
+            const wind =
+              weather &&
+              weather.current_weather &&
+              typeof weather.current_weather.windspeed !== 'undefined'
+                ? weather.current_weather.windspeed
+                : null;
+            const windDir =
+              weather &&
+              weather.current_weather &&
+              typeof weather.current_weather.winddirection !== 'undefined'
+                ? weather.current_weather.winddirection
+                : null;
+
+            // Формируем HTML для popup
+            let html = `<b>Координаты:</b> ${lat.toFixed(4)}°, ${lon.toFixed(4)}°<br>`;
+            html += `<b>Осадки:</b> ${precip !== null ? precip + ' мм/ч' : 'нет данных'}<br>`;
+            html += `<b>Температура:</b> ${temp !== null ? temp + ' °C' : 'нет данных'}<br>`;
+            html += `<b>Ветер:</b> ${wind !== null ? wind + ' км/ч' : 'нет данных'}`;
+            if (windDir !== null) {
+              const dirs = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
+              html += ` (${dirs[Math.round(windDir / 45) % 8]})`;
+            }
+
+            popupOverlay.getElement().innerHTML = html;
+            popupOverlay.setPosition(evt.coordinate);
+
+            // Добавляем маркер в точке клика
+            const clickMarker = new ol.Feature({
+              geometry: new ol.geom.Point(evt.coordinate),
+            });
+            markerLayer.getSource().clear();
+            markerLayer.getSource().addFeature(clickMarker);
+
+          } catch (err) {
+            console.error('Ошибка получения погодных данных:', err);
+            popupOverlay.getElement().innerHTML = '<b>Ошибка загрузки данных</b>';
+          }
+        });
       }
 
       // --- Показ города на карте ---
