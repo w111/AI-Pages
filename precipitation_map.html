@@ -469,7 +469,8 @@
     <script>
       // --- Константы ---
       const CACHE_TTL = 10 * 60 * 1000;
-      const OWM_API_KEY = '8c21cd9f4b6d6f4e2c2e1b072129cc96'; // Получить бесплатно: https://home.openweathermap.org/users/sign_up
+      // ПРЕДУПРЕЖДЕНИЕ: В продакшене используйте серверный прокси для API ключей
+      const OWM_API_KEY = '8c21cd9f4b6d6f4e2c2e1b072129cc96';
 
       // --- Кеширование ---
       const cache = {
@@ -540,9 +541,9 @@
           let results = cache.get(cacheKey);
           if (results) return results;
 
-          const resp = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=7&addressdetails=1&featuretype=city`
-          );
+          const url = `https://nominatim.openstreetmap.org/search?format=json` +
+            `&q=${encodeURIComponent(query)}&limit=7&addressdetails=1&featuretype=city`;
+          const resp = await fetch(url);
           results = await resp.json();
           cache.set(cacheKey, results);
           return results;
@@ -716,16 +717,74 @@
       };
 
       // --- Погода ---
+      /**
+       * @function getWeather
+       * @description Получает данные о погоде для указанных координат
+       * @param {number} lat - Широта
+       * @param {number} lon - Долгота
+       * @returns {Promise<Object>} Данные о погоде из Open-Meteo API
+       */
       async function getWeather(lat, lon) {
         const cacheKey = `weather_${Math.round(lat * 100) / 100}_${Math.round(lon * 100) / 100}`;
         let data = cache.get(cacheKey);
         if (data) return data;
-        const resp = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=precipitation,temperature_2m,windspeed_10m,winddirection_10m&current_weather=true&forecast_days=1`
-        );
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+          `&hourly=precipitation,temperature_2m,windspeed_10m,winddirection_10m` +
+          `&current_weather=true&forecast_days=1`;
+        const resp = await fetch(url);
         data = await resp.json();
         cache.set(cacheKey, data);
         return data;
+      }
+
+      /**
+       * @function extractWeatherData
+       * @description Извлекает данные о погоде из API ответа
+       * @param {Object} weather - Объект с данными о погоде
+       * @returns {Object} Обработанные данные о погоде
+       */
+      function extractWeatherData(weather) {
+        return {
+          precip: weather?.hourly?.precipitation?.[0] ?? null,
+          temp: weather?.current_weather?.temperature ?? null,
+          wind: weather?.current_weather?.windspeed ?? null,
+          windDir: weather?.current_weather?.winddirection ?? null
+        };
+      }
+
+      /**
+       * @function formatWeatherPopup
+       * @description Форматирует HTML для отображения погодных данных
+       * @param {Object} data - Данные о погоде
+       * @param {string|null} location - Название локации (опционально)
+       * @param {number} lat - Широта
+       * @param {number} lon - Долгота
+       * @returns {string} HTML строка для popup
+       */
+      function formatWeatherPopup(data, location = null, lat, lon) {
+        let html = location ? `<b>${location}</b><br>` : 
+                   `<b>Координаты:</b> ${lat.toFixed(4)}°, ${lon.toFixed(4)}°<br>`;
+        
+        html += `<b>Осадки:</b> ${data.precip !== null ? data.precip + ' мм/ч' : 'нет данных'}<br>`;
+        html += `<b>Температура:</b> ${data.temp !== null ? data.temp + ' °C' : 'нет данных'}<br>`;
+        html += `<b>Ветер:</b> ${data.wind !== null ? data.wind + ' км/ч' : 'нет данных'}`;
+        
+        if (data.windDir !== null) {
+          const dirs = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
+          html += ` (${dirs[Math.round(data.windDir / 45) % 8]})`;
+        }
+        return html;
+      }
+
+      /**
+       * @function sanitizeHTML
+       * @description Безопасно устанавливает содержимое элемента
+       * @param {HTMLElement} element - DOM элемент
+       * @param {string} content - HTML содержимое для установки
+       */
+      function sanitizeHTML(element, content) {
+        // Простая защита от XSS - можно расширить при необходимости
+        element.innerHTML = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
       }
 
       // --- Сохранение последнего города и зума ---
@@ -745,6 +804,12 @@
 
       // --- Инициализация карты ---
       let map, markerLayer, popupOverlay;
+      
+      /**
+       * @function initMap
+       * @description Инициализирует карту с заданным центром
+       * @param {Array<number>} center - Координаты центра карты [lon, lat]
+       */
       function initMap(center) {
         markerLayer = new ol.layer.Vector({
           source: new ol.source.Vector(),
@@ -799,45 +864,10 @@
           try {
             // Получаем погодные данные
             const weather = await getWeather(lat, lon);
+            const weatherData = extractWeatherData(weather);
+            const html = formatWeatherPopup(weatherData, null, lat, lon);
 
-            // Извлекаем данные
-            const precip =
-              weather &&
-              weather.hourly &&
-              weather.hourly.precipitation &&
-              weather.hourly.precipitation.length > 0
-                ? weather.hourly.precipitation[0]
-                : null;
-            const temp =
-              weather &&
-              weather.current_weather &&
-              typeof weather.current_weather.temperature !== 'undefined'
-                ? weather.current_weather.temperature
-                : null;
-            const wind =
-              weather &&
-              weather.current_weather &&
-              typeof weather.current_weather.windspeed !== 'undefined'
-                ? weather.current_weather.windspeed
-                : null;
-            const windDir =
-              weather &&
-              weather.current_weather &&
-              typeof weather.current_weather.winddirection !== 'undefined'
-                ? weather.current_weather.winddirection
-                : null;
-
-            // Формируем HTML для popup
-            let html = `<b>Координаты:</b> ${lat.toFixed(4)}°, ${lon.toFixed(4)}°<br>`;
-            html += `<b>Осадки:</b> ${precip !== null ? precip + ' мм/ч' : 'нет данных'}<br>`;
-            html += `<b>Температура:</b> ${temp !== null ? temp + ' °C' : 'нет данных'}<br>`;
-            html += `<b>Ветер:</b> ${wind !== null ? wind + ' км/ч' : 'нет данных'}`;
-            if (windDir !== null) {
-              const dirs = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
-              html += ` (${dirs[Math.round(windDir / 45) % 8]})`;
-            }
-
-            popupOverlay.getElement().innerHTML = html;
+            sanitizeHTML(popupOverlay.getElement(), html);
             popupOverlay.setPosition(evt.coordinate);
 
             // Добавляем маркер в точке клика
@@ -855,69 +885,73 @@
       }
 
       // --- Показ города на карте ---
+      /**
+       * @function showCity
+       * @description Отображает город на карте с погодными данными
+       * @param {string} city - Название города для поиска
+       */
       async function showCity(city) {
         if (!city) return;
-        document.getElementById('city').value = city;
-        saveLastCity(city);
-        let geo;
+        
         try {
-          geo = await geocodeCity(city);
+          updateCityInput(city);
+          const geo = await geocodeCity(city);
+          const coords = [parseFloat(geo.lon), parseFloat(geo.lat)];
+          
+          updateMapView(coords, geo);
+          await displayCityWeather(coords[1], coords[0], geo);
         } catch (e) {
           alert('Город не найден!');
-          return;
         }
-        const lat = parseFloat(geo.lat),
-          lon = parseFloat(geo.lon);
+      }
+
+      /**
+       * @function updateCityInput
+       * @description Обновляет поле ввода города и сохраняет в локальном хранилище
+       * @param {string} city - Название города
+       */
+      function updateCityInput(city) {
+        document.getElementById('city').value = city;
+        saveLastCity(city);
+      }
+
+      /**
+       * @function updateMapView
+       * @description Обновляет вид карты и добавляет маркер
+       * @param {Array<number>} coords - Координаты [lon, lat]
+       * @param {Object} geo - Данные геокодинга
+       */
+      function updateMapView(coords, geo) {
         if (!map) {
-          initMap([lon, lat]);
+          initMap(coords);
         } else {
-          map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+          map.getView().setCenter(ol.proj.fromLonLat(coords));
           // Не меняем zoom, чтобы сохранить пользовательский масштаб
         }
-        // Маркер
+        
+        // Добавляем маркер
         const marker = new ol.Feature({
-          geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
+          geometry: new ol.geom.Point(ol.proj.fromLonLat(coords)),
         });
         markerLayer.getSource().addFeature(marker);
-        // Погода
+      }
+
+      /**
+       * @function displayCityWeather
+       * @description Отображает погодные данные для города в popup
+       * @param {number} lat - Широта
+       * @param {number} lon - Долгота 
+       * @param {Object} geo - Данные геокодинга
+       */
+      async function displayCityWeather(lat, lon, geo) {
         const weather = await getWeather(lat, lon);
-        const precip =
-          weather &&
-          weather.hourly &&
-          weather.hourly.precipitation &&
-          weather.hourly.precipitation.length > 0
-            ? weather.hourly.precipitation[0]
-            : null;
-        const temp =
-          weather &&
-          weather.current_weather &&
-          typeof weather.current_weather.temperature !== 'undefined'
-            ? weather.current_weather.temperature
-            : null;
-        const wind =
-          weather &&
-          weather.current_weather &&
-          typeof weather.current_weather.windspeed !== 'undefined'
-            ? weather.current_weather.windspeed
-            : null;
-        const windDir =
-          weather &&
-          weather.current_weather &&
-          typeof weather.current_weather.winddirection !== 'undefined'
-            ? weather.current_weather.winddirection
-            : null;
+        const weatherData = extractWeatherData(weather);
+        
         // Короткое название города
-        let shortName = geo.display_name.split(',').slice(0, 2).join(', ');
-        // Popup content
-        let html = `<b>${shortName}</b><br>`;
-        html += `<b>Осадки:</b> ${precip !== null ? precip + ' мм/ч' : 'нет данных'}<br>`;
-        html += `<b>Температура:</b> ${temp !== null ? temp + ' °C' : 'нет данных'}<br>`;
-        html += `<b>Ветер:</b> ${wind !== null ? wind + ' км/ч' : 'нет данных'}`;
-        if (windDir !== null) {
-          const dirs = ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'];
-          html += ` (${dirs[Math.round(windDir / 45) % 8]})`;
-        }
-        popupOverlay.getElement().innerHTML = html;
+        const shortName = geo.display_name.split(',').slice(0, 2).join(', ');
+        const html = formatWeatherPopup(weatherData, shortName, lat, lon);
+        
+        sanitizeHTML(popupOverlay.getElement(), html);
         popupOverlay.setPosition(ol.proj.fromLonLat([lon, lat]));
       }
 
@@ -935,23 +969,54 @@
       window.addEventListener('DOMContentLoaded', function () {
         // Инициализация автодополнения
         autocomplete.init();
+        
+        // Настройка улучшения тайлов осадков
+        setupTileEnhancement();
 
         const lastCity = getLastCity() || 'Москва';
         showCity(lastCity);
       });
 
       // --- Усиление яркости и контрастности слоя осадков ---
+      /**
+       * @function enhancePrecipitationTiles
+       * @description Применяет визуальные эффекты к тайлам слоя осадков
+       */
       function enhancePrecipitationTiles() {
         // Найти все img с src, содержащим precipitation_new
         const imgs = document.querySelectorAll('img[src*="precipitation_new"]');
         imgs.forEach(img => {
-          img.style.filter =
-            'contrast(5) brightness(2.2) saturate(4) drop-shadow(0 0 8px #00f) drop-shadow(0 0 16px #0ff)';
+          // Пропускаем уже обработанные изображения
+          if (img.dataset.enhanced) return;
+          
+          img.style.filter = 'contrast(5) brightness(2.2) saturate(4) ' + 
+            'drop-shadow(0 0 8px #00f) drop-shadow(0 0 16px #0ff)';
           img.style.mixBlendMode = 'lighter';
+          img.dataset.enhanced = 'true';
         });
       }
-      // Периодически обновлять фильтр (тайлы могут подгружаться динамически)
-      setInterval(enhancePrecipitationTiles, 1000);
+
+      /**
+       * @function setupTileEnhancement
+       * @description Настраивает автоматическое улучшение новых тайлов осадков
+       */
+      function setupTileEnhancement() {
+        // Применяем к существующим тайлам
+        enhancePrecipitationTiles();
+        
+        // Настраиваем наблюдатель для новых тайлов
+        const observer = new MutationObserver(() => {
+          enhancePrecipitationTiles();
+        });
+        
+        const mapElement = document.getElementById('map');
+        if (mapElement) {
+          observer.observe(mapElement, {
+            childList: true,
+            subtree: true
+          });
+        }
+      }
 
       // === СИСТЕМА НАСТРОЕК И ТЕМ ===
       
