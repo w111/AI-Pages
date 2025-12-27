@@ -1117,6 +1117,17 @@
               <option value="xml_parser">XML Parser</option>
               <option value="templating">Template Engine</option>
               <option value="diagrams">Various Diagrams</option>
+              <option value="fractal">Mandelbrot Fractal</option>
+              <option value="game_of_life">Game of Life</option>
+              <option value="heatmap">Correlation Heatmap</option>
+              <option value="monte_carlo">Monte Carlo π</option>
+              <option value="random_walk">Random Walk</option>
+              <option value="sorting_viz">Sorting Visualization</option>
+              <option value="maze">Maze Generator</option>
+              <option value="markov_text">Markov Text</option>
+              <option value="regex_demo">Regex Demo</option>
+              <option value="distributions">Distributions</option>
+              <option value="fourier">Fourier Transform</option>
             </select>
             {isRunning && (
               <div className="loading">
@@ -4497,6 +4508,1184 @@ correlations = data.corr()
 print("\\nCorrelation Matrix:")
 print("-" * 50)
 print(correlations)`,
+
+        fractal: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Параметры изображения
+width, height = 800, 800
+x_min, x_max = -2.5, 1.0
+y_min, y_max = -1.75, 1.75
+max_iter = 100
+
+# Создаем координатную сетку
+x = np.linspace(x_min, x_max, width)
+y = np.linspace(y_min, y_max, height)
+X, Y = np.meshgrid(x, y)
+C = X + 1j * Y
+
+# Множество Мандельброта
+Z = np.zeros_like(C)
+M = np.zeros(C.shape)
+
+for i in range(max_iter):
+    mask = np.abs(Z) <= 2
+    Z[mask] = Z[mask] ** 2 + C[mask]
+    M[mask] = i
+
+# Визуализация
+plt.figure(figsize=(12, 12))
+plt.imshow(M, extent=[x_min, x_max, y_min, y_max],
+           cmap='hot', origin='lower', aspect='equal')
+plt.colorbar(label='Iterations')
+plt.title('Mandelbrot Set', fontsize=16)
+plt.xlabel('Real')
+plt.ylabel('Imaginary')
+plt.show()
+
+# Дополнительно: увеличенная область
+print("\\nZoomed region around interesting area...")
+x_min2, x_max2 = -0.75, -0.65
+y_min2, y_max2 = 0.1, 0.2
+
+x2 = np.linspace(x_min2, x_max2, width)
+y2 = np.linspace(y_min2, y_max2, height)
+X2, Y2 = np.meshgrid(x2, y2)
+C2 = X2 + 1j * Y2
+Z2 = np.zeros_like(C2)
+M2 = np.zeros(C2.shape)
+
+for i in range(200):
+    mask = np.abs(Z2) <= 2
+    Z2[mask] = Z2[mask] ** 2 + C2[mask]
+    M2[mask] = i
+
+plt.figure(figsize=(12, 12))
+plt.imshow(M2, extent=[x_min2, x_max2, y_min2, y_max2],
+           cmap='twilight_shifted', origin='lower', aspect='equal')
+plt.colorbar(label='Iterations')
+plt.title('Mandelbrot Set - Zoomed', fontsize=16)
+plt.xlabel('Real')
+plt.ylabel('Imaginary')
+plt.show()`,
+
+        game_of_life: `import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+
+def create_grid(size, pattern='random'):
+    """Создаёт начальную конфигурацию"""
+    grid = np.zeros((size, size), dtype=int)
+
+    if pattern == 'random':
+        grid = np.random.choice([0, 1], size=(size, size), p=[0.85, 0.15])
+    elif pattern == 'glider':
+        # Планер
+        glider = np.array([[0, 1, 0], [0, 0, 1], [1, 1, 1]])
+        grid[1:4, 1:4] = glider
+    elif pattern == 'blinker':
+        # Мигалка
+        grid[10, 9:12] = 1
+    elif pattern == 'pulsar':
+        # Пульсар
+        pulsar = [
+            [0,0,1,1,1,0,0,0,1,1,1,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [1,0,0,0,0,1,0,1,0,0,0,0,1],
+            [1,0,0,0,0,1,0,1,0,0,0,0,1],
+            [1,0,0,0,0,1,0,1,0,0,0,0,1],
+            [0,0,1,1,1,0,0,0,1,1,1,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,1,1,1,0,0,0,1,1,1,0,0],
+            [1,0,0,0,0,1,0,1,0,0,0,0,1],
+            [1,0,0,0,0,1,0,1,0,0,0,0,1],
+            [1,0,0,0,0,1,0,1,0,0,0,0,1],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,1,1,1,0,0,0,1,1,1,0,0]
+        ]
+        start = size // 2 - 6
+        grid[start:start+13, start:start+13] = pulsar
+    return grid
+
+def update_grid(grid):
+    """Применяет правила игры 'Жизнь'"""
+    neighbors = sum([
+        np.roll(np.roll(grid, i, 0), j, 1)
+        for i in (-1, 0, 1) for j in (-1, 0, 1)
+        if (i != 0 or j != 0)
+    ])
+    # Правила: живая клетка выживает при 2-3 соседях
+    # Мёртвая клетка оживает при ровно 3 соседях
+    return ((neighbors == 3) | ((grid == 1) & (neighbors == 2))).astype(int)
+
+# Симуляция
+size = 50
+generations = 50
+grid = create_grid(size, 'pulsar')
+
+# Сохраняем историю для визуализации
+history = [grid.copy()]
+for _ in range(generations):
+    grid = update_grid(grid)
+    history.append(grid.copy())
+
+# Визуализация нескольких поколений
+fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+cmap = ListedColormap(['white', '#2563eb'])
+
+steps = [0, 5, 10, 15, 25, 35, 45, 49]
+for ax, step in zip(axes.flat, steps):
+    ax.imshow(history[step], cmap=cmap)
+    ax.set_title(f'Generation {step}')
+    ax.axis('off')
+
+plt.suptitle("Conway's Game of Life - Pulsar Pattern", fontsize=16)
+plt.tight_layout()
+plt.show()
+
+# Статистика популяции
+population = [np.sum(h) for h in history]
+plt.figure(figsize=(10, 4))
+plt.plot(population, 'b-', linewidth=2)
+plt.fill_between(range(len(population)), population, alpha=0.3)
+plt.xlabel('Generation')
+plt.ylabel('Population')
+plt.title('Population Over Time')
+plt.grid(True, alpha=0.3)
+plt.show()
+
+print(f"Initial population: {population[0]}")
+print(f"Final population: {population[-1]}")
+print(f"Max population: {max(population)} (generation {population.index(max(population))})")`,
+
+        heatmap: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Создаём данные для корреляционной матрицы
+np.random.seed(42)
+n_samples = 100
+n_features = 10
+
+# Генерируем коррелированные данные
+base = np.random.randn(n_samples, 3)
+data = np.column_stack([
+    base[:, 0],  # Feature 1
+    base[:, 0] + np.random.randn(n_samples) * 0.3,  # Сильно коррелирует с 1
+    base[:, 1],  # Feature 3
+    base[:, 1] + np.random.randn(n_samples) * 0.5,  # Коррелирует с 3
+    base[:, 2],  # Feature 5
+    np.random.randn(n_samples),  # Независимый
+    base[:, 0] - base[:, 1],  # Комбинация
+    np.random.randn(n_samples),  # Независимый
+    base[:, 2] * 0.8 + np.random.randn(n_samples) * 0.4,  # Коррелирует с 5
+    np.random.randn(n_samples)  # Независимый
+])
+
+feature_names = [f'Feature {i+1}' for i in range(10)]
+
+# Вычисляем корреляционную матрицу
+corr_matrix = np.corrcoef(data.T)
+
+# Создаём тепловую карту
+fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+# 1. Корреляционная матрица
+im1 = axes[0].imshow(corr_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
+axes[0].set_xticks(range(10))
+axes[0].set_yticks(range(10))
+axes[0].set_xticklabels(feature_names, rotation=45, ha='right')
+axes[0].set_yticklabels(feature_names)
+axes[0].set_title('Correlation Heatmap', fontsize=14)
+
+# Добавляем значения в ячейки
+for i in range(10):
+    for j in range(10):
+        color = 'white' if abs(corr_matrix[i, j]) > 0.5 else 'black'
+        axes[0].text(j, i, f'{corr_matrix[i, j]:.2f}',
+                     ha='center', va='center', color=color, fontsize=8)
+
+plt.colorbar(im1, ax=axes[0], label='Correlation')
+
+# 2. Тепловая карта данных
+sample_data = data[:20, :]  # Первые 20 наблюдений
+im2 = axes[1].imshow(sample_data, cmap='viridis', aspect='auto')
+axes[1].set_xlabel('Features')
+axes[1].set_ylabel('Samples')
+axes[1].set_xticks(range(10))
+axes[1].set_xticklabels(feature_names, rotation=45, ha='right')
+axes[1].set_title('Data Heatmap (First 20 samples)', fontsize=14)
+plt.colorbar(im2, ax=axes[1], label='Value')
+
+plt.tight_layout()
+plt.show()
+
+# Кластеризованная тепловая карта
+from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.spatial.distance import pdist
+
+# Кластеризация признаков
+dist = pdist(corr_matrix)
+linkage_matrix = linkage(dist, method='ward')
+
+# Получаем порядок кластеризации
+from scipy.cluster.hierarchy import leaves_list
+order = leaves_list(linkage_matrix)
+
+# Переупорядочиваем матрицу
+corr_reordered = corr_matrix[order][:, order]
+names_reordered = [feature_names[i] for i in order]
+
+plt.figure(figsize=(10, 8))
+plt.imshow(corr_reordered, cmap='RdBu_r', vmin=-1, vmax=1)
+plt.xticks(range(10), names_reordered, rotation=45, ha='right')
+plt.yticks(range(10), names_reordered)
+plt.title('Clustered Correlation Heatmap', fontsize=14)
+plt.colorbar(label='Correlation')
+plt.tight_layout()
+plt.show()
+
+print("Strong correlations (|r| > 0.7):")
+for i in range(10):
+    for j in range(i+1, 10):
+        if abs(corr_matrix[i, j]) > 0.7:
+            print(f"  {feature_names[i]} <-> {feature_names[j]}: {corr_matrix[i, j]:.3f}")`,
+
+        monte_carlo: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Метод Монте-Карло для вычисления числа Пи
+def estimate_pi(n_points):
+    """Оценка Pi методом Монте-Карло"""
+    # Генерируем случайные точки в квадрате [-1, 1] x [-1, 1]
+    x = np.random.uniform(-1, 1, n_points)
+    y = np.random.uniform(-1, 1, n_points)
+
+    # Проверяем, попали ли точки в круг
+    inside = x**2 + y**2 <= 1
+
+    # Pi ≈ 4 * (точки внутри круга) / (всего точек)
+    pi_estimate = 4 * np.sum(inside) / n_points
+
+    return x, y, inside, pi_estimate
+
+# Визуализация для разного количества точек
+fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+n_values = [100, 1000, 10000, 50000]
+
+for ax, n in zip(axes.flat, n_values):
+    x, y, inside, pi_est = estimate_pi(n)
+
+    # Рисуем точки
+    ax.scatter(x[inside], y[inside], c='blue', s=1, alpha=0.5, label='Inside')
+    ax.scatter(x[~inside], y[~inside], c='red', s=1, alpha=0.5, label='Outside')
+
+    # Рисуем круг
+    theta = np.linspace(0, 2*np.pi, 100)
+    ax.plot(np.cos(theta), np.sin(theta), 'k-', linewidth=2)
+
+    ax.set_xlim(-1.1, 1.1)
+    ax.set_ylim(-1.1, 1.1)
+    ax.set_aspect('equal')
+    ax.set_title(f'n={n:,}, π ≈ {pi_est:.6f}')
+    ax.legend(loc='upper right')
+
+plt.suptitle('Monte Carlo Estimation of π', fontsize=16)
+plt.tight_layout()
+plt.show()
+
+# Сходимость оценки
+n_simulations = 1000
+max_points = 10000
+estimates = []
+ns = np.logspace(1, np.log10(max_points), n_simulations).astype(int)
+
+for n in ns:
+    _, _, _, pi_est = estimate_pi(n)
+    estimates.append(pi_est)
+
+plt.figure(figsize=(12, 5))
+plt.subplot(121)
+plt.semilogx(ns, estimates, 'b-', alpha=0.7, label='Estimate')
+plt.axhline(y=np.pi, color='r', linestyle='--', label=f'True π = {np.pi:.6f}')
+plt.xlabel('Number of Points')
+plt.ylabel('π Estimate')
+plt.title('Convergence of Monte Carlo Estimation')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+plt.subplot(122)
+errors = np.abs(np.array(estimates) - np.pi)
+plt.loglog(ns, errors, 'g-', alpha=0.7)
+plt.xlabel('Number of Points')
+plt.ylabel('Absolute Error')
+plt.title('Error vs Number of Points')
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+print(f"True π: {np.pi:.10f}")
+print(f"Final estimate (n={ns[-1]:,}): {estimates[-1]:.10f}")
+print(f"Final error: {abs(estimates[-1] - np.pi):.10f}")`,
+
+        random_walk: `import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# 2D Random Walk
+def random_walk_2d(n_steps):
+    """Генерирует 2D случайное блуждание"""
+    # Случайные направления: 0=вверх, 1=вниз, 2=влево, 3=вправо
+    directions = np.random.randint(0, 4, n_steps)
+
+    dx = np.zeros(n_steps)
+    dy = np.zeros(n_steps)
+
+    dx[directions == 2] = -1  # влево
+    dx[directions == 3] = 1   # вправо
+    dy[directions == 0] = 1   # вверх
+    dy[directions == 1] = -1  # вниз
+
+    x = np.cumsum(dx)
+    y = np.cumsum(dy)
+
+    return x, y
+
+# 3D Random Walk (Броуновское движение)
+def brownian_motion_3d(n_steps, dt=0.01):
+    """Генерирует 3D броуновское движение"""
+    # Случайные приращения из нормального распределения
+    dx = np.random.randn(n_steps) * np.sqrt(dt)
+    dy = np.random.randn(n_steps) * np.sqrt(dt)
+    dz = np.random.randn(n_steps) * np.sqrt(dt)
+
+    x = np.cumsum(dx)
+    y = np.cumsum(dy)
+    z = np.cumsum(dz)
+
+    return x, y, z
+
+# Визуализация 2D
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+# Несколько 2D траекторий
+n_walks = 5
+n_steps = 1000
+colors = plt.cm.viridis(np.linspace(0, 1, n_walks))
+
+for i in range(n_walks):
+    x, y = random_walk_2d(n_steps)
+    axes[0].plot(x, y, color=colors[i], alpha=0.7, linewidth=0.8)
+    axes[0].scatter(x[-1], y[-1], color=colors[i], s=50, zorder=5)
+
+axes[0].scatter(0, 0, color='red', s=100, marker='*', zorder=10, label='Start')
+axes[0].set_xlabel('X')
+axes[0].set_ylabel('Y')
+axes[0].set_title(f'2D Random Walk ({n_walks} trajectories, {n_steps} steps)')
+axes[0].legend()
+axes[0].grid(True, alpha=0.3)
+axes[0].set_aspect('equal')
+
+# Распределение конечных точек
+n_simulations = 1000
+final_distances = []
+for _ in range(n_simulations):
+    x, y = random_walk_2d(n_steps)
+    final_distances.append(np.sqrt(x[-1]**2 + y[-1]**2))
+
+axes[1].hist(final_distances, bins=30, density=True, alpha=0.7, color='steelblue')
+axes[1].axvline(np.mean(final_distances), color='red', linestyle='--',
+                label=f'Mean = {np.mean(final_distances):.1f}')
+axes[1].set_xlabel('Final Distance from Origin')
+axes[1].set_ylabel('Density')
+axes[1].set_title(f'Distribution of Final Distances ({n_simulations} simulations)')
+axes[1].legend()
+
+plt.tight_layout()
+plt.show()
+
+# 3D Броуновское движение
+fig = plt.figure(figsize=(14, 6))
+
+ax1 = fig.add_subplot(121, projection='3d')
+n_particles = 3
+for i in range(n_particles):
+    x, y, z = brownian_motion_3d(2000)
+    ax1.plot(x, y, z, alpha=0.8, linewidth=0.5)
+    ax1.scatter(x[-1], y[-1], z[-1], s=30)
+
+ax1.scatter(0, 0, 0, color='red', s=100, marker='*')
+ax1.set_xlabel('X')
+ax1.set_ylabel('Y')
+ax1.set_zlabel('Z')
+ax1.set_title('3D Brownian Motion')
+
+# Среднеквадратичное смещение
+ax2 = fig.add_subplot(122)
+steps = np.arange(1, 2001)
+msd_theoretical = steps * 0.01 * 3  # <r²> = 3*D*t для 3D
+
+msd_empirical = []
+for step in range(1, 2001, 20):
+    distances = []
+    for _ in range(100):
+        x, y, z = brownian_motion_3d(step)
+        distances.append(x[-1]**2 + y[-1]**2 + z[-1]**2)
+    msd_empirical.append(np.mean(distances))
+
+ax2.plot(steps, msd_theoretical, 'r-', label='Theoretical MSD', linewidth=2)
+ax2.scatter(range(1, 2001, 20), msd_empirical, alpha=0.5, label='Empirical MSD')
+ax2.set_xlabel('Time Steps')
+ax2.set_ylabel('Mean Squared Displacement')
+ax2.set_title('MSD vs Time (Brownian Motion)')
+ax2.legend()
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+print(f"Expected final distance (2D, {n_steps} steps): {np.sqrt(n_steps):.2f}")
+print(f"Observed mean final distance: {np.mean(final_distances):.2f}")`,
+
+        sorting_viz: `import numpy as np
+import matplotlib.pyplot as plt
+
+def bubble_sort_steps(arr):
+    """Bubble sort с сохранением шагов"""
+    arr = arr.copy()
+    steps = [arr.copy()]
+    n = len(arr)
+    for i in range(n):
+        for j in range(0, n-i-1):
+            if arr[j] > arr[j+1]:
+                arr[j], arr[j+1] = arr[j+1], arr[j]
+                steps.append(arr.copy())
+    return steps
+
+def selection_sort_steps(arr):
+    """Selection sort с сохранением шагов"""
+    arr = arr.copy()
+    steps = [arr.copy()]
+    n = len(arr)
+    for i in range(n):
+        min_idx = i
+        for j in range(i+1, n):
+            if arr[j] < arr[min_idx]:
+                min_idx = j
+        arr[i], arr[min_idx] = arr[min_idx], arr[i]
+        steps.append(arr.copy())
+    return steps
+
+def insertion_sort_steps(arr):
+    """Insertion sort с сохранением шагов"""
+    arr = arr.copy()
+    steps = [arr.copy()]
+    for i in range(1, len(arr)):
+        key = arr[i]
+        j = i - 1
+        while j >= 0 and arr[j] > key:
+            arr[j + 1] = arr[j]
+            j -= 1
+            steps.append(arr.copy())
+        arr[j + 1] = key
+        steps.append(arr.copy())
+    return steps
+
+def quicksort_steps(arr):
+    """Quick sort с сохранением шагов"""
+    arr = arr.copy()
+    steps = [arr.copy()]
+
+    def partition(low, high):
+        pivot = arr[high]
+        i = low - 1
+        for j in range(low, high):
+            if arr[j] <= pivot:
+                i += 1
+                arr[i], arr[j] = arr[j], arr[i]
+                steps.append(arr.copy())
+        arr[i + 1], arr[high] = arr[high], arr[i + 1]
+        steps.append(arr.copy())
+        return i + 1
+
+    def quicksort(low, high):
+        if low < high:
+            pi = partition(low, high)
+            quicksort(low, pi - 1)
+            quicksort(pi + 1, high)
+
+    quicksort(0, len(arr) - 1)
+    return steps
+
+# Генерируем данные
+np.random.seed(42)
+n = 20
+arr = np.random.randint(1, 100, n)
+
+# Получаем шаги для каждого алгоритма
+algorithms = {
+    'Bubble Sort': bubble_sort_steps(arr),
+    'Selection Sort': selection_sort_steps(arr),
+    'Insertion Sort': insertion_sort_steps(arr),
+    'Quick Sort': quicksort_steps(arr)
+}
+
+# Визуализация начального и конечного состояния
+fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+
+colors = plt.cm.viridis(np.linspace(0.2, 0.8, n))
+
+for idx, (name, steps) in enumerate(algorithms.items()):
+    # Начальное состояние
+    axes[0, idx].bar(range(n), steps[0], color=colors)
+    axes[0, idx].set_title(f'{name}\\nInitial State')
+    axes[0, idx].set_ylim(0, 110)
+
+    # Конечное состояние
+    sorted_colors = [colors[np.where(arr == v)[0][0]] for v in steps[-1]]
+    axes[1, idx].bar(range(n), steps[-1], color=sorted_colors)
+    axes[1, idx].set_title(f'Final State\\n({len(steps)} steps)')
+    axes[1, idx].set_ylim(0, 110)
+
+plt.suptitle('Sorting Algorithms Comparison', fontsize=16)
+plt.tight_layout()
+plt.show()
+
+# Визуализация процесса сортировки для Bubble Sort
+bubble_steps = algorithms['Bubble Sort']
+n_frames = min(16, len(bubble_steps))
+indices = np.linspace(0, len(bubble_steps)-1, n_frames).astype(int)
+
+fig, axes = plt.subplots(4, 4, figsize=(14, 12))
+for ax, idx in zip(axes.flat, indices):
+    step_colors = plt.cm.plasma(bubble_steps[idx] / 100)
+    ax.bar(range(n), bubble_steps[idx], color=step_colors)
+    ax.set_title(f'Step {idx}')
+    ax.set_ylim(0, 110)
+    ax.set_xticks([])
+
+plt.suptitle('Bubble Sort Step-by-Step Visualization', fontsize=16)
+plt.tight_layout()
+plt.show()
+
+# Сравнение количества шагов
+print("\\nAlgorithm Comparison:")
+print("-" * 40)
+for name, steps in algorithms.items():
+    print(f"{name:20s}: {len(steps):5d} steps")
+
+# Теоретическая сложность
+print("\\nTheoretical Complexity (n=20):")
+print(f"O(n²) = {n**2}")
+print(f"O(n log n) ≈ {int(n * np.log2(n))}")`,
+
+        maze: `import numpy as np
+import matplotlib.pyplot as plt
+from collections import deque
+
+def generate_maze(width, height):
+    """Генерирует лабиринт с помощью алгоритма DFS"""
+    # Создаём сетку (1 = стена, 0 = проход)
+    maze = np.ones((height * 2 + 1, width * 2 + 1), dtype=int)
+
+    # Стек для DFS
+    stack = [(0, 0)]
+    visited = {(0, 0)}
+
+    # Направления: вверх, вниз, влево, вправо
+    directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+    while stack:
+        x, y = stack[-1]
+        maze[y * 2 + 1, x * 2 + 1] = 0
+
+        # Находим непосещённых соседей
+        neighbors = []
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in visited:
+                neighbors.append((nx, ny, dx, dy))
+
+        if neighbors:
+            # Выбираем случайного соседа
+            nx, ny, dx, dy = neighbors[np.random.randint(len(neighbors))]
+            # Убираем стену между текущей и следующей клеткой
+            maze[y * 2 + 1 + dy, x * 2 + 1 + dx] = 0
+            visited.add((nx, ny))
+            stack.append((nx, ny))
+        else:
+            stack.pop()
+
+    return maze
+
+def solve_maze_bfs(maze, start, end):
+    """Решает лабиринт с помощью BFS"""
+    height, width = maze.shape
+    queue = deque([(start, [start])])
+    visited = {start}
+
+    directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+    while queue:
+        (x, y), path = queue.popleft()
+
+        if (x, y) == end:
+            return path
+
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < width and 0 <= ny < height:
+                if maze[ny, nx] == 0 and (nx, ny) not in visited:
+                    visited.add((nx, ny))
+                    queue.append(((nx, ny), path + [(nx, ny)]))
+
+    return None
+
+# Генерируем и решаем лабиринт
+np.random.seed(42)
+width, height = 20, 15
+maze = generate_maze(width, height)
+
+# Начало и конец
+start = (1, 1)
+end = (width * 2 - 1, height * 2 - 1)
+
+# Находим путь
+path = solve_maze_bfs(maze, start, end)
+
+# Визуализация
+fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+# Лабиринт без решения
+axes[0].imshow(maze, cmap='binary')
+axes[0].plot(start[0], start[1], 'go', markersize=10, label='Start')
+axes[0].plot(end[0], end[1], 'ro', markersize=10, label='End')
+axes[0].set_title('Generated Maze', fontsize=14)
+axes[0].legend()
+axes[0].axis('off')
+
+# Лабиринт с решением
+maze_solved = maze.copy().astype(float)
+if path:
+    for x, y in path:
+        maze_solved[y, x] = 0.5
+
+axes[1].imshow(maze_solved, cmap='RdYlGn_r')
+axes[1].plot(start[0], start[1], 'go', markersize=10)
+axes[1].plot(end[0], end[1], 'ro', markersize=10)
+if path:
+    path_x = [p[0] for p in path]
+    path_y = [p[1] for p in path]
+    axes[1].plot(path_x, path_y, 'b-', linewidth=2, alpha=0.7)
+axes[1].set_title(f'Solved Maze (Path length: {len(path) if path else "No path"})', fontsize=14)
+axes[1].axis('off')
+
+plt.tight_layout()
+plt.show()
+
+# Анализ лабиринтов разных размеров
+sizes = [(10, 10), (15, 15), (20, 20), (25, 25)]
+path_lengths = []
+
+fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+
+for ax, (w, h) in zip(axes.flat, sizes):
+    m = generate_maze(w, h)
+    s = (1, 1)
+    e = (w * 2 - 1, h * 2 - 1)
+    p = solve_maze_bfs(m, s, e)
+    path_lengths.append(len(p) if p else 0)
+
+    m_viz = m.copy().astype(float)
+    if p:
+        for x, y in p:
+            m_viz[y, x] = 0.5
+
+    ax.imshow(m_viz, cmap='RdYlGn_r')
+    ax.set_title(f'{w}x{h} maze\\nPath: {len(p) if p else 0} steps')
+    ax.axis('off')
+
+plt.suptitle('Mazes of Different Sizes', fontsize=16)
+plt.tight_layout()
+plt.show()
+
+print("Maze Statistics:")
+print("-" * 30)
+for (w, h), length in zip(sizes, path_lengths):
+    print(f"{w}x{h} maze: {length} steps")`,
+
+        markov_text: `import numpy as np
+from collections import defaultdict
+import re
+
+# Пример текста для обучения (Пушкин)
+sample_text = """
+Мой дядя самых честных правил,
+Когда не в шутку занемог,
+Он уважать себя заставил
+И лучше выдумать не мог.
+Его пример другим наука;
+Но, боже мой, какая скука
+С больным сидеть и день и ночь,
+Не отходя ни шагу прочь!
+Какое низкое коварство
+Полуживого забавлять,
+Ему подушки поправлять,
+Печально подносить лекарство,
+Вздыхать и думать про себя:
+Когда же чёрт возьмёт тебя!
+"""
+
+# Второй пример текста (английский)
+english_text = """
+To be or not to be that is the question
+Whether tis nobler in the mind to suffer
+The slings and arrows of outrageous fortune
+Or to take arms against a sea of troubles
+And by opposing end them To die to sleep
+No more and by a sleep to say we end
+The heartache and the thousand natural shocks
+That flesh is heir to Tis a consummation
+Devoutly to be wished To die to sleep
+"""
+
+class MarkovChain:
+    def __init__(self, order=2):
+        self.order = order
+        self.chain = defaultdict(list)
+        self.starts = []
+
+    def train(self, text):
+        """Обучает модель на тексте"""
+        # Очищаем текст
+        words = text.split()
+
+        if len(words) < self.order + 1:
+            return
+
+        # Сохраняем начальные n-граммы
+        self.starts.append(tuple(words[:self.order]))
+
+        # Строим цепь
+        for i in range(len(words) - self.order):
+            key = tuple(words[i:i + self.order])
+            next_word = words[i + self.order]
+            self.chain[key].append(next_word)
+
+    def generate(self, length=50):
+        """Генерирует текст"""
+        if not self.starts:
+            return ""
+
+        # Начинаем со случайного начала
+        current = list(self.starts[np.random.randint(len(self.starts))])
+        result = list(current)
+
+        for _ in range(length - self.order):
+            key = tuple(current)
+            if key in self.chain:
+                next_word = np.random.choice(self.chain[key])
+                result.append(next_word)
+                current = current[1:] + [next_word]
+            else:
+                # Если зашли в тупик, начинаем заново
+                current = list(self.starts[np.random.randint(len(self.starts))])
+                result.extend(current)
+
+        return ' '.join(result)
+
+# Обучаем модели разного порядка
+print("=== Марковские цепи для генерации текста ===\\n")
+
+for order in [1, 2, 3]:
+    print(f"\\n--- Порядок {order} ---")
+
+    # Русский текст
+    model_ru = MarkovChain(order=order)
+    model_ru.train(sample_text)
+    generated_ru = model_ru.generate(30)
+    print(f"\\nРусский текст (Пушкин):")
+    print(f"  {generated_ru}")
+
+    # Английский текст
+    model_en = MarkovChain(order=order)
+    model_en.train(english_text)
+    generated_en = model_en.generate(30)
+    print(f"\\nАнглийский текст (Шекспир):")
+    print(f"  {generated_en}")
+
+# Визуализация структуры цепи
+import matplotlib.pyplot as plt
+
+model = MarkovChain(order=1)
+model.train("the cat sat on the mat the cat ate the rat")
+
+# Создаём матрицу переходов
+words = list(set(model.train.__code__.co_consts[1].split() if hasattr(model.train.__code__.co_consts[1], 'split') else []))
+words = list(set([w for ws in model.chain.values() for w in ws] + [w[0] for w in model.chain.keys()]))
+n = len(words)
+word_to_idx = {w: i for i, w in enumerate(words)}
+
+transition_matrix = np.zeros((n, n))
+for key, values in model.chain.items():
+    if key[0] in word_to_idx:
+        for v in values:
+            if v in word_to_idx:
+                transition_matrix[word_to_idx[key[0]], word_to_idx[v]] += 1
+
+# Нормализуем
+row_sums = transition_matrix.sum(axis=1, keepdims=True)
+row_sums[row_sums == 0] = 1
+transition_matrix = transition_matrix / row_sums
+
+plt.figure(figsize=(10, 8))
+plt.imshow(transition_matrix, cmap='Blues')
+plt.xticks(range(n), words, rotation=45, ha='right')
+plt.yticks(range(n), words)
+plt.colorbar(label='Transition Probability')
+plt.title('Markov Chain Transition Matrix')
+plt.xlabel('Next Word')
+plt.ylabel('Current Word')
+plt.tight_layout()
+plt.show()
+
+# Статистика
+print("\\n=== Статистика модели ===")
+print(f"Уникальных состояний: {len(model.chain)}")
+print(f"Средняя ветвистость: {np.mean([len(v) for v in model.chain.values()]):.2f}")`,
+
+        regex_demo: `import re
+
+# Демонстрация регулярных выражений
+print("=== Демонстрация регулярных выражений ===\\n")
+
+# Тестовые данные
+test_texts = [
+    "Email: user@example.com, another.user123@test.org",
+    "Phone: +7 (999) 123-45-67, 8-800-555-35-35",
+    "IP: 192.168.1.1, 10.0.0.255, 256.1.1.1",
+    "Dates: 2024-01-15, 15/01/2024, January 15, 2024",
+    "URLs: https://example.com/path?q=test, http://test.org",
+    "Prices: $19.99, €15.50, 1000 руб, ¥299",
+]
+
+patterns = {
+    "Email": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+    "Phone (RU)": r"(?:\\+7|8)[\\s\\-]?\\(?\\d{3}\\)?[\\s\\-]?\\d{3}[\\s\\-]?\\d{2}[\\s\\-]?\\d{2}",
+    "IP Address": r"\\b(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\b",
+    "Date (YYYY-MM-DD)": r"\\d{4}-\\d{2}-\\d{2}",
+    "URL": r"https?://[^\\s,]+",
+    "Price": r"[\\$€¥]\\d+(?:\\.\\d{2})?|\\d+\\s*(?:руб|₽)",
+}
+
+for text in test_texts:
+    print(f"Text: {text}")
+    print("-" * 60)
+    for name, pattern in patterns.items():
+        matches = re.findall(pattern, text)
+        if matches:
+            print(f"  {name}: {matches}")
+    print()
+
+# Продвинутые примеры
+print("\\n=== Продвинутые примеры ===\\n")
+
+# 1. Группы захвата
+text = "John Smith (john.smith@email.com) - Manager"
+pattern = r"(\\w+)\\s+(\\w+)\\s+\\(([^)]+)\\)\\s+-\\s+(\\w+)"
+match = re.search(pattern, text)
+if match:
+    print("Группы захвата:")
+    print(f"  Имя: {match.group(1)}")
+    print(f"  Фамилия: {match.group(2)}")
+    print(f"  Email: {match.group(3)}")
+    print(f"  Должность: {match.group(4)}")
+
+# 2. Именованные группы
+pattern = r"(?P<first>\\w+)\\s+(?P<last>\\w+)\\s+\\((?P<email>[^)]+)\\)"
+match = re.search(pattern, text)
+if match:
+    print("\\nИменованные группы:")
+    print(f"  {match.groupdict()}")
+
+# 3. Замена с использованием функции
+def censor_email(match):
+    email = match.group(0)
+    name, domain = email.split('@')
+    return name[0] + '*' * (len(name)-1) + '@' + domain
+
+text = "Контакты: alice@mail.com и bob@example.org"
+censored = re.sub(r"[\\w.]+@[\\w.]+", censor_email, text)
+print(f"\\nЦензура email:")
+print(f"  До: {text}")
+print(f"  После: {censored}")
+
+# 4. Валидация паролей
+def validate_password(password):
+    checks = {
+        "Минимум 8 символов": len(password) >= 8,
+        "Заглавная буква": bool(re.search(r"[A-Z]", password)),
+        "Строчная буква": bool(re.search(r"[a-z]", password)),
+        "Цифра": bool(re.search(r"\\d", password)),
+        "Спецсимвол": bool(re.search(r"[!@#$%^&*(),.?\":{}|<>]", password)),
+    }
+    return checks
+
+passwords = ["weak", "Better123", "Strong@Pass1", "NoSpecial123"]
+print("\\nВалидация паролей:")
+for pwd in passwords:
+    checks = validate_password(pwd)
+    passed = sum(checks.values())
+    print(f"  '{pwd}': {passed}/5 проверок")
+    for check, result in checks.items():
+        status = "✓" if result else "✗"
+        print(f"    {status} {check}")
+
+# 5. Парсинг логов
+log_line = '[2024-01-15 14:30:45] ERROR: Connection failed (code: 500)'
+pattern = r"\\[([\\d-]+)\\s+([\\d:]+)\\]\\s+(\\w+):\\s+(.+?)\\s+\\(code:\\s+(\\d+)\\)"
+match = re.search(pattern, log_line)
+if match:
+    print("\\nПарсинг лога:")
+    print(f"  Дата: {match.group(1)}")
+    print(f"  Время: {match.group(2)}")
+    print(f"  Уровень: {match.group(3)}")
+    print(f"  Сообщение: {match.group(4)}")
+    print(f"  Код: {match.group(5)}")`,
+
+        distributions: `import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
+# Настройка стиля
+plt.style.use('default')
+
+# Создаём фигуру для дискретных распределений
+fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+
+# 1. Биномиальное распределение
+ax = axes[0, 0]
+n, p = 20, 0.5
+x = np.arange(0, n+1)
+pmf = stats.binom.pmf(x, n, p)
+ax.bar(x, pmf, color='steelblue', alpha=0.7)
+ax.set_title(f'Binomial (n={n}, p={p})')
+ax.set_xlabel('k')
+ax.set_ylabel('P(X=k)')
+ax.axvline(n*p, color='red', linestyle='--', label=f'μ={n*p}')
+ax.legend()
+
+# 2. Распределение Пуассона
+ax = axes[0, 1]
+lambda_ = 5
+x = np.arange(0, 20)
+pmf = stats.poisson.pmf(x, lambda_)
+ax.bar(x, pmf, color='green', alpha=0.7)
+ax.set_title(f'Poisson (λ={lambda_})')
+ax.set_xlabel('k')
+ax.set_ylabel('P(X=k)')
+ax.axvline(lambda_, color='red', linestyle='--', label=f'μ={lambda_}')
+ax.legend()
+
+# 3. Геометрическое распределение
+ax = axes[0, 2]
+p = 0.3
+x = np.arange(1, 20)
+pmf = stats.geom.pmf(x, p)
+ax.bar(x, pmf, color='orange', alpha=0.7)
+ax.set_title(f'Geometric (p={p})')
+ax.set_xlabel('k')
+ax.set_ylabel('P(X=k)')
+ax.legend()
+
+# 4. Нормальное распределение
+ax = axes[1, 0]
+x = np.linspace(-4, 4, 1000)
+for mu, sigma in [(0, 1), (0, 0.5), (0, 2)]:
+    pdf = stats.norm.pdf(x, mu, sigma)
+    ax.plot(x, pdf, label=f'μ={mu}, σ={sigma}', linewidth=2)
+ax.set_title('Normal Distribution')
+ax.set_xlabel('x')
+ax.set_ylabel('f(x)')
+ax.legend()
+ax.grid(True, alpha=0.3)
+
+# 5. Экспоненциальное распределение
+ax = axes[1, 1]
+x = np.linspace(0, 5, 1000)
+for lambda_ in [0.5, 1, 2]:
+    pdf = stats.expon.pdf(x, scale=1/lambda_)
+    ax.plot(x, pdf, label=f'λ={lambda_}', linewidth=2)
+ax.set_title('Exponential Distribution')
+ax.set_xlabel('x')
+ax.set_ylabel('f(x)')
+ax.legend()
+ax.grid(True, alpha=0.3)
+
+# 6. Равномерное распределение
+ax = axes[1, 2]
+x = np.linspace(-1, 6, 1000)
+for a, b in [(0, 1), (1, 3), (2, 5)]:
+    pdf = stats.uniform.pdf(x, a, b-a)
+    ax.plot(x, pdf, label=f'[{a}, {b}]', linewidth=2)
+ax.set_title('Uniform Distribution')
+ax.set_xlabel('x')
+ax.set_ylabel('f(x)')
+ax.legend()
+ax.grid(True, alpha=0.3)
+ax.set_ylim(0, 1.5)
+
+plt.tight_layout()
+plt.show()
+
+# Центральная предельная теорема
+fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+
+# Исходное распределение (экспоненциальное)
+sample_sizes = [1, 2, 5, 10, 30, 100]
+n_simulations = 10000
+lambda_exp = 1
+
+for ax, n in zip(axes.flat, sample_sizes):
+    # Генерируем выборочные средние
+    means = [np.mean(np.random.exponential(1/lambda_exp, n)) for _ in range(n_simulations)]
+
+    ax.hist(means, bins=50, density=True, alpha=0.7, color='steelblue')
+
+    # Теоретическое нормальное распределение
+    if n > 1:
+        x = np.linspace(min(means), max(means), 100)
+        theoretical = stats.norm.pdf(x, 1/lambda_exp, 1/(lambda_exp * np.sqrt(n)))
+        ax.plot(x, theoretical, 'r-', linewidth=2, label='Normal approx')
+        ax.legend()
+
+    ax.set_title(f'n = {n}')
+    ax.set_xlabel('Sample Mean')
+    ax.set_ylabel('Density')
+
+plt.suptitle('Central Limit Theorem Demo (Exponential → Normal)', fontsize=14)
+plt.tight_layout()
+plt.show()
+
+# Статистика
+print("Distribution Statistics:")
+print("-" * 50)
+print(f"Normal(0,1): mean={stats.norm.mean():.2f}, var={stats.norm.var():.2f}")
+print(f"Exponential(1): mean={stats.expon.mean():.2f}, var={stats.expon.var():.2f}")
+print(f"Poisson(5): mean={stats.poisson.mean(5):.2f}, var={stats.poisson.var(5):.2f}")
+print(f"Binomial(20,0.5): mean={stats.binom.mean(20,0.5):.2f}, var={stats.binom.var(20,0.5):.2f}")`,
+
+        fourier: `import numpy as np
+import matplotlib.pyplot as plt
+
+# Быстрое преобразование Фурье (FFT)
+print("=== Демонстрация преобразования Фурье ===\\n")
+
+# Параметры
+fs = 1000  # Частота дискретизации (Гц)
+T = 1.0    # Длительность сигнала (сек)
+t = np.linspace(0, T, int(fs * T), endpoint=False)
+
+# Создаём сложный сигнал: сумма синусоид
+frequencies = [5, 20, 50]  # Гц
+amplitudes = [1.0, 0.5, 0.3]
+
+signal = sum(a * np.sin(2 * np.pi * f * t) for f, a in zip(frequencies, amplitudes))
+# Добавляем шум
+signal_noisy = signal + np.random.normal(0, 0.2, len(t))
+
+# Применяем FFT
+fft_result = np.fft.fft(signal_noisy)
+fft_freq = np.fft.fftfreq(len(t), 1/fs)
+fft_magnitude = np.abs(fft_result) / len(t) * 2
+
+# Визуализация
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+# 1. Исходный сигнал
+axes[0, 0].plot(t[:200], signal[:200], 'b-', label='Clean signal', linewidth=1.5)
+axes[0, 0].plot(t[:200], signal_noisy[:200], 'gray', alpha=0.5, label='Noisy signal')
+axes[0, 0].set_xlabel('Time (s)')
+axes[0, 0].set_ylabel('Amplitude')
+axes[0, 0].set_title('Time Domain Signal')
+axes[0, 0].legend()
+axes[0, 0].grid(True, alpha=0.3)
+
+# 2. Спектр (только положительные частоты)
+pos_mask = fft_freq >= 0
+axes[0, 1].plot(fft_freq[pos_mask][:100], fft_magnitude[pos_mask][:100], 'r-', linewidth=1.5)
+axes[0, 1].set_xlabel('Frequency (Hz)')
+axes[0, 1].set_ylabel('Magnitude')
+axes[0, 1].set_title('Frequency Spectrum (FFT)')
+for f, a in zip(frequencies, amplitudes):
+    axes[0, 1].axvline(f, color='green', linestyle='--', alpha=0.7)
+    axes[0, 1].annotate(f'{f} Hz', (f, a), textcoords="offset points", xytext=(5,5))
+axes[0, 1].grid(True, alpha=0.3)
+
+# 3. Спектрограмма
+axes[1, 0].specgram(signal_noisy, Fs=fs, cmap='viridis')
+axes[1, 0].set_xlabel('Time (s)')
+axes[1, 0].set_ylabel('Frequency (Hz)')
+axes[1, 0].set_title('Spectrogram')
+axes[1, 0].set_ylim(0, 100)
+
+# 4. Фильтрация сигнала
+# Создаём низкочастотный фильтр
+cutoff = 30  # Гц
+fft_filtered = fft_result.copy()
+fft_filtered[np.abs(fft_freq) > cutoff] = 0
+signal_filtered = np.real(np.fft.ifft(fft_filtered))
+
+axes[1, 1].plot(t[:200], signal_noisy[:200], 'gray', alpha=0.5, label='Noisy')
+axes[1, 1].plot(t[:200], signal_filtered[:200], 'b-', linewidth=1.5, label='Filtered')
+axes[1, 1].plot(t[:200], signal[:200], 'g--', alpha=0.7, label='Original')
+axes[1, 1].set_xlabel('Time (s)')
+axes[1, 1].set_ylabel('Amplitude')
+axes[1, 1].set_title(f'Low-pass Filtered Signal (cutoff={cutoff} Hz)')
+axes[1, 1].legend()
+axes[1, 1].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# Демонстрация свойств преобразования Фурье
+fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+
+# Разные сигналы
+signals = {
+    'Sine (10 Hz)': np.sin(2 * np.pi * 10 * t),
+    'Square Wave': np.sign(np.sin(2 * np.pi * 5 * t)),
+    'Sawtooth': 2 * (t * 5 % 1) - 1,
+    'Chirp': np.sin(2 * np.pi * (5 + 45 * t) * t),
+    'Pulse': np.where((t > 0.4) & (t < 0.6), 1, 0).astype(float),
+    'Gaussian': np.exp(-((t - 0.5) ** 2) / (2 * 0.05 ** 2))
+}
+
+for ax, (name, sig) in zip(axes.flat, signals.items()):
+    # FFT
+    fft = np.fft.fft(sig)
+    freq = np.fft.fftfreq(len(t), 1/fs)
+    mag = np.abs(fft) / len(t) * 2
+
+    # Рисуем спектр
+    pos = freq >= 0
+    ax.plot(freq[pos][:100], mag[pos][:100], 'b-', linewidth=1.5)
+    ax.set_title(name)
+    ax.set_xlabel('Frequency (Hz)')
+    ax.set_ylabel('Magnitude')
+    ax.grid(True, alpha=0.3)
+
+plt.suptitle('Fourier Spectra of Different Signals', fontsize=14)
+plt.tight_layout()
+plt.show()
+
+# Статистика
+print("\\nSignal Analysis:")
+print("-" * 40)
+print(f"Detected frequencies: {frequencies} Hz")
+print(f"Signal duration: {T} s")
+print(f"Sampling rate: {fs} Hz")
+print(f"Frequency resolution: {fs/len(t):.2f} Hz")`,
       };
 
       // Добавляем стили для маркеров линтера
