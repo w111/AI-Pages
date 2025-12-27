@@ -1016,6 +1016,82 @@
         'default': 'fa-trophy'
       };
 
+      // Полный список видов спорта (fallback если API возвращает неполный список)
+      const allSportsData = [
+        { strSport: 'Soccer', strFormat: 'TeamvsTeam' },
+        { strSport: 'Football', strFormat: 'TeamvsTeam' },
+        { strSport: 'Basketball', strFormat: 'TeamvsTeam' },
+        { strSport: 'Ice Hockey', strFormat: 'TeamvsTeam' },
+        { strSport: 'Baseball', strFormat: 'TeamvsTeam' },
+        { strSport: 'American Football', strFormat: 'TeamvsTeam' },
+        { strSport: 'Rugby', strFormat: 'TeamvsTeam' },
+        { strSport: 'Australian Football', strFormat: 'TeamvsTeam' },
+        { strSport: 'Cricket', strFormat: 'TeamvsTeam' },
+        { strSport: 'Volleyball', strFormat: 'TeamvsTeam' },
+        { strSport: 'Handball', strFormat: 'TeamvsTeam' },
+        { strSport: 'Field Hockey', strFormat: 'TeamvsTeam' },
+        { strSport: 'Netball', strFormat: 'TeamvsTeam' },
+        { strSport: 'Water Polo', strFormat: 'TeamvsTeam' },
+        { strSport: 'Lacrosse', strFormat: 'TeamvsTeam' },
+        { strSport: 'Futsal', strFormat: 'TeamvsTeam' },
+        { strSport: 'Beach Volleyball', strFormat: 'TeamvsTeam' },
+        { strSport: 'Tennis', strFormat: 'EventSport' },
+        { strSport: 'Table Tennis', strFormat: 'EventSport' },
+        { strSport: 'Badminton', strFormat: 'EventSport' },
+        { strSport: 'Golf', strFormat: 'EventSport' },
+        { strSport: 'Motorsport', strFormat: 'EventSport' },
+        { strSport: 'Boxing', strFormat: 'EventSport' },
+        { strSport: 'MMA', strFormat: 'EventSport' },
+        { strSport: 'Fighting', strFormat: 'EventSport' },
+        { strSport: 'Wrestling', strFormat: 'EventSport' },
+        { strSport: 'Cycling', strFormat: 'EventSport' },
+        { strSport: 'Athletics', strFormat: 'EventSport' },
+        { strSport: 'Swimming', strFormat: 'EventSport' },
+        { strSport: 'Skiing', strFormat: 'EventSport' },
+        { strSport: 'Snooker', strFormat: 'EventSport' },
+        { strSport: 'Darts', strFormat: 'EventSport' },
+        { strSport: 'ESports', strFormat: 'EventSport' },
+        { strSport: 'Horse Racing', strFormat: 'EventSport' },
+        { strSport: 'Equestrian', strFormat: 'EventSport' },
+        { strSport: 'Sailing', strFormat: 'EventSport' },
+        { strSport: 'Rowing', strFormat: 'EventSport' },
+        { strSport: 'Triathlon', strFormat: 'EventSport' },
+        { strSport: 'Gymnastics', strFormat: 'EventSport' },
+        { strSport: 'Weightlifting', strFormat: 'EventSport' },
+        { strSport: 'Archery', strFormat: 'EventSport' },
+        { strSport: 'Shooting', strFormat: 'EventSport' },
+        { strSport: 'Fencing', strFormat: 'EventSport' },
+        { strSport: 'Judo', strFormat: 'EventSport' },
+        { strSport: 'Karate', strFormat: 'EventSport' },
+        { strSport: 'Taekwondo', strFormat: 'EventSport' },
+        { strSport: 'Surfing', strFormat: 'EventSport' },
+        { strSport: 'Skateboarding', strFormat: 'EventSport' },
+        { strSport: 'Climbing', strFormat: 'EventSport' },
+        { strSport: 'BMX', strFormat: 'EventSport' },
+        { strSport: 'Bowling', strFormat: 'EventSport' },
+        { strSport: 'Curling', strFormat: 'TeamvsTeam' },
+        { strSport: 'Polo', strFormat: 'TeamvsTeam' },
+        { strSport: 'GAA Football', strFormat: 'TeamvsTeam' },
+        { strSport: 'Hurling', strFormat: 'TeamvsTeam' },
+        { strSport: 'Aussie Rules', strFormat: 'TeamvsTeam' },
+        { strSport: 'Bandy', strFormat: 'TeamvsTeam' },
+        { strSport: 'Floorball', strFormat: 'TeamvsTeam' },
+        { strSport: 'Speedway', strFormat: 'EventSport' },
+        { strSport: 'Greyhound', strFormat: 'EventSport' },
+        { strSport: 'Formula 1', strFormat: 'EventSport' },
+        { strSport: 'NASCAR', strFormat: 'EventSport' },
+        { strSport: 'MotoGP', strFormat: 'EventSport' },
+        { strSport: 'Rallying', strFormat: 'EventSport' },
+        { strSport: 'Superbikes', strFormat: 'EventSport' },
+        { strSport: 'Fishing', strFormat: 'EventSport' },
+        { strSport: 'Poker', strFormat: 'EventSport' },
+        { strSport: 'Chess', strFormat: 'EventSport' },
+        { strSport: 'Pool', strFormat: 'EventSport' },
+        { strSport: 'Billiards', strFormat: 'EventSport' },
+        { strSport: 'Softball', strFormat: 'TeamvsTeam' },
+        { strSport: 'Beach Soccer', strFormat: 'TeamvsTeam' }
+      ];
+
       // Состояние приложения
       const state = {
         currentSport: null,
@@ -1071,8 +1147,30 @@
       }
 
       async function getAllSports() {
-        const data = await fetchAPI('all_sports.php');
-        return data.sports || [];
+        try {
+          const data = await fetchAPI('all_sports.php');
+          const apiSports = data.sports || [];
+
+          // Если API вернул мало спортов, объединяем со статическим списком
+          if (apiSports.length < 10) {
+            // Создаём Set для уникальных названий спортов
+            const sportNames = new Set(apiSports.map(s => s.strSport));
+
+            // Добавляем спорты из статического списка, которых нет в API
+            const combinedSports = [...apiSports];
+            for (const sport of allSportsData) {
+              if (!sportNames.has(sport.strSport)) {
+                combinedSports.push(sport);
+              }
+            }
+            return combinedSports;
+          }
+
+          return apiSports;
+        } catch (error) {
+          console.warn('API недоступен, используем статический список:', error);
+          return allSportsData;
+        }
       }
 
       async function getLeaguesBySport(sport) {
