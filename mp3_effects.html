@@ -642,43 +642,57 @@ LAST UPDATED: 2025
         });
       });
 
+      // Helper function to get reliable container dimensions (works on iPad)
+      function getContainerDimensions(container) {
+        // Use getBoundingClientRect for more reliable dimensions on iOS/iPad
+        const rect = container.getBoundingClientRect();
+        let width = rect.width;
+        let height = rect.height;
+
+        // Fallback to offsetWidth/Height if rect returns 0
+        if (width === 0) width = container.offsetWidth;
+        if (height === 0) height = container.offsetHeight;
+
+        // Final fallback to computed style
+        if (width === 0 || height === 0) {
+          const style = getComputedStyle(container);
+          if (width === 0) width = parseFloat(style.width) || 0;
+          if (height === 0) height = parseFloat(style.height) || 0;
+        }
+
+        return { width, height };
+      }
+
       // Make sure Three.js canvases fill their containers
       function resizeCanvases() {
         const visualizationContents = document.querySelectorAll(
           '.visualization-content'
         );
         visualizationContents.forEach(container => {
+          const { width, height } = getContainerDimensions(container);
+
           // Handle regular canvas elements
           const canvases = container.querySelectorAll('canvas');
           canvases.forEach(canvas => {
-            // CRITICAL FIX: Only resize if container has valid dimensions
-            // On mobile, elements below the fold may have 0 dimensions
-            // Setting canvas.width to 0 clears the entire canvas!
-            const width = container.offsetWidth;
-            const height = container.offsetHeight;
-
+            // Only resize if we have valid dimensions
             if (width > 0 && height > 0) {
-              canvas.width = width;
-              canvas.height = height;
+              // Check if resize is actually needed to avoid unnecessary redraws
+              if (canvas.width !== Math.floor(width) || canvas.height !== Math.floor(height)) {
+                canvas.width = Math.floor(width);
+                canvas.height = Math.floor(height);
+              }
             }
-            // Silently skip if container has zero dimensions
-            // This happens on mobile when elements are below the fold
           });
 
           // Handle WebGL/Three.js renderers
           const threeJsContainers = container.querySelectorAll(
             '[id^="mainVisualizer"], [id^="particleEmitter"], [id^="jazzVisualizer"]'
-          ); // <-- Added jazzVisualizer
+          );
           threeJsContainers.forEach(threeContainer => {
-            if (threeContainer.renderer) {
-              threeContainer.renderer.setSize(
-                container.offsetWidth,
-                container.offsetHeight
-              );
+            if (threeContainer.renderer && width > 0 && height > 0) {
+              threeContainer.renderer.setSize(width, height);
               if (threeContainer.camera) {
-                // Update camera aspect ratio
-                threeContainer.camera.aspect =
-                  container.offsetWidth / container.offsetHeight;
+                threeContainer.camera.aspect = width / height;
                 threeContainer.camera.updateProjectionMatrix();
               }
             }
@@ -686,10 +700,41 @@ LAST UPDATED: 2025
         });
       }
 
+      // Setup IntersectionObserver for iPad/mobile - resize when elements become visible
+      function setupVisibilityObserver() {
+        if ('IntersectionObserver' in window) {
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                // Element is now visible, trigger resize
+                setTimeout(resizeCanvases, 50);
+              }
+            });
+          }, {
+            threshold: 0.1 // Trigger when 10% visible
+          });
+
+          // Observe all visualizer containers
+          document.querySelectorAll('.visualizer').forEach(visualizer => {
+            observer.observe(visualizer);
+          });
+        }
+      }
+
       // Call resize on window resize events
       window.addEventListener('resize', resizeCanvases);
       // Also resize on load
-      window.addEventListener('load', resizeCanvases);
+      window.addEventListener('load', () => {
+        resizeCanvases();
+        setupVisibilityObserver();
+      });
+
+      // Handle scroll for iPad - update canvas sizes when scrolling reveals new elements
+      let scrollTimeout;
+      window.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(resizeCanvases, 100);
+      }, { passive: true });
 
       // Fullscreen toggle functionality
       document.querySelectorAll('.visualizer').forEach(visualizer => {
@@ -882,20 +927,24 @@ LAST UPDATED: 2025
         if (!visualizersInitialized) {
           // Setup spectrum analyzer
           const spectrumCanvas = document.getElementById('spectrum');
-          // Ensure we get valid dimensions, fallback to minimum if container not ready
-          const spectrumWidth = spectrumCanvas.parentElement.offsetWidth || 300;
-          const spectrumHeight = spectrumCanvas.parentElement.offsetHeight || 200;
-          spectrumCanvas.width = spectrumWidth;
-          spectrumCanvas.height = spectrumHeight;
+          // Use reliable dimension getter for iPad compatibility
+          let spectrumDims = getContainerDimensions(spectrumCanvas.parentElement);
+          // Fallback to minimum if dimensions are still 0
+          if (spectrumDims.width === 0) spectrumDims.width = 300;
+          if (spectrumDims.height === 0) spectrumDims.height = 200;
+          spectrumCanvas.width = Math.floor(spectrumDims.width);
+          spectrumCanvas.height = Math.floor(spectrumDims.height);
           const spectrumCtx = spectrumCanvas.getContext('2d');
 
           // Setup oscilloscope
           const oscCanvas = document.getElementById('oscilloscope');
-          // Ensure we get valid dimensions, fallback to minimum if container not ready
-          const oscWidth = oscCanvas.parentElement.offsetWidth || 300;
-          const oscHeight = oscCanvas.parentElement.offsetHeight || 200;
-          oscCanvas.width = oscWidth;
-          oscCanvas.height = oscHeight;
+          // Use reliable dimension getter for iPad compatibility
+          let oscDims = getContainerDimensions(oscCanvas.parentElement);
+          // Fallback to minimum if dimensions are still 0
+          if (oscDims.width === 0) oscDims.width = 300;
+          if (oscDims.height === 0) oscDims.height = 200;
+          oscCanvas.width = Math.floor(oscDims.width);
+          oscCanvas.height = Math.floor(oscDims.height);
           const oscCtx = oscCanvas.getContext('2d');
 
           // Setup particle emitter only (skip circular bars)
@@ -906,10 +955,11 @@ LAST UPDATED: 2025
 
           visualizersInitialized = true;
 
-          // Ensure all canvases are properly sized - increased delay for mobile layout
+          // Ensure all canvases are properly sized - increased delay for mobile/iPad layout
           setTimeout(resizeCanvases, 300);
-          // Second resize to catch any delayed layout changes
           setTimeout(resizeCanvases, 1000);
+          // Additional delayed resize for iPad which may need more time
+          setTimeout(resizeCanvases, 2000);
 
           // Animation loop
           function animate() {
@@ -921,15 +971,33 @@ LAST UPDATED: 2025
             // Update time domain data for oscilloscope
             analyser.getByteTimeDomainData(timeDataArray);
 
-            // Get current canvas sizes from parent containers
+            // Get current canvas sizes using reliable dimension getter (iPad compatible)
             const spectrumCanvas = document.getElementById('spectrum');
             const oscCanvas = document.getElementById('oscilloscope');
 
-            // Use parent container sizes for accurate mobile rendering
-            const spectrumWidth = spectrumCanvas.parentElement.offsetWidth || spectrumCanvas.width;
-            const spectrumHeight = spectrumCanvas.parentElement.offsetHeight || spectrumCanvas.height;
-            const oscWidth = oscCanvas.parentElement.offsetWidth || oscCanvas.width;
-            const oscHeight = oscCanvas.parentElement.offsetHeight || oscCanvas.height;
+            // Use reliable dimension getter for iPad - getBoundingClientRect works better
+            const spectrumDims = getContainerDimensions(spectrumCanvas.parentElement);
+            const oscDims = getContainerDimensions(oscCanvas.parentElement);
+
+            // Use canvas dimensions as fallback if container reports 0
+            const spectrumWidth = spectrumDims.width > 0 ? spectrumDims.width : spectrumCanvas.width;
+            const spectrumHeight = spectrumDims.height > 0 ? spectrumDims.height : spectrumCanvas.height;
+            const oscWidth = oscDims.width > 0 ? oscDims.width : oscCanvas.width;
+            const oscHeight = oscDims.height > 0 ? oscDims.height : oscCanvas.height;
+
+            // Sync canvas internal dimensions with display size if needed
+            if (spectrumCanvas.width !== Math.floor(spectrumWidth) && spectrumWidth > 0) {
+              spectrumCanvas.width = Math.floor(spectrumWidth);
+            }
+            if (spectrumCanvas.height !== Math.floor(spectrumHeight) && spectrumHeight > 0) {
+              spectrumCanvas.height = Math.floor(spectrumHeight);
+            }
+            if (oscCanvas.width !== Math.floor(oscWidth) && oscWidth > 0) {
+              oscCanvas.width = Math.floor(oscWidth);
+            }
+            if (oscCanvas.height !== Math.floor(oscHeight) && oscHeight > 0) {
+              oscCanvas.height = Math.floor(oscHeight);
+            }
 
             // Draw spectrum analyzer
             drawSpectrum(
@@ -957,11 +1025,16 @@ LAST UPDATED: 2025
       function setupParticleEmitter(analyser, bufferLength, dataArray) {
         const container = document.getElementById('particleEmitter');
 
+        // Use reliable dimension getter for iPad compatibility
+        const dims = getContainerDimensions(container);
+        const width = dims.width || 300;
+        const height = dims.height || 200;
+
         // Three.js setup с повышенным качеством рендеринга
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(
           60,
-          container.offsetWidth / container.offsetHeight,
+          width / height,
           0.1,
           1000
         );
@@ -972,8 +1045,8 @@ LAST UPDATED: 2025
         });
 
         // Включаем сглаживание и HDR
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit for iPad performance
+        renderer.setSize(width, height);
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.2;
 
@@ -3328,17 +3401,22 @@ LAST UPDATED: 2025
         const container = document.getElementById('jazzVisualizer');
         if (!container) return;
 
+        // Use reliable dimension getter for iPad compatibility
+        const dims = getContainerDimensions(container);
+        const width = dims.width || 300;
+        const height = dims.height || 200;
+
         // Basic Three.js setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(
           60,
-          container.offsetWidth / container.offsetHeight,
+          width / height,
           0.1,
           1000
         );
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(container.offsetWidth, container.offsetHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit for iPad performance
+        renderer.setSize(width, height);
         container.appendChild(renderer.domElement);
 
         // Store for resizing
