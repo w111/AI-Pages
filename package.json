@@ -81,7 +81,7 @@
     "@playwright/test": "^1.57.0",
     "eslint": "^9.32.0",
     "eslint-plugin-playwright": "^2.2.0",
-    "htmlhint": "^1.6.3",
+    "htmlhint": "^1.7.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
     "markdownlint-cli": "^0.45.0",
