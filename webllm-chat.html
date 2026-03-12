@@ -10,9 +10,9 @@
     />
 
     <!--
-    Техническое описание:
+    Техническое задание:
     - WebLLM для локального запуска LLM в браузере
-    - Поддержка Llama 3, Mistral, Phi-3, Qwen и других моделей
+    - Поддержка Qwen3, Llama 3.1, Phi-3.5, DeepSeek-R1, Mistral и других моделей
     - OpenAI-совместимый API интерфейс
     - Полностью клиентская реализация без серверов
     - WebGPU для ускорения вычислений
@@ -1505,20 +1505,20 @@
 
         <div class="model-dropdown" id="modelDropdown">
           <div class="model-dropdown-button" id="modelDropdownButton">
-            <span id="selectedModelText">Qwen-3-4B-Instruct (Рекомендуется)</span>
+            <span id="selectedModelText">Qwen3-4B (Рекомендуется)</span>
             <i class="fas fa-chevron-down"></i>
           </div>
           <div class="model-dropdown-content" id="modelDropdownContent">
             <div class="model-option selected" data-model="qwen-3-4b">
               <div class="model-option-header">
-                <span>Qwen-3-4B-Instruct</span>
-                <span class="model-option-size">2.0GB</span>
+                <span>Qwen3-4B</span>
+                <span class="model-option-size">2.5GB</span>
               </div>
               <div class="model-option-desc">
-                Лучшая компактная модель от Alibaba. Отличное качество при небольшом размере.
+                Новейшая модель Qwen3 от Alibaba. Отличное качество при компактном размере.
               </div>
               <div class="model-option-specs">
-                <span class="model-spec-tag">3GB VRAM</span>
+                <span class="model-spec-tag">4GB VRAM</span>
                 <span class="model-spec-tag">Очень быстрая</span>
                 <span class="model-spec-tag">Рекомендуется</span>
               </div>
@@ -1526,22 +1526,22 @@
 
             <div class="model-option" data-model="qwen-3-8b">
               <div class="model-option-header">
-                <span>Qwen-3-8B-Instruct</span>
+                <span>Qwen3-8B</span>
                 <span class="model-option-size">4.5GB</span>
               </div>
               <div class="model-option-desc">
-                Многоязычная модель от Alibaba с отличным пониманием контекста.
+                Топовая модель Qwen3. Высочайшее качество ответов и рассуждений.
               </div>
               <div class="model-option-specs">
                 <span class="model-spec-tag">6GB VRAM</span>
                 <span class="model-spec-tag">Быстрая</span>
-                <span class="model-spec-tag">Многоязычная</span>
+                <span class="model-spec-tag">Высокое качество</span>
               </div>
             </div>
 
-            <div class="model-option" data-model="llama-3-8b">
+            <div class="model-option" data-model="llama-3.1-8b">
               <div class="model-option-header">
-                <span>Llama-3-8B-Instruct</span>
+                <span>Llama-3.1-8B-Instruct</span>
                 <span class="model-option-size">4.3GB</span>
               </div>
               <div class="model-option-desc">
@@ -1550,6 +1550,36 @@
               <div class="model-option-specs">
                 <span class="model-spec-tag">6GB VRAM</span>
                 <span class="model-spec-tag">Высокое качество</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="deepseek-r1-7b">
+              <div class="model-option-header">
+                <span>DeepSeek-R1-Distill-7B</span>
+                <span class="model-option-size">4.0GB</span>
+              </div>
+              <div class="model-option-desc">
+                Reasoning-модель от DeepSeek. Отлично рассуждает и решает сложные задачи.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">5GB VRAM</span>
+                <span class="model-spec-tag">Рассуждения</span>
+                <span class="model-spec-tag">Высокое качество</span>
+              </div>
+            </div>
+
+            <div class="model-option" data-model="phi-3.5-mini">
+              <div class="model-option-header">
+                <span>Phi-3.5-Mini</span>
+                <span class="model-option-size">2.2GB</span>
+              </div>
+              <div class="model-option-desc">
+                Компактная модель от Microsoft. Быстрые ответы и хорошее качество для своего размера.
+              </div>
+              <div class="model-option-specs">
+                <span class="model-spec-tag">3GB VRAM</span>
+                <span class="model-spec-tag">Очень быстрая</span>
+                <span class="model-spec-tag">Компактная</span>
               </div>
             </div>
 
@@ -1565,36 +1595,6 @@
                 <span class="model-spec-tag">5GB VRAM</span>
                 <span class="model-spec-tag">Быстрая</span>
                 <span class="model-spec-tag">Высокое качество</span>
-              </div>
-            </div>
-
-            <div class="model-option" data-model="phi-3-mini">
-              <div class="model-option-header">
-                <span>Phi-3-Mini-4K</span>
-                <span class="model-option-size">2.2GB</span>
-              </div>
-              <div class="model-option-desc">
-                Компактная модель от Microsoft. Идеальна для быстрых ответов и небольших задач.
-              </div>
-              <div class="model-option-specs">
-                <span class="model-spec-tag">3GB VRAM</span>
-                <span class="model-spec-tag">Очень быстрая</span>
-                <span class="model-spec-tag">Компактная</span>
-              </div>
-            </div>
-
-            <div class="model-option" data-model="gemma-3n-4b">
-              <div class="model-option-header">
-                <span>Gemma-3n-4B-Instruct</span>
-                <span class="model-option-size">2.5GB</span>
-              </div>
-              <div class="model-option-desc">
-                Компактная модель Google с адаптивной активацией параметров. 140+ языков.
-              </div>
-              <div class="model-option-specs">
-                <span class="model-spec-tag">3.5GB VRAM</span>
-                <span class="model-spec-tag">Быстрая</span>
-                <span class="model-spec-tag">Многоязычная</span>
               </div>
             </div>
 
@@ -1934,8 +1934,8 @@
             браузере без серверов
           </p>
           <p style="margin-bottom: 10px">
-            <strong>Поддерживаемые модели:</strong> Llama-3-8B (~4.3GB), Mistral-7B
-            (~3.8GB), Phi-3-Mini (~2.2GB), Gemma-2B (~1.5GB)
+            <strong>Поддерживаемые модели:</strong> Qwen3-4B (~2.5GB), Qwen3-8B (~4.5GB),
+            Llama-3.1-8B (~4.3GB), DeepSeek-R1-7B (~4.0GB), Phi-3.5-Mini (~2.2GB)
           </p>
           <p>
             <strong>Приватность:</strong> Все вычисления происходят локально, данные не
@@ -3332,31 +3332,31 @@
         initializeModels() {
           this.models = {
             'qwen-3-4b': {
-              id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
-              name: 'Qwen-3-4B-Instruct',
+              id: 'Qwen3-4B-q4f16_1-MLC',
+              name: 'Qwen3-4B',
               description:
-                'Лучшая компактная модель от Alibaba. Отличное качество при небольшом размере.',
-              size: '2.0GB',
-              vramRequired: '3GB',
+                'Новейшая модель Qwen3 от Alibaba. Отличное качество при компактном размере.',
+              size: '2.5GB',
+              vramRequired: '4GB',
               speed: 'Очень быстрая',
               quality: 'Очень высокое',
               recommended: true,
               toolUse: true,
             },
             'qwen-3-8b': {
-              id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
-              name: 'Qwen-3-8B-Instruct',
+              id: 'Qwen3-8B-q4f16_1-MLC',
+              name: 'Qwen3-8B',
               description:
-                'Многоязычная модель от Alibaba с отличным пониманием контекста.',
+                'Топовая модель Qwen3. Высочайшее качество ответов и рассуждений.',
               size: '4.5GB',
               vramRequired: '6GB',
               speed: 'Быстрая',
               quality: 'Очень высокое',
               toolUse: true,
             },
-            'llama-3-8b': {
-              id: 'Llama-3-8B-Instruct-q4f32_1-MLC',
-              name: 'Llama-3-8B-Instruct',
+            'llama-3.1-8b': {
+              id: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+              name: 'Llama-3.1-8B-Instruct',
               description:
                 'Мощная модель от Meta. Отличное качество ответов и понимание контекста.',
               size: '4.3GB',
@@ -3365,6 +3365,28 @@
               quality: 'Высокое',
               toolUse: true,
             },
+            'deepseek-r1-7b': {
+              id: 'DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC',
+              name: 'DeepSeek-R1-Distill-7B',
+              description:
+                'Reasoning-модель от DeepSeek. Отлично рассуждает и решает сложные задачи.',
+              size: '4.0GB',
+              vramRequired: '5GB',
+              speed: 'Средняя',
+              quality: 'Очень высокое',
+              toolUse: false,
+            },
+            'phi-3.5-mini': {
+              id: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+              name: 'Phi-3.5-Mini',
+              description:
+                'Компактная модель от Microsoft. Быстрые ответы и хорошее качество для своего размера.',
+              size: '2.2GB',
+              vramRequired: '3GB',
+              speed: 'Очень быстрая',
+              quality: 'Среднее',
+              toolUse: false,
+            },
             'mistral-7b': {
               id: 'Mistral-7B-Instruct-v0.3-q4f16_1-MLC',
               name: 'Mistral-7B-Instruct',
@@ -3372,28 +3394,6 @@
                 'Быстрая и эффективная модель от Mistral AI. Хороший баланс скорости и качества.',
               size: '3.8GB',
               vramRequired: '5GB',
-              speed: 'Быстрая',
-              quality: 'Высокое',
-              toolUse: true,
-            },
-            'phi-3-mini': {
-              id: 'Phi-3-mini-4k-instruct-q4f16_1-MLC',
-              name: 'Phi-3-Mini-4K',
-              description:
-                'Компактная модель от Microsoft. Идеальна для быстрых ответов и небольших задач.',
-              size: '2.2GB',
-              vramRequired: '3GB',
-              speed: 'Очень быстрая',
-              quality: 'Среднее',
-              toolUse: false,
-            },
-            'gemma-3n-4b': {
-              id: 'gemma-2-2b-it-q4f16_1-MLC',
-              name: 'Gemma-3n-4B-Instruct',
-              description:
-                'Компактная модель Google с адаптивной активацией параметров. Поддержка 140+ языков.',
-              size: '2.5GB',
-              vramRequired: '3.5GB',
               speed: 'Быстрая',
               quality: 'Высокое',
               toolUse: true,
