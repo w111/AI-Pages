@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Интерактивная энциклопедия животных с фактами,
+фотографиями и галереей случайных изображений.
+
+Функциональные требования:
+1. Главный экран с категориями животных (карточки)
+2. Случайное животное дня с фото и фактами
+3. Раздел "Факты о собаках" с карточками
+4. Раздел "Факты о кошках" с карточками
+5. Галерея случайных фотографий (собаки, лисы, шибы)
+6. Кнопка "Ещё факт!" для загрузки новых фактов
+7. Анимированные карточки с flip-эффектом
+8. Поддержка тёмной/светлой темы
+9. Многоязычность (русский/английский) с localStorage
+10. Адаптивный дизайн
+
+API:
+- Zoo Animals: zoo-animal-api.herokuapp.com/animals/rand
+- Dog Facts: dogapi.dog/api/v2/facts
+- Cat Facts: catfact.ninja/fact
+- HTTP Cat: http.cat/{code}
+- HTTP Dog: http.dog/{code}.jpg
+- RandomDog: random.dog/woof.json
+- RandomFox: randomfox.ca/floof/
+- Shibe.Online: shibe.online/api/shibes?count=1
+
+Технические требования:
+1. Vanilla JavaScript, без фреймворков
+2. Самодостаточный HTML (встроенные CSS и JS)
+3. Font Awesome для иконок
+4. CSS-переменные для тёмной/светлой темы
+5. Адаптивный дизайн
+6. Обработка ошибок и skeleton screens
+7. localStorage для предпочтений пользователя
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+  <title>Энциклопедия животных — Animal Encyclopedia</title>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect"
+    href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    /* ====== CSS-переменные: тёмная тема ====== */
+    :root {
+      --bg: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --text: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --primary: #3b82f6;
+      --primary-light: #60a5fa;
+      --primary-dark: #2563eb;
+      --accent: #8b5cf6;
+      --accent-light: #a78bfa;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --border: #334155;
+      --shadow: rgba(0, 0, 0, 0.3);
+      --skeleton: #334155;
+      --skeleton-shine: #475569;
+      --gradient-start: #3b82f6;
+      --gradient-end: #8b5cf6;
+      --flip-bg: #1e293b;
+      --overlay: rgba(15, 23, 42, 0.8);
+    }
+
+    /* ====== Светлая тема ====== */
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-secondary: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f8fafc;
+      --text: #1e293b;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --primary: #2563eb;
+      --primary-light: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --accent: #7c3aed;
+      --accent-light: #8b5cf6;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #dc2626;
+      --border: #e2e8f0;
+      --shadow: rgba(0, 0, 0, 0.1);
+      --skeleton: #e2e8f0;
+      --skeleton-shine: #f1f5f9;
+      --gradient-start: #2563eb;
+      --gradient-end: #7c3aed;
+      --flip-bg: #ffffff;
+      --overlay: rgba(248, 250, 252, 0.8);
+    }
+
+    /* ====== Сброс стилей ====== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* ====== Контейнер ====== */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* ====== Header с градиентом ====== */
+    .header {
+      background: linear-gradient(
+        135deg,
+        var(--gradient-start),
+        var(--gradient-end)
+      );
+      padding: 2rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(
+        circle at 30% 50%,
+        rgba(255,255,255,0.1) 0%,
+        transparent 50%
+      );
+      animation: headerShine 8s ease-in-out infinite;
+    }
+
+    @keyframes headerShine {
+      0%, 100% { transform: translateX(-20%) rotate(0deg); }
+      50% { transform: translateX(20%) rotate(5deg); }
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header-title i {
+      font-size: 2rem;
+      color: #fff;
+    }
+
+    .header-title h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .header-subtitle {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    /* ====== Настройки (тема + язык) ====== */
+    .settings-panel {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .settings-option {
+      display: flex;
+      align-items: center;
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.3);
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+
+    .slider::before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: #fff;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    input:checked + .slider::before {
+      transform: translateX(24px);
+    }
+
+    .toggle-icons {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 6px;
+      pointer-events: none;
+      font-size: 0.65rem;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Языковой переключатель */
+    .lang-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 0.5rem;
+    }
+
+    .lang-btn {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      border-radius: 0.375rem;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .lang-btn.active {
+      background: rgba(255, 255, 255, 0.3);
+      color: #fff;
+    }
+
+    .lang-btn:hover:not(.active) {
+      color: #fff;
+    }
+
+    /* ====== Навигация по категориям ====== */
+    .nav-categories {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1.5rem 0;
+      overflow-x: auto;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .nav-cat-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+
+    .nav-cat-btn:hover,
+    .nav-cat-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .nav-cat-btn i {
+      font-size: 1.1rem;
+    }
+
+    /* ====== Секции ====== */
+    .section {
+      padding: 2rem 0;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .section-title i {
+      color: var(--primary);
+    }
+
+    /* ====== Кнопки ====== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-accent:hover {
+      background: var(--accent-light);
+      transform: translateY(-2px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+
+    .btn-outline:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* ====== Карточка животного дня ====== */
+    .animal-of-day {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .animal-of-day:hover {
+      box-shadow: 0 8px 32px var(--shadow);
+    }
+
+    .animal-of-day-image {
+      position: relative;
+      min-height: 350px;
+      overflow: hidden;
+    }
+
+    .animal-of-day-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s;
+    }
+
+    .animal-of-day:hover .animal-of-day-image img {
+      transform: scale(1.05);
+    }
+
+    .animal-of-day-info {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .animal-of-day-info h3 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .animal-of-day-info .latin-name {
+      font-style: italic;
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    .animal-detail {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .animal-detail i {
+      color: var(--primary);
+      width: 20px;
+      text-align: center;
+    }
+
+    .animal-detail strong {
+      color: var(--text);
+    }
+
+    /* ====== Карточки-факты (flip) ====== */
+    .facts-grid {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fill, minmax(300px, 1fr)
+      );
+      gap: 1.25rem;
+    }
+
+    .flip-card {
+      perspective: 1000px;
+      height: 220px;
+      cursor: pointer;
+    }
+
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+
+    .flip-card.flipped .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .flip-card-front,
+    .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      text-align: center;
+      transition: background 0.3s;
+    }
+
+    .flip-card-front {
+      background: var(--bg-card);
+    }
+
+    .flip-card-front i {
+      font-size: 2.5rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    .flip-card-front h4 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .flip-card-front .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .flip-card-back {
+      background: linear-gradient(
+        135deg,
+        var(--gradient-start),
+        var(--gradient-end)
+      );
+      color: #fff;
+      transform: rotateY(180deg);
+    }
+
+    .flip-card-back p {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .flip-card-back .source {
+      font-size: 0.75rem;
+      opacity: 0.7;
+      margin-top: 0.75rem;
+    }
+
+    /* ====== Галерея изображений ====== */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fill, minmax(250px, 1fr)
+      );
+      gap: 1rem;
+    }
+
+    .gallery-card {
+      position: relative;
+      border-radius: 1rem;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      transition: all 0.3s;
+      aspect-ratio: 1;
+    }
+
+    .gallery-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px var(--shadow);
+    }
+
+    .gallery-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s;
+    }
+
+    .gallery-card:hover img {
+      transform: scale(1.08);
+    }
+
+    .gallery-card .badge {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 2rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+      backdrop-filter: blur(8px);
+    }
+
+    .badge-dog {
+      background: rgba(59, 130, 246, 0.8);
+    }
+    .badge-fox {
+      background: rgba(245, 158, 11, 0.8);
+    }
+    .badge-shibe {
+      background: rgba(139, 92, 246, 0.8);
+    }
+
+    /* ====== HTTP коды (коты и собаки) ====== */
+    .http-grid {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fill, minmax(200px, 1fr)
+      );
+      gap: 1rem;
+    }
+
+    .http-card {
+      border-radius: 1rem;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      transition: all 0.3s;
+      text-align: center;
+    }
+
+    .http-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px var(--shadow);
+    }
+
+    .http-card img {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+    }
+
+    .http-card .http-label {
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .http-card .http-label code {
+      color: var(--primary);
+      font-size: 1rem;
+    }
+
+    /* ====== Skeleton загрузки ====== */
+    .skeleton {
+      background: var(--skeleton);
+      border-radius: 0.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--skeleton-shine),
+        transparent
+      );
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .skeleton-card {
+      height: 220px;
+      border-radius: 1rem;
+    }
+
+    .skeleton-gallery {
+      aspect-ratio: 1;
+      border-radius: 1rem;
+    }
+
+    .skeleton-animal-img {
+      min-height: 350px;
+    }
+
+    .skeleton-text {
+      height: 1rem;
+      margin-bottom: 0.5rem;
+      width: 80%;
+    }
+
+    .skeleton-text.short { width: 50%; }
+    .skeleton-text.long { width: 95%; }
+
+    /* ====== Состояние ошибки ====== */
+    .error-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    .error-state i {
+      font-size: 2.5rem;
+      color: var(--error);
+      margin-bottom: 1rem;
+    }
+
+    .error-state p {
+      margin-bottom: 1rem;
+    }
+
+    /* ====== Футер ====== */
+    .footer {
+      text-align: center;
+      padding: 2rem 0;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* ====== Анимации появления ====== */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.5s forwards;
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .stagger-1 { animation-delay: 0.1s; }
+    .stagger-2 { animation-delay: 0.2s; }
+    .stagger-3 { animation-delay: 0.3s; }
+    .stagger-4 { animation-delay: 0.4s; }
+
+    /* ====== Спиннер загрузки ====== */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ====== Скрытие секции ====== */
+    .section.hidden {
+      display: none;
+    }
+
+    /* ====== Адаптивный дизайн ====== */
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .header-title h1 {
+        font-size: 1.35rem;
+      }
+
+      .animal-of-day {
+        grid-template-columns: 1fr;
+      }
+
+      .animal-of-day-image {
+        min-height: 250px;
+      }
+
+      .animal-of-day-info {
+        padding: 1.25rem;
+      }
+
+      .facts-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .http-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .nav-categories {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .gallery-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .http-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header-title h1 {
+        font-size: 1.15rem;
+      }
+    }
+
+    /* ====== Скрытый вспомогательный класс ====== */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+  </style>
+</head>
+<body>
+  <!-- ====== Header ====== -->
+  <header class="header">
+    <div class="container header-content">
+      <div>
+        <div class="header-title">
+          <i class="fas fa-paw"></i>
+          <h1 data-i18n="headerTitle">
+            Энциклопедия животных
+          </h1>
+        </div>
+        <p class="header-subtitle" data-i18n="headerSub">
+          Удивительные факты и фотографии из мира животных
+        </p>
+      </div>
+      <div class="settings-panel">
+        <!-- Theme Toggle -->
+        <div class="settings-option">
+          <label class="toggle-switch"
+            title="Переключить тему">
+            <input type="checkbox" id="themeToggle">
+            <span class="slider"></span>
+            <span class="toggle-icons">
+              <i class="fas fa-moon"></i>
+              <i class="fas fa-sun"></i>
+            </span>
+          </label>
+        </div>
+        <!-- Language Toggle -->
+        <div class="settings-option">
+          <div class="lang-toggle">
+            <button class="lang-btn active"
+              id="langRu" data-lang="ru">RU</button>
+            <button class="lang-btn"
+              id="langEn" data-lang="en">EN</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====== Навигация по категориям ====== -->
+  <div class="container">
+    <nav class="nav-categories" id="navCategories">
+      <button class="nav-cat-btn active"
+        data-section="all">
+        <i class="fas fa-globe"></i>
+        <span data-i18n="navAll">Все</span>
+      </button>
+      <button class="nav-cat-btn"
+        data-section="animalOfDay">
+        <i class="fas fa-star"></i>
+        <span data-i18n="navAnimalDay">
+          Животное дня
+        </span>
+      </button>
+      <button class="nav-cat-btn"
+        data-section="dogFacts">
+        <i class="fas fa-dog"></i>
+        <span data-i18n="navDogs">Собаки</span>
+      </button>
+      <button class="nav-cat-btn"
+        data-section="catFacts">
+        <i class="fas fa-cat"></i>
+        <span data-i18n="navCats">Кошки</span>
+      </button>
+      <button class="nav-cat-btn"
+        data-section="gallery">
+        <i class="fas fa-images"></i>
+        <span data-i18n="navGallery">Галерея</span>
+      </button>
+      <button class="nav-cat-btn"
+        data-section="httpCodes">
+        <i class="fas fa-code"></i>
+        <span data-i18n="navHttp">HTTP-коды</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ====== Животное дня ====== -->
+  <div class="container">
+    <section class="section fade-in"
+      id="sectionAnimalOfDay" data-cat="animalOfDay">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-star"></i>
+          <span data-i18n="animalDayTitle">
+            Животное дня
+          </span>
+        </h2>
+        <button class="btn btn-primary"
+          id="btnNewAnimal">
+          <i class="fas fa-sync-alt"></i>
+          <span data-i18n="btnNewAnimal">
+            Другое животное
+          </span>
+        </button>
+      </div>
+      <div id="animalOfDayContent">
+        <!-- Skeleton -->
+        <div class="animal-of-day">
+          <div class="animal-of-day-image
+            skeleton skeleton-animal-img"></div>
+          <div class="animal-of-day-info">
+            <div class="skeleton skeleton-text
+              long"></div>
+            <div class="skeleton skeleton-text
+              short"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text
+              short"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ====== Факты о собаках ====== -->
+  <div class="container">
+    <section class="section fade-in stagger-1"
+      id="sectionDogFacts" data-cat="dogFacts">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-dog"></i>
+          <span data-i18n="dogFactsTitle">
+            Факты о собаках
+          </span>
+        </h2>
+        <button class="btn btn-primary"
+          id="btnMoreDogFact">
+          <i class="fas fa-plus"></i>
+          <span data-i18n="btnMoreFact">
+            Ещё факт!
+          </span>
+        </button>
+      </div>
+      <div class="facts-grid" id="dogFactsGrid">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ====== Факты о кошках ====== -->
+  <div class="container">
+    <section class="section fade-in stagger-2"
+      id="sectionCatFacts" data-cat="catFacts">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-cat"></i>
+          <span data-i18n="catFactsTitle">
+            Факты о кошках
+          </span>
+        </h2>
+        <button class="btn btn-accent"
+          id="btnMoreCatFact">
+          <i class="fas fa-plus"></i>
+          <span data-i18n="btnMoreFact">
+            Ещё факт!
+          </span>
+        </button>
+      </div>
+      <div class="facts-grid" id="catFactsGrid">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ====== Галерея ====== -->
+  <div class="container">
+    <section class="section fade-in stagger-3"
+      id="sectionGallery" data-cat="gallery">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-images"></i>
+          <span data-i18n="galleryTitle">
+            Галерея животных
+          </span>
+        </h2>
+        <button class="btn btn-primary"
+          id="btnRefreshGallery">
+          <i class="fas fa-sync-alt"></i>
+          <span data-i18n="btnRefresh">
+            Обновить
+          </span>
+        </button>
+      </div>
+      <div class="gallery-grid" id="galleryGrid">
+        <div class="skeleton skeleton-gallery"></div>
+        <div class="skeleton skeleton-gallery"></div>
+        <div class="skeleton skeleton-gallery"></div>
+        <div class="skeleton skeleton-gallery"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ====== HTTP-коды ====== -->
+  <div class="container">
+    <section class="section fade-in stagger-4"
+      id="sectionHttpCodes" data-cat="httpCodes">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-code"></i>
+          <span data-i18n="httpTitle">
+            HTTP-коды: коты и собаки
+          </span>
+        </h2>
+      </div>
+      <p style="color: var(--text-secondary);
+        margin-bottom: 1rem;"
+        data-i18n="httpDesc">
+        Знаменитые HTTP-статусы в исполнении котов
+        и собак
+      </p>
+      <div class="http-grid" id="httpGrid"></div>
+    </section>
+  </div>
+
+  <!-- ====== Футер ====== -->
+  <footer class="footer">
+    <div class="container">
+      <p data-i18n="footerText">
+        Энциклопедия животных — часть проекта
+        <a href="index.html">AI Pages</a>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    /**
+     * @description Интернационализация
+     */
+    const translations = {
+      ru: {
+        headerTitle: "Энциклопедия животных",
+        headerSub:
+          "Удивительные факты и фотографии" +
+          " из мира животных",
+        navAll: "Все",
+        navAnimalDay: "Животное дня",
+        navDogs: "Собаки",
+        navCats: "Кошки",
+        navGallery: "Галерея",
+        navHttp: "HTTP-коды",
+        animalDayTitle: "Животное дня",
+        btnNewAnimal: "Другое животное",
+        dogFactsTitle: "Факты о собаках",
+        catFactsTitle: "Факты о кошках",
+        btnMoreFact: "Ещё факт!",
+        galleryTitle: "Галерея животных",
+        btnRefresh: "Обновить",
+        httpTitle: "HTTP-коды: коты и собаки",
+        httpDesc:
+          "Знаменитые HTTP-статусы в исполнении" +
+          " котов и собак",
+        footerText:
+          'Энциклопедия животных — часть проекта' +
+          ' <a href="index.html">AI Pages</a>',
+        clickToFlip: "Нажмите, чтобы перевернуть",
+        dogFact: "Факт о собаках",
+        catFact: "Факт о кошках",
+        source: "Источник",
+        habitat: "Среда обитания",
+        diet: "Рацион",
+        lifespan: "Продолжительность жизни",
+        weight: "Вес",
+        length: "Длина",
+        type: "Тип",
+        dog: "Собака",
+        fox: "Лиса",
+        shibe: "Шиба-ину",
+        cat: "Кот",
+        errorLoad: "Не удалось загрузить данные",
+        retry: "Повторить"
+      },
+      en: {
+        headerTitle: "Animal Encyclopedia",
+        headerSub:
+          "Amazing facts and photos from the" +
+          " animal world",
+        navAll: "All",
+        navAnimalDay: "Animal of the Day",
+        navDogs: "Dogs",
+        navCats: "Cats",
+        navGallery: "Gallery",
+        navHttp: "HTTP Codes",
+        animalDayTitle: "Animal of the Day",
+        btnNewAnimal: "Another animal",
+        dogFactsTitle: "Dog Facts",
+        catFactsTitle: "Cat Facts",
+        btnMoreFact: "More facts!",
+        galleryTitle: "Animal Gallery",
+        btnRefresh: "Refresh",
+        httpTitle: "HTTP Codes: Cats & Dogs",
+        httpDesc:
+          "Famous HTTP status codes starring" +
+          " cats and dogs",
+        footerText:
+          'Animal Encyclopedia — part of' +
+          ' <a href="index.html">AI Pages</a>',
+        clickToFlip: "Click to flip",
+        dogFact: "Dog Fact",
+        catFact: "Cat Fact",
+        source: "Source",
+        habitat: "Habitat",
+        diet: "Diet",
+        lifespan: "Lifespan",
+        weight: "Weight",
+        length: "Length",
+        type: "Type",
+        dog: "Dog",
+        fox: "Fox",
+        shibe: "Shiba Inu",
+        cat: "Cat",
+        errorLoad: "Failed to load data",
+        retry: "Retry"
+      }
+    };
+
+    // ====== Состояние приложения ======
+    let currentLang =
+      localStorage.getItem("lang") || "ru";
+    let currentTheme =
+      localStorage.getItem("theme") || "dark";
+    let activeSection = "all";
+    let dogFactsData = [];
+    let catFactsData = [];
+
+    // ====== DOM-элементы ======
+    const themeToggle =
+      document.getElementById("themeToggle");
+    const langRuBtn =
+      document.getElementById("langRu");
+    const langEnBtn =
+      document.getElementById("langEn");
+    const navBtns =
+      document.querySelectorAll(".nav-cat-btn");
+    const btnNewAnimal =
+      document.getElementById("btnNewAnimal");
+    const btnMoreDogFact =
+      document.getElementById("btnMoreDogFact");
+    const btnMoreCatFact =
+      document.getElementById("btnMoreCatFact");
+    const btnRefreshGallery =
+      document.getElementById("btnRefreshGallery");
+    const animalOfDayContent =
+      document.getElementById("animalOfDayContent");
+    const dogFactsGrid =
+      document.getElementById("dogFactsGrid");
+    const catFactsGrid =
+      document.getElementById("catFactsGrid");
+    const galleryGrid =
+      document.getElementById("galleryGrid");
+    const httpGrid =
+      document.getElementById("httpGrid");
+
+    /**
+     * @function t
+     * @description Получить перевод по ключу
+     * @param {string} key - Ключ перевода
+     * @returns {string} Переведённая строка
+     */
+    function t(key) {
+      return translations[currentLang][key] || key;
+    }
+
+    /**
+     * @function applyTheme
+     * @description Применить тему оформления
+     * @param {string} theme - "dark" или "light"
+     */
+    function applyTheme(theme) {
+      currentTheme = theme;
+      localStorage.setItem("theme", theme);
+      if (theme === "light") {
+        document.documentElement
+          .setAttribute("data-theme", "light");
+        themeToggle.checked = true;
+      } else {
+        document.documentElement
+          .removeAttribute("data-theme");
+        themeToggle.checked = false;
+      }
+    }
+
+    /**
+     * @function applyLang
+     * @description Применить язык интерфейса
+     * @param {string} lang - "ru" или "en"
+     */
+    function applyLang(lang) {
+      currentLang = lang;
+      localStorage.setItem("lang", lang);
+
+      // Обновляем кнопки языка
+      langRuBtn.classList.toggle(
+        "active", lang === "ru"
+      );
+      langEnBtn.classList.toggle(
+        "active", lang === "en"
+      );
+
+      // Обновляем все элементы с data-i18n
+      document.querySelectorAll("[data-i18n]")
+        .forEach(el => {
+          const key = el.getAttribute("data-i18n");
+          const val = t(key);
+          if (val) el.innerHTML = val;
+        });
+
+      // Обновляем заголовок страницы
+      document.title = lang === "ru"
+        ? "Энциклопедия животных — Animal Encyclopedia"
+        : "Animal Encyclopedia";
+    }
+
+    /**
+     * @function handleNavClick
+     * @description Обработка клика по навигации
+     * @param {string} section - Идентификатор секции
+     */
+    function handleNavClick(section) {
+      activeSection = section;
+      navBtns.forEach(btn => {
+        btn.classList.toggle(
+          "active",
+          btn.dataset.section === section
+        );
+      });
+
+      // Показать/скрыть секции
+      const sections = document.querySelectorAll(
+        ".section[data-cat]"
+      );
+      sections.forEach(sec => {
+        if (section === "all") {
+          sec.classList.remove("hidden");
+        } else {
+          sec.classList.toggle(
+            "hidden",
+            sec.dataset.cat !== section
+          );
+        }
+      });
+    }
+
+    /**
+     * @function fetchWithTimeout
+     * @description Fetch с таймаутом и обработкой
+     * @param {string} url - URL запроса
+     * @param {number} timeout - Таймаут в мс
+     * @returns {Promise<Response>} Ответ
+     */
+    async function fetchWithTimeout(
+      url, timeout = 8000
+    ) {
+      const controller = new AbortController();
+      const id = setTimeout(
+        () => controller.abort(), timeout
+      );
+      try {
+        const response = await fetch(url, {
+          signal: controller.signal
+        });
+        clearTimeout(id);
+        if (!response.ok) {
+          throw new Error(
+            `HTTP ${response.status}`
+          );
+        }
+        return response;
+      } catch (error) {
+        clearTimeout(id);
+        throw error;
+      }
+    }
+
+    /**
+     * @function renderError
+     * @description Отрисовка состояния ошибки
+     * @param {HTMLElement} container - Контейнер
+     * @param {Function} retryFn - Повтор
+     */
+    function renderError(container, retryFn) {
+      container.innerHTML = `
+        <div class="error-state">
+          <i class="fas fa-exclamation-triangle">
+          </i>
+          <p>${t("errorLoad")}</p>
+          <button class="btn btn-outline"
+            onclick="(${retryFn.toString()})()">
+            <i class="fas fa-sync-alt"></i>
+            ${t("retry")}
+          </button>
+        </div>
+      `;
+    }
+
+    // ====== Животное дня ======
+
+    /**
+     * @function loadAnimalOfDay
+     * @description Загрузить случайное животное
+     */
+    async function loadAnimalOfDay() {
+      // Показываем skeleton
+      animalOfDayContent.innerHTML = `
+        <div class="animal-of-day">
+          <div class="animal-of-day-image
+            skeleton skeleton-animal-img"></div>
+          <div class="animal-of-day-info">
+            <div class="skeleton skeleton-text
+              long"></div>
+            <div class="skeleton skeleton-text
+              short"></div>
+            <div class="skeleton
+              skeleton-text"></div>
+            <div class="skeleton
+              skeleton-text"></div>
+            <div class="skeleton skeleton-text
+              short"></div>
+          </div>
+        </div>
+      `;
+      btnNewAnimal.disabled = true;
+
+      try {
+        const res = await fetchWithTimeout(
+          "https://zoo-animal-api.herokuapp.com" +
+          "/animals/rand"
+        );
+        const data = await res.json();
+        renderAnimalOfDay(data);
+      } catch (err) {
+        renderError(
+          animalOfDayContent, loadAnimalOfDay
+        );
+      } finally {
+        btnNewAnimal.disabled = false;
+      }
+    }
+
+    /**
+     * @function renderAnimalOfDay
+     * @description Отрисовка карточки животного
+     * @param {Object} animal - Данные животного
+     */
+    function renderAnimalOfDay(animal) {
+      const imgUrl = animal.image_link ||
+        "https://http.cat/404";
+      animalOfDayContent.innerHTML = `
+        <div class="animal-of-day fade-in">
+          <div class="animal-of-day-image">
+            <img src="${imgUrl}"
+              alt="${animal.name}"
+              onerror="this.src=
+                'https://http.cat/404'">
+          </div>
+          <div class="animal-of-day-info">
+            <h3>${animal.name}</h3>
+            <p class="latin-name">
+              ${animal.latin_name || ""}
+            </p>
+            <div class="animal-detail">
+              <i class="fas fa-paw"></i>
+              <strong>${t("type")}:</strong>
+              ${animal.animal_type || "—"}
+            </div>
+            <div class="animal-detail">
+              <i class="fas fa-map-marker-alt"></i>
+              <strong>${t("habitat")}:</strong>
+              ${animal.habitat || "—"}
+            </div>
+            <div class="animal-detail">
+              <i class="fas fa-utensils"></i>
+              <strong>${t("diet")}:</strong>
+              ${animal.diet || "—"}
+            </div>
+            <div class="animal-detail">
+              <i class="fas fa-heartbeat"></i>
+              <strong>${t("lifespan")}:</strong>
+              ${animal.lifespan
+                ? animal.lifespan + " years"
+                : "—"}
+            </div>
+            <div class="animal-detail">
+              <i class="fas fa-weight-hanging"></i>
+              <strong>${t("weight")}:</strong>
+              ${animal.weight_min && animal.weight_max
+                ? animal.weight_min + " – " +
+                  animal.weight_max + " lbs"
+                : "—"}
+            </div>
+            <div class="animal-detail">
+              <i class="fas fa-ruler"></i>
+              <strong>${t("length")}:</strong>
+              ${animal.length_min && animal.length_max
+                ? animal.length_min + " – " +
+                  animal.length_max + " ft"
+                : "—"}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ====== Факты о собаках ======
+
+    /**
+     * @function loadDogFact
+     * @description Загрузить факт о собаках
+     */
+    async function loadDogFact() {
+      try {
+        const res = await fetchWithTimeout(
+          "https://dogapi.dog/api/v2/facts"
+        );
+        const data = await res.json();
+        const fact =
+          data.data[0].attributes.body;
+        dogFactsData.push(fact);
+        renderDogFacts();
+      } catch (err) {
+        console.error(
+          "Ошибка загрузки факта о собаках:", err
+        );
+      }
+    }
+
+    /**
+     * @function loadInitialDogFacts
+     * @description Загрузить начальные факты
+     */
+    async function loadInitialDogFacts() {
+      dogFactsGrid.innerHTML = `
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      `;
+      try {
+        for (let i = 0; i < 3; i++) {
+          const res = await fetchWithTimeout(
+            "https://dogapi.dog/api/v2/facts"
+          );
+          const data = await res.json();
+          dogFactsData.push(
+            data.data[0].attributes.body
+          );
+        }
+        renderDogFacts();
+      } catch (err) {
+        renderError(
+          dogFactsGrid, loadInitialDogFacts
+        );
+      }
+    }
+
+    /**
+     * @function renderDogFacts
+     * @description Отрисовка карточек-фактов
+     */
+    function renderDogFacts() {
+      dogFactsGrid.innerHTML = dogFactsData.map(
+        (fact, i) => `
+        <div class="flip-card fade-in"
+          style="animation-delay: ${i * 0.1}s"
+          onclick="this.classList.toggle('flipped')">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <i class="fas fa-dog"></i>
+              <h4>${t("dogFact")} #${i + 1}</h4>
+              <p class="hint">
+                ${t("clickToFlip")}
+              </p>
+            </div>
+            <div class="flip-card-back">
+              <p>${fact}</p>
+              <p class="source">
+                ${t("source")}: Dog API
+              </p>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // ====== Факты о кошках ======
+
+    /**
+     * @function loadCatFact
+     * @description Загрузить факт о кошках
+     */
+    async function loadCatFact() {
+      try {
+        const res = await fetchWithTimeout(
+          "https://catfact.ninja/fact"
+        );
+        const data = await res.json();
+        catFactsData.push(data.fact);
+        renderCatFacts();
+      } catch (err) {
+        console.error(
+          "Ошибка загрузки факта о кошках:", err
+        );
+      }
+    }
+
+    /**
+     * @function loadInitialCatFacts
+     * @description Загрузить начальные факты
+     */
+    async function loadInitialCatFacts() {
+      catFactsGrid.innerHTML = `
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      `;
+      try {
+        for (let i = 0; i < 3; i++) {
+          const res = await fetchWithTimeout(
+            "https://catfact.ninja/fact"
+          );
+          const data = await res.json();
+          catFactsData.push(data.fact);
+        }
+        renderCatFacts();
+      } catch (err) {
+        renderError(
+          catFactsGrid, loadInitialCatFacts
+        );
+      }
+    }
+
+    /**
+     * @function renderCatFacts
+     * @description Отрисовка карточек-фактов
+     */
+    function renderCatFacts() {
+      catFactsGrid.innerHTML = catFactsData.map(
+        (fact, i) => `
+        <div class="flip-card fade-in"
+          style="animation-delay: ${i * 0.1}s"
+          onclick="this.classList.toggle('flipped')">
+          <div class="flip-card-inner">
+            <div class="flip-card-front">
+              <i class="fas fa-cat"></i>
+              <h4>${t("catFact")} #${i + 1}</h4>
+              <p class="hint">
+                ${t("clickToFlip")}
+              </p>
+            </div>
+            <div class="flip-card-back">
+              <p>${fact}</p>
+              <p class="source">
+                ${t("source")}: Cat Facts API
+              </p>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // ====== Галерея ======
+
+    /**
+     * @function loadGallery
+     * @description Загрузить галерею изображений
+     */
+    async function loadGallery() {
+      galleryGrid.innerHTML = `
+        <div class="skeleton skeleton-gallery"></div>
+        <div class="skeleton skeleton-gallery"></div>
+        <div class="skeleton skeleton-gallery"></div>
+        <div class="skeleton skeleton-gallery"></div>
+      `;
+      btnRefreshGallery.disabled = true;
+
+      const items = [];
+
+      // Загружаем параллельно изображения
+      const fetches = [
+        // 2 собаки
+        fetchWithTimeout(
+          "https://random.dog/woof.json"
+        ).then(r => r.json()).then(d => {
+          // Фильтруем видео
+          if (d.url && !d.url.endsWith(".mp4") &&
+              !d.url.endsWith(".webm")) {
+            items.push({
+              url: d.url, type: "dog"
+            });
+          }
+        }).catch(e => console.warn("Gallery fetch:", e.message)),
+
+        fetchWithTimeout(
+          "https://random.dog/woof.json"
+        ).then(r => r.json()).then(d => {
+          if (d.url && !d.url.endsWith(".mp4") &&
+              !d.url.endsWith(".webm")) {
+            items.push({
+              url: d.url, type: "dog"
+            });
+          }
+        }).catch(e => console.warn("Gallery fetch:", e.message)),
+
+        // 1 лиса
+        fetchWithTimeout(
+          "https://randomfox.ca/floof/"
+        ).then(r => r.json()).then(d => {
+          items.push({
+            url: d.image, type: "fox"
+          });
+        }).catch(e => console.warn("Gallery fetch:", e.message)),
+
+        // 1 шиба-ину
+        fetchWithTimeout(
+          "https://shibe.online/api/shibes?count=1"
+        ).then(r => r.json()).then(d => {
+          if (d && d[0]) {
+            items.push({
+              url: d[0], type: "shibe"
+            });
+          }
+        }).catch(e => console.warn("Gallery fetch:", e.message))
+      ];
+
+      await Promise.allSettled(fetches);
+
+      if (items.length === 0) {
+        renderError(galleryGrid, loadGallery);
+      } else {
+        renderGallery(items);
+      }
+      btnRefreshGallery.disabled = false;
+    }
+
+    /**
+     * @function renderGallery
+     * @description Отрисовка галереи
+     * @param {Array} items - Массив изображений
+     */
+    function renderGallery(items) {
+      const badgeClass = {
+        dog: "badge-dog",
+        fox: "badge-fox",
+        shibe: "badge-shibe"
+      };
+      const badgeLabel = {
+        dog: () => t("dog"),
+        fox: () => t("fox"),
+        shibe: () => t("shibe")
+      };
+
+      galleryGrid.innerHTML = items.map(
+        (item, i) => `
+        <div class="gallery-card fade-in"
+          style="animation-delay: ${i * 0.15}s">
+          <img src="${item.url}"
+            alt="${badgeLabel[item.type]()}"
+            loading="lazy"
+            onerror="this.parentElement.remove()">
+          <span class="badge
+            ${badgeClass[item.type]}">
+            ${badgeLabel[item.type]()}
+          </span>
+        </div>
+      `).join("");
+    }
+
+    // ====== HTTP-коды ======
+
+    /**
+     * @function renderHttpCodes
+     * @description Отрисовка HTTP-кодов
+     */
+    function renderHttpCodes() {
+      const codes = [
+        { code: 200, desc: "OK" },
+        { code: 201, desc: "Created" },
+        { code: 204, desc: "No Content" },
+        { code: 301, desc: "Moved Permanently" },
+        { code: 400, desc: "Bad Request" },
+        { code: 401, desc: "Unauthorized" },
+        { code: 403, desc: "Forbidden" },
+        { code: 404, desc: "Not Found" },
+        { code: 418, desc: "I'm a teapot" },
+        { code: 429, desc: "Too Many Requests" },
+        { code: 500, desc: "Internal Error" },
+        { code: 503, desc: "Service Unavailable" }
+      ];
+
+      httpGrid.innerHTML = codes.map(
+        (item, i) => {
+          // Чередуем: чётные — коты, нечётные — собаки
+          const isCat = i % 2 === 0;
+          const imgUrl = isCat
+            ? `https://http.cat/${item.code}`
+            : `https://http.dog/${item.code}.jpg`;
+          const label = isCat
+            ? `🐱 ${item.code}`
+            : `🐶 ${item.code}`;
+
+          return `
+            <div class="http-card fade-in"
+              style="animation-delay: ${i * 0.05}s">
+              <img src="${imgUrl}"
+                alt="HTTP ${item.code}"
+                loading="lazy"
+                onerror="this.src=
+                  'https://http.cat/404'">
+              <div class="http-label">
+                <code>${label}</code>
+                <br>${item.desc}
+              </div>
+            </div>
+          `;
+        }
+      ).join("");
+    }
+
+    // ====== Инициализация ======
+
+    /**
+     * @function init
+     * @description Инициализация приложения
+     */
+    function init() {
+      // Применяем сохранённые настройки
+      applyTheme(currentTheme);
+      applyLang(currentLang);
+
+      // Обработчики темы
+      themeToggle.addEventListener("change", () => {
+        applyTheme(
+          themeToggle.checked ? "light" : "dark"
+        );
+      });
+
+      // Обработчики языка
+      langRuBtn.addEventListener("click", () => {
+        applyLang("ru");
+      });
+      langEnBtn.addEventListener("click", () => {
+        applyLang("en");
+      });
+
+      // Навигация
+      navBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          handleNavClick(btn.dataset.section);
+        });
+      });
+
+      // Кнопки
+      btnNewAnimal.addEventListener(
+        "click", loadAnimalOfDay
+      );
+      btnMoreDogFact.addEventListener(
+        "click", loadDogFact
+      );
+      btnMoreCatFact.addEventListener(
+        "click", loadCatFact
+      );
+      btnRefreshGallery.addEventListener(
+        "click", loadGallery
+      );
+
+      // Загружаем данные
+      loadAnimalOfDay();
+      loadInitialDogFacts();
+      loadInitialCatFacts();
+      loadGallery();
+      renderHttpCodes();
+    }
+
+    // Запуск при загрузке DOM
+    document.addEventListener(
+      "DOMContentLoaded", init
+    );
+  </script>
+</body>
+</html>

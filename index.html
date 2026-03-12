@@ -1403,6 +1403,86 @@
                 preview: "screenshots/movie-recommender.png",
                 isNew: true
             },
+            {
+                id: "art-gallery",
+                title: "Галерея мировых музеев",
+                description: "Исследуйте шедевры Art Institute of Chicago и Metropolitan Museum. Поиск, фильтрация по эпохам и стилям.",
+                icon: "palette",
+                tags: ["JavaScript", "Art Institute API", "Met Museum API", "IIIF"],
+                url: "art_gallery.html",
+                category: "web-apps",
+                isNew: true
+            },
+            {
+                id: "animal-encyclopedia",
+                title: "Энциклопедия животных",
+                description: "Интерактивная энциклопедия с фактами о животных, галереей фотографий и коллекцией HTTP-котов и собак.",
+                icon: "cat",
+                tags: ["JavaScript", "Zoo Animals API", "Cat Facts", "Dog Facts"],
+                url: "animal_encyclopedia.html",
+                category: "web-apps",
+                isNew: true
+            },
+            {
+                id: "quotes-generator",
+                title: "Генератор цитат",
+                description: "Красивый генератор цитат с категориями: мудрость, мотивация, шутки. Избранное и динамические градиенты.",
+                icon: "quote",
+                tags: ["JavaScript", "DummyJSON API", "Advice Slip", "icanhazdadjoke"],
+                url: "quotes_generator.html",
+                category: "web-apps",
+                isNew: true
+            },
+            {
+                id: "recipe-book",
+                title: "Книга рецептов",
+                description: "Каталог рецептов со всего мира. Поиск по категориям, кухням и ингредиентам. Более 300 рецептов с видео.",
+                icon: "chef-hat",
+                tags: ["JavaScript", "TheMealDB API", "LocalStorage", "HTML/CSS"],
+                url: "recipe_book.html",
+                category: "web-apps",
+                isNew: true
+            },
+            {
+                id: "book-library",
+                title: "Библиотека книг",
+                description: "Поиск книг через Open Library. Обложки, описания, авторы. Список для чтения с сохранением прогресса.",
+                icon: "book-open",
+                tags: ["JavaScript", "Open Library API", "LocalStorage", "HTML/CSS"],
+                url: "book_library.html",
+                category: "web-apps",
+                isNew: true
+            },
+            {
+                id: "character-generator",
+                title: "Генератор персонажей",
+                description: "Генератор случайных профилей с реалистичными, пиксельными и робо-аватарами. Экспорт в JSON.",
+                icon: "users",
+                tags: ["JavaScript", "RandomUser API", "DiceBear", "RoboHash"],
+                url: "character_generator.html",
+                category: "web-apps",
+                isNew: true
+            },
+            {
+                id: "tv-tracker",
+                title: "Трекер сериалов",
+                description: "Поиск и отслеживание сериалов. Расписание, эпизоды по сезонам, каст и персональный список.",
+                icon: "clapperboard",
+                tags: ["JavaScript", "TVMaze API", "LocalStorage", "HTML/CSS"],
+                url: "tv_tracker.html",
+                category: "web-apps",
+                isNew: true
+            },
+            {
+                id: "astronomy-guide",
+                title: "Астрономический гид",
+                description: "Когда наблюдать звёзды? Фазы луны, облачность, рассвет/закат и золотой час для фотографов.",
+                icon: "moon-star",
+                tags: ["JavaScript", "Sunrise-Sunset API", "Open-Meteo API", "Canvas"],
+                url: "astronomy_guide.html",
+                category: "web-apps",
+                isNew: true
+            },
 
             // === 3D Визуализации и графика ===
             {
@@ -1627,7 +1707,7 @@
             card.innerHTML = `
                 <a href="${tool.url}" class="tool-preview-link">
                     <div class="tool-preview">
-                        <img src="${tool.preview}" alt="${title}" loading="lazy" onerror="this.style.display='none'">
+                        ${tool.preview ? `<img src="${tool.preview}" alt="${title}" loading="lazy" onerror="this.style.display='none'">` : ''}
                         <div class="tool-preview-gradient"></div>
                         <div class="tool-preview-title">
                             <i data-lucide="${tool.icon}"></i>

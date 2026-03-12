@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<!--
+Техническое задание: Астрономический гид
+
+Функциональность:
+1. Автоопределение местоположения (Geolocation API + IP fallback)
+2. Ввод города/координат вручную
+3. Визуальное отображение рассвета и заката (анимированная дуга)
+4. Текущая фаза луны (математический расчёт)
+5. Визуализация фазы луны (SVG)
+6. Прогноз облачности на 24 часа (график)
+7. Рекомендация для наблюдений
+8. Золотой час для фотографов
+9. Продолжительность дня и ночи с графиком по дням недели
+10. Поддержка тёмной/светлой темы (тёмная по умолчанию)
+11. Многоязычность (русский/английский) с localStorage
+12. Адаптивный дизайн
+13. Звёздное небо на фоне (Canvas анимация)
+
+API:
+- Sunrise/Sunset: api.sunrise-sunset.org
+- Open-Meteo: api.open-meteo.com
+- IP Geolocation: ipapi.co/json/
+
+Стек: Vanilla JavaScript, CSS переменные, Canvas, SVG
+Без внешних фреймворков. Font Awesome для иконок.
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+  <title>Астрономический гид</title>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    /* === CSS переменные: тёмная тема (по умолчанию) === */
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-card-hover: rgba(30, 41, 59, 0.9);
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #7c3aed;
+      --accent-light: #a78bfa;
+      --accent-glow: rgba(124, 58, 237, 0.3);
+      --sun-color: #fbbf24;
+      --sun-glow: rgba(251, 191, 36, 0.4);
+      --moon-color: #e2e8f0;
+      --moon-shadow: #334155;
+      --border-color: rgba(148, 163, 184, 0.15);
+      --chart-line: #7c3aed;
+      --chart-fill: rgba(124, 58, 237, 0.2);
+      --chart-grid: rgba(148, 163, 184, 0.1);
+      --good-color: #34d399;
+      --warn-color: #fbbf24;
+      --bad-color: #f87171;
+      --golden-color: #f59e0b;
+      --card-radius: 16px;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    /* === Светлая тема === */
+    [data-theme="light"] {
+      --bg-primary: #f0f4ff;
+      --bg-secondary: #e2e8f0;
+      --bg-card: rgba(255, 255, 255, 0.9);
+      --bg-card-hover: rgba(241, 245, 249, 0.95);
+      --text-primary: #1e293b;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --accent: #6d28d9;
+      --accent-light: #8b5cf6;
+      --accent-glow: rgba(109, 40, 217, 0.2);
+      --sun-color: #f59e0b;
+      --sun-glow: rgba(245, 158, 11, 0.3);
+      --moon-color: #475569;
+      --moon-shadow: #cbd5e1;
+      --border-color: rgba(148, 163, 184, 0.3);
+      --chart-line: #6d28d9;
+      --chart-fill: rgba(109, 40, 217, 0.15);
+      --chart-grid: rgba(148, 163, 184, 0.2);
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    /* === Сброс стилей === */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* === Звёздный фон (Canvas) === */
+    #starCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    [data-theme="light"] #starCanvas {
+      opacity: 0.15;
+    }
+
+    /* === Верхняя панель === */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .top-bar-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent-light);
+    }
+
+    .top-bar-title i {
+      font-size: 1.3rem;
+    }
+
+    .top-bar-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* === Переключатель темы === */
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--text-muted);
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+
+    .slider::before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: var(--text-primary);
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: var(--accent);
+    }
+
+    input:checked + .slider::before {
+      transform: translateX(24px);
+    }
+
+    /* === Кнопки языка === */
+    .lang-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 2px;
+    }
+
+    .lang-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .lang-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* === Основной контент === */
+    .main-content {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 20px 40px;
+    }
+
+    /* === Блок локации === */
+    .location-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+    }
+
+    .location-bar input {
+      flex: 1;
+      min-width: 180px;
+      padding: 10px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .location-bar input:focus {
+      border-color: var(--accent);
+    }
+
+    .location-bar input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-light);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .location-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+
+    .location-info i {
+      color: var(--accent-light);
+    }
+
+    /* === Сетка карточек === */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      padding: 24px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+
+    .card-title i {
+      color: var(--accent-light);
+      font-size: 1.1rem;
+    }
+
+    /* === Карточка: Дуга Солнца === */
+    .sun-arc-container {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      overflow: hidden;
+    }
+
+    .sun-arc-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .sun-time-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .sun-time-labels .time-value {
+      font-weight: 700;
+      color: var(--sun-color);
+      font-size: 0.95rem;
+    }
+
+    /* === Карточка: Фаза Луны === */
+    .moon-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .moon-svg-wrap {
+      position: relative;
+    }
+
+    .moon-phase-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .moon-illumination {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* === Карточка: Облачность === */
+    .cloud-chart-container {
+      position: relative;
+      width: 100%;
+      height: 180px;
+    }
+
+    .cloud-chart-container canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* === Карточка: Рекомендация === */
+    .recommendation {
+      text-align: center;
+      padding: 12px 0;
+    }
+
+    .recommendation-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    .recommendation-text {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .recommendation-sub {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .rec-good {
+      color: var(--good-color);
+    }
+
+    .rec-moderate {
+      color: var(--warn-color);
+    }
+
+    .rec-bad {
+      color: var(--bad-color);
+    }
+
+    /* === Карточка: Золотой час === */
+    .golden-hour {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .golden-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+    }
+
+    .golden-item i {
+      font-size: 1.5rem;
+      color: var(--golden-color);
+    }
+
+    .golden-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .golden-time {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--golden-color);
+    }
+
+    /* === Карточка: День/Ночь === */
+    .daynight-bar-wrap {
+      margin-bottom: 16px;
+    }
+
+    .daynight-bar {
+      display: flex;
+      height: 28px;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .daynight-day {
+      background: linear-gradient(
+        90deg, #fbbf24, #f59e0b
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #1e293b;
+      transition: width 0.5s;
+    }
+
+    .daynight-night {
+      background: linear-gradient(
+        90deg, #312e81, #1e1b4b
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      transition: width 0.5s;
+    }
+
+    .daynight-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .week-chart-container {
+      position: relative;
+      width: 100%;
+      height: 160px;
+      margin-top: 12px;
+    }
+
+    .week-chart-container canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* === Широкая карточка === */
+    .card-wide {
+      grid-column: 1 / -1;
+    }
+
+    /* === Загрузка === */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 40px 0;
+      color: var(--text-muted);
+    }
+
+    .loading i {
+      font-size: 2rem;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* === Скроллбар === */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--text-muted);
+      border-radius: 4px;
+    }
+
+    /* === Адаптивность === */
+    @media (max-width: 768px) {
+      .main-content {
+        padding: 72px 12px 24px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .top-bar {
+        padding: 10px 14px;
+      }
+
+      .top-bar-title span {
+        display: none;
+      }
+
+      .location-bar {
+        flex-direction: column;
+      }
+
+      .location-bar input {
+        width: 100%;
+      }
+
+      .location-info {
+        margin-left: 0;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .card {
+        padding: 18px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .top-bar-title {
+        font-size: 0.95rem;
+      }
+
+      .card-title {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Звёздное небо -->
+  <canvas id="starCanvas"></canvas>
+
+  <!-- Верхняя панель -->
+  <div class="top-bar">
+    <div class="top-bar-title">
+      <a href="index.html"
+        style="color:inherit;text-decoration:none;
+          margin-right:0.5rem"
+        title="На главную">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <i class="fas fa-star"></i>
+      <span data-i18n="title">Астрономический гид</span>
+    </div>
+    <div class="top-bar-controls">
+      <label class="toggle-switch"
+        title="Переключить тему">
+        <input type="checkbox" id="themeToggle">
+        <span class="slider"></span>
+      </label>
+      <div class="lang-toggle">
+        <button class="lang-btn active"
+          id="langRu" data-lang="ru">RU</button>
+        <button class="lang-btn"
+          id="langEn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Основной контент -->
+  <div class="main-content">
+    <!-- Блок ввода местоположения -->
+    <div class="location-bar">
+      <input type="text" id="locationInput"
+        placeholder="Город или координаты (55.75, 37.61)"
+        data-i18n-placeholder="locationPlaceholder">
+      <button class="btn btn-primary" id="searchBtn">
+        <i class="fas fa-search"></i>
+        <span data-i18n="search">Найти</span>
+      </button>
+      <button class="btn btn-secondary" id="geoBtn">
+        <i class="fas fa-location-crosshairs"></i>
+        <span data-i18n="myLocation">Моё место</span>
+      </button>
+      <div class="location-info" id="locationDisplay">
+        <i class="fas fa-map-marker-alt"></i>
+        <span data-i18n="detecting">
+          Определение...
+        </span>
+      </div>
+    </div>
+
+    <!-- Сетка карточек -->
+    <div class="grid">
+      <!-- Дуга Солнца -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-sun"></i>
+          <span data-i18n="sunArc">
+            Рассвет и закат
+          </span>
+        </div>
+        <div class="sun-arc-container">
+          <svg class="sun-arc-svg"
+            id="sunArcSvg" viewBox="0 0 400 180">
+          </svg>
+        </div>
+        <div class="sun-time-labels">
+          <div>
+            <span data-i18n="sunrise">Восход</span>
+            <br>
+            <span class="time-value"
+              id="sunriseTime">--:--</span>
+          </div>
+          <div style="text-align:center">
+            <span data-i18n="solarNoon">
+              Полдень
+            </span><br>
+            <span class="time-value"
+              id="noonTime">--:--</span>
+          </div>
+          <div style="text-align:right">
+            <span data-i18n="sunset">Закат</span>
+            <br>
+            <span class="time-value"
+              id="sunsetTime">--:--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Фаза Луны -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-moon"></i>
+          <span data-i18n="moonPhase">
+            Фаза Луны
+          </span>
+        </div>
+        <div class="moon-display">
+          <div class="moon-svg-wrap">
+            <svg id="moonSvg" width="120" height="120"
+              viewBox="0 0 120 120">
+            </svg>
+          </div>
+          <div class="moon-phase-name"
+            id="moonPhaseName">--</div>
+          <div class="moon-illumination"
+            id="moonIllumination">--</div>
+        </div>
+      </div>
+
+      <!-- Рекомендация -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-binoculars"></i>
+          <span data-i18n="recommendation">
+            Рекомендация
+          </span>
+        </div>
+        <div class="recommendation" id="recBlock">
+          <div class="loading">
+            <i class="fas fa-spinner"></i>
+            <span data-i18n="loading">
+              Загрузка...
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Золотой час -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-camera"></i>
+          <span data-i18n="goldenHour">
+            Золотой час
+          </span>
+        </div>
+        <div class="golden-hour" id="goldenBlock">
+          <div class="loading">
+            <i class="fas fa-spinner"></i>
+            <span data-i18n="loading">
+              Загрузка...
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Облачность 24ч -->
+      <div class="card card-wide">
+        <div class="card-title">
+          <i class="fas fa-cloud"></i>
+          <span data-i18n="cloudForecast">
+            Облачность 24 часа
+          </span>
+        </div>
+        <div class="cloud-chart-container">
+          <canvas id="cloudChart"></canvas>
+        </div>
+      </div>
+
+      <!-- День и ночь -->
+      <div class="card card-wide">
+        <div class="card-title">
+          <i class="fas fa-clock"></i>
+          <span data-i18n="dayNight">
+            Продолжительность дня и ночи
+          </span>
+        </div>
+        <div class="daynight-bar-wrap">
+          <div class="daynight-bar">
+            <div class="daynight-day" id="dayBar"
+              style="width:50%">
+            </div>
+            <div class="daynight-night" id="nightBar"
+              style="width:50%">
+            </div>
+          </div>
+          <div class="daynight-labels">
+            <span id="dayDuration">--</span>
+            <span id="nightDuration">--</span>
+          </div>
+        </div>
+        <div class="week-chart-container">
+          <canvas id="weekChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * @description Астрономический гид
+     * Самодостаточное приложение для наблюдений
+     */
+
+    /* ============================
+     * Переводы (i18n)
+     * ============================ */
+    const I18N = {
+      ru: {
+        title: "Астрономический гид",
+        locationPlaceholder:
+          "Город или координаты (55.75, 37.61)",
+        search: "Найти",
+        myLocation: "Моё место",
+        detecting: "Определение...",
+        sunArc: "Рассвет и закат",
+        sunrise: "Восход",
+        sunset: "Закат",
+        solarNoon: "Полдень",
+        moonPhase: "Фаза Луны",
+        recommendation: "Рекомендация",
+        goldenHour: "Золотой час",
+        cloudForecast: "Облачность 24 часа",
+        dayNight: "Продолжительность дня и ночи",
+        loading: "Загрузка...",
+        day: "День",
+        night: "Ночь",
+        morning: "Утренний",
+        evening: "Вечерний",
+        recGood: "Отличная ночь для звёзд!",
+        recGoodSub:
+          "Небо ясное, идеально для наблюдений.",
+        recModerate: "Условия средние",
+        recModerateSub:
+          "Частичная облачность, но звёзды видны.",
+        recBad: "Облачно, лучше подождать",
+        recBadSub:
+          "Высокая облачность мешает наблюдениям.",
+        moonNew: "Новолуние",
+        moonWaxCrescent: "Молодая Луна",
+        moonFirstQuarter: "Первая четверть",
+        moonWaxGibbous: "Прибывающая Луна",
+        moonFull: "Полнолуние",
+        moonWanGibbous: "Убывающая Луна",
+        moonLastQuarter: "Последняя четверть",
+        moonWanCrescent: "Старая Луна",
+        illumination: "Освещённость",
+        cloudiness: "Облачность",
+        temperature: "Температура",
+        dayShort: ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],
+        locationNotFound: "Место не найдено",
+        geoError:
+          "Не удалось определить местоположение",
+        hrs: "ч",
+        min: "мин"
+      },
+      en: {
+        title: "Astronomy Guide",
+        locationPlaceholder:
+          "City or coordinates (55.75, 37.61)",
+        search: "Search",
+        myLocation: "My location",
+        detecting: "Detecting...",
+        sunArc: "Sunrise & Sunset",
+        sunrise: "Sunrise",
+        sunset: "Sunset",
+        solarNoon: "Solar noon",
+        moonPhase: "Moon Phase",
+        recommendation: "Recommendation",
+        goldenHour: "Golden Hour",
+        cloudForecast: "Cloud Cover 24h",
+        dayNight: "Day & Night Duration",
+        loading: "Loading...",
+        day: "Day",
+        night: "Night",
+        morning: "Morning",
+        evening: "Evening",
+        recGood: "Great night for stargazing!",
+        recGoodSub:
+          "Clear skies, perfect for observations.",
+        recModerate: "Moderate conditions",
+        recModerateSub:
+          "Partial clouds, but stars are visible.",
+        recBad: "Cloudy, better wait",
+        recBadSub:
+          "High cloud cover blocks observations.",
+        moonNew: "New Moon",
+        moonWaxCrescent: "Waxing Crescent",
+        moonFirstQuarter: "First Quarter",
+        moonWaxGibbous: "Waxing Gibbous",
+        moonFull: "Full Moon",
+        moonWanGibbous: "Waning Gibbous",
+        moonLastQuarter: "Last Quarter",
+        moonWanCrescent: "Waning Crescent",
+        illumination: "Illumination",
+        cloudiness: "Cloudiness",
+        temperature: "Temperature",
+        dayShort: [
+          "Mon","Tue","Wed","Thu","Fri","Sat","Sun"
+        ],
+        locationNotFound: "Location not found",
+        geoError: "Could not detect location",
+        hrs: "h",
+        min: "min"
+      }
+    };
+
+    /* ============================
+     * Состояние приложения
+     * ============================ */
+    let currentLang =
+      localStorage.getItem("astro-lang") || "ru";
+    let currentTheme =
+      localStorage.getItem("astro-theme") || "dark";
+    let currentLat = 55.7558;
+    let currentLng = 37.6173;
+    let currentLocationName = "Москва / Moscow";
+
+    /* ============================
+     * Утилиты
+     * ============================ */
+
+    /**
+     * @function t
+     * @description Получить перевод по ключу
+     * @param {string} key - Ключ перевода
+     * @returns {string} Переведённая строка
+     */
+    function t(key) {
+      return (I18N[currentLang] || I18N.ru)[key]
+        || key;
+    }
+
+    /**
+     * @function formatTime
+     * @description Форматировать дату в HH:MM
+     * @param {Date} date - Объект даты
+     * @returns {string} Форматированное время
+     */
+    function formatTime(date) {
+      if (!date || isNaN(date.getTime())) return "--:--";
+      return date.toLocaleTimeString(
+        currentLang === "ru" ? "ru-RU" : "en-US",
+        { hour: "2-digit", minute: "2-digit" }
+      );
+    }
+
+    /**
+     * @function formatDuration
+     * @description Форматировать длительность
+     * @param {number} minutes - Минуты
+     * @returns {string} Форматированная строка
+     */
+    function formatDuration(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = Math.round(minutes % 60);
+      return `${h} ${t("hrs")} ${m} ${t("min")}`;
+    }
+
+    /* ============================
+     * Тема
+     * ============================ */
+
+    /**
+     * @function applyTheme
+     * @description Применить тему оформления
+     * @param {string} theme - "dark" или "light"
+     */
+    function applyTheme(theme) {
+      currentTheme = theme;
+      if (theme === "light") {
+        document.documentElement
+          .setAttribute("data-theme", "light");
+        document.getElementById("themeToggle")
+          .checked = true;
+      } else {
+        document.documentElement
+          .removeAttribute("data-theme");
+        document.getElementById("themeToggle")
+          .checked = false;
+      }
+      localStorage.setItem("astro-theme", theme);
+    }
+
+    document.getElementById("themeToggle")
+      .addEventListener("change", function() {
+        applyTheme(this.checked ? "light" : "dark");
+        drawCloudChart();
+        drawWeekChart();
+      });
+
+    /* ============================
+     * Язык (i18n)
+     * ============================ */
+
+    /**
+     * @function applyLang
+     * @description Применить выбранный язык
+     * @param {string} lang - Код языка
+     */
+    function applyLang(lang) {
+      currentLang = lang;
+      localStorage.setItem("astro-lang", lang);
+      document.documentElement.lang = lang;
+
+      // Обновить кнопки
+      document.querySelectorAll(".lang-btn")
+        .forEach(function(btn) {
+          btn.classList.toggle(
+            "active",
+            btn.dataset.lang === lang
+          );
+        });
+
+      // Обновить тексты
+      document.querySelectorAll("[data-i18n]")
+        .forEach(function(el) {
+          el.textContent = t(el.dataset.i18n);
+        });
+
+      // Обновить плейсхолдеры
+      document
+        .querySelectorAll("[data-i18n-placeholder]")
+        .forEach(function(el) {
+          el.placeholder =
+            t(el.dataset.i18nPlaceholder);
+        });
+
+      // Перерисовать данные, если загружены
+      if (cachedSunData) renderSunData(cachedSunData);
+      renderMoonPhase();
+      if (cachedWeatherData) {
+        renderRecommendation(cachedWeatherData);
+      }
+      if (cachedSunData) {
+        renderGoldenHour(cachedSunData);
+      }
+      if (cachedSunData) renderDayNight(cachedSunData);
+      drawCloudChart();
+      drawWeekChart();
+    }
+
+    document.querySelectorAll(".lang-btn")
+      .forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          applyLang(this.dataset.lang);
+        });
+      });
+
+    /* ============================
+     * Звёздное небо (Canvas)
+     * ============================ */
+
+    /**
+     * @function initStarCanvas
+     * @description Инициализация анимации звёзд
+     */
+    function initStarCanvas() {
+      const canvas =
+        document.getElementById("starCanvas");
+      const ctx = canvas.getContext("2d");
+      let stars = [];
+      let animId;
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        createStars();
+      }
+
+      function createStars() {
+        stars = [];
+        const count = Math.floor(
+          (canvas.width * canvas.height) / 3000
+        );
+        for (let i = 0; i < count; i++) {
+          stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 1.8 + 0.3,
+            alpha: Math.random() * 0.8 + 0.2,
+            da: (Math.random() - 0.5) * 0.01
+          });
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(
+          0, 0, canvas.width, canvas.height
+        );
+        for (let i = 0; i < stars.length; i++) {
+          const s = stars[i];
+          s.alpha += s.da;
+          if (s.alpha > 1 || s.alpha < 0.1) {
+            s.da = -s.da;
+          }
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle =
+            `rgba(255,255,255,${s.alpha})`;
+          ctx.fill();
+        }
+        animId = requestAnimationFrame(draw);
+      }
+
+      window.addEventListener("resize", resize);
+      resize();
+      draw();
+    }
+
+    initStarCanvas();
+
+    /* ============================
+     * Геолокация
+     * ============================ */
+
+    /**
+     * @function detectLocation
+     * @description Определить местоположение
+     */
+    function detectLocation() {
+      updateLocationDisplay(t("detecting"));
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            currentLat = pos.coords.latitude;
+            currentLng = pos.coords.longitude;
+            reverseGeocode(currentLat, currentLng);
+            fetchAllData();
+          },
+          function() {
+            ipFallback();
+          },
+          { timeout: 5000 }
+        );
+      } else {
+        ipFallback();
+      }
+    }
+
+    /**
+     * @function ipFallback
+     * @description Фолбэк через IP-геолокацию
+     */
+    function ipFallback() {
+      fetch("https://ipapi.co/json/")
+        .then(function(r) {
+          if (!r.ok) throw new Error("IP API: " + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          if (!data.latitude || !data.longitude) {
+            throw new Error("Invalid IP geo data");
+          }
+          currentLat = data.latitude;
+          currentLng = data.longitude;
+          currentLocationName =
+            data.city || "Unknown";
+          updateLocationDisplay(
+            currentLocationName
+            + ` (${currentLat.toFixed(2)},`
+            + ` ${currentLng.toFixed(2)})`
+          );
+          fetchAllData();
+        })
+        .catch(function() {
+          updateLocationDisplay(t("geoError"));
+          fetchAllData();
+        });
+    }
+
+    /**
+     * @function reverseGeocode
+     * @description Обратное геокодирование
+     * @param {number} lat - Широта
+     * @param {number} lng - Долгота
+     */
+    function reverseGeocode(lat, lng) {
+      fetch(
+        "https://nominatim.openstreetmap.org"
+        + "/reverse?format=json"
+        + `&lat=${lat}&lon=${lng}`
+        + "&accept-language="
+        + (currentLang === "ru" ? "ru" : "en")
+      )
+        .then(function(r) {
+          if (!r.ok) throw new Error("API: " + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          const addr = data.address || {};
+          currentLocationName =
+            addr.city || addr.town
+            || addr.village || addr.state
+            || "Unknown";
+          updateLocationDisplay(
+            currentLocationName
+            + ` (${lat.toFixed(2)},`
+            + ` ${lng.toFixed(2)})`
+          );
+        })
+        .catch(function() {
+          updateLocationDisplay(
+            `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+          );
+        });
+    }
+
+    /**
+     * @function updateLocationDisplay
+     * @description Обновить отображение локации
+     * @param {string} text - Текст для показа
+     */
+    function updateLocationDisplay(text) {
+      const el =
+        document.getElementById("locationDisplay");
+      el.innerHTML =
+        '<i class="fas fa-map-marker-alt"></i> '
+        + text;
+    }
+
+    /**
+     * @function geocodeCity
+     * @description Геокодирование города
+     * @param {string} query - Название города
+     */
+    function geocodeCity(query) {
+      // Проверяем, введены ли координаты
+      const coordMatch = query.match(
+        /^\s*(-?\d+\.?\d*)\s*[,;\s]\s*(-?\d+\.?\d*)\s*$/
+      );
+      if (coordMatch) {
+        currentLat = parseFloat(coordMatch[1]);
+        currentLng = parseFloat(coordMatch[2]);
+        reverseGeocode(currentLat, currentLng);
+        fetchAllData();
+        return;
+      }
+
+      fetch(
+        "https://nominatim.openstreetmap.org/search"
+        + `?format=json&q=${encodeURIComponent(query)}`
+        + "&limit=1&accept-language="
+        + (currentLang === "ru" ? "ru" : "en")
+      )
+        .then(function(r) {
+          if (!r.ok) throw new Error("API: " + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          if (data.length === 0) {
+            updateLocationDisplay(
+              t("locationNotFound")
+            );
+            return;
+          }
+          currentLat = parseFloat(data[0].lat);
+          currentLng = parseFloat(data[0].lon);
+          currentLocationName =
+            data[0].display_name.split(",")[0];
+          updateLocationDisplay(
+            currentLocationName
+            + ` (${currentLat.toFixed(2)},`
+            + ` ${currentLng.toFixed(2)})`
+          );
+          fetchAllData();
+        })
+        .catch(function() {
+          updateLocationDisplay(
+            t("locationNotFound")
+          );
+        });
+    }
+
+    // Обработчики кнопок
+    document.getElementById("searchBtn")
+      .addEventListener("click", function() {
+        const val = document
+          .getElementById("locationInput").value.trim();
+        if (val) geocodeCity(val);
+      });
+
+    document.getElementById("locationInput")
+      .addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+          const val = this.value.trim();
+          if (val) geocodeCity(val);
+        }
+      });
+
+    document.getElementById("geoBtn")
+      .addEventListener("click", detectLocation);
+
+    /* ============================
+     * Кэш данных
+     * ============================ */
+    let cachedSunData = null;
+    let cachedWeatherData = null;
+    let cachedWeekSunData = null;
+
+    /* ============================
+     * Загрузка данных
+     * ============================ */
+
+    /**
+     * @function fetchAllData
+     * @description Загрузить все данные из API
+     */
+    function fetchAllData() {
+      fetchSunData();
+      fetchWeatherData();
+      fetchWeekSunData();
+      renderMoonPhase();
+    }
+
+    /**
+     * @function fetchSunData
+     * @description Загрузить данные о восходе/закате
+     */
+    function fetchSunData() {
+      const url =
+        "https://api.sunrise-sunset.org/json"
+        + `?lat=${currentLat}&lng=${currentLng}`
+        + "&formatted=0";
+      fetch(url)
+        .then(function(r) {
+          if (!r.ok) throw new Error("API: " + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          if (data.status === "OK") {
+            cachedSunData = data.results;
+            renderSunData(data.results);
+            renderGoldenHour(data.results);
+            renderDayNight(data.results);
+          }
+        })
+        .catch(function(err) {
+          console.error("Sun API error:", err);
+        });
+    }
+
+    /**
+     * @function fetchWeatherData
+     * @description Загрузить данные погоды
+     */
+    function fetchWeatherData() {
+      const url =
+        "https://api.open-meteo.com/v1/forecast"
+        + `?latitude=${currentLat}`
+        + `&longitude=${currentLng}`
+        + "&hourly=cloud_cover,temperature_2m"
+        + "&timezone=auto"
+        + "&forecast_days=2";
+      fetch(url)
+        .then(function(r) {
+          if (!r.ok) throw new Error("API: " + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          cachedWeatherData = data;
+          renderRecommendation(data);
+          drawCloudChart();
+        })
+        .catch(function(err) {
+          console.error("Weather API error:", err);
+        });
+    }
+
+    /**
+     * @function fetchWeekSunData
+     * @description Загрузить данные по дням недели
+     */
+    function fetchWeekSunData() {
+      const promises = [];
+      cachedWeekSunData = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split("T")[0];
+        const url =
+          "https://api.sunrise-sunset.org/json"
+          + `?lat=${currentLat}&lng=${currentLng}`
+          + `&date=${dateStr}&formatted=0`;
+        promises.push(
+          fetch(url)
+            .then(function(r) {
+          if (!r.ok) throw new Error("API: " + r.status);
+          return r.json();
+        })
+        );
+      }
+      Promise.all(promises)
+        .then(function(results) {
+          cachedWeekSunData = results
+            .filter(function(r) {
+              return r.status === "OK";
+            })
+            .map(function(r) { return r.results; });
+          drawWeekChart();
+        })
+        .catch(function(err) {
+          console.error("Week sun error:", err);
+        });
+    }
+
+    /* ============================
+     * Дуга Солнца (SVG)
+     * ============================ */
+
+    /**
+     * @function renderSunData
+     * @description Отрисовать SVG дуги солнца
+     * @param {Object} data - Данные восхода/заката
+     */
+    function renderSunData(data) {
+      const sunrise = new Date(data.sunrise);
+      const sunset = new Date(data.sunset);
+      const noon = new Date(data.solar_noon);
+      const now = new Date();
+
+      document.getElementById("sunriseTime")
+        .textContent = formatTime(sunrise);
+      document.getElementById("sunsetTime")
+        .textContent = formatTime(sunset);
+      document.getElementById("noonTime")
+        .textContent = formatTime(noon);
+
+      const svg =
+        document.getElementById("sunArcSvg");
+      const w = 400;
+      const h = 180;
+      const padX = 30;
+      const padBottom = 20;
+      const arcH = h - padBottom - 10;
+
+      // Горизонтальная линия
+      const horizY = h - padBottom;
+
+      // Прогресс солнца (0 = восход, 1 = закат)
+      let progress = 0;
+      const dayMs =
+        sunset.getTime() - sunrise.getTime();
+      if (dayMs > 0) {
+        progress =
+          (now.getTime() - sunrise.getTime()) / dayMs;
+      }
+      progress = Math.max(0, Math.min(1, progress));
+
+      // Дуга (парабола)
+      const arcPoints = [];
+      const steps = 50;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = padX + t * (w - 2 * padX);
+        const y = horizY
+          - 4 * arcH * t * (1 - t);
+        arcPoints.push(`${x},${y}`);
+      }
+
+      // Позиция солнца
+      const sunX =
+        padX + progress * (w - 2 * padX);
+      const sunY = horizY
+        - 4 * arcH * progress * (1 - progress);
+      const isDaytime =
+        progress > 0 && progress < 1;
+
+      let svgContent = "";
+
+      // Градиент фона
+      svgContent += `
+        <defs>
+          <linearGradient id="skyGrad"
+            x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"
+              stop-color="${isDaytime
+                ? "rgba(251,191,36,0.1)"
+                : "rgba(124,58,237,0.1)"
+              }"/>
+            <stop offset="100%"
+              stop-color="transparent"/>
+          </linearGradient>
+          <radialGradient id="sunGlow">
+            <stop offset="0%"
+              stop-color="var(--sun-color)"
+              stop-opacity="0.6"/>
+            <stop offset="100%"
+              stop-color="var(--sun-color)"
+              stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="arcGrad"
+            x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"
+              stop-color="var(--sun-color)"
+              stop-opacity="0.3"/>
+            <stop offset="${progress * 100}%"
+              stop-color="var(--sun-color)"
+              stop-opacity="1"/>
+            <stop offset="${progress * 100 + 1}%"
+              stop-color="var(--text-muted)"
+              stop-opacity="0.3"/>
+            <stop offset="100%"
+              stop-color="var(--text-muted)"
+              stop-opacity="0.2"/>
+          </linearGradient>
+        </defs>`;
+
+      // Фоновая заливка под дугой
+      svgContent +=
+        `<rect x="0" y="0" width="${w}" height="${h}"
+          fill="url(#skyGrad)" rx="12"/>`;
+
+      // Горизонт
+      svgContent +=
+        `<line x1="${padX}" y1="${horizY}"
+          x2="${w - padX}" y2="${horizY}"
+          stroke="var(--border-color)"
+          stroke-width="1"
+          stroke-dasharray="4,4"/>`;
+
+      // Дуга
+      svgContent +=
+        `<polyline points="${arcPoints.join(" ")}"
+          fill="none"
+          stroke="url(#arcGrad)"
+          stroke-width="2.5"
+          stroke-linecap="round"/>`;
+
+      // Солнце (свечение + круг)
+      if (isDaytime) {
+        svgContent +=
+          `<circle cx="${sunX}" cy="${sunY}"
+            r="20" fill="url(#sunGlow)"/>
+          <circle cx="${sunX}" cy="${sunY}"
+            r="8" fill="var(--sun-color)"/>`;
+      }
+
+      svg.innerHTML = svgContent;
+    }
+
+    /* ============================
+     * Фаза Луны
+     * ============================ */
+
+    /**
+     * @function calculateMoonPhase
+     * @description Рассчитать фазу луны по дате
+     * @param {Date} date - Дата
+     * @returns {number} Фаза (0-1)
+     */
+    function calculateMoonPhase(date) {
+      // Алгоритм на основе синодического месяца
+      // Новолуние 6 января 2000 18:14 UTC
+      const knownNew =
+        new Date(2000, 0, 6, 18, 14, 0).getTime();
+      const synodicMonth = 29.53058867;
+      const diff =
+        (date.getTime() - knownNew) / 86400000;
+      let phase = (diff % synodicMonth)
+        / synodicMonth;
+      if (phase < 0) phase += 1;
+      return phase;
+    }
+
+    /**
+     * @function getMoonPhaseName
+     * @description Название фазы луны
+     * @param {number} phase - Фаза (0-1)
+     * @returns {string} Ключ перевода
+     */
+    function getMoonPhaseName(phase) {
+      if (phase < 0.0625) return "moonNew";
+      if (phase < 0.1875) return "moonWaxCrescent";
+      if (phase < 0.3125) return "moonFirstQuarter";
+      if (phase < 0.4375) return "moonWaxGibbous";
+      if (phase < 0.5625) return "moonFull";
+      if (phase < 0.6875) return "moonWanGibbous";
+      if (phase < 0.8125) return "moonLastQuarter";
+      if (phase < 0.9375) return "moonWanCrescent";
+      return "moonNew";
+    }
+
+    /**
+     * @function getMoonIllumination
+     * @description Процент освещённости
+     * @param {number} phase - Фаза (0-1)
+     * @returns {number} Процент (0-100)
+     */
+    function getMoonIllumination(phase) {
+      return Math.round(
+        (1 - Math.cos(2 * Math.PI * phase)) / 2
+        * 100
+      );
+    }
+
+    /**
+     * @function renderMoonPhase
+     * @description Отрисовать SVG фазы луны
+     */
+    function renderMoonPhase() {
+      const phase = calculateMoonPhase(new Date());
+      const illum = getMoonIllumination(phase);
+      const phaseName = getMoonPhaseName(phase);
+
+      document.getElementById("moonPhaseName")
+        .textContent = t(phaseName);
+      document.getElementById("moonIllumination")
+        .textContent =
+          `${t("illumination")}: ${illum}%`;
+
+      const svg =
+        document.getElementById("moonSvg");
+      const cx = 60;
+      const cy = 60;
+      const r = 45;
+
+      // Вычислить форму терминатора
+      // phase: 0 = new, 0.25 = first quarter,
+      //        0.5 = full, 0.75 = last quarter
+      let terminatorX;
+      if (phase <= 0.5) {
+        terminatorX = Math.cos(phase * 2 * Math.PI);
+      } else {
+        terminatorX = Math.cos(phase * 2 * Math.PI);
+      }
+      const bulge = terminatorX * r;
+
+      // Контролируем направление освещённой части
+      let litPath, darkPath;
+      const sweep1 = phase <= 0.5 ? 1 : 0;
+      const sweep2 = phase <= 0.5 ? 0 : 1;
+
+      // Правая половина освещена (растущая)
+      // Левая половина освещена (убывающая)
+      litPath = `
+        M ${cx} ${cy - r}
+        A ${r} ${r} 0 0 ${phase <= 0.5 ? 1 : 0}
+          ${cx} ${cy + r}
+        A ${Math.abs(bulge)} ${r} 0 0
+          ${bulge > 0 ? 1 : 0}
+          ${cx} ${cy - r}
+        Z`;
+
+      let svgContent = `
+        <defs>
+          <radialGradient id="moonGlow"
+            cx="50%" cy="50%" r="60%">
+            <stop offset="60%"
+              stop-color="var(--moon-color)"
+              stop-opacity="0.15"/>
+            <stop offset="100%"
+              stop-color="var(--moon-color)"
+              stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle cx="${cx}" cy="${cy}" r="${r + 10}"
+          fill="url(#moonGlow)"/>
+        <circle cx="${cx}" cy="${cy}" r="${r}"
+          fill="var(--moon-shadow)"/>
+        <path d="${litPath}"
+          fill="var(--moon-color)"/>`;
+
+      // Детали поверхности (кратеры)
+      const craters = [
+        { x: 50, y: 45, r: 6 },
+        { x: 68, y: 55, r: 8 },
+        { x: 55, y: 70, r: 5 },
+        { x: 72, y: 40, r: 4 },
+        { x: 45, y: 58, r: 7 }
+      ];
+
+      craters.forEach(function(c) {
+        svgContent += `
+          <circle cx="${c.x}" cy="${c.y}"
+            r="${c.r}"
+            fill="var(--moon-shadow)"
+            opacity="0.25"/>`;
+      });
+
+      svg.innerHTML = svgContent;
+    }
+
+    /* ============================
+     * Рекомендация для наблюдений
+     * ============================ */
+
+    /**
+     * @function renderRecommendation
+     * @description Отрисовать рекомендацию
+     * @param {Object} data - Данные погоды
+     */
+    function renderRecommendation(data) {
+      const block =
+        document.getElementById("recBlock");
+      if (
+        !data || !data.hourly
+        || !data.hourly.cloud_cover
+      ) {
+        block.innerHTML =
+          `<div class="loading">
+            <i class="fas fa-spinner"></i>
+            <span>${t("loading")}</span>
+          </div>`;
+        return;
+      }
+
+      // Средняя облачность на ближайшие 8 часов
+      const now = new Date();
+      const hourly = data.hourly;
+      let cloudSum = 0;
+      let cloudCount = 0;
+
+      for (let i = 0; i < hourly.time.length; i++) {
+        const hDate = new Date(hourly.time[i]);
+        const diffH =
+          (hDate - now) / (1000 * 60 * 60);
+        if (diffH >= 0 && diffH <= 8) {
+          cloudSum += hourly.cloud_cover[i];
+          cloudCount++;
+        }
+      }
+
+      const avgCloud =
+        cloudCount > 0
+          ? cloudSum / cloudCount : 50;
+
+      // Фаза луны (яркая луна мешает)
+      const moonPhase =
+        calculateMoonPhase(new Date());
+      const moonIllum =
+        getMoonIllumination(moonPhase);
+
+      let recClass, icon, text, sub;
+
+      if (avgCloud < 30) {
+        recClass = "rec-good";
+        icon = "fas fa-star";
+        text = t("recGood");
+        sub = t("recGoodSub");
+        if (moonIllum > 80) {
+          sub += ` ${t("illumination")}: `
+            + `${moonIllum}%`;
+        }
+      } else if (avgCloud < 60) {
+        recClass = "rec-moderate";
+        icon = "fas fa-cloud-sun";
+        text = t("recModerate");
+        sub = t("recModerateSub");
+      } else {
+        recClass = "rec-bad";
+        icon = "fas fa-cloud";
+        text = t("recBad");
+        sub = t("recBadSub");
+      }
+
+      block.innerHTML = `
+        <div class="recommendation-icon ${recClass}">
+          <i class="${icon}"></i>
+        </div>
+        <div class="recommendation-text ${recClass}">
+          ${text}
+        </div>
+        <div class="recommendation-sub">${sub}</div>
+        <div class="recommendation-sub"
+          style="margin-top:8px">
+          ${t("cloudiness")}: ${Math.round(avgCloud)}%
+        </div>`;
+    }
+
+    /* ============================
+     * Золотой час
+     * ============================ */
+
+    /**
+     * @function renderGoldenHour
+     * @description Отрисовать золотой час
+     * @param {Object} data - Данные солнца
+     */
+    function renderGoldenHour(data) {
+      const block =
+        document.getElementById("goldenBlock");
+      const sunrise = new Date(data.sunrise);
+      const sunset = new Date(data.sunset);
+
+      // Золотой час: ~60 мин после восхода,
+      // ~60 мин перед закатом
+      const morningStart = new Date(sunrise);
+      const morningEnd = new Date(
+        sunrise.getTime() + 60 * 60 * 1000
+      );
+      const eveningStart = new Date(
+        sunset.getTime() - 60 * 60 * 1000
+      );
+      const eveningEnd = new Date(sunset);
+
+      block.innerHTML = `
+        <div class="golden-item">
+          <i class="fas fa-sunrise"></i>
+          <div>
+            <div class="golden-label">
+              ${t("morning")}
+            </div>
+            <div class="golden-time">
+              ${formatTime(morningStart)}
+              &ndash;
+              ${formatTime(morningEnd)}
+            </div>
+          </div>
+        </div>
+        <div class="golden-item">
+          <i class="fas fa-sunset"></i>
+          <div>
+            <div class="golden-label">
+              ${t("evening")}
+            </div>
+            <div class="golden-time">
+              ${formatTime(eveningStart)}
+              &ndash;
+              ${formatTime(eveningEnd)}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    /* ============================
+     * День и ночь
+     * ============================ */
+
+    /**
+     * @function renderDayNight
+     * @description Отрисовать продолжительность
+     * @param {Object} data - Данные солнца
+     */
+    function renderDayNight(data) {
+      const sunrise = new Date(data.sunrise);
+      const sunset = new Date(data.sunset);
+      const dayMin =
+        (sunset - sunrise) / (1000 * 60);
+      const nightMin = 24 * 60 - dayMin;
+      const dayPct =
+        ((dayMin / (24 * 60)) * 100).toFixed(1);
+      const nightPct =
+        (100 - parseFloat(dayPct)).toFixed(1);
+
+      const dayBar =
+        document.getElementById("dayBar");
+      const nightBar =
+        document.getElementById("nightBar");
+      dayBar.style.width = dayPct + "%";
+      nightBar.style.width = nightPct + "%";
+      dayBar.textContent =
+        `${t("day")} ${dayPct}%`;
+      nightBar.textContent =
+        `${t("night")} ${nightPct}%`;
+
+      document.getElementById("dayDuration")
+        .textContent =
+          `${t("day")}: ${formatDuration(dayMin)}`;
+      document.getElementById("nightDuration")
+        .textContent =
+          `${t("night")}: `
+          + `${formatDuration(nightMin)}`;
+    }
+
+    /* ============================
+     * График облачности (Canvas)
+     * ============================ */
+
+    /**
+     * @function drawCloudChart
+     * @description Нарисовать график облачности
+     */
+    function drawCloudChart() {
+      const canvas =
+        document.getElementById("cloudChart");
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      const W = rect.width;
+      const H = rect.height;
+
+      ctx.clearRect(0, 0, W, H);
+
+      if (
+        !cachedWeatherData
+        || !cachedWeatherData.hourly
+      ) return;
+
+      const hourly = cachedWeatherData.hourly;
+      const now = new Date();
+      // Ближайшие 24 часа
+      const points = [];
+      const temps = [];
+      for (let i = 0; i < hourly.time.length; i++) {
+        const hDate = new Date(hourly.time[i]);
+        const diffH =
+          (hDate - now) / (1000 * 60 * 60);
+        if (diffH >= -1 && diffH <= 24) {
+          points.push({
+            hour: hDate,
+            cloud: hourly.cloud_cover[i],
+            diffH: diffH
+          });
+          if (hourly.temperature_2m) {
+            temps.push(hourly.temperature_2m[i]);
+          }
+        }
+      }
+
+      if (points.length === 0) return;
+
+      const padL = 35;
+      const padR = 10;
+      const padT = 10;
+      const padB = 30;
+      const chartW = W - padL - padR;
+      const chartH = H - padT - padB;
+
+      // Стили из CSS переменных
+      const style = getComputedStyle(
+        document.documentElement
+      );
+      const lineColor =
+        style.getPropertyValue("--chart-line").trim();
+      const fillColor =
+        style.getPropertyValue("--chart-fill").trim();
+      const gridColor =
+        style.getPropertyValue("--chart-grid").trim();
+      const textColor =
+        style.getPropertyValue("--text-muted").trim();
+
+      // Сетка
+      ctx.strokeStyle = gridColor;
+      ctx.lineWidth = 0.5;
+      for (let v = 0; v <= 100; v += 25) {
+        const y =
+          padT + chartH - (v / 100) * chartH;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + chartW, y);
+        ctx.stroke();
+
+        ctx.fillStyle = textColor;
+        ctx.font = "10px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(v + "%", padL - 4, y + 3);
+      }
+
+      // Метки времени
+      ctx.textAlign = "center";
+      const step = Math.max(
+        1, Math.floor(points.length / 8)
+      );
+      for (let i = 0; i < points.length; i += step) {
+        const x =
+          padL + (i / (points.length - 1)) * chartW;
+        const label = points[i].hour
+          .toLocaleTimeString(
+            currentLang === "ru" ? "ru-RU" : "en-US",
+            { hour: "2-digit", minute: "2-digit" }
+          );
+        ctx.fillStyle = textColor;
+        ctx.font = "10px sans-serif";
+        ctx.fillText(label, x, H - 6);
+      }
+
+      // Заливка под графиком
+      ctx.beginPath();
+      ctx.moveTo(padL, padT + chartH);
+      for (let i = 0; i < points.length; i++) {
+        const x =
+          padL + (i / (points.length - 1)) * chartW;
+        const y =
+          padT + chartH
+          - (points[i].cloud / 100) * chartH;
+        if (i === 0) ctx.lineTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.lineTo(padL + chartW, padT + chartH);
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+
+      // Линия графика
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i++) {
+        const x =
+          padL + (i / (points.length - 1)) * chartW;
+        const y =
+          padT + chartH
+          - (points[i].cloud / 100) * chartH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Точки
+      for (let i = 0; i < points.length; i += step) {
+        const x =
+          padL + (i / (points.length - 1)) * chartW;
+        const y =
+          padT + chartH
+          - (points[i].cloud / 100) * chartH;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = lineColor;
+        ctx.fill();
+      }
+    }
+
+    /* ============================
+     * График дня по неделе (Canvas)
+     * ============================ */
+
+    /**
+     * @function drawWeekChart
+     * @description Нарисовать график дня/ночи
+     */
+    function drawWeekChart() {
+      const canvas =
+        document.getElementById("weekChart");
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      const W = rect.width;
+      const H = rect.height;
+
+      ctx.clearRect(0, 0, W, H);
+
+      if (
+        !cachedWeekSunData
+        || cachedWeekSunData.length === 0
+      ) return;
+
+      const padL = 40;
+      const padR = 10;
+      const padT = 10;
+      const padB = 28;
+      const chartW = W - padL - padR;
+      const chartH = H - padT - padB;
+
+      const style = getComputedStyle(
+        document.documentElement
+      );
+      const gridColor =
+        style.getPropertyValue("--chart-grid").trim();
+      const textColor =
+        style.getPropertyValue("--text-muted").trim();
+
+      const data = cachedWeekSunData;
+      const barW = chartW / data.length;
+      const dayNames = t("dayShort");
+
+      // Ось Y (часы)
+      ctx.strokeStyle = gridColor;
+      ctx.lineWidth = 0.5;
+      for (let h = 0; h <= 24; h += 6) {
+        const y = padT + (h / 24) * chartH;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + chartW, y);
+        ctx.stroke();
+        ctx.fillStyle = textColor;
+        ctx.font = "10px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(h + ":00", padL - 4, y + 3);
+      }
+
+      for (let i = 0; i < data.length; i++) {
+        const d = data[i];
+        const sr = new Date(d.sunrise);
+        const ss = new Date(d.sunset);
+        const srH =
+          sr.getHours() + sr.getMinutes() / 60;
+        const ssH =
+          ss.getHours() + ss.getMinutes() / 60;
+
+        const x = padL + i * barW + barW * 0.15;
+        const bw = barW * 0.7;
+
+        // Ночь (верх)
+        const nightTopY = padT;
+        const nightTopH = (srH / 24) * chartH;
+        ctx.fillStyle =
+          "rgba(30, 27, 75, 0.6)";
+        ctx.fillRect(
+          x, nightTopY, bw, nightTopH
+        );
+
+        // День
+        const dayY = padT + (srH / 24) * chartH;
+        const dayH =
+          ((ssH - srH) / 24) * chartH;
+        ctx.fillStyle =
+          "rgba(251, 191, 36, 0.5)";
+        ctx.fillRect(x, dayY, bw, dayH);
+
+        // Ночь (низ)
+        const nightBotY =
+          padT + (ssH / 24) * chartH;
+        const nightBotH =
+          ((24 - ssH) / 24) * chartH;
+        ctx.fillStyle =
+          "rgba(30, 27, 75, 0.6)";
+        ctx.fillRect(
+          x, nightBotY, bw, nightBotH
+        );
+
+        // Метка дня недели
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        const dayIdx = (date.getDay() + 6) % 7;
+        ctx.fillStyle = textColor;
+        ctx.font = "10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          dayNames[dayIdx],
+          x + bw / 2, H - 6
+        );
+      }
+    }
+
+    /* ============================
+     * Инициализация
+     * ============================ */
+
+    /**
+     * @function init
+     * @description Запуск приложения
+     */
+    function init() {
+      applyTheme(currentTheme);
+      applyLang(currentLang);
+      detectLocation();
+
+      // Перерисовка графиков при ресайзе
+      window.addEventListener("resize", function() {
+        drawCloudChart();
+        drawWeekChart();
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

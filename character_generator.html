@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Генератор случайных персонажей с использованием
+открытых API (RandomUser, DiceBear, RoboHash).
+
+Функциональные требования:
+1. Генерация случайного персонажа (имя, фото, email,
+   телефон, адрес, возраст)
+2. Выбор стиля аватара (реалистичный RandomUser /
+   пиксельный DiceBear / робот RoboHash)
+3. Фильтр по полу и национальности
+4. Генерация команды — от 1 до 20 персонажей
+5. Карточки с flip-анимацией (лицевая — фото/имя,
+   обратная — детали)
+6. Экспорт сгенерированных данных в JSON
+7. История генераций — сохранение в localStorage
+8. Режимы отображения: карточки / таблица / список
+9. Поддержка тёмной/светлой темы
+10. Многоязычность (русский/английский) с localStorage
+11. Адаптивный дизайн
+
+Технические требования:
+1. Vanilla JavaScript без фреймворков
+2. Самодостаточный HTML файл (встроенные CSS и JS)
+3. Font Awesome для иконок через CDN
+4. CSS переменные для тёмной/светлой темы
+5. Адаптивный дизайн для мобильных устройств
+6. localStorage для сохранения настроек и истории
+
+API:
+- RandomUser: https://randomuser.me/api/?results=N
+- DiceBear: https://api.dicebear.com/7.x/{style}/svg?seed={name}
+- RoboHash: https://robohash.org/{text}?set=set{1-5}
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+  <title>Генератор персонажей</title>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect"
+    href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <style>
+    /* ===== CSS переменные (тёмная тема по умолчанию) ===== */
+    :root {
+      --background: #0f1117;
+      --background-secondary: #1a1d27;
+      --foreground: #e8eaf0;
+      --foreground-muted: #8b8fa3;
+      --card: #1a1d27;
+      --card-hover: #22253a;
+      --primary: #6366f1;
+      --primary-hover: #818cf8;
+      --primary-light: rgba(99, 102, 241, 0.15);
+      --accent: #a855f7;
+      --accent-light: rgba(168, 85, 247, 0.15);
+      --success: #22c55e;
+      --success-light: rgba(34, 197, 94, 0.15);
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #2a2d3a;
+      --border-hover: #3a3d4a;
+      --shadow: rgba(0, 0, 0, 0.3);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
+      --gradient-primary:
+        linear-gradient(135deg, #6366f1, #a855f7);
+      --gradient-header:
+        linear-gradient(135deg, #1a1040, #0f1117 50%,
+          #0a1628);
+    }
+
+    /* ===== Светлая тема ===== */
+    [data-theme="light"] {
+      --background: #f8f9fc;
+      --background-secondary: #ffffff;
+      --foreground: #1a1d27;
+      --foreground-muted: #6b7280;
+      --card: #ffffff;
+      --card-hover: #f3f4f8;
+      --primary: #4f46e5;
+      --primary-hover: #6366f1;
+      --primary-light: rgba(79, 70, 229, 0.1);
+      --accent: #9333ea;
+      --accent-light: rgba(147, 51, 234, 0.1);
+      --success: #16a34a;
+      --success-light: rgba(22, 163, 74, 0.1);
+      --warning: #d97706;
+      --danger: #dc2626;
+      --border: #e5e7eb;
+      --border-hover: #d1d5db;
+      --shadow: rgba(0, 0, 0, 0.08);
+      --gradient-primary:
+        linear-gradient(135deg, #4f46e5, #9333ea);
+      --gradient-header:
+        linear-gradient(135deg, #ede9fe, #f8f9fc 50%,
+          #dbeafe);
+    }
+
+    /* ===== Базовые стили ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ===== Панель настроек ===== */
+    .settings-panel {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.5rem 1rem;
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      z-index: 100;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+
+    .settings-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ===== Toggle Switch ===== */
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--border);
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+
+    .slider::before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: var(--foreground);
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: var(--primary);
+    }
+
+    input:checked + .slider::before {
+      transform: translateX(24px);
+    }
+
+    .toggle-icons {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 6px;
+      pointer-events: none;
+    }
+
+    .toggle-icons i {
+      font-size: 11px;
+      color: var(--foreground-muted);
+    }
+
+    /* ===== Языковой переключатель ===== */
+    .lang-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem;
+      background: var(--background);
+      border-radius: var(--radius-sm);
+    }
+
+    .lang-btn {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: var(--foreground-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .lang-btn:hover:not(.active) {
+      background: var(--card-hover);
+    }
+
+    /* ===== Header ===== */
+    .header {
+      background: var(--gradient-header);
+      padding: 3rem 1.5rem 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(
+        circle at 30% 50%,
+        rgba(99, 102, 241, 0.08) 0%,
+        transparent 50%
+      );
+      animation: headerGlow 8s ease-in-out infinite;
+    }
+
+    @keyframes headerGlow {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(5%, -5%); }
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .header-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--foreground-muted);
+      font-size: 1rem;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* ===== Контейнер ===== */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    /* ===== Панель управления ===== */
+    .controls {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit,
+        minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .control-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--foreground-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .control-group select,
+    .control-group input[type="number"] {
+      background: var(--background);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.8rem;
+      color: var(--foreground);
+      font-size: 0.9rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      outline: none;
+      width: 100%;
+    }
+
+    .control-group select:focus,
+    .control-group input:focus {
+      border-color: var(--primary);
+      box-shadow:
+        0 0 0 3px var(--primary-light);
+    }
+
+    .control-group select option {
+      background: var(--card);
+      color: var(--foreground);
+    }
+
+    /* ===== Кнопки ===== */
+    .controls-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: #fff;
+      box-shadow: 0 4px 15px
+        rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px
+        rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--background);
+      color: var(--foreground);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: #fff;
+    }
+
+    .btn-success:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* ===== Переключатели вида ===== */
+    .view-toggles {
+      display: flex;
+      gap: 0.25rem;
+      margin-left: auto;
+      background: var(--background);
+      padding: 0.25rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .view-btn {
+      background: transparent;
+      border: none;
+      color: var(--foreground-muted);
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+
+    .view-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .view-btn:hover:not(.active) {
+      background: var(--card-hover);
+    }
+
+    /* ===== Сетка карточек ===== */
+    .characters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill,
+        minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* ===== Карточка с flip-анимацией ===== */
+    .character-card {
+      perspective: 1000px;
+      height: 340px;
+      cursor: pointer;
+      animation: cardAppear 0.5s ease-out both;
+    }
+
+    @keyframes cardAppear {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s
+        cubic-bezier(0.4, 0, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+
+    .character-card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-front,
+    .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: var(--card);
+      box-shadow: 0 4px 20px var(--shadow);
+      transition: border-color 0.3s;
+    }
+
+    .character-card:hover .card-front,
+    .character-card:hover .card-back {
+      border-color: var(--primary);
+      box-shadow: 0 8px 30px var(--shadow),
+        0 0 0 1px var(--primary-light);
+    }
+
+    .card-back {
+      transform: rotateY(180deg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* ===== Лицевая сторона карточки ===== */
+    .card-avatar-wrapper {
+      position: relative;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--gradient-header);
+      overflow: hidden;
+    }
+
+    .card-avatar-wrapper::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: linear-gradient(
+        transparent, var(--card)
+      );
+    }
+
+    .card-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      object-fit: cover;
+      z-index: 1;
+      transition: transform 0.3s;
+      background: var(--background);
+    }
+
+    .character-card:hover .card-avatar {
+      transform: scale(1.05);
+    }
+
+    .card-front-info {
+      padding: 1rem 1.25rem;
+      text-align: center;
+    }
+
+    .card-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-role {
+      font-size: 0.8rem;
+      color: var(--foreground-muted);
+    }
+
+    .card-age-badge {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 20px;
+      z-index: 2;
+    }
+
+    .card-flip-hint {
+      position: absolute;
+      bottom: 0.5rem;
+      right: 0.75rem;
+      font-size: 0.7rem;
+      color: var(--foreground-muted);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .character-card:hover .card-flip-hint {
+      opacity: 1;
+    }
+
+    /* ===== Обратная сторона карточки ===== */
+    .card-back-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      text-align: center;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .card-detail {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      margin-bottom: 0.7rem;
+      font-size: 0.82rem;
+    }
+
+    .card-detail i {
+      color: var(--primary);
+      width: 16px;
+      text-align: center;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .card-detail-text {
+      color: var(--foreground);
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    .card-detail-label {
+      color: var(--foreground-muted);
+      font-size: 0.72rem;
+      display: block;
+    }
+
+    /* ===== Режим списка ===== */
+    .characters-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      transition: all 0.2s;
+      cursor: pointer;
+      animation: cardAppear 0.4s ease-out both;
+    }
+
+    .list-item:hover {
+      border-color: var(--primary);
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+
+    .list-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--background);
+    }
+
+    .list-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .list-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .list-details {
+      color: var(--foreground-muted);
+      font-size: 0.82rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.2rem;
+    }
+
+    .list-details span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* ===== Режим таблицы ===== */
+    .characters-table-wrapper {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+
+    .characters-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .characters-table th {
+      background: var(--background);
+      color: var(--foreground-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .characters-table td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .characters-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .characters-table tbody tr {
+      transition: background 0.2s;
+      animation: cardAppear 0.4s ease-out both;
+    }
+
+    .characters-table tbody tr:hover {
+      background: var(--card-hover);
+    }
+
+    .table-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--background);
+    }
+
+    /* ===== Пустое состояние ===== */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1.5rem;
+      color: var(--foreground-muted);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.4;
+    }
+
+    .empty-state h3 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+      color: var(--foreground);
+    }
+
+    /* ===== Статус-бар ===== */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .status-info {
+      font-size: 0.85rem;
+      color: var(--foreground-muted);
+    }
+
+    .status-info strong {
+      color: var(--primary);
+    }
+
+    /* ===== Спиннер загрузки ===== */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .loading-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    /* ===== История ===== */
+    .history-section {
+      margin-top: 2rem;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .history-header h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .history-header h3 i {
+      color: var(--primary);
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover {
+      border-color: var(--primary);
+      background: var(--card-hover);
+    }
+
+    .history-item-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .history-item-count {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.85rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .history-item-meta {
+      font-size: 0.82rem;
+    }
+
+    .history-item-date {
+      color: var(--foreground-muted);
+      font-size: 0.75rem;
+    }
+
+    .history-item-delete {
+      background: none;
+      border: none;
+      color: var(--foreground-muted);
+      cursor: pointer;
+      padding: 0.3rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+      font-size: 0.85rem;
+    }
+
+    .history-item-delete:hover {
+      color: var(--danger);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* ===== Уведомления ===== */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.85rem;
+      box-shadow: 0 8px 30px var(--shadow);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      animation: toastIn 0.3s ease-out;
+      max-width: 350px;
+    }
+
+    .toast.toast-out {
+      animation: toastOut 0.3s ease-in forwards;
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes toastOut {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+    }
+
+    .toast i {
+      color: var(--success);
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      color: var(--foreground-muted);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border);
+      margin-top: 3rem;
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* ===== Адаптивный дизайн ===== */
+    @media (max-width: 768px) {
+      .settings-panel {
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        gap: 0.75rem;
+      }
+
+      .toggle-switch {
+        width: 40px;
+        height: 20px;
+      }
+
+      .slider::before {
+        height: 14px;
+        width: 14px;
+      }
+
+      input:checked + .slider::before {
+        transform: translateX(20px);
+      }
+
+      .header {
+        padding: 2.5rem 1rem 1.5rem;
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+      }
+
+      .controls-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .controls-actions {
+        flex-direction: column;
+      }
+
+      .controls-actions .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .view-toggles {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+      }
+
+      .characters-grid {
+        grid-template-columns: repeat(auto-fill,
+          minmax(220px, 1fr));
+      }
+
+      .character-card {
+        height: 300px;
+      }
+
+      .card-avatar-wrapper {
+        height: 170px;
+      }
+
+      .card-avatar {
+        width: 100px;
+        height: 100px;
+      }
+
+      .list-details {
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .history-item {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .controls-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .characters-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Панель настроек (тема + язык) -->
+  <div class="settings-panel">
+    <div class="settings-option">
+      <label class="toggle-switch"
+        title="Переключить тему">
+        <input type="checkbox" id="themeToggle">
+        <span class="slider"></span>
+        <span class="toggle-icons">
+          <i class="fas fa-moon"></i>
+          <i class="fas fa-sun"></i>
+        </span>
+      </label>
+    </div>
+    <div class="settings-option">
+      <div class="lang-toggle">
+        <button class="lang-btn active"
+          id="langRu" data-lang="ru">RU</button>
+        <button class="lang-btn"
+          id="langEn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-icon">
+        <i class="fas fa-users-cog"></i>
+      </div>
+      <h1 data-i18n="title">
+        Генератор персонажей
+      </h1>
+      <p data-i18n="subtitle">
+        Создавайте случайных персонажей для ваших
+        проектов, игр и прототипов
+      </p>
+    </div>
+  </header>
+
+  <!-- Панель управления -->
+  <div class="container">
+    <div class="controls">
+      <div class="controls-grid">
+        <!-- Количество -->
+        <div class="control-group">
+          <label data-i18n="labelCount">
+            Количество
+          </label>
+          <input type="number" id="countInput"
+            min="1" max="20" value="6">
+        </div>
+
+        <!-- Стиль аватара -->
+        <div class="control-group">
+          <label data-i18n="labelAvatar">
+            Стиль аватара
+          </label>
+          <select id="avatarStyle">
+            <option value="realistic"
+              data-i18n-opt="avatarRealistic">
+              Реалистичный (RandomUser)
+            </option>
+            <option value="adventurer"
+              data-i18n-opt="avatarAdventurer">
+              Adventurer (DiceBear)
+            </option>
+            <option value="avataaars"
+              data-i18n-opt="avatarAvataaars">
+              Avataaars (DiceBear)
+            </option>
+            <option value="bottts"
+              data-i18n-opt="avatarBottts">
+              Bottts (DiceBear)
+            </option>
+            <option value="fun-emoji"
+              data-i18n-opt="avatarFunEmoji">
+              Fun Emoji (DiceBear)
+            </option>
+            <option value="lorelei"
+              data-i18n-opt="avatarLorelei">
+              Lorelei (DiceBear)
+            </option>
+            <option value="notionists"
+              data-i18n-opt="avatarNotionists">
+              Notionists (DiceBear)
+            </option>
+            <option value="pixel-art"
+              data-i18n-opt="avatarPixelArt">
+              Pixel Art (DiceBear)
+            </option>
+            <option value="thumbs"
+              data-i18n-opt="avatarThumbs">
+              Thumbs (DiceBear)
+            </option>
+            <option value="robohash-1"
+              data-i18n-opt="avatarRobots">
+              Роботы (RoboHash)
+            </option>
+            <option value="robohash-2"
+              data-i18n-opt="avatarMonsters">
+              Монстры (RoboHash)
+            </option>
+            <option value="robohash-3"
+              data-i18n-opt="avatarRobots2">
+              Роботы 2 (RoboHash)
+            </option>
+            <option value="robohash-4"
+              data-i18n-opt="avatarCats">
+              Коты (RoboHash)
+            </option>
+            <option value="robohash-5"
+              data-i18n-opt="avatarHumans">
+              Люди (RoboHash)
+            </option>
+          </select>
+        </div>
+
+        <!-- Пол -->
+        <div class="control-group">
+          <label data-i18n="labelGender">Пол</label>
+          <select id="genderFilter">
+            <option value=""
+              data-i18n-opt="genderAny">Любой</option>
+            <option value="male"
+              data-i18n-opt="genderMale">Мужской</option>
+            <option value="female"
+              data-i18n-opt="genderFemale">Женский</option>
+          </select>
+        </div>
+
+        <!-- Национальность -->
+        <div class="control-group">
+          <label data-i18n="labelNat">
+            Национальность
+          </label>
+          <select id="natFilter">
+            <option value=""
+              data-i18n-opt="natAny">Любая</option>
+            <option value="us"
+              data-i18n-opt="natUS">США</option>
+            <option value="gb"
+              data-i18n-opt="natGB">Великобритания</option>
+            <option value="fr"
+              data-i18n-opt="natFR">Франция</option>
+            <option value="de"
+              data-i18n-opt="natDE">Германия</option>
+            <option value="au"
+              data-i18n-opt="natAU">Австралия</option>
+            <option value="br"
+              data-i18n-opt="natBR">Бразилия</option>
+            <option value="ca"
+              data-i18n-opt="natCA">Канада</option>
+            <option value="es"
+              data-i18n-opt="natES">Испания</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Кнопки действий -->
+      <div class="controls-actions">
+        <button class="btn btn-primary"
+          id="generateBtn">
+          <i class="fas fa-dice"></i>
+          <span data-i18n="btnGenerate">
+            Генерировать
+          </span>
+        </button>
+        <button class="btn btn-success"
+          id="exportBtn" disabled>
+          <i class="fas fa-download"></i>
+          <span data-i18n="btnExport">
+            Экспорт JSON
+          </span>
+        </button>
+        <button class="btn btn-secondary"
+          id="clearBtn" disabled>
+          <i class="fas fa-eraser"></i>
+          <span data-i18n="btnClear">
+            Очистить
+          </span>
+        </button>
+
+        <!-- Переключатели вида -->
+        <div class="view-toggles">
+          <button class="view-btn active"
+            data-view="cards"
+            title="Карточки">
+            <i class="fas fa-th-large"></i>
+          </button>
+          <button class="view-btn"
+            data-view="list"
+            title="Список">
+            <i class="fas fa-list"></i>
+          </button>
+          <button class="view-btn"
+            data-view="table"
+            title="Таблица">
+            <i class="fas fa-table"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Статус-бар -->
+    <div class="status-bar" id="statusBar"
+      style="display:none;">
+      <span class="status-info" id="statusText">
+      </span>
+    </div>
+
+    <!-- Контейнер результатов -->
+    <div id="resultsContainer"></div>
+
+    <!-- Пустое состояние -->
+    <div class="empty-state" id="emptyState">
+      <i class="fas fa-user-astronaut"></i>
+      <h3 data-i18n="emptyTitle">
+        Нет персонажей
+      </h3>
+      <p data-i18n="emptyText">
+        Нажмите «Генерировать», чтобы создать
+        случайных персонажей
+      </p>
+    </div>
+
+    <!-- История генераций -->
+    <div class="history-section" id="historySection"
+      style="display:none;">
+      <div class="history-header">
+        <h3>
+          <i class="fas fa-history"></i>
+          <span data-i18n="historyTitle">
+            История генераций
+          </span>
+        </h3>
+        <button class="btn btn-danger btn-sm"
+          id="clearHistoryBtn">
+          <i class="fas fa-trash-alt"></i>
+          <span data-i18n="btnClearHistory">
+            Очистить историю
+          </span>
+        </button>
+      </div>
+      <div class="history-list" id="historyList">
+      </div>
+    </div>
+  </div>
+
+  <!-- Оверлей загрузки -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <span class="loading-text"
+        data-i18n="loading">
+        Генерация персонажей...
+      </span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <a href="index.html">
+      &larr; <span data-i18n="backHome">
+        Вернуться на главную
+      </span>
+    </a>
+  </footer>
+
+  <script>
+    /**
+     * @description Генератор случайных персонажей
+     * Использует API: RandomUser, DiceBear, RoboHash
+     */
+
+    // ===== Переводы =====
+    const i18n = {
+      ru: {
+        title: "Генератор персонажей",
+        subtitle: "Создавайте случайных персонажей "
+          + "для ваших проектов, игр и прототипов",
+        labelCount: "Количество",
+        labelAvatar: "Стиль аватара",
+        labelGender: "Пол",
+        labelNat: "Национальность",
+        btnGenerate: "Генерировать",
+        btnExport: "Экспорт JSON",
+        btnClear: "Очистить",
+        emptyTitle: "Нет персонажей",
+        emptyText: "Нажмите «Генерировать», "
+          + "чтобы создать случайных персонажей",
+        historyTitle: "История генераций",
+        btnClearHistory: "Очистить историю",
+        loading: "Генерация персонажей...",
+        backHome: "Вернуться на главную",
+        statusGenerated: "Сгенерировано",
+        statusChars: "персонажей",
+        statusChar1: "персонаж",
+        statusChar24: "персонажа",
+        flipHint: "Нажмите для деталей",
+        colAvatar: "Аватар",
+        colName: "Имя",
+        colEmail: "Email",
+        colPhone: "Телефон",
+        colAge: "Возраст",
+        colCity: "Город",
+        labelAge: "Возраст",
+        labelEmail: "Email",
+        labelPhone: "Телефон",
+        labelAddress: "Адрес",
+        labelNationality: "Нация",
+        toastGenerated: "Персонажи сгенерированы!",
+        toastExported: "JSON файл скачан!",
+        toastCleared: "Персонажи удалены",
+        toastHistoryCleared: "История очищена",
+        toastHistoryLoaded: "Загружено из истории",
+        historyChars: "перс.",
+        avatarRealistic: "Реалистичный (RandomUser)",
+        avatarAdventurer: "Adventurer (DiceBear)",
+        avatarAvataaars: "Avataaars (DiceBear)",
+        avatarBottts: "Bottts (DiceBear)",
+        avatarFunEmoji: "Fun Emoji (DiceBear)",
+        avatarLorelei: "Lorelei (DiceBear)",
+        avatarNotionists: "Notionists (DiceBear)",
+        avatarPixelArt: "Pixel Art (DiceBear)",
+        avatarThumbs: "Thumbs (DiceBear)",
+        avatarRobots: "Роботы (RoboHash)",
+        avatarMonsters: "Монстры (RoboHash)",
+        avatarRobots2: "Роботы 2 (RoboHash)",
+        avatarCats: "Коты (RoboHash)",
+        avatarHumans: "Люди (RoboHash)",
+        genderAny: "Любой",
+        genderMale: "Мужской",
+        genderFemale: "Женский",
+        natAny: "Любая",
+        natUS: "США",
+        natGB: "Великобритания",
+        natFR: "Франция",
+        natDE: "Германия",
+        natAU: "Австралия",
+        natBR: "Бразилия",
+        natCA: "Канада",
+        natES: "Испания"
+      },
+      en: {
+        title: "Character Generator",
+        subtitle: "Create random characters for your "
+          + "projects, games and prototypes",
+        labelCount: "Count",
+        labelAvatar: "Avatar Style",
+        labelGender: "Gender",
+        labelNat: "Nationality",
+        btnGenerate: "Generate",
+        btnExport: "Export JSON",
+        btnClear: "Clear",
+        emptyTitle: "No Characters",
+        emptyText: "Click \"Generate\" to create "
+          + "random characters",
+        historyTitle: "Generation History",
+        btnClearHistory: "Clear History",
+        loading: "Generating characters...",
+        backHome: "Back to Home",
+        statusGenerated: "Generated",
+        statusChars: "characters",
+        statusChar1: "character",
+        statusChar24: "characters",
+        flipHint: "Click for details",
+        colAvatar: "Avatar",
+        colName: "Name",
+        colEmail: "Email",
+        colPhone: "Phone",
+        colAge: "Age",
+        colCity: "City",
+        labelAge: "Age",
+        labelEmail: "Email",
+        labelPhone: "Phone",
+        labelAddress: "Address",
+        labelNationality: "Nationality",
+        toastGenerated: "Characters generated!",
+        toastExported: "JSON file downloaded!",
+        toastCleared: "Characters cleared",
+        toastHistoryCleared: "History cleared",
+        toastHistoryLoaded: "Loaded from history",
+        historyChars: "chars",
+        avatarRealistic: "Realistic (RandomUser)",
+        avatarAdventurer: "Adventurer (DiceBear)",
+        avatarAvataaars: "Avataaars (DiceBear)",
+        avatarBottts: "Bottts (DiceBear)",
+        avatarFunEmoji: "Fun Emoji (DiceBear)",
+        avatarLorelei: "Lorelei (DiceBear)",
+        avatarNotionists: "Notionists (DiceBear)",
+        avatarPixelArt: "Pixel Art (DiceBear)",
+        avatarThumbs: "Thumbs (DiceBear)",
+        avatarRobots: "Robots (RoboHash)",
+        avatarMonsters: "Monsters (RoboHash)",
+        avatarRobots2: "Robots 2 (RoboHash)",
+        avatarCats: "Cats (RoboHash)",
+        avatarHumans: "Humans (RoboHash)",
+        genderAny: "Any",
+        genderMale: "Male",
+        genderFemale: "Female",
+        natAny: "Any",
+        natUS: "USA",
+        natGB: "United Kingdom",
+        natFR: "France",
+        natDE: "Germany",
+        natAU: "Australia",
+        natBR: "Brazil",
+        natCA: "Canada",
+        natES: "Spain"
+      }
+    };
+
+    // ===== Состояние приложения =====
+    let currentLang =
+      localStorage.getItem("chargen-lang") || "ru";
+    let currentTheme =
+      localStorage.getItem("chargen-theme") || "dark";
+    let currentView = "cards";
+    let characters = [];
+    let history = (() => {
+      try {
+        return JSON.parse(
+          localStorage.getItem("chargen-history")
+        ) || [];
+      } catch (e) { return []; }
+    })();
+
+    // ===== DOM-элементы =====
+    const generateBtn =
+      document.getElementById("generateBtn");
+    const exportBtn =
+      document.getElementById("exportBtn");
+    const clearBtn =
+      document.getElementById("clearBtn");
+    const countInput =
+      document.getElementById("countInput");
+    const avatarStyle =
+      document.getElementById("avatarStyle");
+    const genderFilter =
+      document.getElementById("genderFilter");
+    const natFilter =
+      document.getElementById("natFilter");
+    const resultsContainer =
+      document.getElementById("resultsContainer");
+    const emptyState =
+      document.getElementById("emptyState");
+    const loadingOverlay =
+      document.getElementById("loadingOverlay");
+    const statusBar =
+      document.getElementById("statusBar");
+    const statusText =
+      document.getElementById("statusText");
+    const historySection =
+      document.getElementById("historySection");
+    const historyList =
+      document.getElementById("historyList");
+    const clearHistoryBtn =
+      document.getElementById("clearHistoryBtn");
+
+    /**
+     * @function t
+     * @description Получить перевод по ключу
+     * @param {string} key - Ключ перевода
+     * @returns {string} Переведённый текст
+     */
+    function t(key) {
+      return (i18n[currentLang] || i18n.ru)[key]
+        || key;
+    }
+
+    /**
+     * @function setTheme
+     * @description Установить тему оформления
+     * @param {string} theme - dark или light
+     */
+    function setTheme(theme) {
+      currentTheme = theme;
+      localStorage.setItem("chargen-theme", theme);
+      if (theme === "light") {
+        document.documentElement
+          .setAttribute("data-theme", "light");
+        document.getElementById("themeToggle")
+          .checked = true;
+      } else {
+        document.documentElement
+          .removeAttribute("data-theme");
+        document.getElementById("themeToggle")
+          .checked = false;
+      }
+    }
+
+    /**
+     * @function setLang
+     * @description Установить язык интерфейса
+     * @param {string} lang - ru или en
+     */
+    function setLang(lang) {
+      currentLang = lang;
+      localStorage.setItem("chargen-lang", lang);
+      document.querySelectorAll(".lang-btn")
+        .forEach(btn => {
+          btn.classList.toggle(
+            "active", btn.dataset.lang === lang
+          );
+        });
+      updateUI();
+    }
+
+    /**
+     * @function updateUI
+     * @description Обновить все переводы в DOM
+     */
+    function updateUI() {
+      // Обновляем элементы data-i18n
+      document.querySelectorAll("[data-i18n]")
+        .forEach(el => {
+          const key = el.getAttribute("data-i18n");
+          el.textContent = t(key);
+        });
+
+      // Обновляем опции select
+      document.querySelectorAll("[data-i18n-opt]")
+        .forEach(el => {
+          const key =
+            el.getAttribute("data-i18n-opt");
+          el.textContent = t(key);
+        });
+
+      // Перерисовываем результаты
+      if (characters.length > 0) {
+        renderCharacters();
+        updateStatusBar();
+      }
+
+      // Перерисовываем историю
+      renderHistory();
+    }
+
+    /**
+     * @function getAvatarUrl
+     * @description Получить URL аватара
+     * @param {object} user - Данные пользователя
+     * @param {string} style - Выбранный стиль
+     * @returns {string} URL аватара
+     */
+    function getAvatarUrl(user, style) {
+      const seed = encodeURIComponent(
+        `${user.name.first}-${user.name.last}`
+      );
+
+      if (style === "realistic") {
+        return user.picture.large;
+      }
+
+      if (style.startsWith("robohash-")) {
+        const set = style.split("-")[1];
+        return "https://robohash.org/"
+          + seed + "?set=set" + set + "&size=200x200";
+      }
+
+      // DiceBear стили
+      return "https://api.dicebear.com/7.x/"
+        + style + "/svg?seed=" + seed + "&size=200";
+    }
+
+    /**
+     * @function generateCharacters
+     * @description Генерировать персонажей через API
+     */
+    async function generateCharacters() {
+      const count = Math.min(
+        Math.max(parseInt(countInput.value) || 1, 1),
+        20
+      );
+      countInput.value = count;
+      const gender = genderFilter.value;
+      const nat = natFilter.value;
+      const style = avatarStyle.value;
+
+      // Формируем URL
+      let url = "https://randomuser.me/api/?results="
+        + count;
+      if (gender) url += "&gender=" + gender;
+      if (nat) url += "&nat=" + nat;
+
+      // Показываем загрузку
+      loadingOverlay.classList.add("active");
+      generateBtn.disabled = true;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("API error: "
+            + response.status);
+        }
+        const data = await response.json();
+
+        characters = data.results.map(user => ({
+          name: {
+            first: user.name.first,
+            last: user.name.last,
+            title: user.name.title
+          },
+          email: user.email,
+          phone: user.phone,
+          age: user.dob.age,
+          gender: user.gender,
+          nationality: user.nat,
+          address: {
+            street: user.location.street.number
+              + " " + user.location.street.name,
+            city: user.location.city,
+            state: user.location.state,
+            country: user.location.country,
+            postcode: user.location.postcode
+          },
+          avatar: getAvatarUrl(user, style),
+          avatarStyle: style,
+          originalPicture: user.picture.large
+        }));
+
+        // Сохраняем в историю
+        saveToHistory(characters, style);
+
+        // Обновляем UI
+        renderCharacters();
+        updateStatusBar();
+        emptyState.style.display = "none";
+        statusBar.style.display = "flex";
+        exportBtn.disabled = false;
+        clearBtn.disabled = false;
+
+        showToast(t("toastGenerated"));
+      } catch (error) {
+        console.error("Error fetching:", error);
+        showToast("Error: " + error.message);
+      } finally {
+        loadingOverlay.classList.remove("active");
+        generateBtn.disabled = false;
+      }
+    }
+
+    /**
+     * @function renderCharacters
+     * @description Отрисовать персонажей
+     */
+    function renderCharacters() {
+      if (characters.length === 0) return;
+
+      switch (currentView) {
+        case "cards":
+          renderCards();
+          break;
+        case "list":
+          renderList();
+          break;
+        case "table":
+          renderTable();
+          break;
+      }
+    }
+
+    /**
+     * @function renderCards
+     * @description Отрисовать карточки с
+     *   flip-анимацией
+     */
+    function renderCards() {
+      let html = '<div class="characters-grid">';
+
+      characters.forEach((char, i) => {
+        const fullName =
+          char.name.first + " " + char.name.last;
+        const delay = i * 0.08;
+
+        html += `
+          <div class="character-card"
+            onclick="this.classList.toggle('flipped')"
+            style="animation-delay:${delay}s">
+            <div class="card-inner">
+              <div class="card-front">
+                <div class="card-avatar-wrapper">
+                  <span class="card-age-badge">
+                    ${char.age}
+                  </span>
+                  <img class="card-avatar"
+                    src="${char.avatar}"
+                    alt="${fullName}"
+                    loading="lazy"
+                    onerror="this.src=
+'https://api.dicebear.com/7.x/initials/svg?seed=${
+  encodeURIComponent(fullName)}'">
+                </div>
+                <div class="card-front-info">
+                  <div class="card-name">
+                    ${fullName}
+                  </div>
+                  <div class="card-role">
+                    ${char.address.city},
+                    ${char.address.country}
+                  </div>
+                </div>
+                <span class="card-flip-hint">
+                  <i class="fas fa-sync-alt"></i>
+                  ${t("flipHint")}
+                </span>
+              </div>
+              <div class="card-back">
+                <div class="card-back-title">
+                  ${char.name.title} ${fullName}
+                </div>
+                <div class="card-detail">
+                  <i class="fas fa-birthday-cake"></i>
+                  <div>
+                    <span class="card-detail-label">
+                      ${t("labelAge")}
+                    </span>
+                    <span class="card-detail-text">
+                      ${char.age}
+                    </span>
+                  </div>
+                </div>
+                <div class="card-detail">
+                  <i class="fas fa-envelope"></i>
+                  <div>
+                    <span class="card-detail-label">
+                      ${t("labelEmail")}
+                    </span>
+                    <span class="card-detail-text">
+                      ${char.email}
+                    </span>
+                  </div>
+                </div>
+                <div class="card-detail">
+                  <i class="fas fa-phone"></i>
+                  <div>
+                    <span class="card-detail-label">
+                      ${t("labelPhone")}
+                    </span>
+                    <span class="card-detail-text">
+                      ${char.phone}
+                    </span>
+                  </div>
+                </div>
+                <div class="card-detail">
+                  <i class="fas fa-map-marker-alt">
+                  </i>
+                  <div>
+                    <span class="card-detail-label">
+                      ${t("labelAddress")}
+                    </span>
+                    <span class="card-detail-text">
+                      ${char.address.street},
+                      ${char.address.city}
+                    </span>
+                  </div>
+                </div>
+                <div class="card-detail">
+                  <i class="fas fa-flag"></i>
+                  <div>
+                    <span class="card-detail-label">
+                      ${t("labelNationality")}
+                    </span>
+                    <span class="card-detail-text">
+                      ${char.nationality}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      html += "</div>";
+      resultsContainer.innerHTML = html;
+    }
+
+    /**
+     * @function renderList
+     * @description Отрисовать режим списка
+     */
+    function renderList() {
+      let html = '<div class="characters-list">';
+
+      characters.forEach((char, i) => {
+        const fullName =
+          char.name.first + " " + char.name.last;
+        const delay = i * 0.06;
+
+        html += `
+          <div class="list-item"
+            style="animation-delay:${delay}s">
+            <img class="list-avatar"
+              src="${char.avatar}"
+              alt="${fullName}"
+              loading="lazy"
+              onerror="this.src=
+'https://api.dicebear.com/7.x/initials/svg?seed=${
+  encodeURIComponent(fullName)}'">
+            <div class="list-info">
+              <div class="list-name">
+                ${char.name.title} ${fullName}
+              </div>
+              <div class="list-details">
+                <span>
+                  <i class="fas fa-birthday-cake">
+                  </i> ${char.age}
+                </span>
+                <span>
+                  <i class="fas fa-envelope"></i>
+                  ${char.email}
+                </span>
+                <span>
+                  <i class="fas fa-phone"></i>
+                  ${char.phone}
+                </span>
+                <span>
+                  <i class="fas fa-map-marker-alt">
+                  </i>
+                  ${char.address.city},
+                  ${char.address.country}
+                </span>
+              </div>
+            </div>
+          </div>`;
+      });
+
+      html += "</div>";
+      resultsContainer.innerHTML = html;
+    }
+
+    /**
+     * @function renderTable
+     * @description Отрисовать режим таблицы
+     */
+    function renderTable() {
+      let html = `
+        <div class="characters-table-wrapper">
+          <table class="characters-table">
+            <thead>
+              <tr>
+                <th>${t("colAvatar")}</th>
+                <th>${t("colName")}</th>
+                <th>${t("colEmail")}</th>
+                <th>${t("colPhone")}</th>
+                <th>${t("colAge")}</th>
+                <th>${t("colCity")}</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+      characters.forEach((char, i) => {
+        const fullName =
+          char.name.first + " " + char.name.last;
+        const delay = i * 0.05;
+
+        html += `
+              <tr style="animation-delay:${delay}s">
+                <td>
+                  <img class="table-avatar"
+                    src="${char.avatar}"
+                    alt="${fullName}"
+                    loading="lazy"
+                    onerror="this.src=
+'https://api.dicebear.com/7.x/initials/svg?seed=${
+  encodeURIComponent(fullName)}'">
+                </td>
+                <td>
+                  <strong>
+                    ${char.name.title} ${fullName}
+                  </strong>
+                </td>
+                <td>${char.email}</td>
+                <td>${char.phone}</td>
+                <td>${char.age}</td>
+                <td>
+                  ${char.address.city},
+                  ${char.address.country}
+                </td>
+              </tr>`;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>`;
+      resultsContainer.innerHTML = html;
+    }
+
+    /**
+     * @function updateStatusBar
+     * @description Обновить строку статуса
+     */
+    function updateStatusBar() {
+      const count = characters.length;
+      let word;
+      if (currentLang === "ru") {
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        if (mod100 >= 11 && mod100 <= 19) {
+          word = t("statusChars");
+        } else if (mod10 === 1) {
+          word = t("statusChar1");
+        } else if (mod10 >= 2 && mod10 <= 4) {
+          word = t("statusChar24");
+        } else {
+          word = t("statusChars");
+        }
+      } else {
+        word = count === 1
+          ? t("statusChar1")
+          : t("statusChars");
+      }
+      statusText.innerHTML =
+        t("statusGenerated")
+        + " <strong>" + count + "</strong> "
+        + word;
+    }
+
+    /**
+     * @function exportToJSON
+     * @description Экспортировать персонажей в JSON
+     */
+    function exportToJSON() {
+      if (characters.length === 0) return;
+
+      const data = {
+        generated: new Date().toISOString(),
+        count: characters.length,
+        characters: characters
+      };
+
+      const blob = new Blob(
+        [JSON.stringify(data, null, 2)],
+        { type: "application/json" }
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "characters_"
+        + new Date().toISOString().slice(0, 10)
+        + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast(t("toastExported"));
+    }
+
+    /**
+     * @function clearCharacters
+     * @description Очистить текущие персонажей
+     */
+    function clearCharacters() {
+      characters = [];
+      resultsContainer.innerHTML = "";
+      emptyState.style.display = "block";
+      statusBar.style.display = "none";
+      exportBtn.disabled = true;
+      clearBtn.disabled = true;
+      showToast(t("toastCleared"));
+    }
+
+    /**
+     * @function saveToHistory
+     * @description Сохранить генерацию в историю
+     * @param {Array} chars - Массив персонажей
+     * @param {string} style - Стиль аватара
+     */
+    function saveToHistory(chars, style) {
+      const entry = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        count: chars.length,
+        style: style,
+        characters: chars
+      };
+
+      history.unshift(entry);
+
+      // Ограничиваем историю 20 записями
+      if (history.length > 20) {
+        history = history.slice(0, 20);
+      }
+
+      localStorage.setItem(
+        "chargen-history",
+        JSON.stringify(history)
+      );
+
+      renderHistory();
+    }
+
+    /**
+     * @function renderHistory
+     * @description Отрисовать блок истории
+     */
+    function renderHistory() {
+      if (history.length === 0) {
+        historySection.style.display = "none";
+        return;
+      }
+
+      historySection.style.display = "block";
+      let html = "";
+
+      history.forEach(entry => {
+        const date = new Date(entry.date);
+        const dateStr = date.toLocaleDateString(
+          currentLang === "ru" ? "ru-RU" : "en-US",
+          {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+
+        html += `
+          <div class="history-item"
+            onclick="loadFromHistory(${entry.id})">
+            <div class="history-item-info">
+              <div class="history-item-count">
+                ${entry.count}
+              </div>
+              <div class="history-item-meta">
+                <div>
+                  ${entry.count}
+                  ${t("historyChars")}
+                  &middot; ${entry.style}
+                </div>
+                <div class="history-item-date">
+                  ${dateStr}
+                </div>
+              </div>
+            </div>
+            <button class="history-item-delete"
+              onclick="event.stopPropagation();
+                deleteHistoryEntry(${entry.id})"
+              title="Delete">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>`;
+      });
+
+      historyList.innerHTML = html;
+    }
+
+    /**
+     * @function loadFromHistory
+     * @description Загрузить персонажей из истории
+     * @param {number} id - ID записи истории
+     */
+    function loadFromHistory(id) {
+      const entry = history.find(h => h.id === id);
+      if (!entry) return;
+
+      characters = entry.characters;
+      renderCharacters();
+      updateStatusBar();
+      emptyState.style.display = "none";
+      statusBar.style.display = "flex";
+      exportBtn.disabled = false;
+      clearBtn.disabled = false;
+
+      showToast(t("toastHistoryLoaded"));
+
+      // Прокручиваем к результатам
+      resultsContainer.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+
+    /**
+     * @function deleteHistoryEntry
+     * @description Удалить запись из истории
+     * @param {number} id - ID записи
+     */
+    function deleteHistoryEntry(id) {
+      history = history.filter(h => h.id !== id);
+      localStorage.setItem(
+        "chargen-history",
+        JSON.stringify(history)
+      );
+      renderHistory();
+    }
+
+    /**
+     * @function clearAllHistory
+     * @description Очистить всю историю
+     */
+    function clearAllHistory() {
+      history = [];
+      localStorage.removeItem("chargen-history");
+      renderHistory();
+      showToast(t("toastHistoryCleared"));
+    }
+
+    /**
+     * @function showToast
+     * @description Показать уведомление
+     * @param {string} message - Текст уведомления
+     */
+    function showToast(message) {
+      // Удаляем предыдущий тост
+      const existing =
+        document.querySelector(".toast");
+      if (existing) existing.remove();
+
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.innerHTML =
+        '<i class="fas fa-check-circle"></i> '
+        + message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add("toast-out");
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+    }
+
+    /**
+     * @function setView
+     * @description Переключить режим отображения
+     * @param {string} view - cards, list или table
+     */
+    function setView(view) {
+      currentView = view;
+
+      document.querySelectorAll(".view-btn")
+        .forEach(btn => {
+          btn.classList.toggle(
+            "active",
+            btn.dataset.view === view
+          );
+        });
+
+      if (characters.length > 0) {
+        renderCharacters();
+      }
+    }
+
+    // ===== Обработчики событий =====
+
+    // Генерация
+    generateBtn.addEventListener(
+      "click", generateCharacters
+    );
+
+    // Экспорт
+    exportBtn.addEventListener("click", exportToJSON);
+
+    // Очистить
+    clearBtn.addEventListener(
+      "click", clearCharacters
+    );
+
+    // Очистить историю
+    clearHistoryBtn.addEventListener(
+      "click", clearAllHistory
+    );
+
+    // Переключение вида
+    document.querySelectorAll(".view-btn")
+      .forEach(btn => {
+        btn.addEventListener("click", () => {
+          setView(btn.dataset.view);
+        });
+      });
+
+    // Переключение темы
+    document.getElementById("themeToggle")
+      .addEventListener("change", (e) => {
+        setTheme(
+          e.target.checked ? "light" : "dark"
+        );
+      });
+
+    // Переключение языка
+    document.querySelectorAll(".lang-btn")
+      .forEach(btn => {
+        btn.addEventListener("click", () => {
+          setLang(btn.dataset.lang);
+        });
+      });
+
+    // Горячие клавиши
+    document.addEventListener("keydown", (e) => {
+      // Enter — генерировать
+      if (e.key === "Enter"
+        && !e.ctrlKey && !e.metaKey) {
+        const active = document.activeElement;
+        const tag = active.tagName.toLowerCase();
+        if (tag !== "input" && tag !== "select") {
+          generateCharacters();
+        }
+      }
+      // Ctrl+E — экспорт
+      if ((e.ctrlKey || e.metaKey) && e.key === "e") {
+        e.preventDefault();
+        if (characters.length > 0) exportToJSON();
+      }
+    });
+
+    // ===== Инициализация =====
+    document.addEventListener("DOMContentLoaded",
+      () => {
+        setTheme(currentTheme);
+        setLang(currentLang);
+        renderHistory();
+      }
+    );
+  </script>
+</body>
+</html>
