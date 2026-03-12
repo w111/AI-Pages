@@ -1,0 +1,3698 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать трекер сериалов с использованием TVMaze API.
+
+Функциональные требования:
+1. Поиск сериалов по названию с автокомплитом
+2. Карточки сериалов в сетке (постер, название, рейтинг,
+   жанры, статус)
+3. Детальная страница сериала: описание, постер, каст,
+   жанры, рейтинг, сеть
+4. Список эпизодов по сезонам (аккордеон)
+5. Расписание выхода новых серий на сегодня/неделю
+6. Фильтрация по жанру (Drama, Comedy, Thriller и т.д.)
+7. Фильтрация по статусу (Running, Ended)
+8. Мой список — отслеживание сериалов
+   (смотрю / хочу посмотреть / просмотрено) в localStorage
+9. Рейтинг в виде звёзд
+10. Поддержка тёмной/светлой темы
+11. Многоязычность (русский/английский) с localStorage
+12. Адаптивный дизайн
+
+Технические требования:
+1. Самодостаточный HTML файл — встроенные CSS и JS
+2. Vanilla JavaScript, без фреймворков
+3. Font Awesome через CDN для иконок
+4. CSS переменные для тёмной/светлой темы
+5. Отступы: 2 пробела
+6. Debounce для поиска
+7. Skeleton loading
+8. Максимальная длина строки ~100 символов
+
+API (без авторизации):
+- TVMaze API:
+  - Поиск: https://api.tvmaze.com/search/shows?q=...
+  - Детали шоу: https://api.tvmaze.com/shows/{id}
+  - Эпизоды: https://api.tvmaze.com/shows/{id}/episodes
+  - Каст: https://api.tvmaze.com/shows/{id}/cast
+  - Расписание: https://api.tvmaze.com/schedule?country=US&date=...
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+  <title>TV Tracker — Трекер сериалов</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect"
+    href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    /* ===== CSS Переменные (тёмная тема по умолчанию) ===== */
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a2e;
+      --bg-card-hover: #22223a;
+      --bg-input: #1e1e30;
+      --bg-overlay: rgba(0, 0, 0, 0.85);
+      --text-primary: #f0f0f5;
+      --text-secondary: #a0a0b8;
+      --text-muted: #6a6a80;
+      --accent: #e50914;
+      --accent-hover: #f6121d;
+      --accent-soft: rgba(229, 9, 20, 0.15);
+      --gold: #f5c518;
+      --gold-dim: #8a7000;
+      --green: #46d369;
+      --blue: #4a90d9;
+      --purple: #9b59b6;
+      --border: #2a2a3e;
+      --border-hover: #3a3a50;
+      --shadow: rgba(0, 0, 0, 0.4);
+      --gradient-header: linear-gradient(
+        135deg, #1a1a2e 0%, #0d0d1a 50%, #1a0a0f 100%
+      );
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-xs: 4px;
+      --transition: 0.3s ease;
+      --skeleton-base: #1e1e30;
+      --skeleton-shine: #2a2a40;
+    }
+
+    /* ===== Светлая тема ===== */
+    [data-theme="light"] {
+      --bg-primary: #f5f5fa;
+      --bg-secondary: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f0f0f8;
+      --bg-input: #f0f0f5;
+      --bg-overlay: rgba(255, 255, 255, 0.92);
+      --text-primary: #1a1a2e;
+      --text-secondary: #555570;
+      --text-muted: #8888a0;
+      --accent: #e50914;
+      --accent-hover: #cc0812;
+      --accent-soft: rgba(229, 9, 20, 0.08);
+      --border: #e0e0ea;
+      --border-hover: #c8c8d8;
+      --shadow: rgba(0, 0, 0, 0.08);
+      --gradient-header: linear-gradient(
+        135deg, #f8f8ff 0%, #f0f0f8 50%, #fff0f0 100%
+      );
+      --skeleton-base: #e8e8f0;
+      --skeleton-shine: #f0f0f8;
+    }
+
+    /* ===== Общие стили ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: inherit;
+    }
+
+    input {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ===== Анимации ===== */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .animate-fade {
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    /* ===== Skeleton Loading ===== */
+    .skeleton {
+      background: linear-gradient(
+        90deg,
+        var(--skeleton-base) 25%,
+        var(--skeleton-shine) 50%,
+        var(--skeleton-base) 75%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-sm);
+    }
+
+    .skeleton-card {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .skeleton-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+    }
+
+    .skeleton-text {
+      height: 16px;
+      margin: 12px;
+      border-radius: 4px;
+    }
+
+    .skeleton-text.short {
+      width: 60%;
+    }
+
+    .skeleton-text.tiny {
+      width: 40%;
+      height: 12px;
+    }
+
+    /* ===== Панель настроек ===== */
+    .settings-panel {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      z-index: 1000;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+
+    .settings-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+      display: inline-block;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--border);
+      transition: var(--transition);
+      border-radius: 24px;
+    }
+
+    .slider::before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: var(--text-primary);
+      transition: var(--transition);
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: var(--accent);
+    }
+
+    input:checked + .slider::before {
+      transform: translateX(24px);
+    }
+
+    .toggle-icons {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 6px;
+      pointer-events: none;
+      font-size: 11px;
+    }
+
+    .toggle-icons i {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    input:checked + .slider + .toggle-icons
+      i:first-child {
+      color: #fff;
+    }
+
+    input:not(:checked) + .slider + .toggle-icons
+      i:last-child {
+      color: var(--text-primary);
+    }
+
+    /* Language Toggle */
+    .lang-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem;
+      background: var(--bg-input);
+      border-radius: 0.5rem;
+    }
+
+    .lang-btn {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      border-radius: 0.375rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .lang-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .lang-btn:hover:not(.active) {
+      background: var(--border);
+    }
+
+    /* ===== Header ===== */
+    .header {
+      background: var(--gradient-header);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 0 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(
+        circle at 30% 50%,
+        rgba(229, 9, 20, 0.06) 0%,
+        transparent 50%
+      );
+      pointer-events: none;
+    }
+
+    .header-content {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 1rem;
+      position: relative;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .logo i {
+      color: var(--accent);
+      font-size: 1.75rem;
+    }
+
+    .logo span {
+      background: linear-gradient(
+        135deg, var(--accent), #ff6b6b
+      );
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ===== Навигация (табы) ===== */
+    .nav-tabs {
+      display: flex;
+      gap: 0.25rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+
+    .nav-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav-tab {
+      padding: 0.625rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-tab:hover {
+      background: var(--accent-soft);
+      color: var(--text-primary);
+    }
+
+    .nav-tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .nav-tab i {
+      font-size: 0.875rem;
+    }
+
+    .nav-tab .badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.125rem 0.5rem;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .nav-tab.active .badge {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* ===== Основной контент ===== */
+    .main-content {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+      min-height: 60vh;
+    }
+
+    /* ===== Поиск ===== */
+    .search-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .search-wrapper {
+      position: relative;
+      max-width: 600px;
+    }
+
+    .search-wrapper i.search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 1rem;
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 3rem;
+      padding: 0 3rem 0 3rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      padding: 0.25rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .search-clear:hover {
+      color: var(--text-primary);
+    }
+
+    /* Autocomplete dropdown */
+    .autocomplete-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 500;
+      box-shadow: 0 12px 40px var(--shadow);
+    }
+
+    .autocomplete-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.selected {
+      background: var(--bg-card-hover);
+    }
+
+    .autocomplete-item img {
+      width: 40px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: var(--radius-xs);
+      flex-shrink: 0;
+    }
+
+    .autocomplete-item .ac-placeholder {
+      width: 40px;
+      height: 56px;
+      background: var(--border);
+      border-radius: var(--radius-xs);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .autocomplete-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .autocomplete-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .autocomplete-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .autocomplete-meta .star {
+      color: var(--gold);
+    }
+
+    /* ===== Фильтры ===== */
+    .filters-bar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      padding: 0.375rem 0.875rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .filter-chip:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    .filter-chip.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .filter-separator {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      align-self: center;
+    }
+
+    /* ===== Сетка карточек ===== */
+    .shows-grid {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fill, minmax(180px, 1fr)
+      );
+      gap: 1.25rem;
+    }
+
+    .show-card {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .show-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-hover);
+      box-shadow: 0 12px 32px var(--shadow);
+    }
+
+    .show-card:hover .card-overlay {
+      opacity: 1;
+    }
+
+    .card-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      display: block;
+      background: var(--bg-input);
+    }
+
+    .card-poster-placeholder {
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 2.5rem;
+    }
+
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.95) 0%,
+        rgba(0,0,0,0.4) 50%,
+        transparent 100%
+      );
+      opacity: 0;
+      transition: opacity 0.3s;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 1rem;
+    }
+
+    .card-overlay .overlay-genres {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 0.25rem;
+    }
+
+    .card-overlay .overlay-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.7rem;
+      margin-top: 0.5rem;
+    }
+
+    .card-overlay .overlay-status.running {
+      color: var(--green);
+    }
+
+    .card-overlay .overlay-status.ended {
+      color: var(--text-muted);
+    }
+
+    .card-info {
+      padding: 0.75rem;
+    }
+
+    .card-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      line-height: 1.3;
+      margin-bottom: 0.375rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .card-rating {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .card-rating i {
+      color: var(--gold);
+      font-size: 0.75rem;
+    }
+
+    .card-year {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .card-tracking-badge {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      z-index: 2;
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    .card-tracking-badge.watching {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .card-tracking-badge.plan {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .card-tracking-badge.completed {
+      background: var(--purple);
+      color: #fff;
+    }
+
+    /* ===== Пустое состояние ===== */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: var(--border);
+    }
+
+    .empty-state h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-secondary);
+    }
+
+    /* ===== Модальное окно детали шоу ===== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-overlay);
+      z-index: 2000;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      overflow-y: auto;
+      padding: 2rem 1rem;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 900px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 80px var(--shadow);
+      animation: scaleIn 0.3s ease;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      position: relative;
+      min-height: 300px;
+      overflow: hidden;
+    }
+
+    .modal-backdrop-img {
+      width: 100%;
+      height: 300px;
+      object-fit: cover;
+      filter: blur(6px) brightness(0.4);
+      transform: scale(1.1);
+    }
+
+    .modal-backdrop-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        var(--bg-secondary) 100%
+      );
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      z-index: 5;
+      border: none;
+    }
+
+    .modal-close:hover {
+      background: rgba(0,0,0,0.8);
+    }
+
+    .modal-hero {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 2rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-end;
+    }
+
+    .modal-poster {
+      width: 140px;
+      border-radius: var(--radius-sm);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      flex-shrink: 0;
+    }
+
+    .modal-title-block {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .modal-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .modal-meta-row .rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: rgba(245, 197, 24, 0.15);
+      color: var(--gold);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .modal-meta-row .rating-badge i {
+      font-size: 0.8rem;
+    }
+
+    .modal-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .modal-status-badge.running {
+      background: rgba(70, 211, 105, 0.15);
+      color: var(--green);
+    }
+
+    .modal-status-badge.ended {
+      background: rgba(160, 160, 184, 0.15);
+      color: var(--text-muted);
+    }
+
+    .modal-body {
+      padding: 1.5rem 2rem 2rem;
+    }
+
+    /* Tracking controls in modal */
+    .tracking-controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tracking-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tracking-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    .tracking-btn.active-watching {
+      background: rgba(70, 211, 105, 0.15);
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .tracking-btn.active-plan {
+      background: rgba(74, 144, 217, 0.15);
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .tracking-btn.active-completed {
+      background: rgba(155, 89, 182, 0.15);
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+
+    /* User rating stars */
+    .user-rating {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .user-rating-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .stars-container {
+      display: flex;
+      gap: 0.125rem;
+    }
+
+    .star-btn {
+      font-size: 1.25rem;
+      color: var(--gold-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+      padding: 0.125rem;
+    }
+
+    .star-btn:hover,
+    .star-btn.active {
+      color: var(--gold);
+      transform: scale(1.15);
+    }
+
+    /* Modal description */
+    .modal-description {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-info-grid {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fit, minmax(180px, 1fr)
+      );
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .info-value {
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+
+    /* ===== Accordion (эпизоды) ===== */
+    .section-title {
+      font-size: 1.125rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-title i {
+      color: var(--accent);
+    }
+
+    .season-accordion {
+      margin-bottom: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .season-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: var(--bg-input);
+      cursor: pointer;
+      transition: background 0.2s;
+      user-select: none;
+    }
+
+    .season-header:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .season-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .season-header-left .ep-count {
+      font-weight: 400;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .season-header i {
+      transition: transform 0.3s;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .season-accordion.open .season-header i {
+      transform: rotate(180deg);
+    }
+
+    .season-episodes {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .season-accordion.open .season-episodes {
+      max-height: 3000px;
+    }
+
+    .episode-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+      transition: background 0.15s;
+    }
+
+    .episode-row:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .ep-number {
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 32px;
+    }
+
+    .ep-name {
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ep-date {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .ep-runtime {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* ===== Cast ===== */
+    .cast-grid {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fill, minmax(130px, 1fr)
+      );
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .cast-card {
+      text-align: center;
+    }
+
+    .cast-photo {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 0 auto 0.5rem;
+      display: block;
+      border: 2px solid var(--border);
+    }
+
+    .cast-photo-placeholder {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--bg-input);
+      margin: 0 auto 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      border: 2px solid var(--border);
+    }
+
+    .cast-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .cast-role {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* ===== Расписание ===== */
+    .schedule-tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .schedule-tab {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .schedule-tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .schedule-tab:hover:not(.active) {
+      background: var(--bg-card-hover);
+    }
+
+    .schedule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .schedule-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .schedule-item:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+    }
+
+    .schedule-poster {
+      width: 50px;
+      height: 70px;
+      border-radius: var(--radius-xs);
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .schedule-poster-ph {
+      width: 50px;
+      height: 70px;
+      border-radius: var(--radius-xs);
+      background: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .schedule-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .schedule-show-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.125rem;
+    }
+
+    .schedule-ep-name {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .schedule-ep-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .schedule-time {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .schedule-date-header {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.5rem 0;
+      margin-top: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ===== My List (page) ===== */
+    .my-list-tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .my-list-tab {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .my-list-tab:hover:not(.active) {
+      background: var(--bg-card-hover);
+    }
+
+    .my-list-tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .my-list-tab .count {
+      background: rgba(255,255,255,0.2);
+      padding: 0.1rem 0.5rem;
+      border-radius: 10px;
+      font-size: 0.7rem;
+    }
+
+    /* ===== Кнопка «Назад на главную» ===== */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .settings-panel {
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0.375rem 0.5rem;
+        gap: 0.5rem;
+      }
+
+      .toggle-switch {
+        width: 40px;
+        height: 20px;
+      }
+
+      .slider::before {
+        height: 14px;
+        width: 14px;
+      }
+
+      input:checked + .slider::before {
+        transform: translateX(20px);
+      }
+
+      .header {
+        padding: 1.5rem 0 1rem;
+      }
+
+      .logo {
+        font-size: 1.25rem;
+      }
+
+      .modal-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1.5rem;
+      }
+
+      .modal-poster {
+        width: 100px;
+      }
+
+      .modal-title {
+        font-size: 1.25rem;
+      }
+
+      .modal-body {
+        padding: 1rem 1.5rem 1.5rem;
+      }
+
+      .shows-grid {
+        grid-template-columns: repeat(
+          auto-fill, minmax(140px, 1fr)
+        );
+        gap: 0.75rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .shows-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+      }
+
+      .filters-bar {
+        gap: 0.5rem;
+      }
+
+      .filter-chip {
+        padding: 0.25rem 0.625rem;
+        font-size: 0.75rem;
+      }
+
+      .nav-tab {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.8rem;
+      }
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer a {
+      color: var(--accent);
+      transition: opacity 0.2s;
+    }
+
+    .footer a:hover {
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Панель настроек -->
+  <div class="settings-panel">
+    <div class="settings-option">
+      <label class="toggle-switch"
+        title="Toggle theme">
+        <input type="checkbox" id="themeToggle">
+        <span class="slider"></span>
+        <span class="toggle-icons">
+          <i class="fa-solid fa-moon"></i>
+          <i class="fa-solid fa-sun"></i>
+        </span>
+      </label>
+    </div>
+    <div class="settings-option">
+      <div class="lang-toggle">
+        <button class="lang-btn active"
+          id="langRu" data-lang="ru">RU</button>
+        <button class="lang-btn"
+          id="langEn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-top">
+        <div class="logo">
+          <i class="fa-solid fa-tv"></i>
+          <span>TV Tracker</span>
+        </div>
+      </div>
+      <nav class="nav-tabs" id="navTabs">
+        <button class="nav-tab active"
+          data-tab="search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span data-i18n="tabSearch">Поиск</span>
+        </button>
+        <button class="nav-tab"
+          data-tab="schedule">
+          <i class="fa-solid fa-calendar-days"></i>
+          <span data-i18n="tabSchedule">
+            Расписание
+          </span>
+        </button>
+        <button class="nav-tab"
+          data-tab="mylist">
+          <i class="fa-solid fa-bookmark"></i>
+          <span data-i18n="tabMyList">
+            Мой список
+          </span>
+          <span class="badge" id="myListCount">
+            0
+          </span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Основной контент -->
+  <main class="main-content" id="mainContent">
+    <!-- Контент рендерится динамически -->
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <a href="index.html" class="back-link">
+      <i class="fa-solid fa-arrow-left"></i>
+      <span data-i18n="backHome">
+        Вернуться на главную
+      </span>
+    </a>
+    <p>
+      TV Tracker &mdash;
+      <span data-i18n="footerPowered">
+        Данные предоставлены
+      </span>
+      <a href="https://www.tvmaze.com/"
+        target="_blank" rel="noopener">TVMaze API</a>
+    </p>
+  </footer>
+
+  <!-- Модальное окно -->
+  <div class="modal-backdrop hidden" id="modal">
+    <div class="modal" id="modalContent">
+      <!-- Рендерится динамически -->
+    </div>
+  </div>
+
+  <script>
+    /**
+     * @description TV Tracker — трекер сериалов
+     * Vanilla JS, TVMaze API, localStorage
+     */
+
+    // ===== Интернационализация =====
+    const i18n = {
+      ru: {
+        tabSearch: "Поиск",
+        tabSchedule: "Расписание",
+        tabMyList: "Мой список",
+        searchPlaceholder: "Поиск сериалов...",
+        allGenres: "Все жанры",
+        allStatuses: "Все",
+        statusRunning: "Идёт",
+        statusEnded: "Завершён",
+        emptySearch: "Начните искать сериалы",
+        emptySearchSub:
+          "Введите название в строку поиска выше",
+        noResults: "Ничего не найдено",
+        noResultsSub: "Попробуйте другой запрос",
+        rating: "Рейтинг",
+        genres: "Жанры",
+        network: "Сеть",
+        premiered: "Премьера",
+        ended: "Завершён",
+        runtime: "Хронометраж",
+        runtimeMin: "мин",
+        language: "Язык",
+        status: "Статус",
+        officialSite: "Оф. сайт",
+        episodes: "Эпизоды",
+        season: "Сезон",
+        cast: "Актёры",
+        as: "как",
+        watching: "Смотрю",
+        planToWatch: "Буду смотреть",
+        completed: "Просмотрено",
+        removeFromList: "Убрать из списка",
+        yourRating: "Ваша оценка:",
+        scheduleToday: "Сегодня",
+        scheduleWeek: "Неделя",
+        noSchedule: "Нет запланированных эпизодов",
+        noScheduleSub:
+          "На выбранный период расписание пусто",
+        loadingSchedule: "Загрузка расписания...",
+        emptyList: "Ваш список пуст",
+        emptyListSub:
+          "Добавляйте сериалы из поиска",
+        allShows: "Все",
+        backHome: "Вернуться на главную",
+        footerPowered: "Данные предоставлены",
+        ep: "эп.",
+        description: "Описание",
+      },
+      en: {
+        tabSearch: "Search",
+        tabSchedule: "Schedule",
+        tabMyList: "My List",
+        searchPlaceholder: "Search TV shows...",
+        allGenres: "All genres",
+        allStatuses: "All",
+        statusRunning: "Running",
+        statusEnded: "Ended",
+        emptySearch: "Start searching for shows",
+        emptySearchSub:
+          "Type a show name in the search bar above",
+        noResults: "No results found",
+        noResultsSub: "Try a different query",
+        rating: "Rating",
+        genres: "Genres",
+        network: "Network",
+        premiered: "Premiered",
+        ended: "Ended",
+        runtime: "Runtime",
+        runtimeMin: "min",
+        language: "Language",
+        status: "Status",
+        officialSite: "Official site",
+        episodes: "Episodes",
+        season: "Season",
+        cast: "Cast",
+        as: "as",
+        watching: "Watching",
+        planToWatch: "Plan to watch",
+        completed: "Completed",
+        removeFromList: "Remove from list",
+        yourRating: "Your rating:",
+        scheduleToday: "Today",
+        scheduleWeek: "Week",
+        noSchedule: "No scheduled episodes",
+        noScheduleSub:
+          "The schedule is empty for this period",
+        loadingSchedule: "Loading schedule...",
+        emptyList: "Your list is empty",
+        emptyListSub:
+          "Add shows from the search tab",
+        allShows: "All",
+        backHome: "Back to main page",
+        footerPowered: "Powered by",
+        ep: "ep.",
+        description: "Description",
+      }
+    };
+
+    // ===== Состояние приложения =====
+    let currentLang =
+      localStorage.getItem("tvtracker-lang") || "ru";
+    let currentTheme =
+      localStorage.getItem("tvtracker-theme") || "dark";
+    let currentTab = "search";
+    let searchResults = [];
+    let selectedGenre = "";
+    let selectedStatus = "";
+    let autocompleteIndex = -1;
+    let debounceTimer = null;
+    let scheduleMode = "today";
+
+    /**
+     * @function t
+     * @description Получение перевода по ключу
+     * @param {string} key — ключ перевода
+     * @returns {string} переведённая строка
+     */
+    function t(key) {
+      return (i18n[currentLang] || i18n.ru)[key] || key;
+    }
+
+    // ===== Работа с localStorage (мой список) =====
+
+    /**
+     * @function getMyList
+     * @description Получение списка отслеживаемых шоу
+     * @returns {Array} массив объектов шоу
+     */
+    function getMyList() {
+      try {
+        return JSON.parse(
+          localStorage.getItem("tvtracker-mylist")
+        ) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    /**
+     * @function saveMyList
+     * @description Сохранение списка в localStorage
+     * @param {Array} list — массив шоу
+     */
+    function saveMyList(list) {
+      localStorage.setItem(
+        "tvtracker-mylist", JSON.stringify(list)
+      );
+      updateMyListCount();
+    }
+
+    /**
+     * @function addToMyList
+     * @description Добавление/обновление шоу в списке
+     * @param {Object} show — объект шоу из API
+     * @param {string} status — watching|plan|completed
+     */
+    function addToMyList(show, status) {
+      const list = getMyList();
+      const idx = list.findIndex(
+        s => s.id === show.id
+      );
+      const entry = {
+        id: show.id,
+        name: show.name,
+        image: show.image
+          ? show.image.medium : null,
+        rating: show.rating
+          ? show.rating.average : null,
+        genres: show.genres || [],
+        status: show.status,
+        trackingStatus: status,
+        userRating: idx >= 0
+          ? (list[idx].userRating || 0) : 0,
+        addedAt: idx >= 0
+          ? list[idx].addedAt : Date.now()
+      };
+      if (idx >= 0) {
+        list[idx] = entry;
+      } else {
+        list.push(entry);
+      }
+      saveMyList(list);
+    }
+
+    /**
+     * @function removeFromMyList
+     * @description Удаление шоу из списка
+     * @param {number} showId — id шоу
+     */
+    function removeFromMyList(showId) {
+      const list = getMyList().filter(
+        s => s.id !== showId
+      );
+      saveMyList(list);
+    }
+
+    /**
+     * @function getTrackingStatus
+     * @description Получение статуса отслеживания шоу
+     * @param {number} showId — id шоу
+     * @returns {string|null} статус или null
+     */
+    function getTrackingStatus(showId) {
+      const item = getMyList().find(
+        s => s.id === showId
+      );
+      return item ? item.trackingStatus : null;
+    }
+
+    /**
+     * @function setUserRating
+     * @description Установка пользовательского рейтинга
+     * @param {number} showId — id шоу
+     * @param {number} rating — оценка 1-10
+     */
+    function setUserRating(showId, rating) {
+      const list = getMyList();
+      const item = list.find(s => s.id === showId);
+      if (item) {
+        item.userRating = rating;
+        saveMyList(list);
+      }
+    }
+
+    /**
+     * @function getUserRating
+     * @description Получение оценки пользователя
+     * @param {number} showId — id шоу
+     * @returns {number} оценка 0-10
+     */
+    function getUserRating(showId) {
+      const item = getMyList().find(
+        s => s.id === showId
+      );
+      return item ? (item.userRating || 0) : 0;
+    }
+
+    /**
+     * @function updateMyListCount
+     * @description Обновление счётчика в табе
+     */
+    function updateMyListCount() {
+      const el = document.getElementById(
+        "myListCount"
+      );
+      if (el) {
+        el.textContent = getMyList().length;
+      }
+    }
+
+    // ===== API-функции =====
+    const API_BASE = "https://api.tvmaze.com";
+
+    /**
+     * @function searchShows
+     * @description Поиск шоу по названию
+     * @param {string} query — поисковый запрос
+     * @returns {Promise<Array>} массив результатов
+     */
+    async function searchShows(query) {
+      const res = await fetch(
+        `${API_BASE}/search/shows?q=`
+        + encodeURIComponent(query)
+      );
+      if (!res.ok) return [];
+      return res.json();
+    }
+
+    /**
+     * @function fetchShowDetails
+     * @description Получение детальной информации
+     * @param {number} id — id шоу
+     * @returns {Promise<Object>} данные шоу
+     */
+    async function fetchShowDetails(id) {
+      const res = await fetch(
+        `${API_BASE}/shows/${id}`
+      );
+      if (!res.ok) return null;
+      return res.json();
+    }
+
+    /**
+     * @function fetchEpisodes
+     * @description Получение списка эпизодов
+     * @param {number} id — id шоу
+     * @returns {Promise<Array>} массив эпизодов
+     */
+    async function fetchEpisodes(id) {
+      const res = await fetch(
+        `${API_BASE}/shows/${id}/episodes`
+      );
+      if (!res.ok) return [];
+      return res.json();
+    }
+
+    /**
+     * @function fetchCast
+     * @description Получение каста
+     * @param {number} id — id шоу
+     * @returns {Promise<Array>} массив актёров
+     */
+    async function fetchCast(id) {
+      const res = await fetch(
+        `${API_BASE}/shows/${id}/cast`
+      );
+      if (!res.ok) return [];
+      return res.json();
+    }
+
+    /**
+     * @function fetchSchedule
+     * @description Получение расписания на дату
+     * @param {string} date — дата (YYYY-MM-DD)
+     * @param {string} country — код страны
+     * @returns {Promise<Array>} массив записей
+     */
+    async function fetchSchedule(
+      date, country = "US"
+    ) {
+      const res = await fetch(
+        `${API_BASE}/schedule?country=`
+        + `${country}&date=${date}`
+      );
+      if (!res.ok) return [];
+      return res.json();
+    }
+
+    // ===== Утилиты =====
+
+    /**
+     * @function debounce
+     * @description Debounce-функция
+     * @param {Function} fn — функция
+     * @param {number} delay — задержка в мс
+     * @returns {Function}
+     */
+    function debounce(fn, delay) {
+      let timer;
+      return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(
+          () => fn.apply(this, args), delay
+        );
+      };
+    }
+
+    /**
+     * @function formatDate
+     * @description Форматирование даты
+     * @param {string} dateStr — строка даты
+     * @returns {string} отформатированная дата
+     */
+    function formatDate(dateStr) {
+      if (!dateStr) return "—";
+      const d = new Date(dateStr);
+      return d.toLocaleDateString(
+        currentLang === "ru" ? "ru-RU" : "en-US",
+        { year: "numeric", month: "short", day: "numeric" }
+      );
+    }
+
+    /**
+     * @function stripHtml
+     * @description Удаление HTML-тегов из строки
+     * @param {string} html — строка с HTML
+     * @returns {string} чистый текст
+     */
+    function stripHtml(html) {
+      if (!html) return "";
+      const div = document.createElement("div");
+      div.innerHTML = html;
+      const text = div.textContent || div.innerText || "";
+      /* Экранируем результат для безопасной
+         вставки в innerHTML */
+      const safe = document.createElement("div");
+      safe.textContent = text;
+      return safe.innerHTML;
+    }
+
+    /**
+     * @function renderStars
+     * @description Рендеринг звёзд рейтинга
+     * @param {number} rating — рейтинг 0-10
+     * @returns {string} HTML звёзд
+     */
+    function renderStars(rating) {
+      if (!rating) return "";
+      const stars = Math.round(rating) / 2;
+      let html = "";
+      for (let i = 1; i <= 5; i++) {
+        if (i <= Math.floor(stars)) {
+          html +=
+            '<i class="fa-solid fa-star"></i>';
+        } else if (
+          i === Math.ceil(stars) && stars % 1 >= 0.25
+        ) {
+          html +=
+            '<i class="fa-solid fa-star-half-stroke"></i>';
+        } else {
+          html +=
+            '<i class="fa-regular fa-star"></i>';
+        }
+      }
+      return html;
+    }
+
+    /**
+     * @function getDateStr
+     * @description Получение даты в формате YYYY-MM-DD
+     * @param {Date} date — объект даты
+     * @returns {string}
+     */
+    function getDateStr(date) {
+      return date.toISOString().split("T")[0];
+    }
+
+    // ===== Рендеринг страниц =====
+
+    /**
+     * @function renderSearchPage
+     * @description Отрисовка страницы поиска
+     */
+    function renderSearchPage() {
+      const main = document.getElementById(
+        "mainContent"
+      );
+      main.innerHTML = `
+        <div class="search-section">
+          <div class="search-wrapper"
+            id="searchWrapper">
+            <i class="fa-solid fa-magnifying-glass
+              search-icon"></i>
+            <input type="text"
+              class="search-input"
+              id="searchInput"
+              placeholder="${t("searchPlaceholder")}"
+              autocomplete="off">
+            <button class="search-clear hidden"
+              id="searchClear">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="autocomplete-dropdown hidden"
+              id="autocompleteDropdown">
+            </div>
+          </div>
+        </div>
+        <div class="filters-bar" id="filtersBar">
+          ${renderGenreFilters()}
+          <div class="filter-separator"></div>
+          ${renderStatusFilters()}
+        </div>
+        <div id="showsContainer">
+          ${renderEmptySearch()}
+        </div>
+      `;
+
+      // Привязка событий
+      const input = document.getElementById(
+        "searchInput"
+      );
+      const clearBtn = document.getElementById(
+        "searchClear"
+      );
+
+      const debouncedSearch = debounce(
+        async (q) => {
+          if (q.length < 2) {
+            hideAutocomplete();
+            if (q.length === 0) {
+              searchResults = [];
+              renderShowsGrid();
+            }
+            return;
+          }
+          showAutocomplete(q);
+        }, 350
+      );
+
+      input.addEventListener("input", (e) => {
+        const val = e.target.value.trim();
+        clearBtn.classList.toggle(
+          "hidden", val.length === 0
+        );
+        debouncedSearch(val);
+      });
+
+      input.addEventListener("keydown", (e) => {
+        handleAutocompleteKeys(e);
+      });
+
+      clearBtn.addEventListener("click", () => {
+        input.value = "";
+        clearBtn.classList.add("hidden");
+        hideAutocomplete();
+        searchResults = [];
+        renderShowsGrid();
+        input.focus();
+      });
+
+      // Закрытие автокомплита при клике вне
+      document.addEventListener("click", (e) => {
+        const wrapper = document.getElementById(
+          "searchWrapper"
+        );
+        if (wrapper && !wrapper.contains(e.target)) {
+          hideAutocomplete();
+        }
+      });
+    }
+
+    /**
+     * @function renderGenreFilters
+     * @description Рендеринг фильтров по жанру
+     * @returns {string} HTML фильтров
+     */
+    function renderGenreFilters() {
+      const genres = [
+        "Drama", "Comedy", "Thriller",
+        "Action", "Science-Fiction", "Horror",
+        "Romance", "Fantasy", "Crime",
+        "Mystery", "Adventure"
+      ];
+      let html = '<div class="filter-group">';
+      html += `<button class="filter-chip ${
+        !selectedGenre ? "active" : ""
+      }" data-genre="">
+        ${t("allGenres")}
+      </button>`;
+      genres.forEach(g => {
+        html += `<button class="filter-chip ${
+          selectedGenre === g ? "active" : ""
+        }" data-genre="${g}">${g}</button>`;
+      });
+      html += "</div>";
+      return html;
+    }
+
+    /**
+     * @function renderStatusFilters
+     * @description Рендеринг фильтров по статусу
+     * @returns {string} HTML фильтров
+     */
+    function renderStatusFilters() {
+      let html = '<div class="filter-group">';
+      const statuses = [
+        { value: "", label: t("allStatuses") },
+        {
+          value: "Running",
+          label: t("statusRunning")
+        },
+        {
+          value: "Ended",
+          label: t("statusEnded")
+        }
+      ];
+      statuses.forEach(s => {
+        html += `<button class="filter-chip ${
+          selectedStatus === s.value ? "active" : ""
+        }" data-status="${s.value}">
+          ${s.label}
+        </button>`;
+      });
+      html += "</div>";
+      return html;
+    }
+
+    /**
+     * @function bindFilterEvents
+     * @description Привязка событий фильтров
+     */
+    function bindFilterEvents() {
+      document.querySelectorAll(
+        "[data-genre]"
+      ).forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedGenre =
+            btn.dataset.genre;
+          refreshFiltersUI();
+          renderShowsGrid();
+        });
+      });
+      document.querySelectorAll(
+        "[data-status]"
+      ).forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedStatus =
+            btn.dataset.status;
+          refreshFiltersUI();
+          renderShowsGrid();
+        });
+      });
+    }
+
+    /**
+     * @function refreshFiltersUI
+     * @description Обновление UI фильтров
+     */
+    function refreshFiltersUI() {
+      document.querySelectorAll(
+        "[data-genre]"
+      ).forEach(btn => {
+        btn.classList.toggle(
+          "active",
+          btn.dataset.genre === selectedGenre
+        );
+      });
+      document.querySelectorAll(
+        "[data-status]"
+      ).forEach(btn => {
+        btn.classList.toggle(
+          "active",
+          btn.dataset.status === selectedStatus
+        );
+      });
+    }
+
+    /**
+     * @function renderEmptySearch
+     * @description Рендеринг пустого состояния
+     * @returns {string} HTML
+     */
+    function renderEmptySearch() {
+      return `
+        <div class="empty-state">
+          <i class="fa-solid fa-film"></i>
+          <h3>${t("emptySearch")}</h3>
+          <p>${t("emptySearchSub")}</p>
+        </div>
+      `;
+    }
+
+    /**
+     * @function renderSkeletonGrid
+     * @description Рендеринг skeleton loading
+     * @param {number} count — количество карточек
+     * @returns {string} HTML
+     */
+    function renderSkeletonGrid(count = 12) {
+      let html = '<div class="shows-grid">';
+      for (let i = 0; i < count; i++) {
+        html += `
+          <div class="skeleton-card">
+            <div class="skeleton skeleton-poster">
+            </div>
+            <div class="skeleton skeleton-text">
+            </div>
+            <div class="skeleton skeleton-text short">
+            </div>
+          </div>
+        `;
+      }
+      html += "</div>";
+      return html;
+    }
+
+    /**
+     * @function showAutocomplete
+     * @description Показ автокомплита
+     * @param {string} query — поисковый запрос
+     */
+    async function showAutocomplete(query) {
+      const dropdown = document.getElementById(
+        "autocompleteDropdown"
+      );
+      if (!dropdown) return;
+
+      dropdown.classList.remove("hidden");
+      dropdown.innerHTML =
+        '<div style="padding: 1rem; color: var(--text-muted); text-align: center;">'
+        + '<i class="fa-solid fa-spinner fa-spin"></i>'
+        + "</div>";
+
+      try {
+        const results = await searchShows(query);
+        autocompleteIndex = -1;
+
+        if (results.length === 0) {
+          dropdown.innerHTML =
+            '<div style="padding: 1rem; '
+            + 'color: var(--text-muted); '
+            + 'text-align: center;">'
+            + t("noResults") + "</div>";
+          return;
+        }
+
+        dropdown.innerHTML = results.slice(0, 8)
+          .map((r, i) => {
+            const show = r.show;
+            const img = show.image
+              ? `<img src="${show.image.medium}"
+                  alt="${show.name}">`
+              : `<div class="ac-placeholder">
+                  <i class="fa-solid fa-tv"></i>
+                </div>`;
+            const year = show.premiered
+              ? show.premiered.substring(0, 4)
+              : "";
+            const rating = show.rating
+              && show.rating.average
+              ? show.rating.average : "";
+            const genres = (show.genres || [])
+              .slice(0, 2).join(", ");
+            return `
+              <div class="autocomplete-item"
+                data-index="${i}"
+                data-show-id="${show.id}">
+                ${img}
+                <div class="autocomplete-info">
+                  <div class="autocomplete-title">
+                    ${show.name}
+                  </div>
+                  <div class="autocomplete-meta">
+                    ${rating
+                      ? `<span class="star">
+                          <i class="fa-solid fa-star">
+                          </i> ${rating}
+                        </span>`
+                      : ""}
+                    ${year
+                      ? `<span>${year}</span>`
+                      : ""}
+                    ${genres
+                      ? `<span>${genres}</span>`
+                      : ""}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+        // Сохраняем результаты
+        searchResults = results.map(r => r.show);
+
+        // Клик на элемент автокомплита
+        dropdown.querySelectorAll(
+          ".autocomplete-item"
+        ).forEach(item => {
+          item.addEventListener("click", () => {
+            const id = parseInt(
+              item.dataset.showId
+            );
+            hideAutocomplete();
+            openShowDetail(id);
+          });
+        });
+      } catch (err) {
+        dropdown.innerHTML =
+          '<div style="padding: 1rem; '
+          + 'color: var(--text-muted); '
+          + 'text-align: center;">Error</div>';
+      }
+    }
+
+    /**
+     * @function hideAutocomplete
+     * @description Скрытие автокомплита
+     */
+    function hideAutocomplete() {
+      const dropdown = document.getElementById(
+        "autocompleteDropdown"
+      );
+      if (dropdown) {
+        dropdown.classList.add("hidden");
+      }
+      autocompleteIndex = -1;
+    }
+
+    /**
+     * @function handleAutocompleteKeys
+     * @description Обработка клавиш в автокомплите
+     * @param {KeyboardEvent} e — событие клавиатуры
+     */
+    function handleAutocompleteKeys(e) {
+      const dropdown = document.getElementById(
+        "autocompleteDropdown"
+      );
+      if (!dropdown
+        || dropdown.classList.contains("hidden")) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          performSearch();
+        }
+        return;
+      }
+
+      const items = dropdown.querySelectorAll(
+        ".autocomplete-item"
+      );
+      if (items.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        autocompleteIndex = Math.min(
+          autocompleteIndex + 1, items.length - 1
+        );
+        updateAutocompleteSelection(items);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        autocompleteIndex = Math.max(
+          autocompleteIndex - 1, -1
+        );
+        updateAutocompleteSelection(items);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (autocompleteIndex >= 0) {
+          const id = parseInt(
+            items[autocompleteIndex]
+              .dataset.showId
+          );
+          hideAutocomplete();
+          openShowDetail(id);
+        } else {
+          hideAutocomplete();
+          performSearch();
+        }
+      } else if (e.key === "Escape") {
+        hideAutocomplete();
+      }
+    }
+
+    /**
+     * @function updateAutocompleteSelection
+     * @description Обновление выделения в автокомплите
+     * @param {NodeList} items — элементы списка
+     */
+    function updateAutocompleteSelection(items) {
+      items.forEach((it, i) => {
+        it.classList.toggle(
+          "selected", i === autocompleteIndex
+        );
+      });
+    }
+
+    /**
+     * @function performSearch
+     * @description Выполнение поиска
+     */
+    async function performSearch() {
+      const input = document.getElementById(
+        "searchInput"
+      );
+      if (!input) return;
+      const query = input.value.trim();
+      if (query.length < 2) return;
+
+      const container = document.getElementById(
+        "showsContainer"
+      );
+      if (!container) return;
+
+      container.innerHTML =
+        renderSkeletonGrid(12);
+
+      try {
+        const results = await searchShows(query);
+        searchResults = results.map(r => r.show);
+        renderShowsGrid();
+      } catch {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid
+              fa-triangle-exclamation"></i>
+            <h3>Error</h3>
+            <p>Could not load results</p>
+          </div>
+        `;
+      }
+    }
+
+    /**
+     * @function renderShowsGrid
+     * @description Рендеринг сетки карточек
+     */
+    function renderShowsGrid() {
+      const container = document.getElementById(
+        "showsContainer"
+      );
+      if (!container) return;
+
+      // Привязка событий фильтров
+      bindFilterEvents();
+
+      if (searchResults.length === 0) {
+        const input = document.getElementById(
+          "searchInput"
+        );
+        const hasQuery = input
+          && input.value.trim().length > 0;
+        container.innerHTML = hasQuery
+          ? `<div class="empty-state">
+              <i class="fa-solid fa-search"></i>
+              <h3>${t("noResults")}</h3>
+              <p>${t("noResultsSub")}</p>
+            </div>`
+          : renderEmptySearch();
+        return;
+      }
+
+      let filtered = searchResults;
+
+      if (selectedGenre) {
+        filtered = filtered.filter(s =>
+          (s.genres || []).includes(selectedGenre)
+        );
+      }
+
+      if (selectedStatus) {
+        filtered = filtered.filter(s =>
+          s.status === selectedStatus
+        );
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-filter"></i>
+            <h3>${t("noResults")}</h3>
+            <p>${t("noResultsSub")}</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="shows-grid">
+          ${filtered.map(show =>
+            renderShowCard(show)
+          ).join("")}
+        </div>
+      `;
+
+      // Привязка событий карточек
+      container.querySelectorAll(
+        ".show-card"
+      ).forEach(card => {
+        card.addEventListener("click", () => {
+          const id = parseInt(card.dataset.showId);
+          openShowDetail(id);
+        });
+      });
+    }
+
+    /**
+     * @function renderShowCard
+     * @description Рендеринг карточки сериала
+     * @param {Object} show — объект шоу
+     * @returns {string} HTML карточки
+     */
+    function renderShowCard(show) {
+      const trackStatus = getTrackingStatus(
+        show.id
+      );
+      const year = show.premiered
+        ? show.premiered.substring(0, 4) : "";
+      const rating = show.rating
+        && show.rating.average
+        ? show.rating.average : null;
+      const genres = (show.genres || [])
+        .slice(0, 3).join(", ");
+      const statusClass = show.status === "Running"
+        ? "running" : "ended";
+      const statusLabel = show.status === "Running"
+        ? t("statusRunning") : t("statusEnded");
+
+      let trackBadge = "";
+      if (trackStatus) {
+        const icons = {
+          watching: "fa-eye",
+          plan: "fa-clock",
+          completed: "fa-check"
+        };
+        trackBadge = `
+          <div class="card-tracking-badge
+            ${trackStatus}">
+            <i class="fa-solid
+              ${icons[trackStatus]}"></i>
+          </div>
+        `;
+      }
+
+      const poster = show.image
+        ? `<img class="card-poster"
+            src="${show.image.medium}"
+            alt="${show.name}"
+            loading="lazy">`
+        : `<div class="card-poster-placeholder">
+            <i class="fa-solid fa-tv"></i>
+          </div>`;
+
+      return `
+        <div class="show-card"
+          data-show-id="${show.id}">
+          ${trackBadge}
+          ${poster}
+          <div class="card-overlay">
+            <div class="overlay-genres">
+              ${genres}
+            </div>
+            <div class="overlay-status
+              ${statusClass}">
+              <i class="fa-solid fa-circle"
+                style="font-size:6px"></i>
+              ${statusLabel}
+            </div>
+          </div>
+          <div class="card-info">
+            <div class="card-title">
+              ${show.name}
+            </div>
+            <div class="card-meta">
+              <div class="card-rating">
+                ${rating
+                  ? `<i class="fa-solid fa-star">
+                    </i> ${rating}`
+                  : "—"}
+              </div>
+              <span class="card-year">
+                ${year}
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ===== Детальная страница сериала =====
+
+    /**
+     * @function openShowDetail
+     * @description Открытие модального окна деталей
+     * @param {number} id — id шоу
+     */
+    async function openShowDetail(id) {
+      const modal = document.getElementById("modal");
+      const content = document.getElementById(
+        "modalContent"
+      );
+      modal.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+
+      // Skeleton loading
+      content.innerHTML = `
+        <div class="modal-header">
+          <div class="skeleton"
+            style="width:100%;height:300px">
+          </div>
+          <button class="modal-close"
+            id="modalClose">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="skeleton skeleton-text"
+            style="height:24px;margin-bottom:1rem">
+          </div>
+          <div class="skeleton skeleton-text short">
+          </div>
+          <div class="skeleton skeleton-text"
+            style="margin-top:1rem">
+          </div>
+          <div class="skeleton skeleton-text">
+          </div>
+        </div>
+      `;
+
+      document.getElementById("modalClose")
+        .addEventListener("click", closeModal);
+
+      try {
+        const [show, episodes, cast] =
+          await Promise.all([
+            fetchShowDetails(id),
+            fetchEpisodes(id),
+            fetchCast(id)
+          ]);
+
+        if (!show) {
+          content.innerHTML =
+            '<p style="padding:2rem;'
+            + 'text-align:center">Error</p>';
+          return;
+        }
+
+        renderShowModal(show, episodes, cast);
+      } catch {
+        content.innerHTML =
+          '<p style="padding:2rem;'
+          + 'text-align:center">Error loading</p>';
+      }
+    }
+
+    /**
+     * @function renderShowModal
+     * @description Рендеринг содержимого модального окна
+     * @param {Object} show — данные шоу
+     * @param {Array} episodes — эпизоды
+     * @param {Array} cast — каст
+     */
+    function renderShowModal(show, episodes, cast) {
+      const content = document.getElementById(
+        "modalContent"
+      );
+      const trackStatus = getTrackingStatus(
+        show.id
+      );
+      const userRating = getUserRating(show.id);
+      const statusClass = show.status === "Running"
+        ? "running" : "ended";
+      const statusLabel = show.status === "Running"
+        ? t("statusRunning") : t("statusEnded");
+      const rating = show.rating
+        && show.rating.average
+        ? show.rating.average : null;
+      const posterUrl = show.image
+        ? show.image.original
+          || show.image.medium
+        : null;
+      const backdropUrl = posterUrl;
+      const description = stripHtml(show.summary);
+      const networkName = show.network
+        ? show.network.name
+        : (show.webChannel
+          ? show.webChannel.name : "—");
+
+      // Группировка эпизодов по сезонам
+      const seasons = {};
+      episodes.forEach(ep => {
+        if (!seasons[ep.season]) {
+          seasons[ep.season] = [];
+        }
+        seasons[ep.season].push(ep);
+      });
+
+      content.innerHTML = `
+        <div class="modal-header">
+          ${backdropUrl
+            ? `<img class="modal-backdrop-img"
+                src="${backdropUrl}"
+                alt="${show.name}">`
+            : '<div style="height:300px;'
+              + 'background:var(--bg-input)"></div>'}
+          <div class="modal-backdrop-gradient">
+          </div>
+          <button class="modal-close"
+            id="modalClose">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <div class="modal-hero">
+            ${posterUrl
+              ? `<img class="modal-poster"
+                  src="${posterUrl}"
+                  alt="${show.name}">`
+              : ""}
+            <div class="modal-title-block">
+              <h2 class="modal-title">
+                ${show.name}
+              </h2>
+              <div class="modal-meta-row">
+                ${rating
+                  ? `<span class="rating-badge">
+                      <i class="fa-solid fa-star">
+                      </i> ${rating}
+                    </span>`
+                  : ""}
+                <span class="modal-status-badge
+                  ${statusClass}">
+                  <i class="fa-solid fa-circle"
+                    style="font-size:6px"></i>
+                  ${statusLabel}
+                </span>
+                ${show.premiered
+                  ? `<span>
+                      ${show.premiered
+                        .substring(0, 4)}
+                    </span>`
+                  : ""}
+                ${show.runtime
+                  ? `<span>${show.runtime}
+                    ${t("runtimeMin")}
+                    </span>`
+                  : ""}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-body">
+          <!-- Tracking -->
+          <div class="tracking-controls"
+            id="trackingControls">
+            <button class="tracking-btn ${
+              trackStatus === "watching"
+                ? "active-watching" : ""
+            }" data-track="watching">
+              <i class="fa-solid fa-eye"></i>
+              ${t("watching")}
+            </button>
+            <button class="tracking-btn ${
+              trackStatus === "plan"
+                ? "active-plan" : ""
+            }" data-track="plan">
+              <i class="fa-solid fa-clock"></i>
+              ${t("planToWatch")}
+            </button>
+            <button class="tracking-btn ${
+              trackStatus === "completed"
+                ? "active-completed" : ""
+            }" data-track="completed">
+              <i class="fa-solid fa-check"></i>
+              ${t("completed")}
+            </button>
+            ${trackStatus
+              ? `<button class="tracking-btn"
+                  data-track="remove"
+                  style="color:var(--accent)">
+                  <i class="fa-solid fa-trash">
+                  </i>
+                  ${t("removeFromList")}
+                </button>`
+              : ""}
+          </div>
+
+          <!-- User rating -->
+          ${trackStatus ? `
+            <div class="user-rating"
+              id="userRating">
+              <span class="user-rating-label">
+                ${t("yourRating")}
+              </span>
+              <div class="stars-container">
+                ${renderUserStars(userRating)}
+              </div>
+            </div>
+          ` : ""}
+
+          <!-- Description -->
+          ${description ? `
+            <h3 class="section-title">
+              <i class="fa-solid fa-align-left"></i>
+              ${t("description")}
+            </h3>
+            <p class="modal-description">
+              ${description}
+            </p>
+          ` : ""}
+
+          <!-- Info Grid -->
+          <div class="modal-info-grid">
+            ${show.genres && show.genres.length > 0
+              ? `<div class="info-item">
+                  <span class="info-label">
+                    ${t("genres")}
+                  </span>
+                  <span class="info-value">
+                    ${show.genres.join(", ")}
+                  </span>
+                </div>` : ""}
+            <div class="info-item">
+              <span class="info-label">
+                ${t("network")}
+              </span>
+              <span class="info-value">
+                ${networkName}
+              </span>
+            </div>
+            ${show.premiered
+              ? `<div class="info-item">
+                  <span class="info-label">
+                    ${t("premiered")}
+                  </span>
+                  <span class="info-value">
+                    ${formatDate(show.premiered)}
+                  </span>
+                </div>` : ""}
+            ${show.language
+              ? `<div class="info-item">
+                  <span class="info-label">
+                    ${t("language")}
+                  </span>
+                  <span class="info-value">
+                    ${show.language}
+                  </span>
+                </div>` : ""}
+            ${show.runtime
+              ? `<div class="info-item">
+                  <span class="info-label">
+                    ${t("runtime")}
+                  </span>
+                  <span class="info-value">
+                    ${show.runtime}
+                    ${t("runtimeMin")}
+                  </span>
+                </div>` : ""}
+            ${show.officialSite
+              ? `<div class="info-item">
+                  <span class="info-label">
+                    ${t("officialSite")}
+                  </span>
+                  <span class="info-value">
+                    <a href="${show.officialSite}"
+                      target="_blank"
+                      rel="noopener"
+                      style="color:var(--accent)">
+                      ${t("officialSite")}
+                      <i class="fa-solid
+                        fa-up-right-from-square"
+                        style="font-size:0.7rem">
+                      </i>
+                    </a>
+                  </span>
+                </div>` : ""}
+          </div>
+
+          <!-- Cast -->
+          ${cast.length > 0 ? `
+            <h3 class="section-title">
+              <i class="fa-solid fa-users"></i>
+              ${t("cast")}
+            </h3>
+            <div class="cast-grid">
+              ${cast.slice(0, 12).map(c => {
+                const person = c.person;
+                const character = c.character;
+                const photo = person.image
+                  ? `<img class="cast-photo"
+                      src="${person.image.medium}"
+                      alt="${person.name}">`
+                  : `<div
+                      class="cast-photo-placeholder">
+                      <i class="fa-solid fa-user">
+                      </i>
+                    </div>`;
+                return `
+                  <div class="cast-card">
+                    ${photo}
+                    <div class="cast-name">
+                      ${person.name}
+                    </div>
+                    ${character
+                      ? `<div class="cast-role">
+                          ${t("as")}
+                          ${character.name}
+                        </div>`
+                      : ""}
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          ` : ""}
+
+          <!-- Episodes -->
+          ${Object.keys(seasons).length > 0 ? `
+            <h3 class="section-title">
+              <i class="fa-solid fa-list"></i>
+              ${t("episodes")}
+            </h3>
+            ${Object.keys(seasons).map(sNum => `
+              <div class="season-accordion"
+                data-season="${sNum}">
+                <div class="season-header">
+                  <div class="season-header-left">
+                    <span>
+                      ${t("season")} ${sNum}
+                    </span>
+                    <span class="ep-count">
+                      (${seasons[sNum].length}
+                      ${t("ep")})
+                    </span>
+                  </div>
+                  <i class="fa-solid
+                    fa-chevron-down"></i>
+                </div>
+                <div class="season-episodes">
+                  ${seasons[sNum].map(ep => `
+                    <div class="episode-row">
+                      <span class="ep-number">
+                        E${String(ep.number)
+                          .padStart(2, "0")}
+                      </span>
+                      <span class="ep-name">
+                        ${ep.name || "—"}
+                      </span>
+                      ${ep.runtime
+                        ? `<span class="ep-runtime">
+                            ${ep.runtime}
+                            ${t("runtimeMin")}
+                          </span>`
+                        : ""}
+                      <span class="ep-date">
+                        ${formatDate(ep.airdate)}
+                      </span>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            `).join("")}
+          ` : ""}
+        </div>
+      `;
+
+      // Привязка событий
+
+      // Закрытие модала
+      document.getElementById("modalClose")
+        .addEventListener("click", closeModal);
+
+      // Tracking buttons
+      content.querySelectorAll(
+        "[data-track]"
+      ).forEach(btn => {
+        btn.addEventListener("click", () => {
+          const action = btn.dataset.track;
+          if (action === "remove") {
+            removeFromMyList(show.id);
+          } else {
+            addToMyList(show, action);
+          }
+          // Re-render modal tracking UI
+          renderShowModal(show, episodes, cast);
+          // Re-render grid if on search page
+          if (currentTab === "search") {
+            renderShowsGrid();
+          } else if (currentTab === "mylist") {
+            renderMyListPage();
+          }
+        });
+      });
+
+      // User rating stars
+      content.querySelectorAll(
+        ".star-btn"
+      ).forEach(star => {
+        star.addEventListener("click", () => {
+          const val = parseInt(
+            star.dataset.value
+          );
+          setUserRating(show.id, val);
+          renderShowModal(show, episodes, cast);
+        });
+      });
+
+      // Season accordions
+      content.querySelectorAll(
+        ".season-accordion"
+      ).forEach(acc => {
+        const header = acc.querySelector(
+          ".season-header"
+        );
+        header.addEventListener("click", () => {
+          acc.classList.toggle("open");
+        });
+      });
+    }
+
+    /**
+     * @function renderUserStars
+     * @description Рендеринг звёзд пользовательской оценки
+     * @param {number} current — текущая оценка 0-10
+     * @returns {string} HTML звёзд
+     */
+    function renderUserStars(current) {
+      let html = "";
+      for (let i = 1; i <= 10; i++) {
+        html += `
+          <button class="star-btn ${
+            i <= current ? "active" : ""
+          }" data-value="${i}">
+            <i class="fa-${
+              i <= current ? "solid" : "regular"
+            } fa-star"></i>
+          </button>
+        `;
+      }
+      return html;
+    }
+
+    /**
+     * @function closeModal
+     * @description Закрытие модального окна
+     */
+    function closeModal() {
+      const modal = document.getElementById("modal");
+      modal.classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+
+    // ===== Расписание =====
+
+    /**
+     * @function renderSchedulePage
+     * @description Рендеринг страницы расписания
+     */
+    function renderSchedulePage() {
+      const main = document.getElementById(
+        "mainContent"
+      );
+      main.innerHTML = `
+        <div class="schedule-tabs" id="scheduleTabs">
+          <button class="schedule-tab ${
+            scheduleMode === "today" ? "active" : ""
+          }" data-schedule="today">
+            ${t("scheduleToday")}
+          </button>
+          <button class="schedule-tab ${
+            scheduleMode === "week" ? "active" : ""
+          }" data-schedule="week">
+            ${t("scheduleWeek")}
+          </button>
+        </div>
+        <div id="scheduleContainer">
+          <div class="empty-state">
+            <i class="fa-solid fa-spinner fa-spin">
+            </i>
+            <p>${t("loadingSchedule")}</p>
+          </div>
+        </div>
+      `;
+
+      // Привязка
+      main.querySelectorAll(
+        "[data-schedule]"
+      ).forEach(btn => {
+        btn.addEventListener("click", () => {
+          scheduleMode = btn.dataset.schedule;
+          main.querySelectorAll(
+            ".schedule-tab"
+          ).forEach(b => {
+            b.classList.toggle(
+              "active",
+              b.dataset.schedule === scheduleMode
+            );
+          });
+          loadSchedule();
+        });
+      });
+
+      loadSchedule();
+    }
+
+    /**
+     * @function loadSchedule
+     * @description Загрузка данных расписания
+     */
+    async function loadSchedule() {
+      const container = document.getElementById(
+        "scheduleContainer"
+      );
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fa-solid fa-spinner fa-spin">
+          </i>
+          <p>${t("loadingSchedule")}</p>
+        </div>
+      `;
+
+      try {
+        const today = new Date();
+        let allItems = [];
+
+        if (scheduleMode === "today") {
+          const dateStr = getDateStr(today);
+          allItems = await fetchSchedule(dateStr);
+          renderScheduleItems(
+            container, allItems, false
+          );
+        } else {
+          // Неделя: 7 дней от сегодня
+          const days = [];
+          for (let i = 0; i < 7; i++) {
+            const d = new Date(today);
+            d.setDate(d.getDate() + i);
+            days.push(d);
+          }
+
+          const results = await Promise.all(
+            days.map(
+              d => fetchSchedule(getDateStr(d))
+            )
+          );
+
+          let html = '<div class="schedule-list">';
+          let hasItems = false;
+
+          days.forEach((d, i) => {
+            const items = results[i];
+            if (items.length === 0) return;
+            hasItems = true;
+            html += `
+              <div class="schedule-date-header">
+                ${formatDate(getDateStr(d))}
+              </div>
+            `;
+            html += items.map(
+              item => renderScheduleItem(item)
+            ).join("");
+          });
+
+          html += "</div>";
+
+          if (!hasItems) {
+            container.innerHTML = `
+              <div class="empty-state">
+                <i class="fa-solid
+                  fa-calendar-xmark"></i>
+                <h3>${t("noSchedule")}</h3>
+                <p>${t("noScheduleSub")}</p>
+              </div>
+            `;
+          } else {
+            container.innerHTML = html;
+            bindScheduleClicks(container);
+          }
+        }
+      } catch {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid
+              fa-triangle-exclamation"></i>
+            <h3>Error</h3>
+          </div>
+        `;
+      }
+    }
+
+    /**
+     * @function renderScheduleItems
+     * @description Рендеринг списка расписания
+     * @param {HTMLElement} container — контейнер
+     * @param {Array} items — записи расписания
+     * @param {boolean} showDate — показывать дату
+     */
+    function renderScheduleItems(
+      container, items, showDate
+    ) {
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid
+              fa-calendar-xmark"></i>
+            <h3>${t("noSchedule")}</h3>
+            <p>${t("noScheduleSub")}</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="schedule-list">
+          ${items.map(
+            item => renderScheduleItem(item)
+          ).join("")}
+        </div>
+      `;
+
+      bindScheduleClicks(container);
+    }
+
+    /**
+     * @function renderScheduleItem
+     * @description Рендеринг одной записи расписания
+     * @param {Object} item — запись расписания
+     * @returns {string} HTML
+     */
+    function renderScheduleItem(item) {
+      const show = item.show || item._embedded
+        && item._embedded.show;
+      if (!show) return "";
+
+      const poster = show.image
+        ? `<img class="schedule-poster"
+            src="${show.image.medium}"
+            alt="${show.name}" loading="lazy">`
+        : `<div class="schedule-poster-ph">
+            <i class="fa-solid fa-tv"></i>
+          </div>`;
+
+      return `
+        <div class="schedule-item"
+          data-show-id="${show.id}">
+          ${poster}
+          <div class="schedule-info">
+            <div class="schedule-show-name">
+              ${show.name}
+            </div>
+            <div class="schedule-ep-name">
+              ${item.name || ""}
+            </div>
+            <div class="schedule-ep-meta">
+              <span>S${String(item.season)
+                .padStart(2, "0")}E${String(
+                  item.number
+                ).padStart(2, "0")}</span>
+              ${item.runtime
+                ? `<span>${item.runtime}
+                  ${t("runtimeMin")}</span>`
+                : ""}
+            </div>
+          </div>
+          <div class="schedule-time">
+            ${item.airtime || ""}
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * @function bindScheduleClicks
+     * @description Привязка кликов на расписание
+     * @param {HTMLElement} container — контейнер
+     */
+    function bindScheduleClicks(container) {
+      container.querySelectorAll(
+        ".schedule-item"
+      ).forEach(item => {
+        item.addEventListener("click", () => {
+          const id = parseInt(
+            item.dataset.showId
+          );
+          openShowDetail(id);
+        });
+      });
+    }
+
+    // ===== Мой список =====
+
+    /**
+     * @function renderMyListPage
+     * @description Рендеринг страницы «Мой список»
+     */
+    function renderMyListPage() {
+      const main = document.getElementById(
+        "mainContent"
+      );
+      const list = getMyList();
+      const myListFilter =
+        currentMyListFilter || "all";
+
+      const counts = {
+        all: list.length,
+        watching: list.filter(
+          s => s.trackingStatus === "watching"
+        ).length,
+        plan: list.filter(
+          s => s.trackingStatus === "plan"
+        ).length,
+        completed: list.filter(
+          s => s.trackingStatus === "completed"
+        ).length
+      };
+
+      main.innerHTML = `
+        <div class="my-list-tabs" id="myListTabs">
+          <button class="my-list-tab ${
+            myListFilter === "all" ? "active" : ""
+          }" data-filter="all">
+            ${t("allShows")}
+            <span class="count">
+              ${counts.all}
+            </span>
+          </button>
+          <button class="my-list-tab ${
+            myListFilter === "watching"
+              ? "active" : ""
+          }" data-filter="watching">
+            <i class="fa-solid fa-eye"></i>
+            ${t("watching")}
+            <span class="count">
+              ${counts.watching}
+            </span>
+          </button>
+          <button class="my-list-tab ${
+            myListFilter === "plan"
+              ? "active" : ""
+          }" data-filter="plan">
+            <i class="fa-solid fa-clock"></i>
+            ${t("planToWatch")}
+            <span class="count">
+              ${counts.plan}
+            </span>
+          </button>
+          <button class="my-list-tab ${
+            myListFilter === "completed"
+              ? "active" : ""
+          }" data-filter="completed">
+            <i class="fa-solid fa-check"></i>
+            ${t("completed")}
+            <span class="count">
+              ${counts.completed}
+            </span>
+          </button>
+        </div>
+        <div id="myListContainer"></div>
+      `;
+
+      // Фильтрация
+      let filtered = list;
+      if (myListFilter !== "all") {
+        filtered = list.filter(
+          s => s.trackingStatus === myListFilter
+        );
+      }
+
+      const container = document.getElementById(
+        "myListContainer"
+      );
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-bookmark"></i>
+            <h3>${t("emptyList")}</h3>
+            <p>${t("emptyListSub")}</p>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="shows-grid">
+            ${filtered.map(show => {
+              const trackStatus =
+                show.trackingStatus;
+              const rating = show.rating;
+              const genres = (show.genres || [])
+                .slice(0, 3).join(", ");
+              const icons = {
+                watching: "fa-eye",
+                plan: "fa-clock",
+                completed: "fa-check"
+              };
+              const poster = show.image
+                ? `<img class="card-poster"
+                    src="${show.image}"
+                    alt="${show.name}"
+                    loading="lazy">`
+                : `<div
+                    class="card-poster-placeholder">
+                    <i class="fa-solid fa-tv"></i>
+                  </div>`;
+              return `
+                <div class="show-card"
+                  data-show-id="${show.id}">
+                  <div class="card-tracking-badge
+                    ${trackStatus}">
+                    <i class="fa-solid
+                      ${icons[trackStatus]}"></i>
+                  </div>
+                  ${poster}
+                  <div class="card-info">
+                    <div class="card-title">
+                      ${show.name}
+                    </div>
+                    <div class="card-meta">
+                      <div class="card-rating">
+                        ${rating
+                          ? `<i class="fa-solid
+                              fa-star"></i>
+                            ${rating}`
+                          : "—"}
+                      </div>
+                      ${show.userRating
+                        ? `<span class="card-year"
+                            style="color:var(--gold)">
+                            <i class="fa-solid
+                              fa-star"
+                              style="font-size:0.6rem">
+                            </i>
+                            ${show.userRating}/10
+                          </span>`
+                        : ""}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+
+        container.querySelectorAll(
+          ".show-card"
+        ).forEach(card => {
+          card.addEventListener("click", () => {
+            const id = parseInt(
+              card.dataset.showId
+            );
+            openShowDetail(id);
+          });
+        });
+      }
+
+      // Привязка табов
+      main.querySelectorAll(
+        "[data-filter]"
+      ).forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentMyListFilter =
+            btn.dataset.filter;
+          renderMyListPage();
+        });
+      });
+    }
+
+    let currentMyListFilter = "all";
+
+    // ===== Навигация (табы) =====
+
+    /**
+     * @function switchTab
+     * @description Переключение таба
+     * @param {string} tab — имя таба
+     */
+    function switchTab(tab) {
+      currentTab = tab;
+
+      document.querySelectorAll(".nav-tab").forEach(
+        t => t.classList.toggle(
+          "active", t.dataset.tab === tab
+        )
+      );
+
+      if (tab === "search") {
+        renderSearchPage();
+        bindFilterEvents();
+      } else if (tab === "schedule") {
+        renderSchedulePage();
+      } else if (tab === "mylist") {
+        currentMyListFilter = "all";
+        renderMyListPage();
+      }
+    }
+
+    // ===== Тема =====
+
+    /**
+     * @function setTheme
+     * @description Установка темы
+     * @param {string} theme — dark|light
+     */
+    function setTheme(theme) {
+      currentTheme = theme;
+      localStorage.setItem(
+        "tvtracker-theme", theme
+      );
+      if (theme === "light") {
+        document.documentElement.setAttribute(
+          "data-theme", "light"
+        );
+        document.getElementById(
+          "themeToggle"
+        ).checked = true;
+      } else {
+        document.documentElement.removeAttribute(
+          "data-theme"
+        );
+        document.getElementById(
+          "themeToggle"
+        ).checked = false;
+      }
+    }
+
+    // ===== Язык =====
+
+    /**
+     * @function setLang
+     * @description Установка языка
+     * @param {string} lang — ru|en
+     */
+    function setLang(lang) {
+      currentLang = lang;
+      localStorage.setItem(
+        "tvtracker-lang", lang
+      );
+      document.querySelectorAll(
+        ".lang-btn"
+      ).forEach(btn => {
+        btn.classList.toggle(
+          "active", btn.dataset.lang === lang
+        );
+      });
+      updateI18nTexts();
+      // Перерисовка текущего таба
+      switchTab(currentTab);
+    }
+
+    /**
+     * @function updateI18nTexts
+     * @description Обновление статических текстов
+     */
+    function updateI18nTexts() {
+      document.querySelectorAll(
+        "[data-i18n]"
+      ).forEach(el => {
+        const key = el.dataset.i18n;
+        el.textContent = t(key);
+      });
+    }
+
+    // ===== Инициализация =====
+    document.addEventListener(
+      "DOMContentLoaded", () => {
+        // Тема
+        setTheme(currentTheme);
+
+        // Язык
+        setLang(currentLang);
+
+        // Счётчик
+        updateMyListCount();
+
+        // Навигация
+        document.querySelectorAll(
+          ".nav-tab"
+        ).forEach(tab => {
+          tab.addEventListener("click", () => {
+            switchTab(tab.dataset.tab);
+          });
+        });
+
+        // Theme toggle
+        document.getElementById(
+          "themeToggle"
+        ).addEventListener("change", (e) => {
+          setTheme(
+            e.target.checked ? "light" : "dark"
+          );
+        });
+
+        // Language toggle
+        document.querySelectorAll(
+          ".lang-btn"
+        ).forEach(btn => {
+          btn.addEventListener("click", () => {
+            setLang(btn.dataset.lang);
+          });
+        });
+
+        // Закрытие модала по клику на фон
+        document.getElementById(
+          "modal"
+        ).addEventListener("click", (e) => {
+          if (e.target.id === "modal") {
+            closeModal();
+          }
+        });
+
+        // Закрытие модала по Escape
+        document.addEventListener(
+          "keydown", (e) => {
+            if (e.key === "Escape") {
+              closeModal();
+            }
+          }
+        );
+
+        // Начальный рендер
+        renderSearchPage();
+        bindFilterEvents();
+      }
+    );
+  </script>
+</body>
+</html>

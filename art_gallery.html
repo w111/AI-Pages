@@ -1,0 +1,2207 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивную галерею мировых музеев
+с поиском и просмотром произведений искусства.
+
+Функциональные требования:
+1. Поиск произведений по названию, автору, стилю
+2. Фильтрация по музею (Art Institute of Chicago /
+   Metropolitan Museum)
+3. Фильтрация по стилю/эпохе (Renaissance,
+   Impressionism, Modern и т.д.)
+4. Masonry-сетка с карточками произведений
+   (изображение, название, автор, год, музей)
+5. Модальное окно с полной информацией при клике
+6. Случайное произведение дня
+7. Бесконечная прокрутка (загрузка новых при скролле)
+8. Поддержка тёмной и светлой темы
+9. Многоязычность (русский/английский) с localStorage
+10. Адаптивный дизайн
+
+API:
+- Art Institute of Chicago:
+  https://api.artic.edu/api/v1/artworks
+  Поиск: /search?q=monet
+  Изображения:
+  https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg
+- Metropolitan Museum of Art:
+  https://collectionapi.metmuseum.org/public/collection/v1/
+  Поиск: /search?q=sunflowers
+  Объект: /objects/{id}
+
+Технические требования:
+1. Самодостаточный HTML файл (встроенные CSS и JS)
+2. Vanilla JavaScript, без фреймворков
+3. Font Awesome через CDN для иконок
+4. CSS переменные для тёмной/светлой темы
+5. Lazy loading для изображений
+6. Бесконечная прокрутка
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+        content="Галерея мировых музеев — поиск и просмотр
+        произведений искусства">
+  <title>Галерея мировых музеев | World Art Gallery</title>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #8b5cf6;
+      --primary-dark: #7c3aed;
+      --secondary-color: #2c3e50;
+      --accent-color: #f59e0b;
+      --text-color: #1e293b;
+      --text-light: #64748b;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 20px 60px rgba(0, 0, 0, 0.15);
+      --gradient: linear-gradient(
+        135deg, #8b5cf6 0%, #6d28d9 50%, #4c1d95 100%
+      );
+      --gradient-accent: linear-gradient(
+        135deg, #f59e0b 0%, #d97706 100%
+      );
+      --modal-bg: rgba(0, 0, 0, 0.85);
+    }
+
+    body.dark-theme {
+      --primary-color: #a78bfa;
+      --primary-dark: #c4b5fd;
+      --secondary-color: #e2e8f0;
+      --accent-color: #fbbf24;
+      --text-color: #e2e8f0;
+      --text-light: #94a3b8;
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      --shadow-hover: 0 20px 60px rgba(0, 0, 0, 0.5);
+      --modal-bg: rgba(0, 0, 0, 0.92);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family:
+        "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* Header */
+    .header {
+      background: var(--gradient);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo i {
+      font-size: 3rem;
+      color: white;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      color: white;
+      font-weight: 700;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.1rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Controls */
+    .controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 10;
+    }
+
+    .control-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      backdrop-filter: blur(5px);
+      text-decoration: none;
+      font-size: 1rem;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+
+    .back-btn {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      z-index: 10;
+    }
+
+    /* Search Section */
+    .search-section {
+      max-width: 1400px;
+      margin: -2rem auto 2rem;
+      padding: 0 1rem;
+      position: relative;
+      z-index: 5;
+    }
+
+    .search-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .search-box {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    .search-input-wrapper i {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 1rem 1rem 1rem 3rem;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 1rem;
+      background: var(--card-bg);
+      color: var(--text-color);
+      transition: all 0.3s;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow:
+        0 0 0 3px rgba(139, 92, 246, 0.15);
+    }
+
+    .search-btn,
+    .random-btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s;
+      white-space: nowrap;
+    }
+
+    .search-btn {
+      background: var(--gradient);
+      color: white;
+    }
+
+    .search-btn:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 5px 20px rgba(139, 92, 246, 0.3);
+    }
+
+    .random-btn {
+      background: var(--gradient-accent);
+      color: white;
+    }
+
+    .random-btn:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 5px 20px rgba(245, 158, 11, 0.3);
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .filter-label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .filter-select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: var(--card-bg);
+      color: var(--text-color);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    /* Main Content */
+    .main-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 1rem 3rem;
+    }
+
+    /* Artwork of the Day */
+    .artwork-of-day {
+      background: var(--card-bg);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+      display: none;
+    }
+
+    .artwork-of-day.active {
+      display: flex;
+    }
+
+    .artwork-of-day-image {
+      width: 350px;
+      min-height: 300px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .artwork-of-day-info {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .artwork-of-day-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--gradient-accent);
+      color: white;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      width: fit-content;
+    }
+
+    .artwork-of-day-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .artwork-of-day-artist {
+      font-size: 1.1rem;
+      color: var(--text-light);
+      margin-bottom: 0.5rem;
+    }
+
+    .artwork-of-day-date {
+      font-size: 0.95rem;
+      color: var(--primary-color);
+      margin-bottom: 1rem;
+    }
+
+    .artwork-of-day-museum {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+
+    .artwork-of-day-desc {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--text-light);
+      margin-top: 1rem;
+      max-height: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Results count */
+    .results-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding: 0 0.5rem;
+    }
+
+    .results-count {
+      font-size: 0.95rem;
+      color: var(--text-light);
+    }
+
+    .results-count strong {
+      color: var(--primary-color);
+    }
+
+    /* Loading */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Masonry Grid */
+    .masonry-grid {
+      columns: 4;
+      column-gap: 1.5rem;
+    }
+
+    .artwork-card {
+      break-inside: avoid;
+      background: var(--card-bg);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+      cursor: pointer;
+      transition:
+        transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        box-shadow 0.4s;
+    }
+
+    .artwork-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .artwork-image-wrapper {
+      overflow: hidden;
+      position: relative;
+      background: var(--border-color);
+      min-height: 180px;
+    }
+
+    .artwork-image {
+      width: 100%;
+      display: block;
+      transition: transform 0.5s;
+    }
+
+    .artwork-card:hover .artwork-image {
+      transform: scale(1.05);
+    }
+
+    .artwork-museum-badge {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: white;
+      backdrop-filter: blur(8px);
+    }
+
+    .badge-aic {
+      background: rgba(139, 92, 246, 0.85);
+    }
+
+    .badge-met {
+      background: rgba(220, 38, 38, 0.85);
+    }
+
+    .artwork-info {
+      padding: 1.2rem;
+    }
+
+    .artwork-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      color: var(--text-color);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .artwork-artist {
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-bottom: 0.3rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .artwork-date {
+      font-size: 0.8rem;
+      color: var(--primary-color);
+      font-weight: 500;
+    }
+
+    .artwork-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+      background: var(--border-color);
+      color: var(--text-light);
+      font-size: 3rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      display: none;
+    }
+
+    .empty-state.active {
+      display: block;
+    }
+
+    .empty-state i {
+      font-size: 5rem;
+      color: var(--text-light);
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+      color: var(--text-light);
+    }
+
+    /* Scroll loader */
+    .scroll-loader {
+      text-align: center;
+      padding: 2rem;
+      display: none;
+    }
+
+    .scroll-loader.active {
+      display: block;
+    }
+
+    .scroll-loader .spinner {
+      width: 35px;
+      height: 35px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--modal-bg);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: 24px;
+      max-width: 950px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      animation: modalSlide 0.4s ease-out;
+    }
+
+    @keyframes modalSlide {
+      from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.2rem;
+      z-index: 10;
+      transition: all 0.3s;
+    }
+
+    .modal-close:hover {
+      background: var(--primary-color);
+      transform: rotate(90deg);
+    }
+
+    .modal-image-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a2e;
+      min-height: 350px;
+      max-height: 500px;
+      overflow: hidden;
+    }
+
+    .modal-image {
+      max-width: 100%;
+      max-height: 500px;
+      object-fit: contain;
+    }
+
+    .modal-content {
+      padding: 2rem;
+    }
+
+    .modal-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-museum-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 0.75rem;
+    }
+
+    .modal-title {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-artist {
+      font-size: 1.2rem;
+      color: var(--text-light);
+      margin-bottom: 0.3rem;
+    }
+
+    .modal-date {
+      font-size: 1rem;
+      color: var(--primary-color);
+      font-weight: 500;
+    }
+
+    .modal-details {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fill, minmax(200px, 1fr)
+      );
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .modal-detail-item {
+      padding: 1rem;
+      background: var(--bg-color);
+      border-radius: 12px;
+    }
+
+    .modal-detail-label {
+      font-size: 0.8rem;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.3rem;
+    }
+
+    .modal-detail-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .modal-description {
+      margin-top: 1.5rem;
+      line-height: 1.8;
+      color: var(--text-color);
+      font-size: 0.95rem;
+    }
+
+    .modal-description h3 {
+      font-size: 1.2rem;
+      margin-bottom: 0.75rem;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      padding: 0.75rem 1.5rem;
+      background: var(--gradient);
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+    }
+
+    .modal-link:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 5px 20px rgba(139, 92, 246, 0.3);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-light);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .footer a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .masonry-grid {
+        columns: 3;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .masonry-grid {
+        columns: 2;
+      }
+
+      .artwork-of-day {
+        flex-direction: column;
+      }
+
+      .artwork-of-day-image {
+        width: 100%;
+        max-height: 300px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 1.8rem;
+      }
+
+      .search-box {
+        flex-direction: column;
+      }
+
+      .search-btn,
+      .random-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .filters {
+        flex-direction: column;
+      }
+
+      .filter-group {
+        min-width: 100%;
+      }
+
+      .modal-title {
+        font-size: 1.5rem;
+      }
+
+      .modal-image-container {
+        min-height: 250px;
+        max-height: 350px;
+      }
+
+      .controls {
+        top: 0.5rem;
+        right: 0.5rem;
+      }
+
+      .back-btn {
+        top: 0.5rem;
+        left: 0.5rem;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .masonry-grid {
+        columns: 1;
+      }
+
+      .modal-details {
+        grid-template-columns: 1fr;
+      }
+
+      .artwork-of-day-title {
+        font-size: 1.3rem;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Fade-in animation for cards */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .artwork-card {
+      animation: fadeInUp 0.5s ease-out;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <a href="index.html"
+       class="control-btn back-btn"
+       title="На главную">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+    <div class="controls">
+      <button class="control-btn"
+              id="themeToggle"
+              title="Сменить тему">
+        <i class="fas fa-moon"></i>
+      </button>
+      <button class="control-btn"
+              id="langToggle"
+              title="Change language">
+        <i class="fas fa-globe"></i>
+      </button>
+    </div>
+    <div class="header-content">
+      <div class="logo">
+        <i class="fas fa-palette"></i>
+        <h1 data-i18n="title">
+          Галерея мировых музеев
+        </h1>
+      </div>
+      <p data-i18n="subtitle">
+        Шедевры мирового искусства в одном месте
+      </p>
+    </div>
+  </header>
+
+  <!-- Search Section -->
+  <section class="search-section">
+    <div class="search-card">
+      <div class="search-box">
+        <div class="search-input-wrapper">
+          <i class="fas fa-search"></i>
+          <input type="text"
+                 class="search-input"
+                 id="searchInput"
+                 data-i18n-placeholder="searchPlaceholder"
+                 placeholder="Поиск по названию, автору...">
+        </div>
+        <button class="search-btn" id="searchBtn">
+          <i class="fas fa-search"></i>
+          <span data-i18n="search">Искать</span>
+        </button>
+        <button class="random-btn" id="randomBtn">
+          <i class="fas fa-dice"></i>
+          <span data-i18n="random">Случайное</span>
+        </button>
+      </div>
+      <div class="filters">
+        <div class="filter-group">
+          <label class="filter-label"
+                 data-i18n="museumLabel">
+            Музей
+          </label>
+          <select class="filter-select"
+                  id="museumFilter">
+            <option value="all"
+                    data-i18n="allMuseums">
+              Все музеи
+            </option>
+            <option value="aic"
+                    data-i18n="aicMuseum">
+              Art Institute of Chicago
+            </option>
+            <option value="met"
+                    data-i18n="metMuseum">
+              Metropolitan Museum
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label"
+                 data-i18n="styleLabel">
+            Стиль / Эпоха
+          </label>
+          <select class="filter-select"
+                  id="styleFilter">
+            <option value=""
+                    data-i18n="allStyles">
+              Все стили
+            </option>
+            <option value="Renaissance">
+              Renaissance
+            </option>
+            <option value="Baroque">
+              Baroque
+            </option>
+            <option value="Impressionism">
+              Impressionism
+            </option>
+            <option value="Post-Impressionism">
+              Post-Impressionism
+            </option>
+            <option value="Expressionism">
+              Expressionism
+            </option>
+            <option value="Cubism">
+              Cubism
+            </option>
+            <option value="Surrealism">
+              Surrealism
+            </option>
+            <option value="Abstract">
+              Abstract
+            </option>
+            <option value="Modern">
+              Modern Art
+            </option>
+            <option value="Contemporary">
+              Contemporary
+            </option>
+            <option value="Realism">
+              Realism
+            </option>
+            <option value="Romanticism">
+              Romanticism
+            </option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Artwork of the Day -->
+    <div class="artwork-of-day" id="artworkOfDay">
+      <img class="artwork-of-day-image"
+           id="aotdImage"
+           src=""
+           alt=""
+           loading="lazy">
+      <div class="artwork-of-day-info">
+        <div class="artwork-of-day-badge">
+          <i class="fas fa-star"></i>
+          <span data-i18n="artworkOfDay">
+            Произведение дня
+          </span>
+        </div>
+        <h2 class="artwork-of-day-title"
+            id="aotdTitle"></h2>
+        <p class="artwork-of-day-artist"
+           id="aotdArtist"></p>
+        <p class="artwork-of-day-date"
+           id="aotdDate"></p>
+        <span class="artwork-of-day-museum"
+              id="aotdMuseum">
+          <i class="fas fa-landmark"></i>
+          <span></span>
+        </span>
+        <p class="artwork-of-day-desc"
+           id="aotdDesc"></p>
+      </div>
+    </div>
+
+    <!-- Results Info -->
+    <div class="results-info" id="resultsInfo"
+         style="display: none;">
+      <span class="results-count" id="resultsCount">
+      </span>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p data-i18n="loading">Загрузка произведений...</p>
+    </div>
+
+    <!-- Gallery Grid -->
+    <div class="masonry-grid" id="galleryGrid"></div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+      <i class="fas fa-image"></i>
+      <h3 data-i18n="notFound">
+        Произведения не найдены
+      </h3>
+      <p data-i18n="tryAgain">
+        Попробуйте изменить параметры поиска
+      </p>
+    </div>
+
+    <!-- Scroll Loader -->
+    <div class="scroll-loader" id="scrollLoader">
+      <div class="spinner"></div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modal">
+      <button class="modal-close" id="modalClose">
+        <i class="fas fa-times"></i>
+      </button>
+      <div class="modal-image-container">
+        <img class="modal-image"
+             id="modalImage"
+             src=""
+             alt="">
+      </div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-museum-badge"
+               id="modalMuseumBadge"></div>
+          <h2 class="modal-title"
+              id="modalTitle"></h2>
+          <p class="modal-artist"
+             id="modalArtist"></p>
+          <p class="modal-date"
+             id="modalDate"></p>
+        </div>
+        <div class="modal-details"
+             id="modalDetails"></div>
+        <div class="modal-description"
+             id="modalDescription"></div>
+        <a class="modal-link"
+           id="modalLink"
+           href="#"
+           target="_blank"
+           rel="noopener">
+          <i class="fas fa-external-link-alt"></i>
+          <span data-i18n="viewOnSite">
+            Смотреть на сайте музея
+          </span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>
+      <span data-i18n="poweredBy">Работает на</span>
+      <a href="https://api.artic.edu/"
+         target="_blank" rel="noopener">
+        Art Institute of Chicago API
+      </a>
+      &amp;
+      <a href="https://metmuseum.github.io/"
+         target="_blank" rel="noopener">
+        Metropolitan Museum API
+      </a>
+    </p>
+  </footer>
+
+  <script>
+    /**
+     * @description Переводы для интерфейса
+     */
+    const translations = {
+      ru: {
+        title: "Галерея мировых музеев",
+        subtitle: "Шедевры мирового искусства в одном месте",
+        searchPlaceholder: "Поиск по названию, автору...",
+        search: "Искать",
+        random: "Случайное",
+        museumLabel: "Музей",
+        styleLabel: "Стиль / Эпоха",
+        allMuseums: "Все музеи",
+        aicMuseum: "Art Institute of Chicago",
+        metMuseum: "Metropolitan Museum",
+        allStyles: "Все стили",
+        loading: "Загрузка произведений...",
+        notFound: "Произведения не найдены",
+        tryAgain: "Попробуйте изменить параметры поиска",
+        artworkOfDay: "Произведение дня",
+        viewOnSite: "Смотреть на сайте музея",
+        poweredBy: "Работает на",
+        resultsFound: "Найдено",
+        artworks: "произведений",
+        unknown: "Неизвестный автор",
+        medium: "Техника",
+        dimensions: "Размеры",
+        department: "Отдел",
+        classification: "Классификация",
+        culture: "Культура",
+        period: "Период",
+        creditLine: "Владелец",
+        description: "Описание",
+        noDescription: "Описание отсутствует"
+      },
+      en: {
+        title: "World Art Gallery",
+        subtitle: "Masterpieces of world art in one place",
+        searchPlaceholder: "Search by title, artist...",
+        search: "Search",
+        random: "Random",
+        museumLabel: "Museum",
+        styleLabel: "Style / Era",
+        allMuseums: "All museums",
+        aicMuseum: "Art Institute of Chicago",
+        metMuseum: "Metropolitan Museum",
+        allStyles: "All styles",
+        loading: "Loading artworks...",
+        notFound: "No artworks found",
+        tryAgain: "Try changing your search parameters",
+        artworkOfDay: "Artwork of the Day",
+        viewOnSite: "View on museum website",
+        poweredBy: "Powered by",
+        resultsFound: "Found",
+        artworks: "artworks",
+        unknown: "Unknown artist",
+        medium: "Medium",
+        dimensions: "Dimensions",
+        department: "Department",
+        classification: "Classification",
+        culture: "Culture",
+        period: "Period",
+        creditLine: "Credit Line",
+        description: "Description",
+        noDescription: "No description available"
+      }
+    };
+
+    /**
+     * @description Текущий язык интерфейса
+     */
+    let currentLang =
+      localStorage.getItem("art-gallery-lang") || "ru";
+
+    /**
+     * @description Состояние приложения
+     */
+    const state = {
+      currentQuery: "",
+      currentMuseum: "all",
+      currentStyle: "",
+      aicPage: 1,
+      metPage: 0,
+      metObjectIds: [],
+      isLoading: false,
+      hasMoreAic: true,
+      hasMoreMet: true,
+      allArtworks: []
+    };
+
+    /**
+     * @description Базовые URL API
+     */
+    const AIC_BASE = "https://api.artic.edu/api/v1";
+    const AIC_IIIF = "https://www.artic.edu/iiif/2";
+    const MET_BASE =
+      "https://collectionapi.metmuseum.org/public/collection/v1";
+
+    /**
+     * @function t
+     * @description Возвращает перевод по ключу
+     * @param {string} key - Ключ перевода
+     * @returns {string} Переведённая строка
+     */
+    function t(key) {
+      return translations[currentLang][key] || key;
+    }
+
+    /**
+     * @function setLanguage
+     * @description Устанавливает язык интерфейса
+     * @param {string} lang - Код языка (ru/en)
+     */
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem("art-gallery-lang", lang);
+      document.querySelectorAll("[data-i18n]")
+        .forEach(el => {
+          const key = el.getAttribute("data-i18n");
+          if (translations[lang][key]) {
+            el.textContent = translations[lang][key];
+          }
+        });
+      document.querySelectorAll("[data-i18n-placeholder]")
+        .forEach(el => {
+          const key =
+            el.getAttribute("data-i18n-placeholder");
+          if (translations[lang][key]) {
+            el.placeholder = translations[lang][key];
+          }
+        });
+      updateResultsCount();
+    }
+
+    /**
+     * @function setTheme
+     * @description Устанавливает тему оформления
+     * @param {boolean} isDark - Тёмная тема
+     */
+    function setTheme(isDark) {
+      document.body.classList.toggle(
+        "dark-theme", isDark
+      );
+      localStorage.setItem(
+        "art-gallery-theme",
+        isDark ? "dark" : "light"
+      );
+      const icon =
+        document.querySelector("#themeToggle i");
+      icon.className =
+        isDark ? "fas fa-sun" : "fas fa-moon";
+    }
+
+    /**
+     * @function showLoading
+     * @description Показывает/скрывает индикатор загрузки
+     * @param {boolean} show - Показать индикатор
+     */
+    function showLoading(show) {
+      document.getElementById("loading")
+        .classList.toggle("active", show);
+      if (show) {
+        document.getElementById("galleryGrid")
+          .style.display = "none";
+      } else {
+        document.getElementById("galleryGrid")
+          .style.display = "";
+      }
+    }
+
+    /**
+     * @function showScrollLoader
+     * @description Показывает/скрывает индикатор скролла
+     * @param {boolean} show - Показать индикатор
+     */
+    function showScrollLoader(show) {
+      document.getElementById("scrollLoader")
+        .classList.toggle("active", show);
+    }
+
+    /**
+     * @function updateResultsCount
+     * @description Обновляет счётчик результатов
+     */
+    function updateResultsCount() {
+      const info =
+        document.getElementById("resultsInfo");
+      const count =
+        document.getElementById("resultsCount");
+      const total = state.allArtworks.length;
+      if (total > 0) {
+        info.style.display = "flex";
+        count.innerHTML =
+          `${t("resultsFound")} <strong>${total}</strong> ${t("artworks")}`;
+      } else {
+        info.style.display = "none";
+      }
+    }
+
+    /**
+     * @function getAicImageUrl
+     * @description Формирует URL изображения для AIC
+     * @param {string} imageId - ID изображения
+     * @param {number} size - Размер изображения
+     * @returns {string} URL изображения
+     */
+    function getAicImageUrl(imageId, size) {
+      if (!imageId) return "";
+      const s = size || 843;
+      return `${AIC_IIIF}/${imageId}/full/${s},/0/default.jpg`;
+    }
+
+    /**
+     * @function fetchAicArtworks
+     * @description Получает произведения из AIC API
+     * @param {string} query - Поисковый запрос
+     * @param {number} page - Номер страницы
+     * @returns {Promise<Object>} Результаты поиска
+     */
+    async function fetchAicArtworks(query, page) {
+      const limit = 20;
+      let url;
+      if (query) {
+        url = `${AIC_BASE}/artworks/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}&fields=id,title,artist_display,date_display,image_id,thumbnail,medium_display,dimensions,department_title,classification_titles,style_titles,description,credit_line,place_of_origin`;
+      } else {
+        url = `${AIC_BASE}/artworks?page=${page}&limit=${limit}&fields=id,title,artist_display,date_display,image_id,thumbnail,medium_display,dimensions,department_title,classification_titles,style_titles,description,credit_line,place_of_origin`;
+      }
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(
+          `AIC API error: ${response.status}`
+        );
+      }
+      const data = await response.json();
+      return data;
+    }
+
+    /**
+     * @function fetchMetSearch
+     * @description Ищет произведения в Met API
+     * @param {string} query - Поисковый запрос
+     * @returns {Promise<Array>} Массив objectIDs
+     */
+    async function fetchMetSearch(query) {
+      const searchQuery = query || "painting";
+      const url =
+        `${MET_BASE}/search?hasImages=true&q=${encodeURIComponent(searchQuery)}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(
+          `Met API error: ${response.status}`
+        );
+      }
+      const data = await response.json();
+      return data.objectIDs || [];
+    }
+
+    /**
+     * @function fetchMetObject
+     * @description Получает данные объекта из Met API
+     * @param {number} objectId - ID объекта
+     * @returns {Promise<Object|null>} Данные объекта
+     */
+    async function fetchMetObject(objectId) {
+      try {
+        const url = `${MET_BASE}/objects/${objectId}`;
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (!data.primaryImage &&
+            !data.primaryImageSmall) {
+          return null;
+        }
+        return data;
+      } catch {
+        return null;
+      }
+    }
+
+    /**
+     * @function fetchMetBatch
+     * @description Загружает пакет объектов из Met API
+     * @param {Array} ids - Массив objectIDs
+     * @param {number} start - Начальный индекс
+     * @param {number} batchSize - Размер пакета
+     * @returns {Promise<Array>} Массив объектов
+     */
+    async function fetchMetBatch(ids, start, batchSize) {
+      const end = Math.min(
+        start + batchSize, ids.length
+      );
+      const batch = ids.slice(start, end);
+      const promises = batch.map(id =>
+        fetchMetObject(id)
+      );
+      const results = await Promise.allSettled(promises);
+      return results
+        .filter(r =>
+          r.status === "fulfilled" && r.value !== null
+        )
+        .map(r => r.value);
+    }
+
+    /**
+     * @function normalizeAicArtwork
+     * @description Нормализует данные AIC в общий формат
+     * @param {Object} item - Данные из AIC API
+     * @returns {Object} Нормализованный объект
+     */
+    function normalizeAicArtwork(item) {
+      return {
+        id: `aic-${item.id}`,
+        source: "aic",
+        title: item.title || t("unknown"),
+        artist: item.artist_display || t("unknown"),
+        date: item.date_display || "",
+        imageUrl: getAicImageUrl(item.image_id, 843),
+        thumbUrl: getAicImageUrl(item.image_id, 400),
+        hasImage: !!item.image_id,
+        medium: item.medium_display || "",
+        dimensions: item.dimensions || "",
+        department: item.department_title || "",
+        classification:
+          (item.classification_titles || []).join(", "),
+        styles: item.style_titles || [],
+        description: item.description || "",
+        creditLine: item.credit_line || "",
+        culture: item.place_of_origin || "",
+        period: "",
+        link:
+          `https://www.artic.edu/artworks/${item.id}`,
+        museumName: "Art Institute of Chicago"
+      };
+    }
+
+    /**
+     * @function normalizeMetArtwork
+     * @description Нормализует данные Met в общий формат
+     * @param {Object} item - Данные из Met API
+     * @returns {Object} Нормализованный объект
+     */
+    function normalizeMetArtwork(item) {
+      return {
+        id: `met-${item.objectID}`,
+        source: "met",
+        title: item.title || t("unknown"),
+        artist: item.artistDisplayName || t("unknown"),
+        date: item.objectDate || "",
+        imageUrl: item.primaryImage || "",
+        thumbUrl: item.primaryImageSmall || "",
+        hasImage:
+          !!(item.primaryImage ||
+            item.primaryImageSmall),
+        medium: item.medium || "",
+        dimensions: item.dimensions || "",
+        department: item.department || "",
+        classification: item.classification || "",
+        styles: [],
+        description: "",
+        creditLine: item.creditLine || "",
+        culture: item.culture || "",
+        period: item.period || "",
+        link: item.objectURL || "",
+        museumName: "Metropolitan Museum of Art"
+      };
+    }
+
+    /**
+     * @function matchesStyleFilter
+     * @description Проверяет соответствие стилю фильтра
+     * @param {Object} artwork - Произведение
+     * @param {string} style - Стиль для фильтрации
+     * @returns {boolean} Соответствует ли стилю
+     */
+    function matchesStyleFilter(artwork, style) {
+      if (!style) return true;
+      const lowerStyle = style.toLowerCase();
+      const fields = [
+        artwork.classification,
+        artwork.period,
+        artwork.culture,
+        artwork.department,
+        artwork.title,
+        artwork.medium,
+        ...(artwork.styles || [])
+      ];
+      return fields.some(f =>
+        f && f.toLowerCase().includes(lowerStyle)
+      );
+    }
+
+    /**
+     * @function renderCard
+     * @description Создаёт HTML карточки произведения
+     * @param {Object} artwork - Нормализованное произведение
+     * @returns {string} HTML карточки
+     */
+    function renderCard(artwork) {
+      const badgeClass =
+        artwork.source === "aic"
+          ? "badge-aic" : "badge-met";
+      const museumShort =
+        artwork.source === "aic" ? "AIC" : "Met";
+
+      const imageHtml = artwork.hasImage
+        ? `<img class="artwork-image"
+               src="${artwork.thumbUrl}"
+               alt="${artwork.title}"
+               loading="lazy"
+               onerror="this.parentElement.innerHTML='<div class=\\'artwork-placeholder\\'><i class=\\'fas fa-image\\'></i></div>'">`
+        : `<div class="artwork-placeholder">
+             <i class="fas fa-image"></i>
+           </div>`;
+
+      return `
+        <article class="artwork-card"
+                 data-id="${artwork.id}">
+          <div class="artwork-image-wrapper">
+            ${imageHtml}
+            <span class="artwork-museum-badge ${badgeClass}">
+              ${museumShort}
+            </span>
+          </div>
+          <div class="artwork-info">
+            <h3 class="artwork-title">
+              ${artwork.title}
+            </h3>
+            <p class="artwork-artist">
+              ${artwork.artist}
+            </p>
+            ${artwork.date
+              ? `<p class="artwork-date">
+                   ${artwork.date}
+                 </p>`
+              : ""}
+          </div>
+        </article>
+      `;
+    }
+
+    /**
+     * @function renderArtworks
+     * @description Отрисовывает произведения в сетке
+     * @param {Array} artworks - Массив произведений
+     * @param {boolean} append - Добавить к существующим
+     */
+    function renderArtworks(artworks, append) {
+      const grid =
+        document.getElementById("galleryGrid");
+      const emptyState =
+        document.getElementById("emptyState");
+
+      if (!append) {
+        grid.innerHTML = "";
+        state.allArtworks = [];
+      }
+
+      state.allArtworks =
+        state.allArtworks.concat(artworks);
+
+      if (state.allArtworks.length === 0) {
+        emptyState.classList.add("active");
+        updateResultsCount();
+        return;
+      }
+
+      emptyState.classList.remove("active");
+      const html = artworks.map(a => renderCard(a))
+        .join("");
+      grid.insertAdjacentHTML("beforeend", html);
+
+      // Привязка событий на новые карточки
+      const cards = grid.querySelectorAll(
+        ".artwork-card:not([data-bound])"
+      );
+      cards.forEach(card => {
+        card.setAttribute("data-bound", "true");
+        card.addEventListener("click", () => {
+          openModal(card.dataset.id);
+        });
+      });
+
+      updateResultsCount();
+    }
+
+    /**
+     * @function performSearch
+     * @description Выполняет поиск произведений
+     */
+    async function performSearch() {
+      const query =
+        document.getElementById("searchInput")
+          .value.trim();
+      const museum =
+        document.getElementById("museumFilter").value;
+      const style =
+        document.getElementById("styleFilter").value;
+
+      state.currentQuery = query;
+      state.currentMuseum = museum;
+      state.currentStyle = style;
+      state.aicPage = 1;
+      state.metPage = 0;
+      state.metObjectIds = [];
+      state.hasMoreAic = true;
+      state.hasMoreMet = true;
+      state.allArtworks = [];
+
+      showLoading(true);
+      document.getElementById("emptyState")
+        .classList.remove("active");
+
+      try {
+        await loadNextBatch(false);
+      } catch (error) {
+        console.error("Ошибка поиска:", error);
+        renderArtworks([], false);
+      }
+      showLoading(false);
+    }
+
+    /**
+     * @function loadNextBatch
+     * @description Загружает следующий пакет произведений
+     * @param {boolean} append - Добавить к существующим
+     */
+    async function loadNextBatch(append) {
+      if (state.isLoading) return;
+      state.isLoading = true;
+
+      const results = [];
+      const museum = state.currentMuseum;
+      const query = state.currentQuery;
+      const style = state.currentStyle;
+      const searchTerm = style
+        ? (query ? `${query} ${style}` : style)
+        : (query || "painting");
+
+      try {
+        // Загрузка из AIC
+        if ((museum === "all" || museum === "aic") &&
+            state.hasMoreAic) {
+          const aicData = await fetchAicArtworks(
+            searchTerm, state.aicPage
+          );
+          const aicItems =
+            aicData.data || [];
+          if (aicItems.length === 0) {
+            state.hasMoreAic = false;
+          } else {
+            const normalized = aicItems
+              .map(item => normalizeAicArtwork(item))
+              .filter(a => a.hasImage)
+              .filter(a =>
+                matchesStyleFilter(a, style)
+              );
+            results.push(...normalized);
+            state.aicPage++;
+          }
+        }
+
+        // Загрузка из Met
+        if ((museum === "all" || museum === "met") &&
+            state.hasMoreMet) {
+          if (state.metObjectIds.length === 0) {
+            state.metObjectIds =
+              await fetchMetSearch(searchTerm);
+            state.metPage = 0;
+          }
+          if (state.metPage >=
+              state.metObjectIds.length) {
+            state.hasMoreMet = false;
+          } else {
+            const batchSize = 10;
+            const metItems = await fetchMetBatch(
+              state.metObjectIds,
+              state.metPage,
+              batchSize
+            );
+            const normalized = metItems
+              .map(item => normalizeMetArtwork(item))
+              .filter(a => a.hasImage)
+              .filter(a =>
+                matchesStyleFilter(a, style)
+              );
+            results.push(...normalized);
+            state.metPage += batchSize;
+          }
+        }
+
+        // Перемешивание результатов из разных музеев
+        if (museum === "all" && results.length > 1) {
+          for (let i = results.length - 1; i > 0; i--) {
+            const j =
+              Math.floor(Math.random() * (i + 1));
+            [results[i], results[j]] =
+              [results[j], results[i]];
+          }
+        }
+
+        renderArtworks(results, append);
+      } catch (error) {
+        console.error(
+          "Ошибка загрузки пакета:", error
+        );
+      }
+
+      state.isLoading = false;
+    }
+
+    /**
+     * @function loadArtworkOfDay
+     * @description Загружает произведение дня
+     */
+    async function loadArtworkOfDay() {
+      try {
+        // Выбираем произведение на основе даты
+        const today = new Date();
+        const dayOfYear =
+          Math.floor(
+            (today -
+              new Date(today.getFullYear(), 0, 0)) /
+            86400000
+          );
+        const aicId = (dayOfYear % 500) + 1;
+
+        const url =
+          `${AIC_BASE}/artworks/${aicId}?fields=id,title,artist_display,date_display,image_id,description,credit_line,medium_display`;
+        const response = await fetch(url);
+        if (!response.ok) return;
+        const result = await response.json();
+        const item = result.data;
+
+        if (!item || !item.image_id) return;
+
+        const artwork = normalizeAicArtwork(item);
+        const container =
+          document.getElementById("artworkOfDay");
+        const img =
+          document.getElementById("aotdImage");
+        const title =
+          document.getElementById("aotdTitle");
+        const artist =
+          document.getElementById("aotdArtist");
+        const date =
+          document.getElementById("aotdDate");
+        const museum =
+          document.getElementById("aotdMuseum");
+        const desc =
+          document.getElementById("aotdDesc");
+
+        img.src = artwork.imageUrl;
+        img.alt = artwork.title;
+        title.textContent = artwork.title;
+        artist.textContent = artwork.artist;
+        date.textContent = artwork.date;
+        museum.querySelector("span").textContent =
+          artwork.museumName;
+
+        // Очистка HTML-тегов из описания
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML =
+          artwork.description || t("noDescription");
+        desc.textContent = tempDiv.textContent;
+
+        container.classList.add("active");
+
+        // Клик по карточке дня открывает модалку
+        container.style.cursor = "pointer";
+        container.addEventListener("click", () => {
+          openModalWithData(artwork);
+        });
+      } catch (error) {
+        console.error(
+          "Ошибка загрузки произведения дня:", error
+        );
+      }
+    }
+
+    /**
+     * @function loadRandomArtwork
+     * @description Загружает случайное произведение
+     */
+    async function loadRandomArtwork() {
+      showLoading(true);
+      document.getElementById("emptyState")
+        .classList.remove("active");
+
+      try {
+        // Случайная страница и элемент AIC
+        const randomPage =
+          Math.floor(Math.random() * 500) + 1;
+        const aicData =
+          await fetchAicArtworks("", randomPage);
+        const items = (aicData.data || [])
+          .filter(item => item.image_id);
+
+        if (items.length > 0) {
+          const randomItem =
+            items[
+              Math.floor(Math.random() * items.length)
+            ];
+          const artwork =
+            normalizeAicArtwork(randomItem);
+          state.allArtworks = [];
+          renderArtworks([artwork], false);
+          openModalWithData(artwork);
+        } else {
+          // Фоллбэк: ищем что-нибудь в Met
+          const queries = [
+            "sunflowers", "landscape", "portrait",
+            "still life", "water", "sky", "nature"
+          ];
+          const randomQuery =
+            queries[
+              Math.floor(Math.random() * queries.length)
+            ];
+          const ids =
+            await fetchMetSearch(randomQuery);
+          if (ids.length > 0) {
+            const randomId =
+              ids[
+                Math.floor(Math.random() * ids.length)
+              ];
+            const metItem =
+              await fetchMetObject(randomId);
+            if (metItem) {
+              const artwork =
+                normalizeMetArtwork(metItem);
+              state.allArtworks = [];
+              renderArtworks([artwork], false);
+              openModalWithData(artwork);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Ошибка загрузки случайного произведения:",
+          error
+        );
+      }
+      showLoading(false);
+    }
+
+    /**
+     * @function openModal
+     * @description Открывает модалку по ID произведения
+     * @param {string} id - ID произведения (aic-N/met-N)
+     */
+    async function openModal(id) {
+      // Ищем в уже загруженных
+      const artwork = state.allArtworks.find(
+        a => a.id === id
+      );
+      if (artwork) {
+        openModalWithData(artwork);
+        return;
+      }
+
+      // Загружаем отдельно, если не найдено
+      const [source, rawId] = id.split("-");
+      try {
+        if (source === "aic") {
+          const url =
+            `${AIC_BASE}/artworks/${rawId}?fields=id,title,artist_display,date_display,image_id,description,credit_line,medium_display,dimensions,department_title,classification_titles,style_titles,place_of_origin`;
+          const response = await fetch(url);
+          const result = await response.json();
+          if (result.data) {
+            openModalWithData(
+              normalizeAicArtwork(result.data)
+            );
+          }
+        } else if (source === "met") {
+          const metItem = await fetchMetObject(rawId);
+          if (metItem) {
+            openModalWithData(
+              normalizeMetArtwork(metItem)
+            );
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Ошибка загрузки деталей:", error
+        );
+      }
+    }
+
+    /**
+     * @function openModalWithData
+     * @description Открывает модалку с данными
+     * @param {Object} artwork - Произведение
+     */
+    function openModalWithData(artwork) {
+      const overlay =
+        document.getElementById("modalOverlay");
+      overlay.classList.add("active");
+      document.body.style.overflow = "hidden";
+
+      // Изображение
+      const img =
+        document.getElementById("modalImage");
+      img.src = artwork.imageUrl;
+      img.alt = artwork.title;
+
+      // Бейдж музея
+      const badge =
+        document.getElementById("modalMuseumBadge");
+      badge.className =
+        `modal-museum-badge ${artwork.source === "aic" ? "badge-aic" : "badge-met"}`;
+      badge.innerHTML =
+        `<i class="fas fa-landmark"></i> ${artwork.museumName}`;
+
+      // Заголовок
+      document.getElementById("modalTitle")
+        .textContent = artwork.title;
+      document.getElementById("modalArtist")
+        .textContent = artwork.artist;
+      document.getElementById("modalDate")
+        .textContent = artwork.date;
+
+      // Детали
+      const detailsContainer =
+        document.getElementById("modalDetails");
+      const details = [];
+
+      if (artwork.medium) {
+        details.push({
+          label: t("medium"),
+          value: artwork.medium
+        });
+      }
+      if (artwork.dimensions) {
+        details.push({
+          label: t("dimensions"),
+          value: artwork.dimensions
+        });
+      }
+      if (artwork.department) {
+        details.push({
+          label: t("department"),
+          value: artwork.department
+        });
+      }
+      if (artwork.classification) {
+        details.push({
+          label: t("classification"),
+          value: artwork.classification
+        });
+      }
+      if (artwork.culture) {
+        details.push({
+          label: t("culture"),
+          value: artwork.culture
+        });
+      }
+      if (artwork.period) {
+        details.push({
+          label: t("period"),
+          value: artwork.period
+        });
+      }
+      if (artwork.creditLine) {
+        details.push({
+          label: t("creditLine"),
+          value: artwork.creditLine
+        });
+      }
+
+      detailsContainer.innerHTML = details.map(d => `
+        <div class="modal-detail-item">
+          <div class="modal-detail-label">
+            ${d.label}
+          </div>
+          <div class="modal-detail-value">
+            ${d.value}
+          </div>
+        </div>
+      `).join("");
+
+      // Описание
+      const descContainer =
+        document.getElementById("modalDescription");
+      if (artwork.description) {
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = artwork.description;
+        const cleanText = tempDiv.textContent;
+        descContainer.innerHTML = `
+          <h3>
+            <i class="fas fa-info-circle"></i>
+            ${t("description")}
+          </h3>
+          <p>${cleanText}</p>
+        `;
+      } else {
+        descContainer.innerHTML = "";
+      }
+
+      // Ссылка
+      const link =
+        document.getElementById("modalLink");
+      if (artwork.link) {
+        link.href = artwork.link;
+        link.style.display = "inline-flex";
+      } else {
+        link.style.display = "none";
+      }
+    }
+
+    /**
+     * @function closeModal
+     * @description Закрывает модальное окно
+     */
+    function closeModal() {
+      document.getElementById("modalOverlay")
+        .classList.remove("active");
+      document.body.style.overflow = "";
+    }
+
+    /**
+     * @function setupInfiniteScroll
+     * @description Настраивает бесконечную прокрутку
+     */
+    function setupInfiniteScroll() {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting &&
+                !state.isLoading &&
+                (state.hasMoreAic ||
+                  state.hasMoreMet)) {
+              showScrollLoader(true);
+              loadNextBatch(true).then(() => {
+                showScrollLoader(false);
+              });
+            }
+          });
+        },
+        { rootMargin: "200px" }
+      );
+
+      observer.observe(
+        document.getElementById("scrollLoader")
+      );
+    }
+
+    /**
+     * @function loadInitialContent
+     * @description Загружает начальный контент
+     */
+    async function loadInitialContent() {
+      showLoading(true);
+      try {
+        await loadNextBatch(false);
+      } catch (error) {
+        console.error(
+          "Ошибка начальной загрузки:", error
+        );
+        renderArtworks([], false);
+      }
+      showLoading(false);
+    }
+
+    // Инициализация
+    document.addEventListener(
+      "DOMContentLoaded", () => {
+        // Инициализация темы
+        const savedTheme =
+          localStorage.getItem("art-gallery-theme");
+        setTheme(savedTheme === "dark");
+
+        // Инициализация языка
+        setLanguage(currentLang);
+
+        // Произведение дня
+        loadArtworkOfDay();
+
+        // Начальная загрузка
+        loadInitialContent();
+
+        // Бесконечная прокрутка
+        setupInfiniteScroll();
+
+        // Обработчики: тема
+        document.getElementById("themeToggle")
+          .addEventListener("click", () => {
+            const isDark =
+              !document.body.classList
+                .contains("dark-theme");
+            setTheme(isDark);
+          });
+
+        // Обработчик: язык
+        document.getElementById("langToggle")
+          .addEventListener("click", () => {
+            const newLang =
+              currentLang === "ru" ? "en" : "ru";
+            setLanguage(newLang);
+          });
+
+        // Обработчик: поиск
+        document.getElementById("searchBtn")
+          .addEventListener("click", performSearch);
+
+        document.getElementById("searchInput")
+          .addEventListener("keypress", (e) => {
+            if (e.key === "Enter") performSearch();
+          });
+
+        // Обработчик: случайное произведение
+        document.getElementById("randomBtn")
+          .addEventListener(
+            "click", loadRandomArtwork
+          );
+
+        // Обработчики: фильтры
+        document.getElementById("museumFilter")
+          .addEventListener("change", performSearch);
+
+        document.getElementById("styleFilter")
+          .addEventListener("change", performSearch);
+
+        // Обработчики: модалка
+        document.getElementById("modalClose")
+          .addEventListener("click", closeModal);
+
+        document.getElementById("modalOverlay")
+          .addEventListener("click", (e) => {
+            if (e.target === e.currentTarget) {
+              closeModal();
+            }
+          });
+
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") closeModal();
+        });
+      }
+    );
+  </script>
+</body>
+</html>

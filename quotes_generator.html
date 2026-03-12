@@ -1,0 +1,2108 @@
+<!doctype html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать красивый генератор цитат с поддержкой
+нескольких API источников.
+
+Функциональные требования:
+1. Карточка с цитатой на фоне градиента/паттерна
+2. Кнопка "Новая цитата" - загружает случайную цитату
+3. Вкладки/категории: Мудрость, Мотивация, Шутки
+4. Фильтрация по тегам (technology, love, wisdom)
+5. Анимации смены цитат (fade, slide)
+6. Динамическая смена фона при каждой новой цитате
+7. Копирование цитаты в буфер обмена
+8. Кнопка "Поделиться" (Web Share API)
+9. Избранное - сохранение в localStorage
+10. Просмотр избранного
+11. Тёмная/светлая тема
+12. Многоязычность (русский/английский)
+13. Адаптивный дизайн
+
+API источники (без авторизации):
+- DummyJSON Quotes: https://dummyjson.com/quotes/random
+- Advice Slip: https://api.adviceslip.com/advice
+- icanhazdadjoke: https://icanhazdadjoke.com/
+
+Технические требования:
+1. Vanilla JavaScript без фреймворков
+2. Самодостаточный HTML файл
+3. Font Awesome для иконок
+4. CSS переменные для тем
+5. Адаптивный дизайн
+6. localStorage для настроек
+-->
+
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+  <title>Генератор цитат — AI Pages</title>
+
+  <link rel="preconnect"
+    href="https://fonts.googleapis.com">
+  <link rel="preconnect"
+    href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    /* ========================================
+       CSS Переменные — тёмная тема (default)
+       ======================================== */
+    :root {
+      --bg-primary: #0f0f1a;
+      --bg-secondary: #1a1a2e;
+      --bg-card: #16162a;
+      --bg-card-hover: #1e1e3a;
+      --text-primary: #e8e8f0;
+      --text-secondary: #a0a0b8;
+      --text-muted: #6a6a80;
+      --accent: #7c5cfc;
+      --accent-hover: #9a7eff;
+      --accent-light: rgba(124, 92, 252, 0.15);
+      --accent-glow: rgba(124, 92, 252, 0.4);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(255, 255, 255, 0.15);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.5);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --heart: #f43f5e;
+      --overlay: rgba(0, 0, 0, 0.6);
+      --tag-bg: rgba(124, 92, 252, 0.12);
+      --tag-border: rgba(124, 92, 252, 0.25);
+      --tag-active-bg: rgba(124, 92, 252, 0.3);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    /* Светлая тема */
+    [data-theme="light"] {
+      --bg-primary: #f5f3ff;
+      --bg-secondary: #ede9fe;
+      --bg-card: #ffffff;
+      --bg-card-hover: #faf8ff;
+      --text-primary: #1e1b3a;
+      --text-secondary: #5b5880;
+      --text-muted: #8b87a8;
+      --accent: #6d28d9;
+      --accent-hover: #7c3aed;
+      --accent-light: rgba(109, 40, 217, 0.1);
+      --accent-glow: rgba(109, 40, 217, 0.2);
+      --border: rgba(0, 0, 0, 0.08);
+      --border-hover: rgba(0, 0, 0, 0.15);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.12);
+      --overlay: rgba(255, 255, 255, 0.8);
+      --tag-bg: rgba(109, 40, 217, 0.08);
+      --tag-border: rgba(109, 40, 217, 0.2);
+      --tag-active-bg: rgba(109, 40, 217, 0.2);
+    }
+
+    /* ========================================
+       Сброс и базовые стили
+       ======================================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      transition: background var(--transition),
+        color var(--transition);
+    }
+
+    /* ========================================
+       Анимированный фон
+       ======================================== */
+    .bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.4;
+      transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="light"] .bg-orb {
+      opacity: 0.25;
+    }
+
+    .bg-orb-1 {
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(
+        circle,
+        #7c5cfc 0%,
+        transparent 70%
+      );
+      top: -150px;
+      right: -100px;
+      animation: orbFloat1 20s ease-in-out infinite;
+    }
+
+    .bg-orb-2 {
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(
+        circle,
+        #ec4899 0%,
+        transparent 70%
+      );
+      bottom: -100px;
+      left: -80px;
+      animation: orbFloat2 25s ease-in-out infinite;
+    }
+
+    .bg-orb-3 {
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(
+        circle,
+        #06b6d4 0%,
+        transparent 70%
+      );
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation: orbFloat3 18s ease-in-out infinite;
+    }
+
+    @keyframes orbFloat1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(-60px, 40px) scale(1.1); }
+      66% { transform: translate(30px, -20px) scale(0.9); }
+    }
+
+    @keyframes orbFloat2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(50px, -30px) scale(1.15); }
+      66% { transform: translate(-40px, 20px) scale(0.85); }
+    }
+
+    @keyframes orbFloat3 {
+      0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+      }
+      50% {
+        transform: translate(-50%, -50%) scale(1.2);
+      }
+    }
+
+    /* ========================================
+       Хедер
+       ======================================== */
+    .header {
+      position: relative;
+      z-index: 10;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .header-logo i {
+      font-size: 24px;
+      color: var(--accent);
+    }
+
+    .header-logo span {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition);
+      font-size: 16px;
+    }
+
+    .header-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background: var(--bg-card-hover);
+    }
+
+    .header-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    /* ========================================
+       Контейнер
+       ======================================== */
+    .main-content {
+      position: relative;
+      z-index: 5;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* ========================================
+       Вкладки категорий
+       ======================================== */
+    .tabs-container {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 32px;
+      padding: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(12px);
+    }
+
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: var(--accent-light);
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+
+    .tab-btn i {
+      font-size: 14px;
+    }
+
+    /* ========================================
+       Карточка цитаты
+       ======================================== */
+    .quote-card-wrapper {
+      perspective: 1200px;
+      margin-bottom: 24px;
+    }
+
+    .quote-card {
+      position: relative;
+      min-height: 320px;
+      padding: 48px 40px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      transition: transform 0.6s
+        cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.4s ease;
+    }
+
+    .quote-card.animating-out {
+      opacity: 0;
+      transform: translateY(20px) scale(0.97);
+    }
+
+    .quote-card.animating-in {
+      animation: quoteAppear 0.6s
+        cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes quoteAppear {
+      from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.97);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .quote-card-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 0;
+      transition: opacity 1s ease;
+    }
+
+    .quote-card-bg::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="light"] .quote-card-bg::after {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .quote-card-border {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .quote-icon {
+      position: relative;
+      z-index: 1;
+      font-size: 36px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 24px;
+      font-family: var(--font-serif);
+      line-height: 1;
+    }
+
+    [data-theme="light"] .quote-icon {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .quote-text {
+      position: relative;
+      z-index: 1;
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: 400;
+      line-height: 1.6;
+      color: #fff;
+      margin-bottom: 28px;
+      max-width: 600px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .quote-text em {
+      font-style: italic;
+    }
+
+    .quote-author {
+      position: relative;
+      z-index: 1;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.8);
+      letter-spacing: 0.5px;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .quote-author::before {
+      content: '— ';
+    }
+
+    .quote-tags {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .quote-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Индикатор загрузки */
+    .quote-loading {
+      position: relative;
+      z-index: 1;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .quote-loading.visible {
+      display: flex;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .quote-loading-text {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+    }
+
+    .quote-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .quote-content.hidden {
+      display: none;
+    }
+
+    /* ========================================
+       Кнопки действий
+       ======================================== */
+    .actions-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      backdrop-filter: blur(8px);
+    }
+
+    .action-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background: var(--bg-card-hover);
+      transform: translateY(-1px);
+    }
+
+    .action-btn:active {
+      transform: translateY(0);
+    }
+
+    .action-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .action-btn.primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: #fff;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .action-btn.fav-active {
+      border-color: var(--heart);
+      color: var(--heart);
+      background: rgba(244, 63, 94, 0.1);
+    }
+
+    .action-btn .toast-label {
+      position: absolute;
+      top: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: var(--success);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .action-btn .toast-label.show {
+      opacity: 1;
+    }
+
+    .action-btn {
+      position: relative;
+    }
+
+    /* ========================================
+       Фильтр тегов
+       ======================================== */
+    .tags-section {
+      margin-bottom: 32px;
+    }
+
+    .tags-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .tags-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .tags-clear {
+      font-size: 12px;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      opacity: 0;
+      transition: opacity var(--transition);
+      pointer-events: none;
+    }
+
+    .tags-clear.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .tags-clear:hover {
+      text-decoration: underline;
+    }
+
+    .tags-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--tag-bg);
+      border: 1px solid var(--tag-border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all var(--transition);
+      font-family: var(--font-sans);
+    }
+
+    .tag-chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .tag-chip.active {
+      background: var(--tag-active-bg);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ========================================
+       Панель избранного (модалка)
+       ======================================== */
+    .favorites-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--overlay);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .favorites-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .favorites-panel {
+      width: 90%;
+      max-width: 560px;
+      max-height: 80vh;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px) scale(0.95);
+      transition: transform 0.3s
+        cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .favorites-overlay.open .favorites-panel {
+      transform: translateY(0) scale(1);
+    }
+
+    .favorites-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .favorites-title {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .favorites-title i {
+      color: var(--heart);
+    }
+
+    .favorites-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--accent-light);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .favorites-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 16px;
+      transition: all var(--transition);
+    }
+
+    .favorites-close:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    .favorites-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px;
+    }
+
+    .favorites-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .favorites-empty i {
+      font-size: 40px;
+      margin-bottom: 12px;
+      display: block;
+      opacity: 0.4;
+    }
+
+    .fav-item {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 10px;
+      transition: all var(--transition);
+    }
+
+    .fav-item:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+    }
+
+    .fav-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .fav-item-text {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .fav-item-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .fav-item-author {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .fav-item-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .fav-item-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all var(--transition);
+    }
+
+    .fav-item-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+
+    .fav-item-btn.remove:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    /* ========================================
+       Тост уведомления
+       ======================================== */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 12px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    .toast i {
+      color: var(--success);
+    }
+
+    /* ========================================
+       Футер
+       ======================================== */
+    .footer {
+      position: relative;
+      z-index: 5;
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* ========================================
+       Адаптивный дизайн
+       ======================================== */
+    @media (max-width: 640px) {
+      .header {
+        padding: 16px;
+      }
+
+      .header-logo span {
+        font-size: 15px;
+      }
+
+      .main-content {
+        padding: 0 16px 40px;
+      }
+
+      .tabs-container {
+        gap: 4px;
+        padding: 4px;
+      }
+
+      .tab-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+        gap: 6px;
+      }
+
+      .tab-btn .tab-label {
+        display: none;
+      }
+
+      .tab-btn i {
+        font-size: 16px;
+      }
+
+      .quote-card {
+        min-height: 260px;
+        padding: 32px 24px;
+      }
+
+      .quote-text {
+        font-size: 20px;
+      }
+
+      .quote-icon {
+        font-size: 28px;
+      }
+
+      .actions-bar {
+        gap: 8px;
+      }
+
+      .action-btn {
+        padding: 10px 16px;
+        font-size: 13px;
+      }
+
+      .action-btn .btn-label {
+        display: none;
+      }
+
+      .favorites-panel {
+        width: 95%;
+        max-height: 85vh;
+      }
+
+      .favorites-body {
+        padding: 12px 16px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .quote-text {
+        font-size: 18px;
+      }
+
+      .quote-card {
+        min-height: 220px;
+        padding: 28px 20px;
+      }
+    }
+
+    /* ========================================
+       Скроллбар
+       ======================================== */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-hover);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* Ошибка */
+    .quote-error {
+      position: relative;
+      z-index: 1;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .quote-error.visible {
+      display: block;
+    }
+
+    .quote-error i {
+      font-size: 28px;
+      margin-bottom: 8px;
+      display: block;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Анимированный фон -->
+  <div class="bg-canvas">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+  </div>
+
+  <!-- Хедер -->
+  <header class="header">
+    <a href="index.html" class="header-logo">
+      <i class="fas fa-quote-left"></i>
+      <span data-i18n="logo">Генератор цитат</span>
+    </a>
+    <div class="header-controls">
+      <button class="header-btn" id="langToggle"
+        title="Switch language">
+        <span id="langLabel">EN</span>
+      </button>
+      <button class="header-btn" id="themeToggle"
+        title="Toggle theme">
+        <i class="fas fa-moon" id="themeIcon"></i>
+      </button>
+      <button class="header-btn" id="favoritesToggle"
+        title="Favorites">
+        <i class="fas fa-heart"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Основной контент -->
+  <main class="main-content">
+    <!-- Вкладки категорий -->
+    <div class="tabs-container">
+      <button class="tab-btn active" data-tab="wisdom">
+        <i class="fas fa-book-open"></i>
+        <span class="tab-label"
+          data-i18n="tabWisdom">Мудрость</span>
+      </button>
+      <button class="tab-btn" data-tab="motivation">
+        <i class="fas fa-fire"></i>
+        <span class="tab-label"
+          data-i18n="tabMotivation">Мотивация</span>
+      </button>
+      <button class="tab-btn" data-tab="jokes">
+        <i class="fas fa-face-laugh-beam"></i>
+        <span class="tab-label"
+          data-i18n="tabJokes">Шутки</span>
+      </button>
+    </div>
+
+    <!-- Карточка цитаты -->
+    <div class="quote-card-wrapper">
+      <div class="quote-card" id="quoteCard">
+        <div class="quote-card-bg" id="quoteBg"></div>
+        <div class="quote-card-border"></div>
+
+        <!-- Загрузка -->
+        <div class="quote-loading" id="quoteLoading">
+          <div class="spinner"></div>
+          <span class="quote-loading-text"
+            data-i18n="loading">Загрузка...</span>
+        </div>
+
+        <!-- Ошибка -->
+        <div class="quote-error" id="quoteError">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span data-i18n="error">
+            Не удалось загрузить цитату.
+            Попробуйте ещё раз.
+          </span>
+        </div>
+
+        <!-- Контент цитаты -->
+        <div class="quote-content" id="quoteContent">
+          <div class="quote-icon">
+            <i class="fas fa-quote-left"></i>
+          </div>
+          <p class="quote-text" id="quoteText"></p>
+          <p class="quote-author" id="quoteAuthor"></p>
+          <div class="quote-tags" id="quoteTags"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Кнопки действий -->
+    <div class="actions-bar">
+      <button class="action-btn primary"
+        id="newQuoteBtn">
+        <i class="fas fa-rotate"></i>
+        <span class="btn-label"
+          data-i18n="newQuote">Новая цитата</span>
+      </button>
+      <button class="action-btn" id="copyBtn">
+        <i class="fas fa-copy"></i>
+        <span class="btn-label"
+          data-i18n="copy">Копировать</span>
+      </button>
+      <button class="action-btn" id="shareBtn">
+        <i class="fas fa-share-nodes"></i>
+        <span class="btn-label"
+          data-i18n="share">Поделиться</span>
+      </button>
+      <button class="action-btn" id="favBtn">
+        <i class="far fa-heart"></i>
+        <span class="btn-label"
+          data-i18n="favorite">В избранное</span>
+      </button>
+    </div>
+
+    <!-- Фильтр тегов (только для вкладки Мудрость) -->
+    <div class="tags-section" id="tagsSection">
+      <div class="tags-header">
+        <span class="tags-label"
+          data-i18n="tagsLabel">Теги</span>
+        <button class="tags-clear" id="tagsClear"
+          data-i18n="clearTag">Сбросить</button>
+      </div>
+      <div class="tags-list" id="tagsList"></div>
+    </div>
+  </main>
+
+  <!-- Панель избранного -->
+  <div class="favorites-overlay" id="favOverlay">
+    <div class="favorites-panel">
+      <div class="favorites-header">
+        <div class="favorites-title">
+          <i class="fas fa-heart"></i>
+          <span data-i18n="favTitle">Избранное</span>
+          <span class="favorites-count"
+            id="favCount">0</span>
+        </div>
+        <button class="favorites-close"
+          id="favClose">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+      <div class="favorites-body" id="favBody"></div>
+    </div>
+  </div>
+
+  <!-- Тост -->
+  <div class="toast" id="toast">
+    <i class="fas fa-check-circle"></i>
+    <span id="toastText"></span>
+  </div>
+
+  <!-- Футер -->
+  <footer class="footer">
+    <a href="index.html"
+      data-i18n="backToMain">
+      &larr; Вернуться на главную</a>
+  </footer>
+
+  <script>
+    /**
+     * @description Генератор цитат — основной модуль
+     * Управляет загрузкой цитат из нескольких API,
+     * переключением тем, локализацией и избранным.
+     */
+
+    /* ==========================================
+       Конфигурация градиентов для карточек
+       ========================================== */
+    const GRADIENTS = [
+      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+      "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+      "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+      "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+      "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
+      "linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)",
+      "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)",
+      "linear-gradient(135deg, #f5576c 0%, #ff8a65 100%)",
+      "linear-gradient(135deg, #5ee7df 0%, #b490ca 100%)",
+      "linear-gradient(135deg, #c471f5 0%, #fa71cd 100%)",
+      "linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%)",
+      "linear-gradient(135deg, #feada6 0%, #f5efef 100%)",
+      "linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)",
+      "linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)",
+      "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)",
+      "linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)",
+      "linear-gradient(135deg, #fdcbf1 0%, #e6dee9 100%)",
+    ];
+
+    /* ==========================================
+       Локализация
+       ========================================== */
+    const I18N = {
+      ru: {
+        logo: "Генератор цитат",
+        tabWisdom: "Мудрость",
+        tabMotivation: "Мотивация",
+        tabJokes: "Шутки",
+        newQuote: "Новая цитата",
+        copy: "Копировать",
+        share: "Поделиться",
+        favorite: "В избранное",
+        tagsLabel: "Теги",
+        clearTag: "Сбросить",
+        loading: "Загрузка...",
+        error: "Не удалось загрузить цитату. "
+          + "Попробуйте ещё раз.",
+        favTitle: "Избранное",
+        favEmpty: "Пока здесь пусто. Добавляйте "
+          + "понравившиеся цитаты!",
+        backToMain: "\u2190 Вернуться на главную",
+        copied: "Скопировано в буфер обмена",
+        addedFav: "Добавлено в избранное",
+        removedFav: "Удалено из избранного",
+        shared: "Ссылка скопирована",
+        alreadyFav: "Уже в избранном",
+        unknown: "Неизвестный автор",
+      },
+      en: {
+        logo: "Quotes Generator",
+        tabWisdom: "Wisdom",
+        tabMotivation: "Motivation",
+        tabJokes: "Jokes",
+        newQuote: "New Quote",
+        copy: "Copy",
+        share: "Share",
+        favorite: "Favorite",
+        tagsLabel: "Tags",
+        clearTag: "Clear",
+        loading: "Loading...",
+        error: "Failed to load quote. "
+          + "Please try again.",
+        favTitle: "Favorites",
+        favEmpty: "Nothing here yet. "
+          + "Add quotes you like!",
+        backToMain: "\u2190 Back to main page",
+        copied: "Copied to clipboard",
+        addedFav: "Added to favorites",
+        removedFav: "Removed from favorites",
+        shared: "Link copied",
+        alreadyFav: "Already in favorites",
+        unknown: "Unknown author",
+      },
+    };
+
+    /* ==========================================
+       Предзагруженные теги Quotable
+       ========================================== */
+    const DEFAULT_TAGS = [
+      "technology", "wisdom", "love",
+      "life", "happiness", "success",
+      "inspirational", "humor", "friendship",
+      "science", "philosophy", "famous-quotes",
+    ];
+
+    /* ==========================================
+       Состояние приложения
+       ========================================== */
+    const state = {
+      lang: localStorage.getItem("qg-lang") || "ru",
+      theme: localStorage.getItem("qg-theme") || "dark",
+      tab: "wisdom",
+      selectedTag: null,
+      currentQuote: null,
+      favorites: (() => {
+        try {
+          return JSON.parse(
+            localStorage.getItem("qg-favorites")
+          ) || [];
+        } catch (e) { return []; }
+      })(),
+      isLoading: false,
+      lastGradientIdx: -1,
+      availableTags: [...DEFAULT_TAGS],
+    };
+
+    /* ==========================================
+       DOM элементы
+       ========================================== */
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) =>
+      document.querySelectorAll(sel);
+
+    const dom = {
+      quoteCard: $("#quoteCard"),
+      quoteBg: $("#quoteBg"),
+      quoteText: $("#quoteText"),
+      quoteAuthor: $("#quoteAuthor"),
+      quoteTags: $("#quoteTags"),
+      quoteContent: $("#quoteContent"),
+      quoteLoading: $("#quoteLoading"),
+      quoteError: $("#quoteError"),
+      newQuoteBtn: $("#newQuoteBtn"),
+      copyBtn: $("#copyBtn"),
+      shareBtn: $("#shareBtn"),
+      favBtn: $("#favBtn"),
+      tagsSection: $("#tagsSection"),
+      tagsList: $("#tagsList"),
+      tagsClear: $("#tagsClear"),
+      themeToggle: $("#themeToggle"),
+      themeIcon: $("#themeIcon"),
+      langToggle: $("#langToggle"),
+      langLabel: $("#langLabel"),
+      favoritesToggle: $("#favoritesToggle"),
+      favOverlay: $("#favOverlay"),
+      favClose: $("#favClose"),
+      favBody: $("#favBody"),
+      favCount: $("#favCount"),
+      toast: $("#toast"),
+      toastText: $("#toastText"),
+    };
+
+    /* ==========================================
+       Утилиты
+       ========================================== */
+
+    /**
+     * @function t
+     * @description Возвращает перевод по ключу
+     * @param {string} key - Ключ локализации
+     * @returns {string} Переведённая строка
+     */
+    function t(key) {
+      return I18N[state.lang][key] || key;
+    }
+
+    /**
+     * @function showToast
+     * @description Показывает всплывающее уведомление
+     * @param {string} message - Текст уведомления
+     */
+    function showToast(message) {
+      dom.toastText.textContent = message;
+      dom.toast.classList.add("show");
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        dom.toast.classList.remove("show");
+      }, 2500);
+    }
+
+    /**
+     * @function getRandomGradient
+     * @description Выбирает случайный градиент,
+     *   отличный от предыдущего
+     * @returns {string} CSS градиент
+     */
+    function getRandomGradient() {
+      let idx;
+      do {
+        idx = Math.floor(
+          Math.random() * GRADIENTS.length
+        );
+      } while (
+        idx === state.lastGradientIdx &&
+        GRADIENTS.length > 1
+      );
+      state.lastGradientIdx = idx;
+      return GRADIENTS[idx];
+    }
+
+    /* ==========================================
+       API функции
+       ========================================== */
+
+    /**
+     * @function fetchWisdomQuote
+     * @description Загружает цитату из DummyJSON API
+     * @param {string|null} tag - Тег для маркировки
+     *   (не используется для фильтрации API)
+     * @returns {Promise<Object>} Объект цитаты
+     */
+    async function fetchWisdomQuote(tag) {
+      const res = await fetch(
+        "https://dummyjson.com/quotes/random"
+      );
+      if (!res.ok) {
+        throw new Error("DummyJSON error");
+      }
+      const q = await res.json();
+      const tags = tag ? [tag] : ["wisdom"];
+      return {
+        text: q.quote,
+        author: q.author || t("unknown"),
+        tags: tags,
+        source: "dummyjson",
+      };
+    }
+
+    /**
+     * @function fetchAdviceSlip
+     * @description Загружает совет из Advice Slip API
+     * @returns {Promise<Object>} Объект цитаты
+     */
+    async function fetchAdviceSlip() {
+      const res = await fetch(
+        "https://api.adviceslip.com/advice"
+      );
+      if (!res.ok) {
+        throw new Error("AdviceSlip error");
+      }
+      const data = await res.json();
+      const q = data.slip;
+      return {
+        text: q.advice,
+        author: "Advice Slip",
+        tags: ["motivation"],
+        source: "adviceslip",
+      };
+    }
+
+    /**
+     * @function fetchDadJoke
+     * @description Загружает шутку из icanhazdadjoke
+     * @returns {Promise<Object>} Объект цитаты
+     */
+    async function fetchDadJoke() {
+      const res = await fetch(
+        "https://icanhazdadjoke.com/", {
+          headers: {
+            "Accept": "application/json",
+          },
+        }
+      );
+      if (!res.ok) {
+        throw new Error("DadJoke error");
+      }
+      const data = await res.json();
+      return {
+        text: data.joke,
+        author: "Dad Joke",
+        tags: ["humor"],
+        source: "icanhazdadjoke",
+      };
+    }
+
+    /**
+     * @function loadQuote
+     * @description Загружает цитату в зависимости
+     *   от выбранной вкладки и тега
+     */
+    async function loadQuote() {
+      if (state.isLoading) return;
+      state.isLoading = true;
+
+      /* Показать загрузку */
+      dom.quoteContent.classList.add("hidden");
+      dom.quoteError.classList.remove("visible");
+      dom.quoteLoading.classList.add("visible");
+
+      /* Анимация выхода */
+      dom.quoteCard.classList.add("animating-out");
+
+      try {
+        let quote;
+
+        switch (state.tab) {
+          case "wisdom":
+            quote = await fetchWisdomQuote(
+              state.selectedTag
+            );
+            break;
+          case "motivation":
+            quote = await fetchAdviceSlip();
+            break;
+          case "jokes":
+            quote = await fetchDadJoke();
+            break;
+          default:
+            quote = await fetchWisdomQuote(
+              state.selectedTag
+            );
+        }
+
+        state.currentQuote = quote;
+
+        /* Задержка для плавной анимации */
+        await new Promise(
+          (r) => setTimeout(r, 350)
+        );
+
+        /* Обновить контент */
+        dom.quoteText.textContent = quote.text;
+        dom.quoteAuthor.textContent = quote.author;
+
+        /* Теги */
+        dom.quoteTags.innerHTML = "";
+        if (quote.tags && quote.tags.length > 0) {
+          quote.tags.forEach((tag) => {
+            const span =
+              document.createElement("span");
+            span.className = "quote-tag";
+            span.textContent = tag;
+            dom.quoteTags.appendChild(span);
+          });
+        }
+
+        /* Сменить фон */
+        dom.quoteBg.style.background =
+          getRandomGradient();
+
+        /* Обновить кнопку избранного */
+        updateFavButton();
+
+        /* Показать контент */
+        dom.quoteLoading.classList
+          .remove("visible");
+        dom.quoteContent.classList
+          .remove("hidden");
+
+        /* Анимация входа */
+        dom.quoteCard.classList
+          .remove("animating-out");
+        dom.quoteCard.classList
+          .add("animating-in");
+
+        setTimeout(() => {
+          dom.quoteCard.classList
+            .remove("animating-in");
+        }, 600);
+
+      } catch (err) {
+        console.error(
+          "Ошибка загрузки цитаты:", err
+        );
+        dom.quoteLoading.classList
+          .remove("visible");
+        dom.quoteError.classList.add("visible");
+        dom.quoteCard.classList
+          .remove("animating-out");
+      } finally {
+        state.isLoading = false;
+      }
+    }
+
+    /* ==========================================
+       Теги
+       ========================================== */
+
+    /**
+     * @function renderTags
+     * @description Рендерит список тегов для фильтра
+     */
+    function renderTags() {
+      dom.tagsList.innerHTML = "";
+      state.availableTags.forEach((tag) => {
+        const chip = document.createElement("button");
+        chip.className = "tag-chip"
+          + (state.selectedTag === tag
+            ? " active" : "");
+        chip.textContent = tag;
+        chip.addEventListener("click", () => {
+          if (state.selectedTag === tag) {
+            state.selectedTag = null;
+          } else {
+            state.selectedTag = tag;
+          }
+          renderTags();
+          updateTagsClear();
+          loadQuote();
+        });
+        dom.tagsList.appendChild(chip);
+      });
+    }
+
+    /**
+     * @function updateTagsClear
+     * @description Обновляет видимость кнопки сброса
+     */
+    function updateTagsClear() {
+      if (state.selectedTag) {
+        dom.tagsClear.classList.add("visible");
+      } else {
+        dom.tagsClear.classList.remove("visible");
+      }
+    }
+
+    /**
+     * @function loadTags
+     * @description Инициализирует статический список
+     *   тегов для фильтрации
+     */
+    function loadTags() {
+      /* Статические теги — dummyjson
+         не имеет /tags эндпоинта */
+      state.availableTags = [
+        "technology", "wisdom", "love",
+        "life", "happiness", "success",
+        "inspirational", "humor",
+        "friendship", "science",
+        "philosophy", "famous-quotes"
+      ];
+      renderTags();
+    }
+
+    /* ==========================================
+       Тема
+       ========================================== */
+
+    /**
+     * @function applyTheme
+     * @description Применяет выбранную тему
+     */
+    function applyTheme() {
+      if (state.theme === "light") {
+        document.documentElement
+          .setAttribute("data-theme", "light");
+        dom.themeIcon.className = "fas fa-sun";
+      } else {
+        document.documentElement
+          .removeAttribute("data-theme");
+        dom.themeIcon.className = "fas fa-moon";
+      }
+    }
+
+    /**
+     * @function toggleTheme
+     * @description Переключает тему
+     */
+    function toggleTheme() {
+      state.theme =
+        state.theme === "dark" ? "light" : "dark";
+      localStorage.setItem("qg-theme", state.theme);
+      applyTheme();
+    }
+
+    /* ==========================================
+       Язык
+       ========================================== */
+
+    /**
+     * @function applyLang
+     * @description Применяет текущий язык интерфейса
+     */
+    function applyLang() {
+      dom.langLabel.textContent =
+        state.lang === "ru" ? "EN" : "RU";
+
+      $$("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (I18N[state.lang][key]) {
+          el.textContent = I18N[state.lang][key];
+        }
+      });
+    }
+
+    /**
+     * @function toggleLang
+     * @description Переключает язык
+     */
+    function toggleLang() {
+      state.lang =
+        state.lang === "ru" ? "en" : "ru";
+      localStorage.setItem("qg-lang", state.lang);
+      applyLang();
+    }
+
+    /* ==========================================
+       Избранное
+       ========================================== */
+
+    /**
+     * @function saveFavorites
+     * @description Сохраняет избранное в localStorage
+     */
+    function saveFavorites() {
+      localStorage.setItem(
+        "qg-favorites",
+        JSON.stringify(state.favorites)
+      );
+    }
+
+    /**
+     * @function isInFavorites
+     * @description Проверяет, есть ли цитата
+     *   в избранном
+     * @param {Object} quote - Объект цитаты
+     * @returns {boolean}
+     */
+    function isInFavorites(quote) {
+      if (!quote) return false;
+      return state.favorites.some(
+        (f) => f.text === quote.text &&
+          f.author === quote.author
+      );
+    }
+
+    /**
+     * @function updateFavButton
+     * @description Обновляет вид кнопки избранного
+     */
+    function updateFavButton() {
+      const inFav = isInFavorites(
+        state.currentQuote
+      );
+      const icon = dom.favBtn.querySelector("i");
+      if (inFav) {
+        dom.favBtn.classList.add("fav-active");
+        icon.className = "fas fa-heart";
+      } else {
+        dom.favBtn.classList.remove("fav-active");
+        icon.className = "far fa-heart";
+      }
+    }
+
+    /**
+     * @function toggleFavorite
+     * @description Добавляет/удаляет цитату
+     *   из избранного
+     */
+    function toggleFavorite() {
+      if (!state.currentQuote) return;
+
+      if (isInFavorites(state.currentQuote)) {
+        state.favorites = state.favorites.filter(
+          (f) => !(
+            f.text === state.currentQuote.text &&
+            f.author === state.currentQuote.author
+          )
+        );
+        saveFavorites();
+        updateFavButton();
+        showToast(t("removedFav"));
+      } else {
+        state.favorites.push({
+          ...state.currentQuote,
+          savedAt: Date.now(),
+        });
+        saveFavorites();
+        updateFavButton();
+        showToast(t("addedFav"));
+      }
+    }
+
+    /**
+     * @function renderFavorites
+     * @description Рендерит список избранного
+     */
+    function renderFavorites() {
+      dom.favCount.textContent =
+        state.favorites.length;
+
+      if (state.favorites.length === 0) {
+        dom.favBody.innerHTML =
+          '<div class="favorites-empty">'
+          + '<i class="far fa-heart"></i>'
+          + '<p>' + t("favEmpty") + '</p>'
+          + '</div>';
+        return;
+      }
+
+      dom.favBody.innerHTML = "";
+
+      /* Рендер в обратном порядке (новые сверху) */
+      [...state.favorites]
+        .reverse()
+        .forEach((fav, reverseIdx) => {
+          const realIdx =
+            state.favorites.length - 1 - reverseIdx;
+          const item =
+            document.createElement("div");
+          item.className = "fav-item";
+
+          const escapedText = escapeHtml(fav.text);
+          const escapedAuthor =
+            escapeHtml(fav.author);
+
+          item.innerHTML =
+            '<div class="fav-item-text">'
+            + escapedText + '</div>'
+            + '<div class="fav-item-footer">'
+            + '<span class="fav-item-author">'
+            + '— ' + escapedAuthor + '</span>'
+            + '<div class="fav-item-actions">'
+            + '<button class="fav-item-btn copy" '
+            + 'title="Copy">'
+            + '<i class="fas fa-copy"></i></button>'
+            + '<button class="fav-item-btn remove" '
+            + 'title="Remove">'
+            + '<i class="fas fa-trash-can"></i>'
+            + '</button>'
+            + '</div></div>';
+
+          const copyBtn =
+            item.querySelector(".copy");
+          copyBtn.addEventListener("click", () => {
+            const text =
+              '"' + fav.text + '" — ' + fav.author;
+            copyToClipboard(text);
+          });
+
+          const removeBtn =
+            item.querySelector(".remove");
+          removeBtn.addEventListener(
+            "click", () => {
+              state.favorites.splice(realIdx, 1);
+              saveFavorites();
+              renderFavorites();
+              updateFavButton();
+              showToast(t("removedFav"));
+            }
+          );
+
+          dom.favBody.appendChild(item);
+        });
+    }
+
+    /**
+     * @function escapeHtml
+     * @description Экранирует HTML символы
+     * @param {string} str - Исходная строка
+     * @returns {string} Экранированная строка
+     */
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    /**
+     * @function openFavorites
+     * @description Открывает панель избранного
+     */
+    function openFavorites() {
+      renderFavorites();
+      dom.favOverlay.classList.add("open");
+    }
+
+    /**
+     * @function closeFavorites
+     * @description Закрывает панель избранного
+     */
+    function closeFavorites() {
+      dom.favOverlay.classList.remove("open");
+    }
+
+    /* ==========================================
+       Копирование и шаринг
+       ========================================== */
+
+    /**
+     * @function copyToClipboard
+     * @description Копирует текст в буфер обмена
+     * @param {string} text - Текст для копирования
+     */
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast(t("copied"));
+      } catch (e) {
+        /* Фоллбэк для старых браузеров */
+        const ta = document.createElement(
+          "textarea"
+        );
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        showToast(t("copied"));
+      }
+    }
+
+    /**
+     * @function copyCurrentQuote
+     * @description Копирует текущую цитату
+     */
+    function copyCurrentQuote() {
+      if (!state.currentQuote) return;
+      const text = '"'
+        + state.currentQuote.text
+        + '" — ' + state.currentQuote.author;
+      copyToClipboard(text);
+    }
+
+    /**
+     * @function shareQuote
+     * @description Делится текущей цитатой
+     *   через Web Share API или копирует
+     */
+    async function shareQuote() {
+      if (!state.currentQuote) return;
+
+      const text = '"'
+        + state.currentQuote.text
+        + '" — ' + state.currentQuote.author;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: t("logo"),
+            text: text,
+          });
+        } catch (e) {
+          if (e.name !== "AbortError") {
+            console.error("Share failed:", e);
+          }
+        }
+      } else {
+        copyToClipboard(text);
+        showToast(t("shared"));
+      }
+    }
+
+    /* ==========================================
+       Вкладки
+       ========================================== */
+
+    /**
+     * @function switchTab
+     * @description Переключает вкладку категории
+     * @param {string} tab - Идентификатор вкладки
+     */
+    function switchTab(tab) {
+      state.tab = tab;
+      state.selectedTag = null;
+
+      /* Обновить активную вкладку */
+      $$(".tab-btn").forEach((btn) => {
+        btn.classList.toggle(
+          "active",
+          btn.dataset.tab === tab
+        );
+      });
+
+      /* Показать/скрыть теги */
+      if (tab === "wisdom") {
+        dom.tagsSection.style.display = "block";
+      } else {
+        dom.tagsSection.style.display = "none";
+      }
+
+      updateTagsClear();
+      renderTags();
+      loadQuote();
+    }
+
+    /* ==========================================
+       Инициализация обработчиков событий
+       ========================================== */
+
+    /**
+     * @function initEventListeners
+     * @description Привязывает обработчики событий
+     */
+    function initEventListeners() {
+      /* Кнопка новой цитаты */
+      dom.newQuoteBtn.addEventListener(
+        "click", loadQuote
+      );
+
+      /* Копирование */
+      dom.copyBtn.addEventListener(
+        "click", copyCurrentQuote
+      );
+
+      /* Шаринг */
+      dom.shareBtn.addEventListener(
+        "click", shareQuote
+      );
+
+      /* Избранное */
+      dom.favBtn.addEventListener(
+        "click", toggleFavorite
+      );
+
+      /* Тема */
+      dom.themeToggle.addEventListener(
+        "click", toggleTheme
+      );
+
+      /* Язык */
+      dom.langToggle.addEventListener(
+        "click", toggleLang
+      );
+
+      /* Открыть/закрыть избранное */
+      dom.favoritesToggle.addEventListener(
+        "click", openFavorites
+      );
+      dom.favClose.addEventListener(
+        "click", closeFavorites
+      );
+      dom.favOverlay.addEventListener(
+        "click", (e) => {
+          if (e.target === dom.favOverlay) {
+            closeFavorites();
+          }
+        }
+      );
+
+      /* Сброс тега */
+      dom.tagsClear.addEventListener(
+        "click", () => {
+          state.selectedTag = null;
+          renderTags();
+          updateTagsClear();
+          loadQuote();
+        }
+      );
+
+      /* Вкладки */
+      $$(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          switchTab(btn.dataset.tab);
+        });
+      });
+
+      /* Клавиатура: Escape закрывает модалку */
+      document.addEventListener(
+        "keydown", (e) => {
+          if (e.key === "Escape") {
+            closeFavorites();
+          }
+          /* Пробел для новой цитаты */
+          if (
+            e.key === " " &&
+            !dom.favOverlay.classList
+              .contains("open") &&
+            document.activeElement.tagName
+              !== "INPUT" &&
+            document.activeElement.tagName
+              !== "TEXTAREA"
+          ) {
+            e.preventDefault();
+            loadQuote();
+          }
+        }
+      );
+    }
+
+    /* ==========================================
+       Инициализация приложения
+       ========================================== */
+
+    /**
+     * @function init
+     * @description Инициализирует приложение
+     */
+    function init() {
+      applyTheme();
+      applyLang();
+      initEventListeners();
+
+      /* Начальный градиент */
+      dom.quoteBg.style.background =
+        getRandomGradient();
+
+      /* Загрузить теги и первую цитату */
+      loadTags();
+      loadQuote();
+    }
+
+    /* Запуск при загрузке DOM */
+    document.addEventListener(
+      "DOMContentLoaded", init
+    );
+  </script>
+</body>
+</html>
