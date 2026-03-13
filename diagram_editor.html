@@ -1,0 +1,1530 @@
+<!doctype html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+Цель: Редактор диаграмм из текста через Kroki API.
+Функциональные требования:
+1. Split-pane: текстовый редактор слева, SVG превью справа
+2. Выбор типа диаграммы (plantuml, mermaid, graphviz, ditaa,
+   blockdiag, seqdiag, actdiag, nwdiag, c4plantuml, erd,
+   nomnoml, svgbob, vega, wavedrom)
+3. Библиотека шаблонов для каждого типа
+4. Авто-рендер при вводе (debounce 800мс)
+5. Экспорт SVG и PNG, копирование SVG
+6. Перетаскиваемый разделитель панелей
+7. Подсказки синтаксиса, история (localStorage, 10 шт.)
+8. Темная/светлая тема, переключатель языка RU/EN
+9. Кнопка назад, адаптивный дизайн, полноэкранный превью
+Технические: Vanilla JS, Font Awesome 6.4.0, pako.js CDN,
+CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Редактор диаграмм — AI Pages</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+  <style>
+    /* Светлая тема */
+    :root {
+      --bg-primary: #ffffff; --bg-secondary: #f8fafb;
+      --bg-tertiary: #f1f5f9; --bg-editor: #1e1e2e;
+      --text-primary: #1e293b; --text-secondary: #64748b;
+      --text-editor: #cdd6f4; --border-color: #e2e8f0;
+      --accent: #10b981; --accent-hover: #059669;
+      --accent-light: rgba(16,185,129,0.1);
+      --header-bg: rgba(255,255,255,0.88);
+      --preview-bg: #ffffff; --divider-bg: #e2e8f0;
+      --divider-hover: #10b981;
+      --scrollbar-bg: #f1f5f9; --scrollbar-thumb: #cbd5e1;
+      --tooltip-bg: #1e293b; --tooltip-text: #f8fafc;
+      --error-bg: #fef2f2; --error-text: #dc2626;
+      --error-border: #fecaca;
+      --success-bg: #f0fdf4; --success-text: #16a34a;
+      --line-number-bg: #2a2a3e; --line-number-text: #6c7086;
+      --history-item-bg: #f8fafb;
+      --history-item-hover: #f1f5f9;
+      --overlay-bg: rgba(0,0,0,0.5); --modal-bg: #ffffff;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+      --radius-sm: 6px; --radius-md: 8px;
+      --radius-lg: 12px; --tr: 0.2s ease;
+    }
+    /* Тёмная тема */
+    body.dark-theme {
+      --bg-primary: #0f172a; --bg-secondary: #1e293b;
+      --bg-tertiary: #334155; --bg-editor: #11111b;
+      --text-primary: #f1f5f9; --text-secondary: #94a3b8;
+      --text-editor: #cdd6f4; --border-color: #334155;
+      --accent: #10b981; --accent-hover: #34d399;
+      --accent-light: rgba(16,185,129,0.15);
+      --header-bg: rgba(15,23,42,0.92);
+      --preview-bg: #0f172a; --divider-bg: #334155;
+      --scrollbar-bg: #1e293b; --scrollbar-thumb: #475569;
+      --tooltip-bg: #f1f5f9; --tooltip-text: #0f172a;
+      --error-bg: #450a0a; --error-text: #fca5a5;
+      --error-border: #7f1d1d;
+      --success-bg: #052e16; --success-text: #86efac;
+      --line-number-bg: #181825; --line-number-text: #585b70;
+      --history-item-bg: #1e293b;
+      --history-item-hover: #334155;
+      --overlay-bg: rgba(0,0,0,0.7); --modal-bg: #1e293b;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; }
+    body {
+      font-family: "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background: var(--bg-primary); color: var(--text-primary);
+      display: flex; flex-direction: column;
+      -webkit-font-smoothing: antialiased; overflow: hidden;
+      transition: background var(--tr), color var(--tr);
+    }
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    .header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 20px; background:var(--header-bg);
+      backdrop-filter:blur(12px); border-bottom:1px solid var(--border-color);
+      z-index:100; flex-shrink:0; transition: background var(--tr);
+    }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .header-title {
+      font-size:1.1rem; font-weight:600; color:var(--text-primary);
+      display:flex; align-items:center; gap:8px;
+    }
+    .header-title i { color:var(--accent); font-size:1.2rem; }
+    .controls { display:flex; align-items:center; gap:8px; }
+    .control-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:36px; height:36px; border-radius:var(--radius-sm);
+      border:1px solid var(--border-color); background:var(--bg-secondary);
+      color:var(--text-secondary); cursor:pointer; font-size:0.9rem;
+      text-decoration:none; transition: all var(--tr);
+    }
+    .control-btn:hover {
+      color:var(--accent); border-color:var(--accent);
+      background:var(--accent-light);
+    }
+    .toolbar {
+      display:flex; align-items:center; gap:10px; padding:8px 16px;
+      background:var(--bg-secondary); border-bottom:1px solid var(--border-color);
+      flex-wrap:wrap; flex-shrink:0; transition: background var(--tr);
+    }
+    .toolbar-group { display:flex; align-items:center; gap:6px; }
+    .toolbar-separator { width:1px; height:24px; background:var(--border-color); margin:0 4px; }
+    .toolbar-label {
+      font-size:0.75rem; color:var(--text-secondary); font-weight:500;
+      text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;
+    }
+    .diagram-select {
+      padding:6px 32px 6px 10px; border-radius:var(--radius-sm);
+      border:1px solid var(--border-color); background:var(--bg-primary);
+      color:var(--text-primary); font-size:0.85rem;
+      font-family:"JetBrains Mono","Fira Code",monospace;
+      cursor:pointer; appearance:none; min-width:140px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 10px center;
+      transition: all var(--tr);
+    }
+    .diagram-select:hover, .diagram-select:focus {
+      border-color:var(--accent); outline:none;
+      box-shadow:0 0 0 3px var(--accent-light);
+    }
+    .toolbar-btn {
+      display:inline-flex; align-items:center; gap:6px; padding:6px 12px;
+      border-radius:var(--radius-sm); border:1px solid var(--border-color);
+      background:var(--bg-primary); color:var(--text-secondary);
+      font-size:0.8rem; cursor:pointer; white-space:nowrap;
+      transition: all var(--tr); font-family:inherit;
+    }
+    .toolbar-btn:hover { color:var(--accent); border-color:var(--accent); background:var(--accent-light); }
+    .toolbar-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .toolbar-btn.primary:hover { background:var(--accent-hover); border-color:var(--accent-hover); }
+
+    .main-area { display:flex; flex:1; overflow:hidden; min-height:0; }
+    .editor-panel {
+      display:flex; flex-direction:column; width:50%; min-width:250px;
+      background:var(--bg-editor);
+    }
+    .editor-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:6px 12px; background:var(--line-number-bg);
+      border-bottom:1px solid rgba(255,255,255,0.05); flex-shrink:0;
+    }
+    .editor-tab {
+      display:flex; align-items:center; gap:6px; font-size:0.8rem;
+      color:var(--text-editor); font-family:"JetBrains Mono",monospace; opacity:0.7;
+    }
+    .editor-tab i { font-size:0.75rem; }
+    .editor-status {
+      display:flex; align-items:center; gap:8px; font-size:0.7rem;
+      color:var(--line-number-text); font-family:"JetBrains Mono",monospace;
+    }
+    .status-dot {
+      width:8px; height:8px; border-radius:50%;
+      background:var(--accent); animation:pulse 2s infinite;
+    }
+    .status-dot.error { background:#ef4444; animation:none; }
+    .status-dot.rendering { background:#f59e0b; animation:spin 0.8s linear infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .editor-wrapper { flex:1; position:relative; overflow:hidden; min-height:0; }
+    .editor-textarea {
+      width:100%; height:100%; padding:12px 16px 12px 56px;
+      background:var(--bg-editor); color:var(--text-editor);
+      border:none; outline:none; resize:none;
+      font-family:"JetBrains Mono","Fira Code","Cascadia Code","Consolas",monospace;
+      font-size:14px; line-height:1.6; tab-size:2; white-space:pre; overflow:auto;
+    }
+    .editor-textarea::placeholder { color:var(--line-number-text); }
+    .editor-textarea::selection { background:rgba(16,185,129,0.25); }
+    .line-numbers {
+      position:absolute; top:0; left:0; width:44px; height:100%;
+      background:var(--line-number-bg); padding:12px 8px 12px 0;
+      text-align:right; font-family:"JetBrains Mono",monospace;
+      font-size:14px; line-height:1.6; color:var(--line-number-text);
+      user-select:none; pointer-events:none; overflow:hidden;
+      border-right:1px solid rgba(255,255,255,0.05);
+    }
+    .divider {
+      width:5px; background:var(--divider-bg); cursor:col-resize;
+      position:relative; flex-shrink:0; transition:background var(--tr); z-index:10;
+    }
+    .divider::after {
+      content:""; position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%); width:3px; height:40px;
+      border-radius:2px; background:var(--text-secondary);
+      opacity:0.3; transition:opacity var(--tr);
+    }
+    .divider:hover { background:var(--divider-hover); }
+    .divider:hover::after { opacity:0.7; }
+    .divider.dragging { background:var(--accent); }
+
+    .preview-panel {
+      display:flex; flex-direction:column; flex:1; min-width:250px;
+      background:var(--preview-bg); transition:background var(--tr);
+    }
+    .preview-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:6px 12px; background:var(--bg-secondary);
+      border-bottom:1px solid var(--border-color); flex-shrink:0;
+    }
+    .preview-tab {
+      display:flex; align-items:center; gap:6px; font-size:0.8rem;
+      color:var(--text-secondary); font-weight:500;
+    }
+    .preview-tab i { color:var(--accent); font-size:0.75rem; }
+    .preview-actions { display:flex; gap:4px; }
+    .preview-action-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:28px; height:28px; border-radius:var(--radius-sm);
+      border:none; background:transparent; color:var(--text-secondary);
+      cursor:pointer; font-size:0.8rem; transition:all var(--tr);
+    }
+    .preview-action-btn:hover { color:var(--accent); background:var(--accent-light); }
+    .preview-content {
+      flex:1; overflow:auto; display:flex; align-items:center;
+      justify-content:center; padding:20px; min-height:0;
+    }
+    .preview-content svg { max-width:100%; max-height:100%; }
+    .preview-placeholder {
+      display:flex; flex-direction:column; align-items:center;
+      gap:12px; color:var(--text-secondary); font-size:0.9rem; text-align:center;
+    }
+    .preview-placeholder i { font-size:3rem; opacity:0.3; color:var(--accent); }
+    .preview-error {
+      padding:12px 16px; background:var(--error-bg); color:var(--error-text);
+      border:1px solid var(--error-border); border-radius:var(--radius-md);
+      font-size:0.8rem; max-width:90%; word-break:break-word; line-height:1.5;
+    }
+    .preview-loading {
+      display:flex; flex-direction:column; align-items:center;
+      gap:12px; color:var(--text-secondary); font-size:0.85rem;
+    }
+    .loading-spinner {
+      width:32px; height:32px; border:3px solid var(--border-color);
+      border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite;
+    }
+    .bottom-panel {
+      border-top:1px solid var(--border-color); background:var(--bg-secondary);
+      transition:background var(--tr); overflow:hidden; flex-shrink:0;
+    }
+    .bottom-panel.collapsed { height:32px !important; }
+    .bottom-tabs {
+      display:flex; align-items:center; height:32px; padding:0 8px;
+      border-bottom:1px solid var(--border-color); background:var(--bg-tertiary);
+    }
+    .bottom-tab {
+      display:flex; align-items:center; gap:6px; padding:0 12px; height:100%;
+      border:none; background:transparent; color:var(--text-secondary);
+      font-size:0.75rem; cursor:pointer; border-bottom:2px solid transparent;
+      transition:all var(--tr); font-family:inherit;
+    }
+    .bottom-tab:hover { color:var(--text-primary); }
+    .bottom-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .bottom-tab-spacer { flex:1; }
+    .bottom-toggle {
+      display:flex; align-items:center; justify-content:center;
+      width:24px; height:24px; border:none; background:transparent;
+      color:var(--text-secondary); cursor:pointer; font-size:0.7rem;
+      transition:all var(--tr);
+    }
+    .bottom-toggle:hover { color:var(--accent); }
+    .bottom-content { overflow:auto; height:calc(100% - 32px); }
+    .syntax-hints { padding:12px 16px; font-size:0.8rem; line-height:1.7; color:var(--text-secondary); }
+    .syntax-hints h4 { color:var(--accent); font-size:0.85rem; margin-bottom:8px; font-weight:600; }
+    .syntax-hints code {
+      background:var(--bg-editor); color:var(--text-editor);
+      padding:1px 6px; border-radius:3px; font-family:"JetBrains Mono",monospace; font-size:0.78rem;
+    }
+    .syntax-hints ul { list-style:none; padding:0; }
+    .syntax-hints li { padding:2px 0; }
+    .syntax-hints li::before { content:"\2022"; color:var(--accent); margin-right:8px; }
+    .history-list { padding:8px; }
+    .history-item {
+      display:flex; align-items:center; gap:10px; padding:8px 12px;
+      border-radius:var(--radius-sm); background:var(--history-item-bg);
+      margin-bottom:4px; cursor:pointer; transition:all var(--tr);
+      border:1px solid transparent;
+    }
+    .history-item:hover { background:var(--history-item-hover); border-color:var(--border-color); }
+    .history-item-icon {
+      width:28px; height:28px; border-radius:var(--radius-sm);
+      background:var(--accent-light); color:var(--accent);
+      display:flex; align-items:center; justify-content:center;
+      font-size:0.7rem; flex-shrink:0;
+    }
+    .history-item-info { flex:1; min-width:0; }
+    .history-item-title {
+      font-size:0.8rem; font-weight:500; color:var(--text-primary);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .history-item-meta { font-size:0.7rem; color:var(--text-secondary); display:flex; gap:8px; }
+    .history-item-delete {
+      width:24px; height:24px; border:none; background:transparent;
+      color:var(--text-secondary); cursor:pointer; border-radius:var(--radius-sm);
+      display:flex; align-items:center; justify-content:center;
+      font-size:0.7rem; opacity:0; transition:all var(--tr);
+    }
+    .history-item:hover .history-item-delete { opacity:1; }
+    .history-item-delete:hover { color:var(--error-text); background:var(--error-bg); }
+    .history-empty { text-align:center; padding:20px; color:var(--text-secondary); font-size:0.8rem; }
+
+    .fullscreen-overlay {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      background:var(--preview-bg); z-index:1000; display:none; flex-direction:column;
+    }
+    .fullscreen-overlay.active { display:flex; }
+    .fullscreen-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 20px; background:var(--bg-secondary);
+      border-bottom:1px solid var(--border-color); flex-shrink:0;
+    }
+    .fullscreen-title { font-size:0.9rem; color:var(--text-secondary); font-weight:500; }
+    .fullscreen-content {
+      flex:1; overflow:auto; display:flex; align-items:center;
+      justify-content:center; padding:40px;
+    }
+    .fullscreen-content svg { max-width:100%; max-height:100%; }
+
+    .modal-overlay {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      background:var(--overlay-bg); z-index:500; display:none;
+      align-items:center; justify-content:center; padding:20px;
+    }
+    .modal-overlay.active { display:flex; }
+    .modal {
+      background:var(--modal-bg); border-radius:var(--radius-lg);
+      box-shadow:var(--shadow-lg); width:100%; max-width:700px;
+      max-height:80vh; display:flex; flex-direction:column;
+      border:1px solid var(--border-color); animation:modalIn 0.2s ease;
+    }
+    @keyframes modalIn { from{opacity:0;transform:scale(0.95) translateY(10px)} to{opacity:1;transform:none} }
+    .modal-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 20px; border-bottom:1px solid var(--border-color);
+    }
+    .modal-title { font-size:1rem; font-weight:600; color:var(--text-primary); }
+    .modal-close {
+      width:32px; height:32px; border:none; background:transparent;
+      color:var(--text-secondary); cursor:pointer; border-radius:var(--radius-sm);
+      display:flex; align-items:center; justify-content:center;
+      font-size:1rem; transition:all var(--tr);
+    }
+    .modal-close:hover { color:var(--error-text); background:var(--error-bg); }
+    .modal-body { overflow-y:auto; padding:16px 20px; }
+    .template-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; }
+    .template-card {
+      padding:14px; border-radius:var(--radius-md);
+      border:1px solid var(--border-color); background:var(--bg-secondary);
+      cursor:pointer; transition:all var(--tr);
+    }
+    .template-card:hover {
+      border-color:var(--accent); background:var(--accent-light);
+      transform:translateY(-2px); box-shadow:var(--shadow-sm);
+    }
+    .template-card-title { font-size:0.85rem; font-weight:600; color:var(--text-primary); margin-bottom:4px; }
+    .template-card-type { font-size:0.7rem; color:var(--accent); font-weight:500; text-transform:uppercase; letter-spacing:0.5px; }
+    .template-card-desc { font-size:0.75rem; color:var(--text-secondary); margin-top:6px; line-height:1.4; }
+
+    .toast {
+      position:fixed; bottom:20px; right:20px; padding:10px 18px;
+      border-radius:var(--radius-md); background:var(--tooltip-bg);
+      color:var(--tooltip-text); font-size:0.85rem; box-shadow:var(--shadow-lg);
+      z-index:2000; transform:translateY(100px); opacity:0;
+      transition:all 0.3s ease; max-width:320px; pointer-events:none;
+    }
+    .toast.show { transform:translateY(0); opacity:1; }
+    .toast.success { background:var(--success-bg); color:var(--success-text); border:1px solid var(--accent); }
+    .toast.error { background:var(--error-bg); color:var(--error-text); border:1px solid var(--error-border); }
+
+    @media (max-width:768px) {
+      .main-area { flex-direction:column; }
+      .editor-panel { width:100% !important; height:45vh; min-width:unset; }
+      .divider { width:100%; height:5px; cursor:row-resize; }
+      .divider::after { width:40px; height:3px; }
+      .preview-panel { min-width:unset; min-height:200px; }
+      .toolbar { padding:6px 10px; gap:6px; }
+      .toolbar-label { display:none; }
+      .toolbar-btn span { display:none; }
+      .header-title span { display:none; }
+      .bottom-panel { height:120px !important; }
+      .template-grid { grid-template-columns:1fr; }
+      .fullscreen-content { padding:16px; }
+    }
+    @media (max-width:480px) {
+      .header { padding:8px 12px; }
+      .toolbar { overflow-x:auto; flex-wrap:nowrap; }
+      .toolbar-separator { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="index.html" class="control-btn back-btn" title="На главную">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <div class="header-title">
+        <i class="fas fa-project-diagram"></i>
+        <span data-i18n="title">Редактор диаграмм</span>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="control-btn" id="themeToggle" title="Переключить тему">
+        <i class="fas fa-moon"></i>
+      </button>
+      <button class="control-btn" id="langToggle" title="Switch language">
+        <i class="fas fa-globe"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <span class="toolbar-label" data-i18n="toolbarType">Тип:</span>
+      <select class="diagram-select" id="diagramType"></select>
+    </div>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btnTemplates">
+        <i class="fas fa-th-large"></i>
+        <span data-i18n="btnTemplates">Шаблоны</span>
+      </button>
+      <button class="toolbar-btn primary" id="btnRender">
+        <i class="fas fa-play"></i>
+        <span data-i18n="btnRender">Рендер</span>
+      </button>
+    </div>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btnDownloadSvg">
+        <i class="fas fa-download"></i> <span data-i18n="btnSvg">SVG</span>
+      </button>
+      <button class="toolbar-btn" id="btnDownloadPng">
+        <i class="fas fa-image"></i> <span data-i18n="btnPng">PNG</span>
+      </button>
+      <button class="toolbar-btn" id="btnCopySvg">
+        <i class="fas fa-copy"></i> <span data-i18n="btnCopy">Копировать</span>
+      </button>
+    </div>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btnFullscreen">
+        <i class="fas fa-expand"></i>
+        <span data-i18n="btnFullscreen">Полный экран</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="editor-panel" id="editorPanel">
+      <div class="editor-header">
+        <div class="editor-tab">
+          <i class="fas fa-code"></i>
+          <span data-i18n="editorTab">Исходный код</span>
+        </div>
+        <div class="editor-status">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText" data-i18n="statusReady">Готов</span>
+        </div>
+      </div>
+      <div class="editor-wrapper">
+        <div class="line-numbers" id="lineNumbers">1</div>
+        <textarea class="editor-textarea" id="editorTextarea"
+          spellcheck="false" data-i18n-placeholder="editorPh"
+          placeholder="Введите код диаграммы..."></textarea>
+      </div>
+    </div>
+    <div class="divider" id="divider"></div>
+    <div class="preview-panel" id="previewPanel">
+      <div class="preview-header">
+        <div class="preview-tab">
+          <i class="fas fa-eye"></i>
+          <span data-i18n="previewTab">Превью</span>
+        </div>
+        <div class="preview-actions">
+          <button class="preview-action-btn" id="btnZoomIn" title="Zoom in">
+            <i class="fas fa-search-plus"></i>
+          </button>
+          <button class="preview-action-btn" id="btnZoomOut" title="Zoom out">
+            <i class="fas fa-search-minus"></i>
+          </button>
+          <button class="preview-action-btn" id="btnZoomReset" title="Reset">
+            <i class="fas fa-compress-arrows-alt"></i>
+          </button>
+        </div>
+      </div>
+      <div class="preview-content" id="previewContent">
+        <div class="preview-placeholder" id="previewPlaceholder">
+          <i class="fas fa-project-diagram"></i>
+          <span data-i18n="previewEmpty">Введите код диаграммы и нажмите Рендер</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-panel" id="bottomPanel" style="height:180px;">
+    <div class="bottom-tabs">
+      <button class="bottom-tab active" data-panel="syntax" id="tabSyntax">
+        <i class="fas fa-lightbulb"></i>
+        <span data-i18n="tabSyntax">Подсказки</span>
+      </button>
+      <button class="bottom-tab" data-panel="history" id="tabHistory">
+        <i class="fas fa-history"></i>
+        <span data-i18n="tabHistory">История</span>
+      </button>
+      <div class="bottom-tab-spacer"></div>
+      <button class="bottom-toggle" id="bottomToggle">
+        <i class="fas fa-chevron-down"></i>
+      </button>
+    </div>
+    <div class="bottom-content">
+      <div class="syntax-hints" id="syntaxPanel"></div>
+      <div class="history-list" id="historyPanel" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="fullscreen-overlay" id="fullscreenOverlay">
+    <div class="fullscreen-header">
+      <div class="fullscreen-title" data-i18n="fullscreenTitle">Полноэкранный превью</div>
+      <button class="control-btn" id="btnExitFullscreen"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="fullscreen-content" id="fullscreenContent"></div>
+  </div>
+
+  <div class="modal-overlay" id="templateModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" data-i18n="modalTitle">Библиотека шаблонов</div>
+        <button class="modal-close" id="btnCloseModal"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="template-grid" id="templateGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  "use strict";
+  /**
+   * @description Главный модуль редактора диаграмм.
+   * Использует Kroki API для рендеринга диаграмм из текста.
+   */
+  (function() {
+    // === Утилиты ===
+
+    /**
+     * @function escapeHtml
+     * @description Экранирует HTML-символы для безопасной вставки
+     * @param {string} str - Входная строка
+     * @returns {string} Экранированная строка
+     */
+    function escapeHtml(str) {
+      if (typeof str !== "string") return "";
+      var d = document.createElement("div");
+      d.appendChild(document.createTextNode(str));
+      return d.innerHTML;
+    }
+
+    /**
+     * @function debounce
+     * @description Задержка вызова функции
+     * @param {Function} fn - Функция
+     * @param {number} ms - Задержка в миллисекундах
+     * @returns {Function} Обёрнутая функция
+     */
+    function debounce(fn, ms) {
+      var timer = null;
+      return function() {
+        var ctx = this, args = arguments;
+        clearTimeout(timer);
+        timer = setTimeout(function() { fn.apply(ctx, args); }, ms);
+      };
+    }
+
+    /**
+     * @function safeJsonParse
+     * @description Безопасный JSON.parse с fallback
+     * @param {string} str - JSON строка
+     * @param {*} fb - Значение по умолчанию
+     * @returns {*} Результат парсинга или fallback
+     */
+    function safeJsonParse(str, fb) {
+      try { return JSON.parse(str); } catch (e) { return fb; }
+    }
+
+    /**
+     * @function showToast
+     * @description Показывает уведомление пользователю
+     * @param {string} msg - Текст уведомления
+     * @param {string} type - Тип: success или error
+     */
+    function showToast(msg, type) {
+      var t = document.getElementById("toast");
+      t.textContent = msg;
+      t.className = "toast " + (type || "");
+      void t.offsetWidth;
+      t.classList.add("show");
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function() { t.classList.remove("show"); }, 3000);
+    }
+
+    // === Типы диаграмм ===
+    var DIAGRAM_TYPES = [
+      {v:"plantuml",l:"PlantUML"}, {v:"mermaid",l:"Mermaid"},
+      {v:"graphviz",l:"Graphviz (DOT)"}, {v:"ditaa",l:"Ditaa"},
+      {v:"blockdiag",l:"BlockDiag"}, {v:"seqdiag",l:"SeqDiag"},
+      {v:"actdiag",l:"ActDiag"}, {v:"nwdiag",l:"NwDiag"},
+      {v:"c4plantuml",l:"C4-PlantUML"}, {v:"erd",l:"ERD"},
+      {v:"nomnoml",l:"Nomnoml"}, {v:"svgbob",l:"Svgbob"},
+      {v:"vega",l:"Vega"}, {v:"wavedrom",l:"WaveDrom"}
+    ];
+
+    // === Подсказки синтаксиса ===
+    /** @description Функция генерации HTML подсказок */
+    function hintHtml(title, items) {
+      return "<h4>" + title + "</h4><ul>" +
+        items.map(function(it) { return "<li>" + it + "</li>"; }).join("") + "</ul>";
+    }
+
+    var SYNTAX_HINTS = {
+      plantuml: {
+        ru: function() { return hintHtml("PlantUML", [
+          "<code>@startuml</code> / <code>@enduml</code> — начало/конец",
+          "<code>A -> B : текст</code> — связь с подписью",
+          "<code>actor</code>, <code>participant</code> — участники",
+          "<code>class Name {}</code> — класс",
+          "<code>note right :</code> — заметка",
+          "<code>if (?) then</code> — условие"
+        ]); },
+        en: function() { return hintHtml("PlantUML", [
+          "<code>@startuml</code> / <code>@enduml</code> — start/end",
+          "<code>A -> B : text</code> — labeled link",
+          "<code>actor</code>, <code>participant</code> — participants",
+          "<code>class Name {}</code> — class",
+          "<code>note right :</code> — note",
+          "<code>if (?) then</code> — condition"
+        ]); }
+      },
+      mermaid: {
+        ru: function() { return hintHtml("Mermaid", [
+          "<code>graph TD</code> — блок-схема (TD, BT, LR, RL)",
+          "<code>A --> B</code> — стрелка",
+          "<code>A -->|текст| B</code> — подпись на стрелке",
+          "<code>A[Прямоуг.]</code>, <code>B((Круг))</code>, <code>C{Ромб}</code>",
+          "<code>sequenceDiagram</code> — последовательность",
+          "<code>classDiagram</code> — классы"
+        ]); },
+        en: function() { return hintHtml("Mermaid", [
+          "<code>graph TD</code> — flowchart (TD, BT, LR, RL)",
+          "<code>A --> B</code> — arrow",
+          "<code>A -->|text| B</code> — labeled arrow",
+          "<code>A[Rect]</code>, <code>B((Circle))</code>, <code>C{Diamond}</code>",
+          "<code>sequenceDiagram</code> — sequence",
+          "<code>classDiagram</code> — classes"
+        ]); }
+      },
+      graphviz: {
+        ru: function() { return hintHtml("Graphviz (DOT)", [
+          "<code>digraph G {}</code> — направленный граф",
+          "<code>A -> B</code> — ребро",
+          "<code>[label=\"\"]</code> — подпись, <code>[shape=box]</code> — форма",
+          "<code>rankdir=LR</code> — направление",
+          "<code>subgraph cluster_0 {}</code> — подграф"
+        ]); },
+        en: function() { return hintHtml("Graphviz (DOT)", [
+          "<code>digraph G {}</code> — directed graph",
+          "<code>A -> B</code> — edge",
+          "<code>[label=\"\"]</code> — label, <code>[shape=box]</code> — shape",
+          "<code>rankdir=LR</code> — direction",
+          "<code>subgraph cluster_0 {}</code> — subgraph"
+        ]); }
+      },
+      ditaa: {
+        ru: function() { return hintHtml("Ditaa", [
+          "ASCII-арт конвертируется в диаграмму",
+          "<code>+----+</code> — прямоугольник, <code>--></code> — стрелка",
+          "<code>/----/</code> — документ, <code>{d}</code> — пунктир",
+          "<code>cRED</code>, <code>cBLU</code> — цвета"
+        ]); },
+        en: function() { return hintHtml("Ditaa", [
+          "ASCII art converts to diagram",
+          "<code>+----+</code> — rectangle, <code>--></code> — arrow",
+          "<code>/----/</code> — document, <code>{d}</code> — dashed",
+          "<code>cRED</code>, <code>cBLU</code> — colors"
+        ]); }
+      },
+      blockdiag: {
+        ru: function() { return hintHtml("BlockDiag", [
+          "<code>blockdiag {}</code> — обёртка",
+          "<code>A -> B -> C</code> — цепочка",
+          "<code>[label = \"\"]</code> — подпись, <code>group {}</code> — группа"
+        ]); },
+        en: function() { return hintHtml("BlockDiag", [
+          "<code>blockdiag {}</code> — wrapper",
+          "<code>A -> B -> C</code> — chain",
+          "<code>[label = \"\"]</code> — label, <code>group {}</code> — group"
+        ]); }
+      },
+      seqdiag: {
+        ru: function() { return hintHtml("SeqDiag", [
+          "<code>seqdiag {}</code> — обёртка",
+          "<code>A -> B</code> — сообщение, <code>A --> B</code> — пунктирное",
+          "<code>[label = \"\"]</code> — подпись"
+        ]); },
+        en: function() { return hintHtml("SeqDiag", [
+          "<code>seqdiag {}</code> — wrapper",
+          "<code>A -> B</code> — message, <code>A --> B</code> — dotted",
+          "<code>[label = \"\"]</code> — label"
+        ]); }
+      },
+      actdiag: {
+        ru: function() { return hintHtml("ActDiag", [
+          "<code>actdiag {}</code> — обёртка",
+          "<code>A -> B -> C</code> — действия",
+          "<code>lane \"\" {}</code> — дорожка"
+        ]); },
+        en: function() { return hintHtml("ActDiag", [
+          "<code>actdiag {}</code> — wrapper",
+          "<code>A -> B -> C</code> — actions",
+          "<code>lane \"\" {}</code> — lane"
+        ]); }
+      },
+      nwdiag: {
+        ru: function() { return hintHtml("NwDiag", [
+          "<code>nwdiag {}</code> — обёртка",
+          "<code>network Name {}</code> — сеть",
+          "<code>address = \"\"</code> — IP адрес"
+        ]); },
+        en: function() { return hintHtml("NwDiag", [
+          "<code>nwdiag {}</code> — wrapper",
+          "<code>network Name {}</code> — network",
+          "<code>address = \"\"</code> — IP address"
+        ]); }
+      },
+      c4plantuml: {
+        ru: function() { return hintHtml("C4-PlantUML", [
+          "<code>!include ...</code> — макросы C4",
+          "<code>Person(id, \"\")</code> — человек",
+          "<code>System(id, \"\")</code> — система",
+          "<code>Rel(a, b, \"\")</code> — связь"
+        ]); },
+        en: function() { return hintHtml("C4-PlantUML", [
+          "<code>!include ...</code> — C4 macros",
+          "<code>Person(id, \"\")</code> — person",
+          "<code>System(id, \"\")</code> — system",
+          "<code>Rel(a, b, \"\")</code> — relation"
+        ]); }
+      },
+      erd: {
+        ru: function() { return hintHtml("ERD", [
+          "<code>[Entity]</code> — сущность",
+          "<code>*name</code> — ключевой атрибут",
+          "<code>E1 *--* E2</code> — связь, <code>1--*</code> — кардинальность"
+        ]); },
+        en: function() { return hintHtml("ERD", [
+          "<code>[Entity]</code> — entity",
+          "<code>*name</code> — key attribute",
+          "<code>E1 *--* E2</code> — relation, <code>1--*</code> — cardinality"
+        ]); }
+      },
+      nomnoml: {
+        ru: function() { return hintHtml("Nomnoml", [
+          "<code>[Node]</code> — узел, <code>[A] -> [B]</code> — связь",
+          "<code>[A|поля|методы]</code> — класс",
+          "<code>#direction: right</code> — направление"
+        ]); },
+        en: function() { return hintHtml("Nomnoml", [
+          "<code>[Node]</code> — node, <code>[A] -> [B]</code> — link",
+          "<code>[A|fields|methods]</code> — class",
+          "<code>#direction: right</code> — direction"
+        ]); }
+      },
+      svgbob: {
+        ru: function() { return hintHtml("Svgbob", [
+          "ASCII-арт автоматически становится SVG",
+          "<code>--></code> — стрелка, <code>+---+</code> — прямоугольник",
+          "<code>.</code> — скругление"
+        ]); },
+        en: function() { return hintHtml("Svgbob", [
+          "ASCII art auto-converts to SVG",
+          "<code>--></code> — arrow, <code>+---+</code> — rectangle",
+          "<code>.</code> — rounding"
+        ]); }
+      },
+      vega: {
+        ru: function() { return hintHtml("Vega", [
+          "JSON-спецификация для визуализаций",
+          "<code>\"$schema\"</code>, <code>\"data\"</code>, <code>\"mark\"</code>"
+        ]); },
+        en: function() { return hintHtml("Vega", [
+          "JSON spec for visualizations",
+          "<code>\"$schema\"</code>, <code>\"data\"</code>, <code>\"mark\"</code>"
+        ]); }
+      },
+      wavedrom: {
+        ru: function() { return hintHtml("WaveDrom", [
+          "JSON для цифровых временных диаграмм",
+          "<code>{signal:[...]}</code> — сигналы",
+          "<code>\"wave\":\"01..\"</code> — паттерн, <code>\"name\":\"CLK\"</code> — имя"
+        ]); },
+        en: function() { return hintHtml("WaveDrom", [
+          "JSON for digital timing diagrams",
+          "<code>{signal:[...]}</code> — signals",
+          "<code>\"wave\":\"01..\"</code> — pattern, <code>\"name\":\"CLK\"</code> — name"
+        ]); }
+      }
+    };
+
+    // === Шаблоны ===
+    var TEMPLATES = [
+      { type:"plantuml", tRu:"Последовательность", tEn:"Sequence Diagram",
+        dRu:"Диаграмма последовательностей", dEn:"Sequence with actors",
+        code: "@startuml\nactor User\nparticipant \"Web App\" as WA\nparticipant \"API\" as API\ndatabase \"DB\" as DB\n\nUser -> WA : Open page\nWA -> API : GET /data\nAPI -> DB : SELECT\nDB --> API : Result\nAPI --> WA : JSON\nWA --> User : Render\n@enduml" },
+      { type:"plantuml", tRu:"Классы", tEn:"Class Diagram",
+        dRu:"UML диаграмма классов", dEn:"UML class diagram",
+        code: "@startuml\nclass Animal {\n  +name: String\n  +age: int\n  +makeSound(): void\n}\n\nclass Dog extends Animal {\n  +breed: String\n  +fetch(): void\n}\n\nclass Cat extends Animal {\n  +indoor: boolean\n  +purr(): void\n}\n\nAnimal <|-- Dog\nAnimal <|-- Cat\n@enduml" },
+      { type:"plantuml", tRu:"Активность", tEn:"Activity Diagram",
+        dRu:"Блок-схема процесса", dEn:"Process flowchart",
+        code: "@startuml\nstart\n:Receive order;\nif (In stock?) then (yes)\n  :Process payment;\n  if (Payment OK?) then (yes)\n    :Ship order;\n    :Send confirmation;\n  else (no)\n    :Notify customer;\n  endif\nelse (no)\n  :Backorder;\nendif\nstop\n@enduml" },
+      { type:"mermaid", tRu:"Блок-схема", tEn:"Flowchart",
+        dRu:"Простая блок-схема", dEn:"Simple flowchart",
+        code: "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Process A]\n  B -->|No| D[Process B]\n  C --> E[Result]\n  D --> E\n  E --> F((End))" },
+      { type:"mermaid", tRu:"Последовательность", tEn:"Sequence",
+        dRu:"Mermaid последовательность", dEn:"Mermaid sequence",
+        code: "sequenceDiagram\n  participant U as User\n  participant C as Client\n  participant S as Server\n  U->>C: Click button\n  C->>S: API Request\n  S-->>C: JSON Response\n  C-->>U: Update UI" },
+      { type:"mermaid", tRu:"Круговая", tEn:"Pie Chart",
+        dRu:"Круговая диаграмма", dEn:"Data pie chart",
+        code: "pie title Languages\n  \"JavaScript\" : 40\n  \"Python\" : 30\n  \"Go\" : 15\n  \"Rust\" : 10\n  \"Other\" : 5" },
+      { type:"graphviz", tRu:"Направленный граф", tEn:"Directed Graph",
+        dRu:"DOT направленный граф", dEn:"DOT directed graph",
+        code: "digraph G {\n  rankdir=LR;\n  node [shape=box, style=filled, fillcolor=\"#e8f5e9\"];\n\n  Start -> Parse;\n  Parse -> Validate;\n  Validate -> Transform;\n  Transform -> Output;\n  Validate -> Error [label=\"invalid\", color=red];\n  Error -> Parse [label=\"retry\", style=dashed];\n}" },
+      { type:"graphviz", tRu:"Архитектура", tEn:"Architecture",
+        dRu:"Компоненты системы", dEn:"System components",
+        code: "digraph arch {\n  rankdir=TB;\n  node [shape=component];\n\n  subgraph cluster_fe {\n    label=\"Frontend\"; color=blue;\n    React; Redux;\n  }\n  subgraph cluster_be {\n    label=\"Backend\"; color=green;\n    API; Auth;\n  }\n  subgraph cluster_db {\n    label=\"Data\"; color=red;\n    Postgres; Redis;\n  }\n\n  React -> API;\n  API -> Auth;\n  API -> Postgres;\n}" },
+      { type:"ditaa", tRu:"ASCII-диаграмма", tEn:"ASCII Diagram",
+        dRu:"Ditaa ASCII-арт", dEn:"Ditaa ASCII art",
+        code: "+--------+   +--------+\n|  cBLU  |   |  cGRE  |\n| Client |-->| Server |\n|        |   |        |\n+--------+   +---+----+\n                 |\n                 v\n             +---+----+\n             |  cPNK  |\n             |   DB   |\n             |  {s}   |\n             +--------+" },
+      { type:"blockdiag", tRu:"Блок-диаграмма", tEn:"Block Diagram",
+        dRu:"Простая блок-диаграмма", dEn:"Simple block diagram",
+        code: "blockdiag {\n  A -> B -> C -> D;\n  A -> E -> F -> D;\n\n  A [label = \"Input\"];\n  B [label = \"Process\"];\n  C [label = \"Check\"];\n  D [label = \"Output\"];\n  E [label = \"Alt\"];\n  F [label = \"Transform\"];\n}" },
+      { type:"seqdiag", tRu:"Последовательность", tEn:"Sequence",
+        dRu:"SeqDiag диаграмма", dEn:"SeqDiag sequence",
+        code: "seqdiag {\n  browser -> webserver [label = \"GET /index\"];\n  webserver -> app [label = \"route\"];\n  app -> database [label = \"SQL\"];\n  database --> app [label = \"result\"];\n  app --> webserver [label = \"HTML\"];\n  webserver --> browser [label = \"200 OK\"];\n}" },
+      { type:"actdiag", tRu:"Активность", tEn:"Activity",
+        dRu:"Диаграмма активности", dEn:"Activity with lanes",
+        code: "actdiag {\n  write -> convert -> review\n\n  lane user {\n    label = \"User\"\n    write [label = \"Write doc\"];\n    review [label = \"Review\"];\n  }\n  lane system {\n    label = \"System\"\n    convert [label = \"Convert\"];\n  }\n}" },
+      { type:"nwdiag", tRu:"Сеть", tEn:"Network",
+        dRu:"Топология сети", dEn:"Network topology",
+        code: "nwdiag {\n  network internet {\n    address = \"Internet\"\n    web01 [address = \"210.x.x.1\"];\n    web02 [address = \"210.x.x.2\"];\n  }\n  network internal {\n    address = \"172.x.x.0/24\";\n    web01 [address = \"172.x.x.1\"];\n    db01;\n  }\n}" },
+      { type:"erd", tRu:"ER-диаграмма", tEn:"ER Diagram",
+        dRu:"Сущность-связь", dEn:"Entity-relationship",
+        code: "[Person]\n*name\nheight\nweight\n+birth_location_id\n\n[Location]\n*id\ncity\nstate\ncountry\n\nPerson *--1 Location" },
+      { type:"nomnoml", tRu:"Классы", tEn:"Classes",
+        dRu:"Nomnoml классы", dEn:"Nomnoml class diagram",
+        code: "#direction: right\n[User|\n  +name: string\n  +email: string|\n  +login()\n  +logout()]\n\n[Order|\n  +id: int\n  +total: float|\n  +submit()\n  +cancel()]\n\n[Product|\n  +name: string\n  +price: float]\n\n[User] 1 -> * [Order]\n[Order] * -> * [Product]" },
+      { type:"svgbob", tRu:"ASCII-арт", tEn:"ASCII Art",
+        dRu:"Svgbob рисунок", dEn:"Svgbob ASCII art",
+        code: "         .---.\n        | A  |\n         '---'\n           |\n     .-----+-----.\n     |           |\n     v           v\n  .------.  .------.\n  |  B   |  |  C   |\n  '------'  '------'\n     |           |\n     '-----+-----'\n           |\n           v\n        .----.\n        | D  |\n        '----'" },
+      { type:"c4plantuml", tRu:"C4 контекст", tEn:"C4 Context",
+        dRu:"Контекстная C4", dEn:"C4 context diagram",
+        code: "@startuml\n!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml\n\nPerson(user, \"User\", \"A system user\")\nSystem(sys, \"System\", \"Main app\")\nSystem_Ext(mail, \"Email\", \"Email service\")\n\nRel(user, sys, \"Uses\")\nRel(sys, mail, \"Sends\")\n@enduml" },
+      { type:"vega", tRu:"Столбчатый график", tEn:"Bar Chart",
+        dRu:"Vega-Lite столбцы", dEn:"Vega-Lite bar chart",
+        code: "{\n  \"$schema\": \"https://vega.github.io/schema/vega-lite/v5.json\",\n  \"description\": \"Bar chart\",\n  \"data\": {\n    \"values\": [\n      {\"a\": \"A\", \"b\": 28},\n      {\"a\": \"B\", \"b\": 55},\n      {\"a\": \"C\", \"b\": 43},\n      {\"a\": \"D\", \"b\": 91}\n    ]\n  },\n  \"mark\": \"bar\",\n  \"encoding\": {\n    \"x\": {\"field\": \"a\"},\n    \"y\": {\"field\": \"b\", \"type\": \"quantitative\"}\n  }\n}" },
+      { type:"wavedrom", tRu:"Временная диаграмма", tEn:"Timing Diagram",
+        dRu:"WaveDrom сигналы", dEn:"WaveDrom signals",
+        code: "{ \"signal\": [\n  {\"name\": \"CLK\", \"wave\": \"p.......\"},\n  {\"name\": \"DATA\", \"wave\": \"x.345x..\", \"data\": [\"A\",\"B\",\"C\"]},\n  {\"name\": \"EN\", \"wave\": \"0.1..0..\"}\n]}" }
+    ];
+
+    // === Локализация ===
+    var I18N = {
+      ru: {
+        title:"Редактор диаграмм", toolbarType:"Тип:", btnTemplates:"Шаблоны",
+        btnRender:"Рендер", btnSvg:"SVG", btnPng:"PNG", btnCopy:"Копировать",
+        btnFullscreen:"Полный экран", editorTab:"Исходный код", previewTab:"Превью",
+        previewEmpty:"Введите код диаграммы и нажмите Рендер",
+        tabSyntax:"Подсказки", tabHistory:"История",
+        statusReady:"Готов", statusRendering:"Рендеринг...",
+        statusError:"Ошибка", statusDone:"Готово",
+        fullscreenTitle:"Полноэкранный превью", modalTitle:"Библиотека шаблонов",
+        editorPh:"Введите код диаграммы...", historyEmpty:"История пуста",
+        copiedSvg:"SVG скопирован в буфер!", errorEmpty:"Введите код диаграммы",
+        errorFetch:"Ошибка рендеринга: ", downloadError:"Нет диаграммы для скачивания",
+        svgDl:"SVG скачан", pngDl:"PNG скачан", loading:"Рендеринг..."
+      },
+      en: {
+        title:"Diagram Editor", toolbarType:"Type:", btnTemplates:"Templates",
+        btnRender:"Render", btnSvg:"SVG", btnPng:"PNG", btnCopy:"Copy",
+        btnFullscreen:"Fullscreen", editorTab:"Source code", previewTab:"Preview",
+        previewEmpty:"Enter diagram code on the left and click Render",
+        tabSyntax:"Hints", tabHistory:"History",
+        statusReady:"Ready", statusRendering:"Rendering...",
+        statusError:"Error", statusDone:"Done",
+        fullscreenTitle:"Fullscreen Preview", modalTitle:"Template Library",
+        editorPh:"Enter diagram code...", historyEmpty:"History is empty",
+        copiedSvg:"SVG copied to clipboard!", errorEmpty:"Enter diagram code",
+        errorFetch:"Render error: ", downloadError:"No diagram to download",
+        svgDl:"SVG downloaded", pngDl:"PNG downloaded", loading:"Rendering..."
+      }
+    };
+
+    // === Состояние ===
+    var state = {
+      theme:"light", lang:"ru", diagramType:"plantuml",
+      currentSvg:"", history:[], previewZoom:1,
+      bottomCollapsed:false, activeBottomTab:"syntax"
+    };
+
+    // === Кэш DOM элементов ===
+    var els = {};
+    /** @function initElements @description Кеширует DOM-элементы */
+    function initElements() {
+      ["themeToggle","langToggle","diagramType","btnTemplates","btnRender",
+       "btnDownloadSvg","btnDownloadPng","btnCopySvg","btnFullscreen",
+       "editorPanel","editorTextarea","lineNumbers","statusDot","statusText",
+       "divider","previewPanel","previewContent","previewPlaceholder",
+       "bottomPanel","tabSyntax","tabHistory","bottomToggle",
+       "syntaxPanel","historyPanel","fullscreenOverlay","fullscreenContent",
+       "btnExitFullscreen","templateModal","templateGrid","btnCloseModal",
+       "btnZoomIn","btnZoomOut","btnZoomReset"
+      ].forEach(function(id) { els[id] = document.getElementById(id); });
+    }
+
+    // === Тема ===
+    /** @function loadTheme @description Загружает тему из localStorage */
+    function loadTheme() {
+      var s = localStorage.getItem("diagramEditor-theme");
+      if (s === "dark" || s === "light") state.theme = s;
+      applyTheme();
+    }
+    /** @function applyTheme @description Применяет текущую тему */
+    function applyTheme() {
+      document.body.classList.toggle("dark-theme", state.theme === "dark");
+      els.themeToggle.innerHTML = state.theme === "dark"
+        ? "<i class=\"fas fa-sun\"></i>" : "<i class=\"fas fa-moon\"></i>";
+    }
+    /** @function toggleTheme @description Переключает тему */
+    function toggleTheme() {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      localStorage.setItem("diagramEditor-theme", state.theme);
+      applyTheme();
+    }
+
+    // === Язык ===
+    /** @function loadLang @description Загружает язык из localStorage */
+    function loadLang() {
+      var s = localStorage.getItem("diagramEditor-lang");
+      if (s === "ru" || s === "en") state.lang = s;
+      applyLang();
+    }
+    /** @function applyLang @description Применяет текущий язык ко всему UI */
+    function applyLang() {
+      var t = I18N[state.lang];
+      document.querySelectorAll("[data-i18n]").forEach(function(el) {
+        var k = el.getAttribute("data-i18n");
+        if (t[k]) el.textContent = t[k];
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach(function(el) {
+        var k = el.getAttribute("data-i18n-placeholder");
+        if (t[k]) el.placeholder = t[k];
+      });
+      updateSyntaxHints();
+      renderTemplates();
+      renderHistory();
+    }
+    /** @function toggleLang @description Переключает язык RU/EN */
+    function toggleLang() {
+      state.lang = state.lang === "ru" ? "en" : "ru";
+      localStorage.setItem("diagramEditor-lang", state.lang);
+      applyLang();
+    }
+
+    // === Инициализация типов ===
+    /** @function initDiagramTypes @description Заполняет select типами */
+    function initDiagramTypes() {
+      DIAGRAM_TYPES.forEach(function(dt) {
+        var opt = document.createElement("option");
+        opt.value = dt.v; opt.textContent = dt.l;
+        els.diagramType.appendChild(opt);
+      });
+      els.diagramType.value = state.diagramType;
+    }
+
+    // === Номера строк ===
+    /** @function updateLineNumbers @description Обновляет нумерацию строк */
+    function updateLineNumbers() {
+      var n = els.editorTextarea.value.split("\n").length;
+      var arr = [];
+      for (var i = 1; i <= n; i++) arr.push(i);
+      els.lineNumbers.textContent = arr.join("\n");
+    }
+    /** @function syncScroll @description Синхронизирует скролл номеров строк */
+    function syncScroll() {
+      els.lineNumbers.style.transform =
+        "translateY(-" + els.editorTextarea.scrollTop + "px)";
+    }
+
+    // === Подсказки ===
+    /** @function updateSyntaxHints @description Обновляет панель подсказок */
+    function updateSyntaxHints() {
+      var h = SYNTAX_HINTS[state.diagramType];
+      if (h && h[state.lang]) {
+        els.syntaxPanel.innerHTML = h[state.lang]();
+      } else {
+        var msg = state.lang === "ru" ? "Подсказки отсутствуют" : "No hints available";
+        els.syntaxPanel.innerHTML =
+          "<p style=\"padding:12px;color:var(--text-secondary)\">" + escapeHtml(msg) + "</p>";
+      }
+    }
+
+    // === История ===
+    /** @function loadHistory @description Загружает историю из localStorage */
+    function loadHistory() {
+      var raw = localStorage.getItem("diagramEditor-history");
+      state.history = safeJsonParse(raw, []);
+      if (!Array.isArray(state.history)) state.history = [];
+    }
+    /** @function saveHistory @description Сохраняет историю в localStorage */
+    function saveHistory() {
+      try { localStorage.setItem("diagramEditor-history", JSON.stringify(state.history)); }
+      catch (e) { /* ошибка записи */ }
+    }
+    /**
+     * @function addToHistory
+     * @description Добавляет диаграмму в историю (макс. 10)
+     * @param {string} code - Код диаграммы
+     * @param {string} type - Тип диаграммы
+     */
+    function addToHistory(code, type) {
+      if (!code || !code.trim()) return;
+      // Удаляем дубликат
+      state.history = state.history.filter(function(it) {
+        return it.code !== code || it.type !== type;
+      });
+      state.history.unshift({
+        code: code, type: type,
+        date: new Date().toISOString(),
+        preview: code.substring(0, 60)
+      });
+      if (state.history.length > 10) state.history = state.history.slice(0, 10);
+      saveHistory();
+      renderHistory();
+    }
+    /**
+     * @function deleteFromHistory
+     * @description Удаляет запись из истории
+     * @param {number} idx - Индекс
+     */
+    function deleteFromHistory(idx) {
+      state.history.splice(idx, 1);
+      saveHistory();
+      renderHistory();
+    }
+    /**
+     * @function loadFromHistory
+     * @description Загружает диаграмму из истории
+     * @param {number} idx - Индекс
+     */
+    function loadFromHistory(idx) {
+      var item = state.history[idx];
+      if (!item) return;
+      els.diagramType.value = item.type;
+      state.diagramType = item.type;
+      els.editorTextarea.value = item.code;
+      updateLineNumbers();
+      updateSyntaxHints();
+      renderDiagram();
+    }
+    /** @function renderHistory @description Рендерит список истории */
+    function renderHistory() {
+      var t = I18N[state.lang];
+      if (state.history.length === 0) {
+        els.historyPanel.innerHTML =
+          "<div class=\"history-empty\">" + escapeHtml(t.historyEmpty) + "</div>";
+        return;
+      }
+      var html = "";
+      state.history.forEach(function(item, i) {
+        var ds = "";
+        try {
+          var d = new Date(item.date);
+          ds = d.toLocaleDateString(state.lang === "ru" ? "ru-RU" : "en-US",
+            { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+        } catch (e) { ds = ""; }
+        html += "<div class=\"history-item\" data-idx=\"" + i + "\">"
+          + "<div class=\"history-item-icon\"><i class=\"fas fa-project-diagram\"></i></div>"
+          + "<div class=\"history-item-info\">"
+          + "<div class=\"history-item-title\">" + escapeHtml(item.preview || "...") + "</div>"
+          + "<div class=\"history-item-meta\"><span>" + escapeHtml(item.type) + "</span>"
+          + "<span>" + escapeHtml(ds) + "</span></div></div>"
+          + "<button class=\"history-item-delete\" data-del=\"" + i + "\" title=\""
+          + (state.lang === "ru" ? "Удалить" : "Delete")
+          + "\"><i class=\"fas fa-trash-alt\"></i></button></div>";
+      });
+      els.historyPanel.innerHTML = html;
+      // Обработчики клика по записям
+      els.historyPanel.querySelectorAll(".history-item").forEach(function(el) {
+        el.addEventListener("click", function(e) {
+          if (e.target.closest(".history-item-delete")) return;
+          loadFromHistory(parseInt(el.getAttribute("data-idx"), 10));
+        });
+      });
+      // Кнопки удаления
+      els.historyPanel.querySelectorAll(".history-item-delete").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          deleteFromHistory(parseInt(btn.getAttribute("data-del"), 10));
+        });
+      });
+    }
+
+    // === Рендеринг диаграммы (Kroki API) ===
+    /**
+     * @function renderDiagram
+     * @description Отправляет код в Kroki API и показывает SVG
+     */
+    function renderDiagram() {
+      var code = els.editorTextarea.value.trim();
+      var t = I18N[state.lang];
+      if (!code) {
+        setStatus("ready", t.statusReady);
+        showPlaceholder();
+        return;
+      }
+      setStatus("rendering", t.statusRendering);
+      showLoading();
+      var type = state.diagramType;
+      var url = "https://kroki.io/" + encodeURIComponent(type) + "/svg";
+      fetch(url, { method:"POST", headers:{"Content-Type":"text/plain"}, body:code })
+        .then(function(resp) {
+          if (!resp.ok) {
+            return resp.text().then(function(txt) {
+              throw new Error(t.errorFetch + (txt || resp.status));
+            });
+          }
+          return resp.text();
+        })
+        .then(function(svg) {
+          state.currentSvg = svg;
+          showSvg(svg);
+          setStatus("done", t.statusDone);
+          addToHistory(code, type);
+        })
+        .catch(function(err) {
+          setStatus("error", t.statusError);
+          showError(err.message);
+        });
+    }
+
+    /**
+     * @function setStatus
+     * @description Обновляет индикатор статуса
+     * @param {string} type - Тип: ready, rendering, done, error
+     * @param {string} text - Текст статуса
+     */
+    function setStatus(type, text) {
+      els.statusText.textContent = text;
+      els.statusDot.className = "status-dot";
+      if (type === "error") els.statusDot.classList.add("error");
+      else if (type === "rendering") els.statusDot.classList.add("rendering");
+    }
+
+    /** @function showPlaceholder @description Показывает плейсхолдер в превью */
+    function showPlaceholder() {
+      var t = I18N[state.lang];
+      els.previewContent.innerHTML =
+        "<div class=\"preview-placeholder\"><i class=\"fas fa-project-diagram\"></i><span>"
+        + escapeHtml(t.previewEmpty) + "</span></div>";
+    }
+
+    /** @function showLoading @description Показывает спиннер в превью */
+    function showLoading() {
+      var t = I18N[state.lang];
+      els.previewContent.innerHTML =
+        "<div class=\"preview-loading\"><div class=\"loading-spinner\"></div><span>"
+        + escapeHtml(t.loading) + "</span></div>";
+    }
+
+    /**
+     * @function showSvg
+     * @description Отображает SVG-диаграмму в области превью
+     * @param {string} svgText - SVG-разметка
+     */
+    function showSvg(svgText) {
+      els.previewContent.innerHTML = "";
+      var wrap = document.createElement("div");
+      wrap.style.transform = "scale(" + state.previewZoom + ")";
+      wrap.style.transformOrigin = "center center";
+      wrap.style.transition = "transform 0.2s ease";
+      wrap.innerHTML = svgText;
+      els.previewContent.appendChild(wrap);
+    }
+
+    /**
+     * @function showError
+     * @description Показывает ошибку в превью
+     * @param {string} msg - Текст ошибки
+     */
+    function showError(msg) {
+      els.previewContent.innerHTML =
+        "<div class=\"preview-error\"><i class=\"fas fa-exclamation-triangle\""
+        + " style=\"margin-right:8px\"></i>" + escapeHtml(msg) + "</div>";
+    }
+
+    // === Экспорт ===
+    /** @function downloadSvg @description Скачивает текущую диаграмму как SVG */
+    function downloadSvg() {
+      var t = I18N[state.lang];
+      if (!state.currentSvg) { showToast(t.downloadError, "error"); return; }
+      var blob = new Blob([state.currentSvg], {type:"image/svg+xml"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = "diagram-" + state.diagramType + ".svg";
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      showToast(t.svgDl, "success");
+    }
+
+    /** @function downloadPng @description Скачивает диаграмму как PNG (SVG -> Canvas -> PNG) */
+    function downloadPng() {
+      var t = I18N[state.lang];
+      if (!state.currentSvg) { showToast(t.downloadError, "error"); return; }
+      var svgBlob = new Blob([state.currentSvg], {type:"image/svg+xml;charset=utf-8"});
+      var svgUrl = URL.createObjectURL(svgBlob);
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement("canvas");
+        var sc = 2;
+        canvas.width = img.width * sc; canvas.height = img.height * sc;
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(sc, sc); ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(svgUrl);
+        canvas.toBlob(function(blob) {
+          var pUrl = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = pUrl; a.download = "diagram-" + state.diagramType + ".png";
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a); URL.revokeObjectURL(pUrl);
+          showToast(t.pngDl, "success");
+        }, "image/png");
+      };
+      img.onerror = function() {
+        URL.revokeObjectURL(svgUrl);
+        showToast(t.errorFetch + "PNG", "error");
+      };
+      img.src = svgUrl;
+    }
+
+    /** @function copySvg @description Копирует SVG в буфер обмена */
+    function copySvg() {
+      var t = I18N[state.lang];
+      if (!state.currentSvg) { showToast(t.downloadError, "error"); return; }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(state.currentSvg)
+          .then(function() { showToast(t.copiedSvg, "success"); })
+          .catch(function() { fallbackCopy(t); });
+      } else { fallbackCopy(t); }
+    }
+
+    /**
+     * @function fallbackCopy
+     * @description Фоллбек копирования для старых браузеров
+     * @param {Object} t - Объект переводов
+     */
+    function fallbackCopy(t) {
+      var ta = document.createElement("textarea");
+      ta.value = state.currentSvg;
+      ta.style.position = "fixed"; ta.style.left = "-9999px";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); showToast(t.copiedSvg, "success"); }
+      catch (e) { showToast("Copy failed", "error"); }
+      document.body.removeChild(ta);
+    }
+
+    // === Масштабирование ===
+    /**
+     * @function zoomPreview
+     * @description Изменяет масштаб превью
+     * @param {number} delta - Шаг изменения масштаба
+     */
+    function zoomPreview(delta) {
+      state.previewZoom = Math.max(0.25, Math.min(4, state.previewZoom + delta));
+      var wrap = els.previewContent.querySelector("div");
+      if (wrap) wrap.style.transform = "scale(" + state.previewZoom + ")";
+    }
+    /** @function resetZoom @description Сбрасывает масштаб превью */
+    function resetZoom() {
+      state.previewZoom = 1;
+      var wrap = els.previewContent.querySelector("div");
+      if (wrap) wrap.style.transform = "scale(1)";
+    }
+
+    // === Полноэкранный режим ===
+    /** @function openFullscreen @description Открывает полноэкранный превью */
+    function openFullscreen() {
+      if (!state.currentSvg) return;
+      els.fullscreenContent.innerHTML = state.currentSvg;
+      els.fullscreenOverlay.classList.add("active");
+    }
+    /** @function closeFullscreen @description Закрывает полноэкранный режим */
+    function closeFullscreen() {
+      els.fullscreenOverlay.classList.remove("active");
+    }
+
+    // === Модальное окно шаблонов ===
+    /** @function openTemplateModal @description Открывает библиотеку шаблонов */
+    function openTemplateModal() { renderTemplates(); els.templateModal.classList.add("active"); }
+    /** @function closeTemplateModal @description Закрывает модальное окно */
+    function closeTemplateModal() { els.templateModal.classList.remove("active"); }
+    /** @function renderTemplates @description Рендерит карточки шаблонов */
+    function renderTemplates() {
+      var html = "";
+      TEMPLATES.forEach(function(tpl, i) {
+        var title = state.lang === "ru" ? tpl.tRu : tpl.tEn;
+        var desc = state.lang === "ru" ? tpl.dRu : tpl.dEn;
+        html += "<div class=\"template-card\" data-tpl=\"" + i + "\">"
+          + "<div class=\"template-card-type\">" + escapeHtml(tpl.type) + "</div>"
+          + "<div class=\"template-card-title\">" + escapeHtml(title) + "</div>"
+          + "<div class=\"template-card-desc\">" + escapeHtml(desc) + "</div></div>";
+      });
+      els.templateGrid.innerHTML = html;
+      els.templateGrid.querySelectorAll(".template-card").forEach(function(card) {
+        card.addEventListener("click", function() {
+          applyTemplate(parseInt(card.getAttribute("data-tpl"), 10));
+        });
+      });
+    }
+    /**
+     * @function applyTemplate
+     * @description Применяет шаблон к редактору
+     * @param {number} idx - Индекс шаблона
+     */
+    function applyTemplate(idx) {
+      var tpl = TEMPLATES[idx];
+      if (!tpl) return;
+      els.diagramType.value = tpl.type;
+      state.diagramType = tpl.type;
+      els.editorTextarea.value = tpl.code;
+      updateLineNumbers(); updateSyntaxHints();
+      closeTemplateModal(); renderDiagram();
+    }
+
+    // === Нижняя панель ===
+    /**
+     * @function switchBottomTab
+     * @description Переключает вкладку нижней панели
+     * @param {string} tab - Имя вкладки: syntax или history
+     */
+    function switchBottomTab(tab) {
+      state.activeBottomTab = tab;
+      els.tabSyntax.classList.toggle("active", tab === "syntax");
+      els.tabHistory.classList.toggle("active", tab === "history");
+      els.syntaxPanel.style.display = tab === "syntax" ? "block" : "none";
+      els.historyPanel.style.display = tab === "history" ? "block" : "none";
+    }
+    /** @function toggleBottomPanel @description Сворачивает/разворачивает нижнюю панель */
+    function toggleBottomPanel() {
+      state.bottomCollapsed = !state.bottomCollapsed;
+      els.bottomPanel.classList.toggle("collapsed", state.bottomCollapsed);
+      var icon = els.bottomToggle.querySelector("i");
+      icon.className = state.bottomCollapsed ? "fas fa-chevron-up" : "fas fa-chevron-down";
+    }
+
+    // === Перетаскивание разделителя ===
+    /** @function initDivider @description Инициализирует ресайз панелей */
+    function initDivider() {
+      var dragging = false, mobile = false;
+      els.divider.addEventListener("pointerdown", function(e) {
+        dragging = true;
+        mobile = window.innerWidth <= 768;
+        els.divider.classList.add("dragging");
+        document.body.style.cursor = mobile ? "row-resize" : "col-resize";
+        document.body.style.userSelect = "none";
+        e.preventDefault();
+      });
+      document.addEventListener("pointermove", function(e) {
+        if (!dragging) return;
+        var area = els.editorPanel.parentElement;
+        var rect = area.getBoundingClientRect();
+        if (mobile) {
+          var pct = ((e.clientY - rect.top) / rect.height) * 100;
+          pct = Math.max(20, Math.min(80, pct));
+          els.editorPanel.style.height = pct + "%";
+          els.editorPanel.style.width = "100%";
+        } else {
+          var pctW = ((e.clientX - rect.left) / rect.width) * 100;
+          pctW = Math.max(20, Math.min(80, pctW));
+          els.editorPanel.style.width = pctW + "%";
+        }
+      });
+      document.addEventListener("pointerup", function() {
+        if (!dragging) return;
+        dragging = false;
+        els.divider.classList.remove("dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      });
+    }
+
+    // === Привязка событий ===
+    /** @function initEvents @description Привязывает все обработчики событий */
+    function initEvents() {
+      // Тема и язык
+      els.themeToggle.addEventListener("click", toggleTheme);
+      els.langToggle.addEventListener("click", toggleLang);
+
+      // Тип диаграммы
+      els.diagramType.addEventListener("change", function() {
+        state.diagramType = els.diagramType.value;
+        updateSyntaxHints();
+      });
+
+      // Авто-рендер при вводе с debounce
+      var autoRender = debounce(renderDiagram, 800);
+      els.editorTextarea.addEventListener("input", function() {
+        updateLineNumbers();
+        autoRender();
+      });
+
+      // Синхронизация скролла номеров строк
+      els.editorTextarea.addEventListener("scroll", syncScroll);
+
+      // Поддержка Tab и Ctrl+Enter в редакторе
+      els.editorTextarea.addEventListener("keydown", function(e) {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          var s = this.selectionStart, en = this.selectionEnd;
+          this.value = this.value.substring(0, s) + "  " + this.value.substring(en);
+          this.selectionStart = this.selectionEnd = s + 2;
+          updateLineNumbers();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          renderDiagram();
+        }
+      });
+
+      // Кнопки тулбара
+      els.btnRender.addEventListener("click", renderDiagram);
+      els.btnDownloadSvg.addEventListener("click", downloadSvg);
+      els.btnDownloadPng.addEventListener("click", downloadPng);
+      els.btnCopySvg.addEventListener("click", copySvg);
+
+      // Масштабирование
+      els.btnZoomIn.addEventListener("click", function() { zoomPreview(0.25); });
+      els.btnZoomOut.addEventListener("click", function() { zoomPreview(-0.25); });
+      els.btnZoomReset.addEventListener("click", resetZoom);
+
+      // Полноэкранный режим
+      els.btnFullscreen.addEventListener("click", openFullscreen);
+      els.btnExitFullscreen.addEventListener("click", closeFullscreen);
+
+      // Шаблоны
+      els.btnTemplates.addEventListener("click", openTemplateModal);
+      els.btnCloseModal.addEventListener("click", closeTemplateModal);
+      els.templateModal.addEventListener("click", function(e) {
+        if (e.target === els.templateModal) closeTemplateModal();
+      });
+
+      // Escape для закрытия оверлеев
+      document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") {
+          if (els.fullscreenOverlay.classList.contains("active")) closeFullscreen();
+          if (els.templateModal.classList.contains("active")) closeTemplateModal();
+        }
+      });
+
+      // Нижняя панель
+      els.tabSyntax.addEventListener("click", function() { switchBottomTab("syntax"); });
+      els.tabHistory.addEventListener("click", function() { switchBottomTab("history"); });
+      els.bottomToggle.addEventListener("click", toggleBottomPanel);
+
+      // Ctrl+колесо мыши для масштабирования превью
+      els.previewContent.addEventListener("wheel", function(e) {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          zoomPreview(e.deltaY > 0 ? -0.1 : 0.1);
+        }
+      }, {passive:false});
+    }
+
+    // === Точка входа ===
+    /** @function init @description Инициализирует все компоненты приложения */
+    function init() {
+      initElements();
+      initDiagramTypes();
+      loadTheme();
+      loadLang();
+      loadHistory();
+      renderHistory();
+      updateLineNumbers();
+      updateSyntaxHints();
+      initDivider();
+      initEvents();
+      // Загрузка первого шаблона по умолчанию
+      els.editorTextarea.value = TEMPLATES[0].code;
+      updateLineNumbers();
+    }
+
+    // Запуск при загрузке DOM
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1926 @@
+<!doctype html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Мульти-компилятор для запуска кода
+на 30+ языках программирования в браузере.
+
+Функциональные требования:
+1. Редактор кода с нумерацией строк
+2. Выпадающий список 30+ языков по категориям
+3. Кнопка запуска с индикатором выполнения
+4. Панель вывода: stdout, stderr, ошибки
+5. Шаблоны кода (Hello World + пример)
+6. Время выполнения
+7. Шаринг кода через base64 в hash URL
+8. Поле stdin
+9. История (localStorage, 15 записей)
+10. Тема, язык интерфейса, адаптивность
+11. Ctrl+Enter для запуска
+
+Технические требования:
+1. Vanilla JS, самодостаточный HTML
+2. API: Piston + Wandbox fallback
+3. Font Awesome 6.4.0 CDN
+4. localStorage для настроек и истории
+-->
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+      content="width=device-width, initial-scale=1.0" />
+    <title>Мульти-компилятор — AI Pages</title>
+    <link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+      /* ===== Светлая тема (по умолчанию в :root) ===== */
+      :root {
+        --primary: #f97316;
+        --primary-hover: #ea580c;
+        --primary-glow: rgba(249,115,22,0.25);
+        --primary-soft: rgba(249,115,22,0.08);
+        --bg: #f5f5f5;
+        --bg-sec: #ffffff;
+        --bg-editor: #fafafa;
+        --bg-output: #ffffff;
+        --bg-header: rgba(255,255,255,0.85);
+        --bg-ln: #f0f0f0;
+        --text: #1e1e1e;
+        --text2: #6b7280;
+        --text3: #9ca3af;
+        --border: #e5e7eb;
+        --success: #22c55e;
+        --error: #ef4444;
+        --warning: #eab308;
+        --sb-bg: #f0f0f0;
+        --sb-th: #c4c4c4;
+        --shadow: 0 1px 3px rgba(0,0,0,0.08);
+        --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+        --code-font: "Cascadia Code","Fira Code",
+          "JetBrains Mono","Consolas",monospace;
+        --ui-font: -apple-system,BlinkMacSystemFont,
+          "Segoe UI",Roboto,sans-serif;
+        --r: 8px; --r-lg: 12px; --tr: 0.2s ease;
+      }
+
+      /* ===== Тёмная тема ===== */
+      body.dark-theme {
+        --bg: #0f1117;
+        --bg-sec: #1a1d27;
+        --bg-editor: #1e2130;
+        --bg-output: #161822;
+        --bg-header: rgba(15,17,23,0.92);
+        --bg-ln: #161822;
+        --text: #e4e4e7;
+        --text2: #9ca3af;
+        --text3: #6b7280;
+        --border: #2d3040;
+        --sb-bg: #1a1d27;
+        --sb-th: #3d4055;
+        --shadow: 0 1px 3px rgba(0,0,0,0.3);
+        --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
+      }
+
+      /* ===== Сброс ===== */
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body {
+        font-family: var(--ui-font);
+        background: var(--bg); color: var(--text);
+        min-height: 100vh;
+        transition: background var(--tr), color var(--tr);
+        line-height: 1.5;
+      }
+
+      /* ===== Скроллбар ===== */
+      ::-webkit-scrollbar { width:8px; height:8px; }
+      ::-webkit-scrollbar-track { background:var(--sb-bg); }
+      ::-webkit-scrollbar-thumb {
+        background:var(--sb-th); border-radius:4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background:var(--text3);
+      }
+
+      /* ===== Хедер ===== */
+      .header {
+        position:sticky; top:0; z-index:100;
+        display:flex; align-items:center;
+        justify-content:space-between;
+        padding:10px 20px; gap:12px;
+        background:var(--bg-header);
+        backdrop-filter:blur(12px);
+        -webkit-backdrop-filter:blur(12px);
+        border-bottom:1px solid var(--border);
+      }
+      .header-left {
+        display:flex; align-items:center; gap:12px;
+      }
+      .header-logo {
+        display:flex; align-items:center; gap:8px;
+        text-decoration:none; color:var(--text);
+        font-weight:700; font-size:1.1rem;
+      }
+      .header-logo i { color:var(--primary); font-size:1.2rem; }
+      .header-controls {
+        display:flex; align-items:center; gap:8px;
+      }
+      .header-btn {
+        display:flex; align-items:center;
+        justify-content:center;
+        width:36px; height:36px;
+        border:1px solid var(--border);
+        border-radius:var(--r);
+        background:var(--bg-sec);
+        color:var(--text2); cursor:pointer;
+        font-size:0.85rem;
+        transition:all var(--tr);
+        text-decoration:none;
+      }
+      .header-btn:hover {
+        border-color:var(--primary);
+        color:var(--primary);
+        background:var(--primary-soft);
+      }
+      .header-btn span { font-weight:600; font-size:0.75rem; }
+
+      /* ===== Контейнер ===== */
+      .app-container {
+        display:flex; flex-direction:column;
+        height:calc(100vh - 57px); overflow:hidden;
+      }
+
+      /* ===== Тулбар ===== */
+      .toolbar {
+        display:flex; align-items:center; gap:10px;
+        padding:10px 20px;
+        background:var(--bg-sec);
+        border-bottom:1px solid var(--border);
+        flex-wrap:wrap;
+      }
+      .toolbar-group { display:flex; align-items:center; gap:8px; }
+      .toolbar-sep {
+        width:1px; height:24px;
+        background:var(--border); margin:0 4px;
+      }
+
+      /* ===== Селект языка ===== */
+      .lang-select-wrapper { position:relative; }
+      .lang-select {
+        appearance:none; -webkit-appearance:none;
+        padding:7px 32px 7px 12px;
+        border:1px solid var(--border);
+        border-radius:var(--r);
+        background:var(--bg-editor);
+        color:var(--text); font-family:var(--ui-font);
+        font-size:0.875rem; cursor:pointer;
+        min-width:200px;
+        transition:border-color var(--tr);
+      }
+      .lang-select:focus {
+        outline:none; border-color:var(--primary);
+        box-shadow:0 0 0 3px var(--primary-glow);
+      }
+      .lang-select-arrow {
+        position:absolute; right:10px; top:50%;
+        transform:translateY(-50%);
+        pointer-events:none; color:var(--text3);
+        font-size:0.7rem;
+      }
+      .lang-select optgroup {
+        font-weight:700; font-style:normal;
+        color:var(--text); background:var(--bg-sec);
+      }
+      .lang-select option {
+        font-weight:400; padding:4px;
+        color:var(--text); background:var(--bg-sec);
+      }
+
+      /* ===== Кнопка запуска ===== */
+      .run-btn {
+        display:flex; align-items:center; gap:8px;
+        padding:7px 20px; border:none;
+        border-radius:var(--r);
+        background:var(--primary); color:#fff;
+        font-family:var(--ui-font);
+        font-size:0.875rem; font-weight:600;
+        cursor:pointer; transition:all var(--tr);
+        white-space:nowrap;
+      }
+      .run-btn:hover:not(:disabled) {
+        background:var(--primary-hover);
+        box-shadow:0 0 16px var(--primary-glow);
+      }
+      .run-btn:disabled { opacity:0.6; cursor:not-allowed; }
+      .run-btn .spinner {
+        display:none; width:14px; height:14px;
+        border:2px solid rgba(255,255,255,0.3);
+        border-top-color:#fff; border-radius:50%;
+        animation:spin 0.6s linear infinite;
+      }
+      .run-btn.running .spinner { display:inline-block; }
+      .run-btn.running .play-icon { display:none; }
+      @keyframes spin { to { transform:rotate(360deg); } }
+
+      /* ===== Кнопки тулбара ===== */
+      .tool-btn {
+        display:flex; align-items:center;
+        justify-content:center; gap:6px;
+        padding:7px 12px;
+        border:1px solid var(--border);
+        border-radius:var(--r);
+        background:var(--bg-editor);
+        color:var(--text2); font-family:var(--ui-font);
+        font-size:0.8rem; cursor:pointer;
+        transition:all var(--tr); white-space:nowrap;
+      }
+      .tool-btn:hover { border-color:var(--primary); color:var(--primary); }
+      .tool-btn i { font-size:0.85rem; }
+
+      /* ===== Рабочая область ===== */
+      .workspace { display:flex; flex:1; overflow:hidden; }
+      .editor-panel {
+        flex:1; display:flex; flex-direction:column;
+        min-width:0; border-right:1px solid var(--border);
+      }
+      .editor-container {
+        flex:1; display:flex; overflow:hidden; position:relative;
+      }
+      .line-numbers {
+        width:50px; min-width:50px;
+        padding:12px 8px 12px 4px;
+        background:var(--bg-ln); color:var(--text3);
+        font-family:var(--code-font); font-size:0.85rem;
+        line-height:1.5; text-align:right;
+        overflow:hidden; user-select:none;
+        border-right:1px solid var(--border);
+      }
+      .line-numbers div { height:1.5em; }
+      .code-editor {
+        flex:1; width:100%; padding:12px; border:none;
+        background:var(--bg-editor); color:var(--text);
+        font-family:var(--code-font); font-size:0.85rem;
+        line-height:1.5; resize:none; outline:none;
+        tab-size:4; -moz-tab-size:4;
+        white-space:pre; overflow:auto;
+      }
+      .code-editor::placeholder { color:var(--text3); }
+
+      /* ===== Stdin ===== */
+      .stdin-panel {
+        border-top:1px solid var(--border);
+        background:var(--bg-sec);
+      }
+      .stdin-header {
+        display:flex; align-items:center; gap:8px;
+        padding:6px 12px; font-size:0.75rem;
+        font-weight:600; color:var(--text3);
+        text-transform:uppercase; letter-spacing:0.05em;
+        cursor:pointer; user-select:none;
+        transition:color var(--tr);
+      }
+      .stdin-header:hover { color:var(--primary); }
+      .stdin-header i {
+        font-size:0.65rem; transition:transform var(--tr);
+      }
+      .stdin-header.expanded i { transform:rotate(90deg); }
+      .stdin-area { display:none; padding:0 12px 8px; }
+      .stdin-area.visible { display:block; }
+      .stdin-input {
+        width:100%; padding:8px 10px;
+        border:1px solid var(--border);
+        border-radius:var(--r);
+        background:var(--bg-editor); color:var(--text);
+        font-family:var(--code-font); font-size:0.8rem;
+        line-height:1.4; resize:vertical; outline:none;
+        min-height:40px; max-height:120px;
+      }
+      .stdin-input:focus {
+        border-color:var(--primary);
+        box-shadow:0 0 0 3px var(--primary-glow);
+      }
+
+      /* ===== Панель вывода ===== */
+      .output-panel {
+        flex:1; display:flex; flex-direction:column; min-width:0;
+      }
+      .output-header {
+        display:flex; align-items:center;
+        justify-content:space-between;
+        padding:8px 16px; background:var(--bg-sec);
+        border-bottom:1px solid var(--border); min-height:40px;
+      }
+      .output-tabs { display:flex; gap:4px; }
+      .output-tab {
+        padding:4px 12px; border:none; border-radius:6px;
+        background:transparent; color:var(--text3);
+        font-family:var(--ui-font); font-size:0.8rem;
+        font-weight:500; cursor:pointer;
+        transition:all var(--tr);
+      }
+      .output-tab.active { background:var(--primary); color:#fff; }
+      .output-tab:hover:not(.active) {
+        color:var(--text); background:var(--bg-editor);
+      }
+      .output-meta {
+        display:flex; align-items:center; gap:12px;
+        font-size:0.75rem; color:var(--text3);
+      }
+      .status-dot {
+        width:8px; height:8px; border-radius:50%;
+        display:inline-block;
+      }
+      .status-success {
+        background:var(--success);
+        box-shadow:0 0 6px var(--success);
+      }
+      .status-error {
+        background:var(--error);
+        box-shadow:0 0 6px var(--error);
+      }
+      .status-idle { background:var(--text3); }
+      .output-content {
+        flex:1; overflow:auto; padding:12px 16px;
+        background:var(--bg-output);
+        font-family:var(--code-font); font-size:0.85rem;
+        line-height:1.6; white-space:pre-wrap;
+        word-break:break-word;
+      }
+      .output-content .placeholder {
+        color:var(--text3); font-style:italic;
+        font-family:var(--ui-font);
+      }
+      .output-content .error-text { color:var(--error); }
+
+      /* ===== Модальное окно истории ===== */
+      .history-overlay {
+        display:none; position:fixed; inset:0;
+        background:rgba(0,0,0,0.5); z-index:200;
+        backdrop-filter:blur(4px);
+        -webkit-backdrop-filter:blur(4px);
+      }
+      .history-overlay.visible {
+        display:flex; align-items:center; justify-content:center;
+      }
+      .history-modal {
+        width:90%; max-width:600px; max-height:80vh;
+        background:var(--bg-sec);
+        border:1px solid var(--border);
+        border-radius:var(--r-lg); box-shadow:var(--shadow-lg);
+        display:flex; flex-direction:column; overflow:hidden;
+      }
+      .hm-header {
+        display:flex; align-items:center;
+        justify-content:space-between;
+        padding:16px 20px;
+        border-bottom:1px solid var(--border);
+      }
+      .hm-header h3 {
+        font-size:1rem; font-weight:700;
+        display:flex; align-items:center; gap:8px;
+      }
+      .hm-header h3 i { color:var(--primary); }
+      .hm-close {
+        display:flex; align-items:center; justify-content:center;
+        width:32px; height:32px; border:none;
+        border-radius:var(--r); background:transparent;
+        color:var(--text3); cursor:pointer; font-size:1rem;
+        transition:all var(--tr);
+      }
+      .hm-close:hover { color:var(--error); background:var(--bg-editor); }
+      .history-list { flex:1; overflow-y:auto; padding:8px; }
+      .hi {
+        display:flex; align-items:center; gap:12px;
+        padding:10px 12px; border-radius:var(--r);
+        cursor:pointer; transition:all var(--tr);
+        border:1px solid transparent;
+      }
+      .hi:hover { background:var(--bg-editor); border-color:var(--border); }
+      .hi-lang {
+        min-width:80px; padding:2px 8px; border-radius:4px;
+        background:var(--primary-glow); color:var(--primary);
+        font-size:0.75rem; font-weight:600;
+        text-align:center; white-space:nowrap;
+      }
+      .hi-info { flex:1; min-width:0; }
+      .hi-code {
+        font-family:var(--code-font); font-size:0.75rem;
+        color:var(--text2); white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis;
+      }
+      .hi-date { font-size:0.7rem; color:var(--text3); margin-top:2px; }
+      .hi-del {
+        display:flex; align-items:center; justify-content:center;
+        width:28px; height:28px; border:none; border-radius:4px;
+        background:transparent; color:var(--text3);
+        cursor:pointer; font-size:0.75rem;
+        transition:all var(--tr); flex-shrink:0;
+      }
+      .hi-del:hover { color:var(--error); background:rgba(239,68,68,0.1); }
+      .history-empty {
+        text-align:center; padding:40px 20px;
+        color:var(--text3); font-size:0.9rem;
+      }
+      .history-empty i {
+        font-size:2rem; margin-bottom:12px;
+        display:block; opacity:0.5;
+      }
+      .hm-footer {
+        display:flex; justify-content:flex-end;
+        padding:12px 20px;
+        border-top:1px solid var(--border); gap:8px;
+      }
+      .hm-clear-btn {
+        padding:6px 14px;
+        border:1px solid var(--error);
+        border-radius:var(--r); background:transparent;
+        color:var(--error); font-size:0.8rem;
+        cursor:pointer; transition:all var(--tr);
+      }
+      .hm-clear-btn:hover { background:var(--error); color:#fff; }
+
+      /* ===== Статусбар ===== */
+      .statusbar {
+        display:flex; align-items:center;
+        justify-content:space-between;
+        padding:4px 16px; background:var(--bg-sec);
+        border-top:1px solid var(--border);
+        font-size:0.7rem; color:var(--text3);
+        min-height:28px; gap:16px; flex-wrap:wrap;
+      }
+      .statusbar-left, .statusbar-right {
+        display:flex; align-items:center; gap:16px;
+      }
+      .sb-item { display:flex; align-items:center; gap:4px; }
+      .sb-item i { font-size:0.65rem; }
+
+      /* ===== Тосты ===== */
+      .toast-container {
+        position:fixed; bottom:40px; right:20px;
+        z-index:300; display:flex;
+        flex-direction:column; gap:8px;
+      }
+      .toast {
+        padding:10px 16px; border-radius:var(--r);
+        background:var(--bg-sec); color:var(--text);
+        border:1px solid var(--border);
+        box-shadow:var(--shadow-lg); font-size:0.85rem;
+        display:flex; align-items:center; gap:8px;
+        animation:toastIn 0.3s ease; max-width:360px;
+      }
+      .toast-success { border-left:3px solid var(--success); }
+      .toast-error { border-left:3px solid var(--error); }
+      .toast-info { border-left:3px solid var(--primary); }
+      .toast-out { animation:toastOut 0.3s ease forwards; }
+      @keyframes toastIn {
+        from { opacity:0; transform:translateX(40px); }
+        to { opacity:1; transform:translateX(0); }
+      }
+      @keyframes toastOut {
+        to { opacity:0; transform:translateX(40px); }
+      }
+
+      /* ===== Адаптивность ===== */
+      @media (max-width:900px) {
+        .workspace { flex-direction:column; }
+        .editor-panel {
+          border-right:none;
+          border-bottom:1px solid var(--border);
+          min-height:40vh;
+        }
+        .output-panel { min-height:30vh; }
+        .toolbar { padding:8px 12px; gap:6px; }
+        .lang-select { min-width:150px; }
+        .tool-btn-text { display:none; }
+        .header { padding:8px 12px; }
+        .header-logo span { font-size:0.95rem; }
+      }
+      @media (max-width:600px) {
+        .toolbar { padding:8px 10px; gap:4px; }
+        .lang-select { min-width:120px; font-size:0.8rem; }
+        .run-btn { padding:7px 14px; font-size:0.8rem; }
+        .tool-btn { padding:7px 8px; }
+        .statusbar { font-size:0.65rem; padding:4px 10px; }
+        .output-content { font-size:0.8rem; padding:10px 12px; }
+        .header-logo span { display:none; }
+      }
+    </style>
+  </head>
+  <body class="dark-theme">
+
+    <!-- Хедер -->
+    <header class="header">
+      <div class="header-left">
+        <a href="index.html" class="header-btn"
+          id="back-btn" title="На главную">
+          <i class="fas fa-arrow-left"></i>
+        </a>
+        <a href="#" class="header-logo"
+          onclick="return false;">
+          <i class="fas fa-terminal"></i>
+          <span data-i18n="appTitle">Мульти-компилятор</span>
+        </a>
+      </div>
+      <div class="header-controls">
+        <button class="header-btn" id="langToggle"
+          title="Switch language">
+          <span id="langLabel">EN</span>
+        </button>
+        <button class="header-btn" id="themeToggle"
+          title="Toggle theme">
+          <i class="fas fa-moon" id="themeIcon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Основной контейнер -->
+    <div class="app-container">
+      <!-- Тулбар -->
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <div class="lang-select-wrapper">
+            <select id="languageSelect" class="lang-select"
+              aria-label="Выберите язык"></select>
+            <i class="fas fa-chevron-down lang-select-arrow"></i>
+          </div>
+        </div>
+        <div class="toolbar-group">
+          <button class="run-btn" id="runBtn" title="Ctrl+Enter">
+            <i class="fas fa-play play-icon"></i>
+            <div class="spinner"></div>
+            <span data-i18n="run">Запуск</span>
+          </button>
+        </div>
+        <div class="toolbar-sep"></div>
+        <div class="toolbar-group">
+          <button class="tool-btn" id="templateBtn" title="Шаблон">
+            <i class="fas fa-file-code"></i>
+            <span class="tool-btn-text" data-i18n="template">Шаблон</span>
+          </button>
+          <button class="tool-btn" id="shareBtn" title="Поделиться">
+            <i class="fas fa-share-nodes"></i>
+            <span class="tool-btn-text" data-i18n="share">Поделиться</span>
+          </button>
+          <button class="tool-btn" id="historyBtn" title="История">
+            <i class="fas fa-clock-rotate-left"></i>
+            <span class="tool-btn-text" data-i18n="history">История</span>
+          </button>
+          <button class="tool-btn" id="clearBtn" title="Очистить">
+            <i class="fas fa-eraser"></i>
+            <span class="tool-btn-text" data-i18n="clear">Очистить</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Рабочая область -->
+      <div class="workspace">
+        <!-- Редактор -->
+        <div class="editor-panel">
+          <div class="editor-container">
+            <div class="line-numbers" id="lineNumbers"><div>1</div></div>
+            <textarea id="codeEditor" class="code-editor"
+              spellcheck="false" autocomplete="off" autocorrect="off"
+              autocapitalize="off" data-gramm="false"
+              placeholder="// Введите код здесь..."></textarea>
+          </div>
+          <div class="stdin-panel">
+            <div class="stdin-header" id="stdinToggle">
+              <i class="fas fa-chevron-right"></i>
+              <span data-i18n="stdin">Входные данные (stdin)</span>
+            </div>
+            <div class="stdin-area" id="stdinArea">
+              <textarea id="stdinInput" class="stdin-input"
+                placeholder="Данные для ввода..." rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Вывод -->
+        <div class="output-panel">
+          <div class="output-header">
+            <div class="output-tabs">
+              <button class="output-tab active" data-tab="output"
+                data-i18n="tabOutput">Вывод</button>
+              <button class="output-tab" data-tab="errors"
+                data-i18n="tabErrors">Ошибки</button>
+            </div>
+            <div class="output-meta">
+              <span class="status-dot status-idle" id="statusDot"></span>
+              <span id="execTime"></span>
+            </div>
+          </div>
+          <div class="output-content" id="outputContent">
+            <span class="placeholder" data-i18n="outputPlaceholder">
+              Нажмите Запуск или Ctrl+Enter для выполнения кода</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Статусбар -->
+      <div class="statusbar">
+        <div class="statusbar-left">
+          <div class="sb-item">
+            <i class="fas fa-code"></i>
+            <span id="statusLang">Python</span>
+          </div>
+          <div class="sb-item">
+            <i class="fas fa-server"></i>
+            <span id="statusApi">Piston API</span>
+          </div>
+        </div>
+        <div class="statusbar-right">
+          <div class="sb-item">
+            <i class="fas fa-text-width"></i>
+            <span id="statusChars">0</span>
+            <span data-i18n="chars">символов</span>
+          </div>
+          <div class="sb-item">
+            <i class="fas fa-bars"></i>
+            <span id="statusLines">1</span>
+            <span data-i18n="lines">строк</span>
+          </div>
+          <div class="sb-item">
+            <span data-i18n="shortcut">Ctrl+Enter — запуск</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно истории -->
+    <div class="history-overlay" id="historyOverlay">
+      <div class="history-modal">
+        <div class="hm-header">
+          <h3>
+            <i class="fas fa-clock-rotate-left"></i>
+            <span data-i18n="historyTitle">История запусков</span>
+          </h3>
+          <button class="hm-close" id="historyCloseBtn">
+            <i class="fas fa-xmark"></i>
+          </button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+        <div class="hm-footer">
+          <button class="hm-clear-btn" id="historyClearBtn">
+            <i class="fas fa-trash"></i>
+            <span data-i18n="clearHistory">Очистить историю</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Тосты -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+      "use strict";
+
+      /* ================================================
+       * Конфигурация языков программирования
+       * ================================================ */
+
+      /**
+       * @function buildLangs
+       * @description Создание массива языков
+       * с шаблонами кода (Hello World + пример)
+       * @returns {Object} категории с языками
+       */
+      function buildLangs() {
+        /* Вспомогательная функция для компактности */
+        const L = (label, value, version, code) => ({
+          label, value, version, template: code
+        });
+
+        return {
+          popular: {
+            labelRu: "Популярные", labelEn: "Popular",
+            langs: [
+              L("Python", "python", "3.10.0",
+                "# Python — Hello World + пример\n"
+                + "import sys\n\n"
+                + "def fibonacci(n):\n"
+                + "    \"\"\"Возвращает n-е число Фибоначчи\"\"\"\n"
+                + "    a, b = 0, 1\n"
+                + "    for _ in range(n):\n"
+                + "        a, b = b, a + b\n"
+                + "    return a\n\n"
+                + "print(\"Привет, мир!\")\n"
+                + "print(f\"Python {sys.version}\")\n"
+                + "for i in range(10):\n"
+                + "    print(f\"fib({i}) = {fibonacci(i)}\")\n"),
+              L("JavaScript", "javascript", "18.15.0",
+                "// JavaScript — Hello World + пример\n\n"
+                + "function fibonacci(n) {\n"
+                + "  if (n <= 1) return n;\n"
+                + "  let a = 0, b = 1;\n"
+                + "  for (let i = 2; i <= n; i++) {\n"
+                + "    [a, b] = [b, a + b];\n"
+                + "  }\n  return b;\n}\n\n"
+                + "console.log(\"Привет, мир!\");\n"
+                + "console.log(`Node.js ${process.version}`);\n\n"
+                + "for (let i = 0; i < 10; i++) {\n"
+                + "  console.log(`fib(${i}) = ${fibonacci(i)}`);\n}\n"),
+              L("TypeScript", "typescript", "5.0.3",
+                "// TypeScript — Hello World + пример\n\n"
+                + "function greet(name: string): string {\n"
+                + "  return `Привет, ${name}!`;\n}\n\n"
+                + "interface Point { x: number; y: number; }\n\n"
+                + "function distance(a: Point, b: Point): number {\n"
+                + "  return Math.sqrt((b.x-a.x)**2 + (b.y-a.y)**2);\n}\n\n"
+                + "console.log(greet(\"мир\"));\n"
+                + "const p1: Point = {x:0, y:0};\n"
+                + "const p2: Point = {x:3, y:4};\n"
+                + "console.log(`Расстояние: ${distance(p1, p2)}`);\n"),
+              L("C", "c", "10.2.0",
+                "// C — Hello World + пример\n"
+                + "#include <stdio.h>\n\n"
+                + "int factorial(int n) {\n"
+                + "  if (n <= 1) return 1;\n"
+                + "  return n * factorial(n - 1);\n}\n\n"
+                + "int main() {\n"
+                + "  printf(\"Привет, мир!\\n\");\n"
+                + "  for (int i = 0; i < 10; i++)\n"
+                + "    printf(\"%d! = %d\\n\", i, factorial(i));\n"
+                + "  return 0;\n}\n"),
+              L("C++", "c++", "10.2.0",
+                "// C++ — Hello World + пример\n"
+                + "#include <iostream>\n#include <vector>\n"
+                + "#include <algorithm>\nusing namespace std;\n\n"
+                + "int main() {\n"
+                + "  cout << \"Привет, мир!\" << endl;\n"
+                + "  vector<int> nums = {5,3,8,1,9,2,7};\n"
+                + "  sort(nums.begin(), nums.end());\n"
+                + "  cout << \"Отсортировано: \";\n"
+                + "  for (int n : nums) cout << n << \" \";\n"
+                + "  cout << endl;\n  return 0;\n}\n"),
+              L("Java", "java", "15.0.2",
+                "// Java — Hello World + пример\n"
+                + "import java.util.Arrays;\n\n"
+                + "public class Main {\n"
+                + "  public static void main(String[] args) {\n"
+                + "    System.out.println(\"Привет, мир!\");\n"
+                + "    int[] arr = {5, 2, 8, 1, 9};\n"
+                + "    Arrays.sort(arr);\n"
+                + "    System.out.println(\"Сортировка: \"\n"
+                + "      + Arrays.toString(arr));\n"
+                + "  }\n}\n"),
+              L("C#", "csharp", "6.12.0",
+                "// C# — Hello World + пример\n"
+                + "using System;\nusing System.Linq;\n\n"
+                + "class Program {\n"
+                + "  static void Main() {\n"
+                + "    Console.WriteLine(\"Привет, мир!\");\n"
+                + "    var nums = new[]{5,3,8,1,9,2,7};\n"
+                + "    var sorted = nums.OrderBy(x=>x).ToArray();\n"
+                + "    Console.WriteLine(\"Сортировка: \"\n"
+                + "      + string.Join(\", \", sorted));\n"
+                + "  }\n}\n"),
+              L("Go", "go", "1.16.2",
+                "// Go — Hello World + пример\n"
+                + "package main\n\nimport (\n  \"fmt\"\n  \"sort\"\n)\n\n"
+                + "func main() {\n"
+                + "  fmt.Println(\"Привет, мир!\")\n"
+                + "  nums := []int{5,3,8,1,9}\n"
+                + "  sort.Ints(nums)\n"
+                + "  fmt.Println(\"Сортировка:\", nums)\n}\n"),
+              L("Rust", "rust", "1.68.2",
+                "// Rust — Hello World + пример\n\n"
+                + "fn fibonacci(n: u32) -> u64 {\n"
+                + "  let (mut a, mut b) = (0u64, 1u64);\n"
+                + "  for _ in 0..n { let t = a+b; a = b; b = t; }\n"
+                + "  a\n}\n\n"
+                + "fn main() {\n"
+                + "  println!(\"Привет, мир!\");\n"
+                + "  for i in 0..10 {\n"
+                + "    println!(\"fib({}) = {}\", i, fibonacci(i));\n"
+                + "  }\n}\n"),
+              L("Ruby", "ruby", "3.0.1",
+                "# Ruby — Hello World + пример\n\n"
+                + "def fibonacci(n)\n"
+                + "  return n if n <= 1\n"
+                + "  a, b = 0, 1\n"
+                + "  n.times { a, b = b, a + b }\n  a\nend\n\n"
+                + "puts \"Привет, мир!\"\n"
+                + "puts \"Ruby #{RUBY_VERSION}\"\n"
+                + "(0..9).each do |i|\n"
+                + "  puts \"fib(#{i}) = #{fibonacci(i)}\"\nend\n")
+            ]
+          },
+          scripting: {
+            labelRu: "Скриптовые", labelEn: "Scripting",
+            langs: [
+              L("PHP", "php", "8.2.3",
+                "<?php\n// PHP — Hello World + пример\n\n"
+                + "function factorial(int $n): int {\n"
+                + "  return $n <= 1 ? 1 : $n * factorial($n-1);\n}\n\n"
+                + "echo \"Привет, мир!\\n\";\n"
+                + "echo \"PHP \" . PHP_VERSION . \"\\n\";\n"
+                + "for ($i = 0; $i < 10; $i++)\n"
+                + "  echo \"{$i}! = \" . factorial($i) . \"\\n\";\n?>\n"),
+              L("Perl", "perl", "5.36.0",
+                "#!/usr/bin/perl\n# Perl — Hello World\n"
+                + "use strict; use warnings;\n\n"
+                + "print \"Привет, мир!\\n\";\n"
+                + "my @arr = (5,3,8,1,9,2,7);\n"
+                + "my @sorted = sort { $a <=> $b } @arr;\n"
+                + "print \"Сортировка: \" . join(\", \", @sorted) . \"\\n\";\n"),
+              L("Lua", "lua", "5.4.4",
+                "-- Lua — Hello World + пример\n\n"
+                + "function factorial(n)\n"
+                + "  if n <= 1 then return 1 end\n"
+                + "  return n * factorial(n - 1)\nend\n\n"
+                + "print(\"Привет, мир!\")\n"
+                + "print(\"Lua \" .. _VERSION)\n"
+                + "for i = 0, 9 do\n"
+                + "  print(i .. \"! = \" .. factorial(i))\nend\n"),
+              L("Bash", "bash", "5.2.0",
+                "#!/bin/bash\n# Bash — Hello World\n\n"
+                + "echo \"Привет, мир!\"\necho \"Bash: $BASH_VERSION\"\n\n"
+                + "fruits=(\"яблоко\" \"банан\" \"вишня\")\n"
+                + "for fruit in \"${fruits[@]}\"; do\n"
+                + "  echo \"Фрукт: $fruit\"\ndone\n\n"
+                + "factorial() {\n  local n=$1\n"
+                + "  if [ $n -le 1 ]; then echo 1\n"
+                + "  else echo $((n * $(factorial $((n-1)))))\n  fi\n}\n\n"
+                + "for i in $(seq 0 9); do\n"
+                + "  echo \"$i! = $(factorial $i)\"\ndone\n"),
+              L("PowerShell", "powershell", "7.1.4",
+                "# PowerShell — Hello World\n\n"
+                + "Write-Output \"Привет, мир!\"\n"
+                + "$numbers = @(5,3,8,1,9,2,7)\n"
+                + "$sorted = $numbers | Sort-Object\n"
+                + "Write-Output (\"Сортировка: \" + ($sorted -join ', '))\n")
+            ]
+          },
+          functional: {
+            labelRu: "Функциональные", labelEn: "Functional",
+            langs: [
+              L("Haskell", "haskell", "9.0.1",
+                "-- Haskell — Hello World\n\n"
+                + "fibonacci :: Int -> Int\nfibonacci 0 = 0\nfibonacci 1 = 1\n"
+                + "fibonacci n = fibonacci (n-1) + fibonacci (n-2)\n\n"
+                + "main :: IO ()\nmain = do\n"
+                + "  putStrLn \"Привет, мир!\"\n"
+                + "  mapM_ (\\i -> putStrLn $\n"
+                + "    \"fib(\" ++ show i ++ \") = \" ++ show (fibonacci i)\n"
+                + "    ) [0..9]\n"),
+              L("Elixir", "elixir", "1.12.2",
+                "# Elixir — Hello World\n\n"
+                + "defmodule Fibonacci do\n"
+                + "  def calc(0), do: 0\n  def calc(1), do: 1\n"
+                + "  def calc(n), do: calc(n-1) + calc(n-2)\nend\n\n"
+                + "IO.puts(\"Привет, мир!\")\n"
+                + "Enum.each(0..9, fn i ->\n"
+                + "  IO.puts(\"fib(#{i}) = #{Fibonacci.calc(i)}\")\nend)\n"),
+              L("Erlang", "erlang", "24.1.2",
+                "% Erlang — Hello World\n-module(main).\n-export([main/0]).\n\n"
+                + "fib(0) -> 0;\nfib(1) -> 1;\n"
+                + "fib(N) -> fib(N-1) + fib(N-2).\n\n"
+                + "main() ->\n  io:format(\"Привет, мир!~n\"),\n"
+                + "  lists:foreach(fun(I) ->\n"
+                + "    io:format(\"fib(~p) = ~p~n\", [I, fib(I)])\n"
+                + "  end, lists:seq(0, 9)).\n"),
+              L("OCaml", "ocaml", "4.12.0",
+                "(* OCaml — Hello World *)\n\n"
+                + "let rec fibonacci n =\n"
+                + "  if n <= 1 then n\n"
+                + "  else fibonacci (n-1) + fibonacci (n-2)\n\n"
+                + "let () =\n  print_endline \"Привет, мир!\";\n"
+                + "  for i = 0 to 9 do\n"
+                + "    Printf.printf \"fib(%d) = %d\\n\" i (fibonacci i)\n"
+                + "  done\n"),
+              L("F#", "fsharp", "5.0.201",
+                "// F# — Hello World\n\n"
+                + "let rec fibonacci n =\n"
+                + "  match n with\n  | 0 -> 0 | 1 -> 1\n"
+                + "  | _ -> fibonacci (n-1) + fibonacci (n-2)\n\n"
+                + "printfn \"Привет, мир!\"\n"
+                + "for i in 0..9 do\n"
+                + "  printfn \"fib(%d) = %d\" i (fibonacci i)\n"),
+              L("Clojure", "clojure", "1.10.3",
+                ";; Clojure — Hello World\n\n"
+                + "(defn fibonacci [n]\n"
+                + "  (loop [a 0 b 1 i 0]\n"
+                + "    (if (= i n) a (recur b (+ a b) (inc i)))))\n\n"
+                + "(println \"Привет, мир!\")\n"
+                + "(doseq [i (range 10)]\n"
+                + "  (println (str \"fib(\" i \") = \" (fibonacci i))))\n"),
+              L("Racket", "racket", "8.3.0",
+                "#lang racket\n;; Racket — Hello World\n\n"
+                + "(define (fibonacci n)\n"
+                + "  (cond [(= n 0) 0] [(= n 1) 1]\n"
+                + "    [else (+ (fibonacci (- n 1))\n"
+                + "             (fibonacci (- n 2)))]))\n\n"
+                + "(displayln \"Привет, мир!\")\n"
+                + "(for ([i (in-range 10)])\n"
+                + "  (printf \"fib(~a) = ~a~n\" i (fibonacci i)))\n")
+            ]
+          },
+          compiled: {
+            labelRu: "Компилируемые", labelEn: "Compiled",
+            langs: [
+              L("Swift", "swift", "5.3.3",
+                "// Swift — Hello World\n\n"
+                + "func fibonacci(_ n: Int) -> Int {\n"
+                + "  guard n > 1 else { return n }\n"
+                + "  var a = 0, b = 1\n"
+                + "  for _ in 2...n { let t = a+b; a = b; b = t }\n"
+                + "  return b\n}\n\n"
+                + "print(\"Привет, мир!\")\n"
+                + "for i in 0..<10 {\n"
+                + "  print(\"fib(\\(i)) = \\(fibonacci(i))\")\n}\n"),
+              L("Kotlin", "kotlin", "1.8.20",
+                "// Kotlin — Hello World\n\n"
+                + "fun fibonacci(n: Int): Long {\n"
+                + "  var a = 0L; var b = 1L\n"
+                + "  repeat(n) { val t = a+b; a = b; b = t }\n"
+                + "  return a\n}\n\n"
+                + "fun main() {\n  println(\"Привет, мир!\")\n"
+                + "  for (i in 0 until 10)\n"
+                + "    println(\"fib($i) = ${fibonacci(i)}\")\n}\n"),
+              L("Scala", "scala", "3.2.2",
+                "// Scala — Hello World\n\n"
+                + "object Main extends App {\n"
+                + "  def fibonacci(n: Int): Long = {\n"
+                + "    var a = 0L; var b = 1L\n"
+                + "    for (_ <- 0 until n) { val t = a+b; a = b; b = t }\n"
+                + "    a\n  }\n\n"
+                + "  println(\"Привет, мир!\")\n"
+                + "  for (i <- 0 until 10)\n"
+                + "    println(s\"fib($i) = ${fibonacci(i)}\")\n}\n"),
+              L("D", "d", "2.101.0",
+                "// D — Hello World\nimport std.stdio;\n\n"
+                + "long fibonacci(int n) {\n"
+                + "  long a = 0, b = 1;\n"
+                + "  foreach (_; 0 .. n) { auto t = a+b; a = b; b = t; }\n"
+                + "  return a;\n}\n\n"
+                + "void main() {\n  writeln(\"Привет, мир!\");\n"
+                + "  foreach (i; 0 .. 10)\n"
+                + "    writefln(\"fib(%d) = %d\", i, fibonacci(i));\n}\n"),
+              L("Nim", "nim", "1.6.2",
+                "# Nim — Hello World\n\n"
+                + "proc fibonacci(n: int): int =\n"
+                + "  var a = 0; var b = 1\n"
+                + "  for _ in 0..<n:\n    let t = a+b; a = b; b = t\n"
+                + "  return a\n\n"
+                + "echo \"Привет, мир!\"\n"
+                + "for i in 0..9:\n  echo \"fib(\", i, \") = \", fibonacci(i)\n"),
+              L("Crystal", "crystal", "1.6.2",
+                "# Crystal — Hello World\n\n"
+                + "def fibonacci(n : Int32) : Int64\n"
+                + "  a, b = 0_i64, 1_i64\n"
+                + "  n.times { a, b = b, a + b }\n  a\nend\n\n"
+                + "puts \"Привет, мир!\"\n"
+                + "(0..9).each do |i|\n"
+                + "  puts \"fib(#{i}) = #{fibonacci(i)}\"\nend\n"),
+              L("Zig", "zig", "0.10.0",
+                "// Zig — Hello World\n"
+                + "const std = @import(\"std\");\n\n"
+                + "fn fibonacci(n: u32) u64 {\n"
+                + "  var a: u64 = 0; var b: u64 = 1; var i: u32 = 0;\n"
+                + "  while (i < n) : (i += 1) { const t = a+b; a = b; b = t; }\n"
+                + "  return a;\n}\n\n"
+                + "pub fn main() !void {\n"
+                + "  const out = std.io.getStdOut().writer();\n"
+                + "  try out.print(\"Привет, мир!\\n\", .{});\n"
+                + "  var i: u32 = 0;\n"
+                + "  while (i < 10) : (i += 1)\n"
+                + "    try out.print(\"fib({}) = {}\\n\", .{i, fibonacci(i)});\n}\n")
+            ]
+          },
+          other: {
+            labelRu: "Прочие", labelEn: "Other",
+            langs: [
+              L("R", "r", "4.1.1",
+                "# R — Hello World\n\n"
+                + "fibonacci <- function(n) {\n"
+                + "  if (n <= 1) return(n)\n"
+                + "  a <- 0; b <- 1\n"
+                + "  for (i in seq_len(n)) { t <- a+b; a <- b; b <- t }\n"
+                + "  a\n}\n\ncat(\"Привет, мир!\\n\")\n"
+                + "for (i in 0:9)\n"
+                + "  cat(sprintf(\"fib(%d) = %d\\n\", i, fibonacci(i)))\n"),
+              L("Julia", "julia", "1.7.2",
+                "# Julia — Hello World\n\n"
+                + "function fibonacci(n::Int)::Int\n"
+                + "  a, b = 0, 1\n"
+                + "  for _ in 1:n; a, b = b, a+b; end\n"
+                + "  return a\nend\n\n"
+                + "println(\"Привет, мир!\")\n"
+                + "for i in 0:9\n"
+                + "  println(\"fib($i) = $(fibonacci(i))\")\nend\n"),
+              L("Dart", "dart", "2.19.6",
+                "// Dart — Hello World\n\n"
+                + "int fibonacci(int n) {\n"
+                + "  int a = 0, b = 1;\n"
+                + "  for (var i = 0; i < n; i++) { int t = a+b; a = b; b = t; }\n"
+                + "  return a;\n}\n\n"
+                + "void main() {\n  print(\"Привет, мир!\");\n"
+                + "  for (var i = 0; i < 10; i++)\n"
+                + "    print(\"fib($i) = ${fibonacci(i)}\");\n}\n"),
+              L("Groovy", "groovy", "4.0.6",
+                "// Groovy — Hello World\n\n"
+                + "def fibonacci(n) {\n  def a = 0, b = 1\n"
+                + "  n.times { def t = a+b; a = b; b = t }\n  a\n}\n\n"
+                + "println \"Привет, мир!\"\n"
+                + "(0..9).each { i ->\n"
+                + "  println(\"fib($i) = ${fibonacci(i)}\")\n}\n"),
+              L("Prolog", "prolog", "8.4.3",
+                "% Prolog — Hello World\n\n"
+                + "fibonacci(0, 0) :- !.\nfibonacci(1, 1) :- !.\n"
+                + "fibonacci(N, F) :-\n  N > 1, N1 is N-1, N2 is N-2,\n"
+                + "  fibonacci(N1, F1), fibonacci(N2, F2), F is F1+F2.\n\n"
+                + ":- initialization(main).\n\nmain :-\n"
+                + "  write('Привет!'), nl,\n"
+                + "  between(0, 9, I), fibonacci(I, F),\n"
+                + "  format('fib(~w) = ~w~n', [I, F]), fail ; true.\n"),
+              L("Forth", "forth", "0.7.3",
+                "\\ Forth — Hello World\n\n"
+                + ": fibonacci ( n -- fib )\n"
+                + "  0 1 rot 0 ?do over + swap loop drop ;\n\n"
+                + ".\" Привет, мир!\" cr\n"
+                + "10 0 do\n  .\" fib(\" i . .\" ) = \" i fibonacci . cr\nloop\n"),
+              L("Pascal", "pascal", "3.2.2",
+                "{ Pascal — Hello World }\nprogram HelloWorld;\n\n"
+                + "function Fibonacci(n: Integer): Int64;\n"
+                + "var a, b, t: Int64; i: Integer;\nbegin\n"
+                + "  a := 0; b := 1;\n"
+                + "  for i := 1 to n do begin t := a+b; a := b; b := t; end;\n"
+                + "  Fibonacci := a;\nend;\n\n"
+                + "var i: Integer;\nbegin\n"
+                + "  WriteLn('Привет, мир!');\n"
+                + "  for i := 0 to 9 do\n"
+                + "    WriteLn('fib(', i, ') = ', Fibonacci(i));\nend.\n"),
+              L("Fortran", "fortran", "10.2.0",
+                "! Fortran — Hello World\nprogram hello\n"
+                + "  implicit none\n  integer :: i\n"
+                + "  print *, 'Привет, мир!'\n"
+                + "  do i = 0, 9\n"
+                + "    print '(A,I2,A,I10)', 'fib(', i, ') = ', fib(i)\n"
+                + "  end do\ncontains\n"
+                + "  integer function fib(n)\n"
+                + "    integer, intent(in) :: n\n    integer :: a, b, t, j\n"
+                + "    a = 0; b = 1\n"
+                + "    do j = 1, n; t = a+b; a = b; b = t; end do\n"
+                + "    fib = a\n  end function fib\nend program hello\n"),
+              L("Cobol", "cobol", "3.1.2",
+                "       IDENTIFICATION DIVISION.\n"
+                + "       PROGRAM-ID. HELLO.\n"
+                + "       DATA DIVISION.\n"
+                + "       WORKING-STORAGE SECTION.\n"
+                + "       01 WS-MSG PIC A(20)\n"
+                + "         VALUE 'Hello, World!'.\n"
+                + "       PROCEDURE DIVISION.\n"
+                + "       DISPLAY WS-MSG.\n       STOP RUN.\n"),
+              L("Lisp", "lisp", "2.1.2",
+                ";; Common Lisp — Hello World\n\n"
+                + "(defun fibonacci (n)\n"
+                + "  (let ((a 0) (b 1))\n"
+                + "    (dotimes (i n a) (psetf a b b (+ a b)))))\n\n"
+                + "(format t \"Привет, мир!~%\")\n"
+                + "(loop for i from 0 to 9 do\n"
+                + "  (format t \"fib(~d) = ~d~%\" i (fibonacci i)))\n"),
+              L("Raku", "raku", "6.100",
+                "# Raku — Hello World\n\n"
+                + "sub fibonacci(Int $n --> Int) {\n"
+                + "  my ($a, $b) = 0, 1;\n"
+                + "  for ^$n { ($a, $b) = ($b, $a + $b); }\n  $a\n}\n\n"
+                + "say \"Привет, мир!\";\n"
+                + "for 0..9 -> $i {\n"
+                + "  say \"fib($i) = {fibonacci($i)}\";\n}\n"),
+              L("Tcl", "tcl", "8.6.12",
+                "# Tcl — Hello World\n\n"
+                + "proc fibonacci {n} {\n  set a 0; set b 1\n"
+                + "  for {set i 0} {$i < $n} {incr i} {\n"
+                + "    set t [expr {$a + $b}]; set a $b; set b $t\n"
+                + "  }\n  return $a\n}\n\nputs \"Привет, мир!\"\n"
+                + "for {set i 0} {$i < 10} {incr i} {\n"
+                + "  puts \"fib($i) = [fibonacci $i]\"\n}\n"),
+              L("Awk", "awk", "1.3.4",
+                "# AWK — Hello World\nBEGIN {\n"
+                + "  print \"Привет, мир!\"\n"
+                + "  for (i = 0; i < 10; i++)\n"
+                + "    print \"fib(\" i \") = \" fib(i)\n}\n\n"
+                + "function fib(n,  a,b,t) {\n  a = 0; b = 1\n"
+                + "  for (j = 0; j < n; j++) { t = a+b; a = b; b = t }\n"
+                + "  return a\n}\n")
+            ]
+          }
+        };
+      }
+
+      /** Кеш языков */
+      const LANGUAGE_CATEGORIES = buildLangs();
+
+      /* ================================================
+       * Словарь переводов
+       * ================================================ */
+
+      /** @description Тексты интерфейса RU/EN */
+      const I18N = {
+        ru: {
+          appTitle: "Мульти-компилятор",
+          run: "Запуск", template: "Шаблон",
+          share: "Поделиться", history: "История",
+          clear: "Очистить",
+          stdin: "Входные данные (stdin)",
+          tabOutput: "Вывод", tabErrors: "Ошибки",
+          outputPlaceholder:
+            "Нажмите Запуск или Ctrl+Enter\nдля выполнения кода",
+          historyTitle: "История запусков",
+          clearHistory: "Очистить историю",
+          chars: "символов", lines: "строк",
+          shortcut: "Ctrl+Enter — запуск",
+          running: "Выполняется...",
+          success: "Выполнено за", error: "Ошибка",
+          noOutput: "Программа не произвела вывод",
+          networkError: "Ошибка сети",
+          copied: "Ссылка скопирована",
+          codeLoaded: "Код загружен из ссылки",
+          historyLoaded: "Код загружен из истории",
+          historyCleared: "История очищена",
+          editorCleared: "Редактор очищен",
+          templateLoaded: "Шаблон загружен",
+          historyEmpty: "История пуста",
+          ms: "мс", sec: "сек"
+        },
+        en: {
+          appTitle: "Multi Compiler",
+          run: "Run", template: "Template",
+          share: "Share", history: "History",
+          clear: "Clear", stdin: "Input (stdin)",
+          tabOutput: "Output", tabErrors: "Errors",
+          outputPlaceholder:
+            "Press Run or Ctrl+Enter\nto execute code",
+          historyTitle: "Run History",
+          clearHistory: "Clear History",
+          chars: "chars", lines: "lines",
+          shortcut: "Ctrl+Enter — run",
+          running: "Running...",
+          success: "Completed in", error: "Error",
+          noOutput: "No output produced",
+          networkError: "Network error",
+          copied: "Link copied",
+          codeLoaded: "Code loaded from link",
+          historyLoaded: "Code loaded from history",
+          historyCleared: "History cleared",
+          editorCleared: "Editor cleared",
+          templateLoaded: "Template loaded",
+          historyEmpty: "History is empty",
+          ms: "ms", sec: "s"
+        }
+      };
+
+      /* ================================================
+       * Состояние приложения
+       * ================================================ */
+
+      /** @description Глобальное состояние */
+      const state = {
+        currentLang: "ru", currentTheme: "dark",
+        selectedLanguage: "python", isRunning: false,
+        activeOutputTab: "output",
+        lastOutput: "", lastErrors: "", history: []
+      };
+
+      /* ================================================
+       * Утилиты DOM
+       * ================================================ */
+
+      /** @function $ @description querySelector @param {string} s */
+      function $(s) { return document.querySelector(s); }
+
+      /** @function $$ @description querySelectorAll @param {string} s */
+      function $$(s) { return document.querySelectorAll(s); }
+
+      /* Кеш DOM-элементов */
+      const dom = {};
+
+      /* ================================================
+       * Утилиты
+       * ================================================ */
+
+      /**
+       * @function escapeHtml
+       * @description Экранирование HTML-символов
+       * @param {string} str - строка
+       * @returns {string} экранированная строка
+       */
+      function escapeHtml(str) {
+        if (!str) return "";
+        const m = {
+          "&": "&amp;", "<": "&lt;", ">": "&gt;",
+          "\"": "&quot;", "'": "&#039;"
+        };
+        return str.replace(/[&<>"']/g, c => m[c]);
+      }
+
+      /**
+       * @function safeJsonParse
+       * @description Безопасный парсинг JSON из localStorage
+       * @param {string} key - ключ
+       * @param {*} fb - fallback
+       * @returns {*} значение
+       */
+      function safeJsonParse(key, fb) {
+        try {
+          const r = localStorage.getItem(key);
+          return r === null ? fb : JSON.parse(r);
+        } catch (e) {
+          console.warn("localStorage parse error:", key, e);
+          return fb;
+        }
+      }
+
+      /**
+       * @function safeJsonSave
+       * @description Безопасное сохранение в localStorage
+       * @param {string} key - ключ
+       * @param {*} val - значение
+       */
+      function safeJsonSave(key, val) {
+        try { localStorage.setItem(key, JSON.stringify(val)); }
+        catch (e) { console.warn("localStorage save error:", key, e); }
+      }
+
+      /**
+       * @function showToast
+       * @description Уведомление
+       * @param {string} msg - текст
+       * @param {string} type - success/error/info
+       */
+      function showToast(msg, type = "info") {
+        const el = document.createElement("div");
+        el.className = "toast toast-" + type;
+        const icons = {
+          success: "fa-check-circle",
+          error: "fa-exclamation-circle",
+          info: "fa-info-circle"
+        };
+        const cv = type === "info" ? "primary" : type;
+        el.innerHTML =
+          "<i class=\"fas " + (icons[type] || icons.info)
+          + "\" style=\"color:var(--" + cv + ")\"></i>"
+          + "<span>" + escapeHtml(msg) + "</span>";
+        dom.toastContainer.appendChild(el);
+        setTimeout(() => {
+          el.classList.add("toast-out");
+          el.addEventListener("animationend", () => el.remove());
+        }, 3000);
+      }
+
+      /**
+       * @function t
+       * @description Получение перевода
+       * @param {string} key - ключ
+       * @returns {string} текст
+       */
+      function t(key) {
+        return (I18N[state.currentLang] && I18N[state.currentLang][key]) || key;
+      }
+
+      /**
+       * @function formatTime
+       * @description Форматирование времени
+       * @param {number} ms - миллисекунды
+       * @returns {string} строка
+       */
+      function formatTime(ms) {
+        return ms < 1000
+          ? Math.round(ms) + " " + t("ms")
+          : (ms / 1000).toFixed(2) + " " + t("sec");
+      }
+
+      /**
+       * @function formatDate
+       * @description Дата в формате ДД.ММ.ГГГГ ЧЧ:ММ
+       * @param {string} iso - ISO-строка
+       * @returns {string}
+       */
+      function formatDate(iso) {
+        const d = new Date(iso);
+        const p = n => String(n).padStart(2, "0");
+        return p(d.getDate()) + "." + p(d.getMonth() + 1)
+          + "." + d.getFullYear() + " "
+          + p(d.getHours()) + ":" + p(d.getMinutes());
+      }
+
+      /**
+       * @function getLangInfo
+       * @description Поиск языка по value
+       * @param {string} v - id языка
+       * @returns {Object|null}
+       */
+      function getLangInfo(v) {
+        for (const cat of Object.values(LANGUAGE_CATEGORIES)) {
+          const f = cat.langs.find(l => l.value === v);
+          if (f) return f;
+        }
+        return null;
+      }
+
+      /* ================================================
+       * Инициализация DOM-кеша
+       * ================================================ */
+
+      /** @function initDom @description Кеширование DOM */
+      function initDom() {
+        [
+          "langToggle", "langLabel", "themeToggle", "themeIcon",
+          "languageSelect", "runBtn", "templateBtn", "shareBtn",
+          "historyBtn", "clearBtn", "codeEditor", "lineNumbers",
+          "stdinToggle", "stdinArea", "stdinInput", "outputContent",
+          "statusDot", "execTime", "statusLang", "statusApi",
+          "statusChars", "statusLines", "historyOverlay",
+          "historyList", "historyCloseBtn", "historyClearBtn",
+          "toastContainer"
+        ].forEach(id => { dom[id] = $("#" + id); });
+        dom.outputTabs = $$(".output-tab");
+      }
+
+      /* ================================================
+       * Тема
+       * ================================================ */
+
+      /** @function applyTheme @description Применение темы */
+      function applyTheme() {
+        const dark = state.currentTheme === "dark";
+        document.body.classList.toggle("dark-theme", dark);
+        dom.themeIcon.className = "fas " + (dark ? "fa-sun" : "fa-moon");
+      }
+
+      /** @function toggleTheme @description Переключение темы */
+      function toggleTheme() {
+        state.currentTheme = state.currentTheme === "dark" ? "light" : "dark";
+        applyTheme();
+        safeJsonSave("multiCompiler-theme", state.currentTheme);
+      }
+
+      /* ================================================
+       * Язык интерфейса
+       * ================================================ */
+
+      /** @function applyI18n @description Применение переводов */
+      function applyI18n() {
+        $$("[data-i18n]").forEach(el => {
+          const k = el.getAttribute("data-i18n");
+          const v = I18N[state.currentLang][k];
+          if (v) el.textContent = v;
+        });
+        dom.langLabel.textContent = state.currentLang === "ru" ? "EN" : "RU";
+        dom.codeEditor.placeholder = state.currentLang === "ru"
+          ? "// Введите код здесь..." : "// Enter your code here...";
+      }
+
+      /** @function toggleLang @description Переключение RU/EN */
+      function toggleLang() {
+        state.currentLang = state.currentLang === "ru" ? "en" : "ru";
+        applyI18n();
+        populateLanguageSelect();
+        safeJsonSave("multiCompiler-lang", state.currentLang);
+      }
+
+      /* ================================================
+       * Выпадающий список языков
+       * ================================================ */
+
+      /** @function populateLanguageSelect @description Заполнение select */
+      function populateLanguageSelect() {
+        const sel = dom.languageSelect;
+        const cur = sel.value || state.selectedLanguage;
+        sel.innerHTML = "";
+        for (const cat of Object.values(LANGUAGE_CATEGORIES)) {
+          const og = document.createElement("optgroup");
+          og.label = state.currentLang === "ru" ? cat.labelRu : cat.labelEn;
+          cat.langs.forEach(lang => {
+            const opt = document.createElement("option");
+            opt.value = lang.value;
+            opt.textContent = lang.label;
+            if (lang.value === cur) opt.selected = true;
+            og.appendChild(opt);
+          });
+          sel.appendChild(og);
+        }
+        state.selectedLanguage = cur;
+        updateStatusLang();
+      }
+
+      /** @function updateStatusLang @description Язык в статусбаре */
+      function updateStatusLang() {
+        const info = getLangInfo(state.selectedLanguage);
+        dom.statusLang.textContent = info ? info.label : state.selectedLanguage;
+      }
+
+      /* ================================================
+       * Нумерация строк и статистика
+       * ================================================ */
+
+      /** @function updateLineNumbers @description Обновление номеров строк */
+      function updateLineNumbers() {
+        const lines = dom.codeEditor.value.split("\n").length;
+        let html = "";
+        for (let i = 1; i <= lines; i++) html += "<div>" + i + "</div>";
+        dom.lineNumbers.innerHTML = html;
+        syncScroll();
+      }
+
+      /** @function updateStats @description Счётчики символов и строк */
+      function updateStats() {
+        const code = dom.codeEditor.value;
+        dom.statusChars.textContent = code.length;
+        dom.statusLines.textContent = code.split("\n").length;
+      }
+
+      /** @function syncScroll @description Синхронизация скролла */
+      function syncScroll() {
+        dom.lineNumbers.scrollTop = dom.codeEditor.scrollTop;
+      }
+
+      /**
+       * @function handleTab
+       * @description Вставка 4 пробелов по Tab
+       * @param {KeyboardEvent} e - событие
+       */
+      function handleTab(e) {
+        if (e.key !== "Tab") return;
+        e.preventDefault();
+        const ta = dom.codeEditor;
+        const s = ta.selectionStart, end = ta.selectionEnd;
+        ta.value = ta.value.substring(0, s) + "    " + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = s + 4;
+        updateLineNumbers();
+        updateStats();
+      }
+
+      /* ================================================
+       * Stdin, вкладки вывода
+       * ================================================ */
+
+      /** @function toggleStdin @description Развернуть/свернуть stdin */
+      function toggleStdin() {
+        const exp = dom.stdinToggle.classList.toggle("expanded");
+        dom.stdinArea.classList.toggle("visible", exp);
+      }
+
+      /**
+       * @function switchOutputTab
+       * @description Переключение вкладки
+       * @param {string} tab - output или errors
+       */
+      function switchOutputTab(tab) {
+        state.activeOutputTab = tab;
+        dom.outputTabs.forEach(b =>
+          b.classList.toggle("active", b.dataset.tab === tab)
+        );
+        renderOutput();
+      }
+
+      /** @function renderOutput @description Рендер панели вывода */
+      function renderOutput() {
+        const oc = dom.outputContent;
+        if (state.activeOutputTab === "output") {
+          if (state.lastOutput) {
+            oc.innerHTML = escapeHtml(state.lastOutput);
+          } else {
+            oc.innerHTML = "<span class=\"placeholder\">"
+              + escapeHtml(state.lastErrors ? t("noOutput") : t("outputPlaceholder"))
+              + "</span>";
+          }
+        } else {
+          oc.innerHTML = state.lastErrors
+            ? "<span class=\"error-text\">" + escapeHtml(state.lastErrors) + "</span>"
+            : "<span class=\"placeholder\">" + escapeHtml(t("noOutput")) + "</span>";
+        }
+      }
+
+      /* ================================================
+       * Выполнение кода через API
+       * ================================================ */
+
+      /**
+       * @function runCode
+       * @description Запуск кода через Piston + Wandbox fallback
+       */
+      async function runCode() {
+        if (state.isRunning) return;
+        const code = dom.codeEditor.value.trim();
+        if (!code) return;
+
+        state.isRunning = true;
+        state.lastOutput = ""; state.lastErrors = "";
+        dom.runBtn.classList.add("running");
+        dom.runBtn.disabled = true;
+        dom.statusDot.className = "status-dot status-idle";
+        dom.execTime.textContent = t("running");
+        dom.outputContent.innerHTML =
+          "<span class=\"placeholder\">" + escapeHtml(t("running")) + "</span>";
+
+        const langInfo = getLangInfo(state.selectedLanguage);
+        const stdin = dom.stdinInput.value || "";
+        const t0 = performance.now();
+
+        try {
+          /* Попытка Piston API */
+          let result = await executePiston(langInfo, code, stdin);
+          if (!result) {
+            dom.statusApi.textContent = "Wandbox";
+            result = await executeWandbox(langInfo, code, stdin);
+          } else {
+            dom.statusApi.textContent = "Piston API";
+          }
+
+          const elapsed = performance.now() - t0;
+
+          if (result) {
+            state.lastOutput = result.output || "";
+            state.lastErrors = result.errors || "";
+            const hasErr = result.errors && result.errors.trim();
+            dom.statusDot.className =
+              "status-dot " + (hasErr ? "status-error" : "status-success");
+            dom.execTime.textContent = t("success") + " " + formatTime(elapsed);
+            switchOutputTab(hasErr && !state.lastOutput ? "errors" : "output");
+            addToHistory(state.selectedLanguage, code, elapsed);
+          } else {
+            throw new Error(t("networkError"));
+          }
+        } catch (err) {
+          const elapsed = performance.now() - t0;
+          state.lastErrors = err.message;
+          dom.statusDot.className = "status-dot status-error";
+          dom.execTime.textContent = t("error") + " (" + formatTime(elapsed) + ")";
+          switchOutputTab("errors");
+        } finally {
+          state.isRunning = false;
+          dom.runBtn.classList.remove("running");
+          dom.runBtn.disabled = false;
+        }
+      }
+
+      /**
+       * @function executePiston
+       * @description Выполнение через Piston API (emkc.org)
+       * @param {Object} li - инфо о языке
+       * @param {string} code - код
+       * @param {string} stdin - ввод
+       * @returns {Object|null} {output, errors} или null
+       */
+      async function executePiston(li, code, stdin) {
+        if (!li) return null;
+        const body = {
+          language: li.value,
+          version: li.version || "*",
+          files: [{ content: code }]
+        };
+        if (stdin) body.stdin = stdin;
+
+        try {
+          const r = await fetch(
+            "https://emkc.org/api/v2/piston/execute",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            }
+          );
+          if (!r.ok) { console.warn("Piston:", r.status); return null; }
+          const d = await r.json();
+          if (d.message) return { output: "", errors: d.message };
+
+          const cOut = d.compile ? (d.compile.output || "") : "";
+          const rOut = d.run ? (d.run.output || "") : "";
+          const rErr = d.run ? (d.run.stderr || "") : "";
+          const cErr = d.compile ? (d.compile.stderr || "") : "";
+          return {
+            output: rOut || cOut,
+            errors: (cErr + "\n" + rErr).trim() || ""
+          };
+        } catch (e) { console.warn("Piston err:", e.message); return null; }
+      }
+
+      /**
+       * @function executeWandbox
+       * @description Fallback через Wandbox API
+       * @param {Object} li - инфо о языке
+       * @param {string} code - код
+       * @param {string} stdin - ввод
+       * @returns {Object|null} результат
+       */
+      async function executeWandbox(li, code, stdin) {
+        if (!li) return null;
+        /* Маппинг Piston -> Wandbox компиляторы */
+        const wm = {
+          python: "cpython-3.10.2", javascript: "nodejs-18.16.1",
+          c: "gcc-12.2.0-c", "c++": "gcc-12.2.0",
+          java: "openjdk-jdk-17.0.6+10", ruby: "ruby-3.2.1",
+          rust: "rust-1.67.1", go: "go-1.20.1",
+          haskell: "ghc-9.4.4", csharp: "mono-6.12.0.182",
+          php: "php-8.2.2", perl: "perl-5.36.0",
+          lua: "lua-5.4.4", bash: "bash",
+          swift: "swift-5.7.3", typescript: "typescript-5.0.2",
+          scala: "scala-3.2.2", kotlin: "kotlin-1.8.10",
+          elixir: "elixir-1.14.3", erlang: "erlang-25.2.3",
+          ocaml: "ocaml-5.0.0", d: "dmd-2.102.0",
+          nim: "nim-1.6.12", r: "r-4.2.2",
+          fsharp: "fsharp-6.0.7", clojure: "clojure-1.11.1",
+          fortran: "gcc-12.2.0-f", pascal: "fpc-3.2.2",
+          lisp: "sbcl-2.3.1", cobol: "gnucobol-3.1.2"
+        };
+        const compiler = wm[li.value];
+        if (!compiler) return null;
+
+        const body = { code, compiler };
+        if (stdin) body.stdin = stdin;
+
+        try {
+          const r = await fetch(
+            "https://wandbox.org/api/compile.json",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            }
+          );
+          if (!r.ok) { console.warn("Wandbox:", r.status); return null; }
+          const d = await r.json();
+          return {
+            output: d.program_output || d.program_message || "",
+            errors: d.compiler_error || d.compiler_message || ""
+          };
+        } catch (e) { console.warn("Wandbox err:", e.message); return null; }
+      }
+
+      /* ================================================
+       * История запусков
+       * ================================================ */
+
+      const MAX_HISTORY = 15;
+
+      /**
+       * @function addToHistory
+       * @description Сохранение запуска в историю
+       * @param {string} lang - язык
+       * @param {string} code - код
+       * @param {number} ms - время, мс
+       */
+      function addToHistory(lang, code, ms) {
+        state.history.unshift({
+          lang, code,
+          date: new Date().toISOString(),
+          execMs: Math.round(ms)
+        });
+        if (state.history.length > MAX_HISTORY)
+          state.history = state.history.slice(0, MAX_HISTORY);
+        safeJsonSave("multiCompiler-history", state.history);
+      }
+
+      /** @function loadHistory @description Загрузка истории */
+      function loadHistory() {
+        state.history = safeJsonParse("multiCompiler-history", []);
+      }
+
+      /** @function renderHistory @description Рендер списка истории */
+      function renderHistory() {
+        if (!state.history.length) {
+          dom.historyList.innerHTML =
+            "<div class=\"history-empty\">"
+            + "<i class=\"fas fa-inbox\"></i>"
+            + "<div>" + escapeHtml(t("historyEmpty")) + "</div></div>";
+          return;
+        }
+        dom.historyList.innerHTML = state.history.map((e, i) => {
+          const info = getLangInfo(e.lang);
+          const label = info ? info.label : e.lang;
+          const preview = e.code.split("\n").filter(l => l.trim())
+            .slice(0, 2).join(" | ").substring(0, 80);
+          return "<div class=\"hi\" data-idx=\"" + i + "\">"
+            + "<div class=\"hi-lang\">" + escapeHtml(label) + "</div>"
+            + "<div class=\"hi-info\">"
+            + "<div class=\"hi-code\">" + escapeHtml(preview) + "</div>"
+            + "<div class=\"hi-date\">" + formatDate(e.date)
+            + " — " + formatTime(e.execMs) + "</div></div>"
+            + "<button class=\"hi-del\" data-delete=\"" + i
+            + "\" title=\"Удалить\">"
+            + "<i class=\"fas fa-xmark\"></i></button></div>";
+        }).join("");
+      }
+
+      /** @function openHistory @description Открытие модалки истории */
+      function openHistory() {
+        renderHistory();
+        dom.historyOverlay.classList.add("visible");
+      }
+
+      /** @function closeHistory @description Закрытие модалки */
+      function closeHistory() {
+        dom.historyOverlay.classList.remove("visible");
+      }
+
+      /**
+       * @function onHistoryClick
+       * @description Клик по записи или кнопке удаления
+       * @param {Event} e - событие
+       */
+      function onHistoryClick(e) {
+        /* Удаление */
+        const del = e.target.closest("[data-delete]");
+        if (del) {
+          state.history.splice(parseInt(del.dataset.delete, 10), 1);
+          safeJsonSave("multiCompiler-history", state.history);
+          renderHistory();
+          return;
+        }
+        /* Загрузка */
+        const item = e.target.closest(".hi");
+        if (item) {
+          const entry = state.history[parseInt(item.dataset.idx, 10)];
+          if (entry) {
+            dom.languageSelect.value = entry.lang;
+            state.selectedLanguage = entry.lang;
+            updateStatusLang();
+            dom.codeEditor.value = entry.code;
+            updateLineNumbers(); updateStats();
+            closeHistory();
+            showToast(t("historyLoaded"), "success");
+          }
+        }
+      }
+
+      /** @function clearHistory @description Очистка всей истории */
+      function clearHistory() {
+        state.history = [];
+        safeJsonSave("multiCompiler-history", []);
+        renderHistory();
+        showToast(t("historyCleared"), "info");
+      }
+
+      /* ================================================
+       * Шаблоны, шаринг, очистка
+       * ================================================ */
+
+      /** @function loadTemplate @description Шаблон для текущего языка */
+      function loadTemplate() {
+        const info = getLangInfo(state.selectedLanguage);
+        if (info && info.template) {
+          dom.codeEditor.value = info.template;
+          updateLineNumbers(); updateStats();
+          showToast(t("templateLoaded"), "success");
+        }
+      }
+
+      /** @function shareCode @description Генерация ссылки base64 */
+      function shareCode() {
+        const code = dom.codeEditor.value;
+        if (!code.trim()) return;
+        const payload = JSON.stringify({
+          lang: state.selectedLanguage,
+          code, stdin: dom.stdinInput.value || ""
+        });
+        /* Кодирование Unicode в base64 */
+        const encoded = btoa(
+          encodeURIComponent(payload).replace(
+            /%([0-9A-F]{2})/g,
+            (_, p) => String.fromCharCode("0x" + p)
+          )
+        );
+        const url = window.location.origin
+          + window.location.pathname + "#code=" + encoded;
+        navigator.clipboard.writeText(url)
+          .then(() => {
+            showToast(t("copied"), "success");
+            history.replaceState(null, "", "#code=" + encoded);
+          })
+          .catch(() => window.prompt(t("copied") + ":", url));
+      }
+
+      /** @function loadFromHash @description Загрузка кода из URL hash */
+      function loadFromHash() {
+        const h = window.location.hash;
+        if (!h || !h.startsWith("#code=")) return;
+        try {
+          const enc = h.substring(6);
+          const dec = decodeURIComponent(
+            atob(enc).split("").map(c =>
+              "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join("")
+          );
+          const p = JSON.parse(dec);
+          if (p.lang) {
+            dom.languageSelect.value = p.lang;
+            state.selectedLanguage = p.lang;
+            updateStatusLang();
+          }
+          if (p.code) {
+            dom.codeEditor.value = p.code;
+            updateLineNumbers(); updateStats();
+          }
+          if (p.stdin) {
+            dom.stdinInput.value = p.stdin;
+            dom.stdinToggle.classList.add("expanded");
+            dom.stdinArea.classList.add("visible");
+          }
+          showToast(t("codeLoaded"), "info");
+        } catch (e) { console.warn("Hash load error:", e); }
+      }
+
+      /** @function clearEditor @description Очистка редактора */
+      function clearEditor() {
+        dom.codeEditor.value = "";
+        dom.stdinInput.value = "";
+        state.lastOutput = ""; state.lastErrors = "";
+        dom.statusDot.className = "status-dot status-idle";
+        dom.execTime.textContent = "";
+        switchOutputTab("output");
+        updateLineNumbers(); updateStats();
+        showToast(t("editorCleared"), "info");
+      }
+
+      /* ================================================
+       * Горячие клавиши
+       * ================================================ */
+
+      /**
+       * @function handleKeyboard
+       * @description Ctrl+Enter для запуска, Escape для закрытия
+       * @param {KeyboardEvent} e - событие
+       */
+      function handleKeyboard(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault(); runCode(); return;
+        }
+        if (e.key === "Escape" &&
+          dom.historyOverlay.classList.contains("visible")) {
+          closeHistory();
+        }
+      }
+
+      /* ================================================
+       * Загрузка настроек
+       * ================================================ */
+
+      /** @function loadSettings @description Восстановление настроек */
+      function loadSettings() {
+        state.currentTheme = safeJsonParse("multiCompiler-theme", "dark");
+        state.currentLang = safeJsonParse("multiCompiler-lang", "ru");
+        state.selectedLanguage =
+          safeJsonParse("multiCompiler-codeLang", "python");
+      }
+
+      /* ================================================
+       * Привязка событий
+       * ================================================ */
+
+      /** @function bindEvents @description Все обработчики */
+      function bindEvents() {
+        dom.themeToggle.addEventListener("click", toggleTheme);
+        dom.langToggle.addEventListener("click", toggleLang);
+        dom.languageSelect.addEventListener("change", () => {
+          state.selectedLanguage = dom.languageSelect.value;
+          updateStatusLang();
+          safeJsonSave("multiCompiler-codeLang", state.selectedLanguage);
+        });
+        dom.runBtn.addEventListener("click", runCode);
+        dom.templateBtn.addEventListener("click", loadTemplate);
+        dom.shareBtn.addEventListener("click", shareCode);
+        dom.historyBtn.addEventListener("click", openHistory);
+        dom.clearBtn.addEventListener("click", clearEditor);
+        dom.codeEditor.addEventListener("input", () => {
+          updateLineNumbers(); updateStats();
+        });
+        dom.codeEditor.addEventListener("scroll", syncScroll);
+        dom.codeEditor.addEventListener("keydown", handleTab);
+        dom.stdinToggle.addEventListener("click", toggleStdin);
+        dom.outputTabs.forEach(b => {
+          b.addEventListener("click", () => switchOutputTab(b.dataset.tab));
+        });
+        dom.historyCloseBtn.addEventListener("click", closeHistory);
+        dom.historyOverlay.addEventListener("click", e => {
+          if (e.target === dom.historyOverlay) closeHistory();
+        });
+        dom.historyList.addEventListener("click", onHistoryClick);
+        dom.historyClearBtn.addEventListener("click", clearHistory);
+        document.addEventListener("keydown", handleKeyboard);
+        window.addEventListener("hashchange", loadFromHash);
+      }
+
+      /* ================================================
+       * Инициализация
+       * ================================================ */
+
+      /** @function init @description Точка входа */
+      function init() {
+        initDom();
+        loadSettings();
+        loadHistory();
+        applyTheme();
+        populateLanguageSelect();
+        applyI18n();
+        dom.languageSelect.value = state.selectedLanguage;
+        const info = getLangInfo(state.selectedLanguage);
+        if (info && info.template) dom.codeEditor.value = info.template;
+        updateLineNumbers(); updateStats();
+        bindEvents();
+        loadFromHash();
+      }
+
+      document.addEventListener("DOMContentLoaded", init);
+    </script>
+  </body>
+</html>
