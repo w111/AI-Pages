@@ -971,7 +971,7 @@ API:
   <!-- === Шапка === -->
   <header>
     <div class="header-left">
-      <a href="index.html" class="back-btn"
+      <a href="index.html" class="control-btn back-btn"
         id="backBtn"
         title="Назад">
         <i class="fas fa-arrow-left"></i>
@@ -2585,7 +2585,7 @@ API:
     /**
      * @function readQrFromUrl
      * @description Прочитать QR с изображения по URL
-     *   через API goqr.me (GET)
+     *   через API qrserver.com (GET)
      * @param {string} imageUrl - URL изображения
      */
     async function readQrFromUrl(imageUrl) {
@@ -2633,7 +2633,7 @@ API:
      * @function readQrFromFile
      * @description Прочитать QR из файла:
      *   конвертируем в blob и отправляем POST
-     *   на API goqr.me
+     *   на API qrserver.com
      * @param {File} file - Файл изображения
      */
     async function readQrFromFile(file) {

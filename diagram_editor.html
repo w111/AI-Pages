@@ -576,6 +576,31 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
     }
 
     /**
+     * @function sanitizeSvg
+     * @description Удаляет script-теги и event-обработчики из SVG
+     * @param {string} svgText - Сырая SVG-разметка
+     * @returns {string} Безопасная SVG-разметка
+     */
+    function sanitizeSvg(svgText) {
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(svgText, "image/svg+xml");
+      doc.querySelectorAll("script").forEach(function(s) {
+        s.remove();
+      });
+      var eventAttrs = [
+        "onload", "onerror", "onclick", "onmouseover",
+        "onmouseout", "onfocus", "onblur"
+      ];
+      doc.querySelectorAll("*").forEach(function(el) {
+        eventAttrs.forEach(function(a) {
+          el.removeAttribute(a);
+        });
+      });
+      return new XMLSerializer()
+        .serializeToString(doc.documentElement);
+    }
+
+    /**
      * @function debounce
      * @description Задержка вызова функции
      * @param {Function} fn - Функция
@@ -943,8 +968,10 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
     // === Тема ===
     /** @function loadTheme @description Загружает тему из localStorage */
     function loadTheme() {
-      var s = localStorage.getItem("diagramEditor-theme");
-      if (s === "dark" || s === "light") state.theme = s;
+      try {
+        var s = localStorage.getItem("diagramEditor-theme");
+        if (s === "dark" || s === "light") state.theme = s;
+      } catch (e) { /* localStorage недоступен */ }
       applyTheme();
     }
     /** @function applyTheme @description Применяет текущую тему */
@@ -956,15 +983,18 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
     /** @function toggleTheme @description Переключает тему */
     function toggleTheme() {
       state.theme = state.theme === "dark" ? "light" : "dark";
-      localStorage.setItem("diagramEditor-theme", state.theme);
+      try { localStorage.setItem("diagramEditor-theme", state.theme); }
+      catch (e) { /* localStorage недоступен */ }
       applyTheme();
     }
 
     // === Язык ===
     /** @function loadLang @description Загружает язык из localStorage */
     function loadLang() {
-      var s = localStorage.getItem("diagramEditor-lang");
-      if (s === "ru" || s === "en") state.lang = s;
+      try {
+        var s = localStorage.getItem("diagramEditor-lang");
+        if (s === "ru" || s === "en") state.lang = s;
+      } catch (e) { /* localStorage недоступен */ }
       applyLang();
     }
     /** @function applyLang @description Применяет текущий язык ко всему UI */
@@ -985,7 +1015,8 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
     /** @function toggleLang @description Переключает язык RU/EN */
     function toggleLang() {
       state.lang = state.lang === "ru" ? "en" : "ru";
-      localStorage.setItem("diagramEditor-lang", state.lang);
+      try { localStorage.setItem("diagramEditor-lang", state.lang); }
+      catch (e) { /* localStorage недоступен */ }
       applyLang();
     }
 
@@ -1030,7 +1061,9 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
     // === История ===
     /** @function loadHistory @description Загружает историю из localStorage */
     function loadHistory() {
-      var raw = localStorage.getItem("diagramEditor-history");
+      var raw = null;
+      try { raw = localStorage.getItem("diagramEditor-history"); }
+      catch (e) { /* localStorage недоступен */ }
       state.history = safeJsonParse(raw, []);
       if (!Array.isArray(state.history)) state.history = [];
     }
@@ -1206,7 +1239,9 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
       wrap.style.transform = "scale(" + state.previewZoom + ")";
       wrap.style.transformOrigin = "center center";
       wrap.style.transition = "transform 0.2s ease";
-      wrap.innerHTML = svgText;
+      // Санитизация SVG: удаляем script-теги и обработчики событий
+      var sanitized = sanitizeSvg(svgText);
+      wrap.innerHTML = sanitized;
       els.previewContent.appendChild(wrap);
     }
 
@@ -1315,7 +1350,7 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
     /** @function openFullscreen @description Открывает полноэкранный превью */
     function openFullscreen() {
       if (!state.currentSvg) return;
-      els.fullscreenContent.innerHTML = state.currentSvg;
+      els.fullscreenContent.innerHTML = sanitizeSvg(state.currentSvg);
       els.fullscreenOverlay.classList.add("active");
     }
     /** @function closeFullscreen @description Закрывает полноэкранный режим */
