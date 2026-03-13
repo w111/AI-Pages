@@ -1,0 +1,3072 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать увлекательную викторину-дуэль стран,
+где игрок сравнивает две страны по различным метрикам
+и угадывает, какая из них больше/имеет больше.
+
+Функциональные требования:
+1. Режимы игры:
+   - Дуэль населения: какая страна населённее?
+   - Дуэль площади: какая страна больше?
+   - Викторина столиц: назвать столицу страны
+   - Викторина флагов: определить страну по флагу
+   - Смешанный: случайная комбинация всех режимов
+2. Каждый раунд — 2 страны рядом с флагами
+3. Игрок кликает на страну с большим значением
+4. Анимированное раскрытие правильного ответа
+5. Счёт: серия, лучшая серия, всего верных/неверных
+6. Уровни сложности: лёгкий, средний, сложный
+7. Режим таймера: ответить за 10 секунд
+8. Таблица лидеров (localStorage): топ-10 с датой
+9. Интересные факты о стране-победителе
+10. Звуковые эффекты (Web Audio API)
+11. Переключение тёмной/светлой темы
+12. Переключение языка RU/EN
+13. Кнопка возврата на index.html
+14. Адаптивный дизайн
+15. Анимированные переходы между раундами
+
+API: REST Countries v3.1 (бесплатный, без авторизации)
+https://restcountries.com/v3.1/all
+
+Технические требования:
+1. Самодостаточный HTML (встроенные CSS и JS)
+2. Vanilla JavaScript без фреймворков
+3. Font Awesome 6.4.0 CDN
+4. CSS-переменные для тем
+5. localStorage для настроек и результатов
+6. Web Audio API для звуков
+7. Адаптивный дизайн
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+  <title>Страны: Дуэль | Countries Duel</title>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* === Светлая тема (по умолчанию) === */
+    :root {
+      --bg-color: #faf5f5;
+      --text-color: #1a1a2e;
+      --card-bg: #ffffff;
+      --card-hover-bg: #fff5f5;
+      --border-color: #e8d5d5;
+      --primary-color: #ef4444;
+      --primary-hover: #dc2626;
+      --primary-light: #fecaca;
+      --secondary-color: #64748b;
+      --accent-color: #f97316;
+      --success-color: #22c55e;
+      --error-color: #ef4444;
+      --input-bg: #ffffff;
+      --input-border: #d1d5db;
+      --modal-bg: rgba(0, 0, 0, 0.5);
+      --accent-gradient: linear-gradient(
+        135deg, #ef4444 0%, #f97316 100%);
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
+      --glow: 0 0 20px rgba(239, 68, 68, 0.2);
+      --glow-strong: 0 0 40px rgba(239,68,68,0.4);
+      --streak-color: #eab308;
+      --badge-bg: #fef3c7;
+      --badge-text: #92400e;
+      --timer-bar: #ef4444;
+    }
+
+    /* === Тёмная тема === */
+    body.dark-theme {
+      --bg-color: #0f0f1a;
+      --text-color: #e2e8f0;
+      --card-bg: #1a1a2e;
+      --card-hover-bg: #2a1a2e;
+      --border-color: #2a2a4a;
+      --primary-color: #ef4444;
+      --primary-hover: #f87171;
+      --primary-light: #451a1a;
+      --secondary-color: #94a3b8;
+      --accent-color: #fb923c;
+      --success-color: #4ade80;
+      --error-color: #f87171;
+      --input-bg: #16213e;
+      --input-border: #2a2a4a;
+      --modal-bg: rgba(0, 0, 0, 0.7);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.5);
+      --glow: 0 0 20px rgba(239, 68, 68, 0.3);
+      --glow-strong: 0 0 40px rgba(239,68,68,0.5);
+      --streak-color: #facc15;
+      --badge-bg: #422006;
+      --badge-text: #fbbf24;
+    }
+
+    /* === Сброс стилей === */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      transition: background-color 0.3s ease,
+        color 0.3s ease;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-color);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* === Кнопка настроек === */
+    .settings-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      color: var(--primary-color);
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    .settings-button:hover {
+      transform: rotate(45deg);
+      box-shadow: var(--glow);
+    }
+
+    /* === Модальное окно настроек === */
+    .settings-modal {
+      display: none;
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-lg);
+      z-index: 1001;
+      min-width: 280px;
+    }
+    .settings-modal.active {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .settings-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--primary-color);
+    }
+    .settings-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .settings-option label {
+      color: var(--text-color);
+      font-size: 0.95rem;
+    }
+
+    /* === Toggle switch === */
+    .toggle-switch {
+      position: relative;
+      width: 52px;
+      height: 28px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--input-border);
+      transition: 0.3s;
+      border-radius: 28px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background: var(--accent-gradient);
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    /* === Кнопка назад === */
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      color: var(--primary-color);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    .back-btn:hover {
+      transform: scale(1.1);
+      box-shadow: var(--glow);
+      color: var(--primary-hover);
+    }
+
+    /* === Заголовок === */
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding: 30px 60px 20px;
+    }
+    h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 800;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      color: var(--secondary-color);
+      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+    }
+
+    /* === Панель статистики === */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-bg);
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+      font-weight: 600;
+      transition: transform 0.2s;
+    }
+    .stat-item:hover { transform: translateY(-2px); }
+    .stat-correct i { color: var(--success-color); }
+    .stat-wrong i { color: var(--error-color); }
+    .stat-streak i { color: var(--streak-color); }
+    .stat-best i { color: var(--accent-color); }
+    .stat-value {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    /* === Экран меню === */
+    .menu-screen {
+      max-width: 700px;
+      margin: 0 auto;
+      animation: slideUp 0.5s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .menu-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-color);
+      margin-bottom: 20px;
+    }
+    .menu-card h2 {
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* === Кнопки режимов === */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .mode-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 20px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      background: var(--card-bg);
+      color: var(--text-color);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .mode-btn:hover {
+      border-color: var(--primary-color);
+      background: var(--card-hover-bg);
+      transform: translateY(-3px);
+      box-shadow: var(--glow);
+    }
+    .mode-btn.active {
+      border-color: var(--primary-color);
+      background: var(--primary-light);
+      box-shadow: var(--glow);
+    }
+    .mode-btn i {
+      font-size: 2rem;
+      color: var(--primary-color);
+    }
+    .mode-btn span {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+      font-weight: 400;
+    }
+
+    /* === Сложность === */
+    .difficulty-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .diff-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 12px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--card-bg);
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+    .diff-btn:hover {
+      border-color: var(--primary-color);
+    }
+    .diff-btn.active {
+      border-color: var(--primary-color);
+      background: var(--primary-light);
+    }
+
+    /* === Таймер опция === */
+    .timer-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+    }
+    .timer-option label {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .timer-option label i {
+      color: var(--primary-color);
+    }
+
+    /* === Кнопка старт === */
+    .start-btn {
+      width: 100%;
+      padding: 18px;
+      border: none;
+      border-radius: 16px;
+      background: var(--accent-gradient);
+      color: white;
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      margin-top: 16px;
+    }
+    .start-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--glow-strong);
+    }
+    .start-btn:active {
+      transform: translateY(0);
+    }
+    .start-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* === Загрузка === */
+    .loading-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      gap: 20px;
+    }
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      font-size: 1.1rem;
+      color: var(--secondary-color);
+    }
+
+    /* === Ошибка === */
+    .error-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      gap: 16px;
+      text-align: center;
+    }
+    .error-screen i {
+      font-size: 3rem;
+      color: var(--error-color);
+    }
+    .error-screen p {
+      color: var(--secondary-color);
+      max-width: 500px;
+    }
+    .retry-btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent-gradient);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .retry-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--glow);
+    }
+
+    /* === Игровой экран === */
+    .game-screen {
+      animation: fadeIn 0.4s ease;
+    }
+    .round-info {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .round-question {
+      font-size: clamp(1.1rem, 3vw, 1.5rem);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .round-hint {
+      font-size: 0.9rem;
+      color: var(--secondary-color);
+    }
+
+    /* === Таймер === */
+    .timer-bar-container {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto 20px;
+      height: 6px;
+      background: var(--border-color);
+      border-radius: 3px;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .timer-bar-container.active { opacity: 1; }
+    .timer-bar {
+      height: 100%;
+      background: var(--timer-bar);
+      border-radius: 3px;
+      transition: width 0.1s linear;
+      width: 100%;
+    }
+    .timer-bar.warning {
+      background: var(--accent-color);
+    }
+    .timer-bar.danger {
+      background: var(--error-color);
+      animation: pulse-bar 0.5s ease infinite;
+    }
+    @keyframes pulse-bar {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* === Карточки дуэли === */
+    .duel-container {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 20px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+    .country-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+      border: 3px solid var(--border-color);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .country-card:hover:not(.disabled) {
+      transform: translateY(-5px);
+      border-color: var(--primary-color);
+      box-shadow: var(--glow-strong);
+    }
+    .country-card.disabled {
+      cursor: default;
+      pointer-events: none;
+    }
+    .country-card.correct {
+      border-color: var(--success-color);
+      box-shadow: 0 0 30px rgba(34,197,94,0.4);
+    }
+    .country-card.wrong {
+      border-color: var(--error-color);
+      box-shadow: 0 0 30px rgba(239,68,68,0.4);
+      opacity: 0.7;
+    }
+    .country-card.winner {
+      border-color: var(--success-color);
+      box-shadow: 0 0 30px rgba(34,197,94,0.4);
+    }
+
+    .country-flag {
+      width: 120px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: transform 0.3s;
+    }
+    .country-card:hover:not(.disabled)
+      .country-flag {
+      transform: scale(1.05);
+    }
+    .flag-emoji {
+      font-size: 4rem;
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+    .country-name {
+      font-size: clamp(1.2rem, 3vw, 1.6rem);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .country-region {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .country-value {
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      font-weight: 800;
+      color: var(--primary-color);
+      opacity: 0;
+      transform: scale(0.5);
+      transition: all 0.5s cubic-bezier(
+        0.34, 1.56, 0.64, 1);
+      margin-top: 8px;
+    }
+    .country-value.revealed {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .country-value-label {
+      font-size: 0.8rem;
+      color: var(--secondary-color);
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .country-value-label.revealed { opacity: 1; }
+
+    /* === Бейдж результата === */
+    .result-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: white;
+      opacity: 0;
+      transform: scale(0);
+      transition: all 0.4s cubic-bezier(
+        0.34, 1.56, 0.64, 1);
+    }
+    .result-badge.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .result-badge.correct-badge {
+      background: var(--success-color);
+    }
+    .result-badge.wrong-badge {
+      background: var(--error-color);
+    }
+
+    /* === VS === */
+    .vs-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .vs-text {
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      font-weight: 900;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: pulse-vs 2s ease infinite;
+    }
+    @keyframes pulse-vs {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* === Факт === */
+    .fact-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px 24px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease;
+    }
+    .fact-card.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .fact-card i {
+      color: var(--accent-color);
+      font-size: 1.3rem;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .fact-text {
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* === Кнопка "Далее" === */
+    .next-btn {
+      display: block;
+      margin: 0 auto;
+      padding: 14px 40px;
+      border: none;
+      border-radius: 14px;
+      background: var(--accent-gradient);
+      color: white;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .next-btn.show {
+      opacity: 1;
+      transform: translateY(0);
+      transition: all 0.4s ease 0.3s;
+    }
+    .next-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--glow-strong);
+    }
+
+    /* === Варианты ответа (столицы/флаги) === */
+    .capital-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto 24px;
+    }
+    .capital-option-btn {
+      padding: 16px 20px;
+      border: 2px solid var(--border-color);
+      border-radius: 14px;
+      background: var(--card-bg);
+      color: var(--text-color);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .capital-option-btn:hover:not(.disabled) {
+      border-color: var(--primary-color);
+      background: var(--card-hover-bg);
+      transform: translateY(-2px);
+    }
+    .capital-option-btn.disabled {
+      cursor: default;
+      pointer-events: none;
+    }
+    .capital-option-btn.correct-opt {
+      border-color: var(--success-color);
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success-color);
+    }
+    .capital-option-btn.wrong-opt {
+      border-color: var(--error-color);
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--error-color);
+    }
+
+    /* === Центральная карточка для викторины === */
+    .quiz-center-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: var(--shadow-lg);
+      border: 2px solid var(--border-color);
+      margin: 0 auto 24px;
+      max-width: 500px;
+    }
+    .quiz-center-card .country-flag {
+      width: 160px;
+      height: 107px;
+    }
+    .quiz-center-card .flag-emoji {
+      font-size: 5rem;
+    }
+
+    /* === Кнопка таблицы лидеров === */
+    .leaderboard-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: var(--shadow-lg);
+      transition: all 0.3s ease;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .leaderboard-btn:hover {
+      transform: scale(1.1);
+      box-shadow: var(--glow-strong);
+    }
+
+    /* === Модальное окно === */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--modal-bg);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-color);
+      animation: scaleIn 0.3s ease;
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .modal-header h2 {
+      font-size: 1.3rem;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: var(--border-color);
+      color: var(--text-color);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close:hover {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    /* === Таблица результатов === */
+    .score-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .score-table th, .score-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.9rem;
+    }
+    .score-table th {
+      font-weight: 700;
+      color: var(--primary-color);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+    .score-rank {
+      font-weight: 700;
+      color: var(--accent-color);
+    }
+    .no-scores {
+      text-align: center;
+      color: var(--secondary-color);
+      padding: 30px;
+    }
+    .clear-scores-btn {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--error-color);
+      font-size: 0.85rem;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: all 0.2s;
+    }
+    .clear-scores-btn:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* === Конфетти === */
+    .confetti-container {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 3000;
+      overflow: hidden;
+    }
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      top: -10px;
+      animation: confetti-fall linear forwards;
+    }
+    @keyframes confetti-fall {
+      to {
+        top: 110%;
+        transform: rotate(720deg);
+      }
+    }
+
+    /* === Game Over === */
+    .game-over-screen {
+      text-align: center;
+      max-width: 500px;
+      margin: 0 auto;
+      animation: scaleIn 0.5s ease;
+    }
+    .game-over-screen h2 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .game-over-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .game-over-stat {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+    }
+    .game-over-stat .go-label {
+      font-size: 0.85rem;
+      color: var(--secondary-color);
+      margin-bottom: 4px;
+    }
+    .game-over-stat .go-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary-color);
+    }
+    .game-over-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .game-over-actions button {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .play-again-btn {
+      background: var(--accent-gradient);
+      color: white;
+    }
+    .play-again-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--glow-strong);
+    }
+    .menu-return-btn {
+      background: var(--card-bg);
+      color: var(--text-color);
+      border: 2px solid var(--border-color) !important;
+    }
+    .menu-return-btn:hover {
+      border-color: var(--primary-color) !important;
+    }
+
+    /* === Анимации === */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-5px);
+      }
+      20%, 40%, 60%, 80% {
+        transform: translateX(5px);
+      }
+    }
+    .shake { animation: shake 0.5s ease; }
+
+    @keyframes bounce-in {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.05); }
+      70% { transform: scale(0.9); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .bounce-in { animation: bounce-in 0.5s ease; }
+
+    @keyframes streak-pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    .streak-pulse {
+      animation: streak-pulse 0.4s ease;
+    }
+
+    .hidden { display: none !important; }
+
+    /* === Адаптивность === */
+    @media (max-width: 768px) {
+      .duel-container {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .vs-divider { padding: 4px 0; }
+      .vs-text { font-size: 1.5rem; }
+      .country-card { padding: 20px 16px; }
+      .country-flag { width: 100px; height: 67px; }
+      header { padding: 20px 10px 16px; }
+      .stats-bar { gap: 8px; }
+      .stat-item {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+      }
+      .capital-options {
+        grid-template-columns: 1fr;
+      }
+      .menu-card { padding: 20px; }
+      .mode-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .game-over-stats {
+        grid-template-columns: 1fr;
+      }
+      .back-btn, .settings-button,
+      .leaderboard-btn {
+        width: 42px;
+        height: 42px;
+        font-size: 17px;
+      }
+      .settings-button { font-size: 19px; }
+    }
+    @media (max-width: 480px) {
+      .mode-grid {
+        grid-template-columns: 1fr;
+      }
+      .difficulty-row { flex-direction: column; }
+      .country-name { font-size: 1.1rem; }
+      .quiz-center-card .country-flag {
+        width: 120px;
+        height: 80px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Кнопка назад -->
+  <a href="index.html" class="back-btn"
+     id="backBtn" title="На главную">
+    <i class="fas fa-arrow-left"></i>
+  </a>
+
+  <!-- Кнопка настроек -->
+  <button class="settings-button" id="settingsBtn"
+          aria-label="Настройки">
+    <i class="fas fa-cog"></i>
+  </button>
+
+  <!-- Модальное окно настроек -->
+  <div class="settings-modal" id="settingsModal">
+    <div class="settings-title"
+         data-i18n="settings">Настройки</div>
+    <div class="settings-option">
+      <label data-i18n="darkTheme">
+        Тёмная тема</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="themeToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="settings-option">
+      <label data-i18n="language">
+        Язык / Language</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="langToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="settings-option">
+      <label data-i18n="soundEffects">
+        Звуковые эффекты</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="soundToggle"
+               checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Кнопка таблицы лидеров -->
+  <button class="leaderboard-btn"
+          id="leaderboardBtn"
+          aria-label="Таблица лидеров">
+    <i class="fas fa-trophy"></i>
+  </button>
+
+  <!-- Модальное окно таблицы лидеров -->
+  <div class="modal-overlay" id="leaderboardModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>
+          <i class="fas fa-trophy"></i>
+          <span data-i18n="leaderboard">
+            Таблица лидеров</span>
+        </h2>
+        <button class="modal-close"
+                id="closeLeaderboard">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="leaderboardContent"></div>
+      <button class="clear-scores-btn"
+              id="clearScoresBtn"
+              data-i18n="clearScores">
+        Очистить результаты
+      </button>
+    </div>
+  </div>
+
+  <!-- Контейнер для конфетти -->
+  <div class="confetti-container"
+       id="confettiContainer"></div>
+
+  <!-- Основной контент -->
+  <div class="container">
+    <header>
+      <h1>
+        <i class="fas fa-globe-americas"></i>
+        <span data-i18n="title">
+          Страны: Дуэль</span>
+      </h1>
+      <p class="subtitle" data-i18n="subtitle">
+        Кто знает мир лучше?</p>
+    </header>
+
+    <!-- Панель статистики -->
+    <div class="stats-bar hidden" id="statsBar">
+      <div class="stat-item stat-correct">
+        <i class="fas fa-check-circle"></i>
+        <span class="stat-value"
+              id="correctCount">0</span>
+      </div>
+      <div class="stat-item stat-wrong">
+        <i class="fas fa-times-circle"></i>
+        <span class="stat-value"
+              id="wrongCount">0</span>
+      </div>
+      <div class="stat-item stat-streak">
+        <i class="fas fa-fire"></i>
+        <span class="stat-value"
+              id="streakCount">0</span>
+      </div>
+      <div class="stat-item stat-best">
+        <i class="fas fa-crown"></i>
+        <span class="stat-value"
+              id="bestStreakCount">0</span>
+      </div>
+    </div>
+
+    <!-- Динамический контент -->
+    <div id="mainContent"></div>
+  </div>
+
+  <script>
+    "use strict";
+
+    // ===============================================
+    // Глобальное состояние приложения
+    // ===============================================
+
+    /** @type {Object} Состояние приложения */
+    const state = {
+      countries: [],
+      filteredCountries: [],
+      theme: "light",
+      lang: "ru",
+      soundEnabled: true,
+      gameMode: "population",
+      difficulty: "medium",
+      timerEnabled: false,
+      score: { correct: 0, wrong: 0 },
+      streak: 0,
+      bestStreak: 0,
+      currentRound: null,
+      isAnswered: false,
+      timerInterval: null,
+      timerRemaining: 10,
+      totalRounds: 0,
+      audioCtx: null,
+      screen: "menu"
+    };
+
+    /**
+     * Список известных стран (ISO alpha3)
+     * для лёгкого уровня
+     * @type {string[]}
+     */
+    const WELL_KNOWN = [
+      "RUS", "USA", "CHN", "IND", "BRA", "GBR",
+      "FRA", "DEU", "JPN", "AUS", "CAN", "MEX",
+      "ARG", "EGY", "ZAF", "NGA", "IDN", "TUR",
+      "ITA", "ESP", "KOR", "SAU", "UKR", "POL",
+      "COL", "THA", "IRN", "PAK", "PHL", "VNM",
+      "MYS", "PER", "CHL", "KAZ", "NOR", "SWE",
+      "NLD", "BEL", "AUT", "CHE", "PRT", "GRC",
+      "CZE", "ROU", "ISR", "ARE", "NZL", "IRL",
+      "DNK", "FIN", "SGP", "HUN", "CUB", "MMR",
+      "ETH", "KEN", "TZA", "DZA", "MAR", "AGO"
+    ];
+
+    // ===============================================
+    // Тексты интернационализации
+    // ===============================================
+
+    /** @type {Object} Тексты на двух языках */
+    const i18n = {
+      ru: {
+        title: "Страны: Дуэль",
+        subtitle: "Кто знает мир лучше?",
+        settings: "Настройки",
+        darkTheme: "Тёмная тема",
+        language: "English",
+        soundEffects: "Звуковые эффекты",
+        leaderboard: "Таблица лидеров",
+        clearScores: "Очистить результаты",
+        gameMode: "Режим игры",
+        population: "Население",
+        populationDesc: "Кто больше?",
+        area: "Площадь",
+        areaDesc: "Кто обширнее?",
+        capital: "Столицы",
+        capitalDesc: "Назови столицу",
+        flag: "Флаги",
+        flagDesc: "Угадай страну",
+        mixed: "Смешанный",
+        mixedDesc: "Всё вместе",
+        difficulty: "Сложность",
+        easy: "Лёгкий",
+        medium: "Средний",
+        hard: "Сложный",
+        timer: "Таймер (10 сек)",
+        startGame: "Начать игру",
+        loading: "Загрузка стран...",
+        loadError: "Не удалось загрузить данные",
+        retry: "Повторить",
+        whichMore: "Где больше населения?",
+        whichLarger: "Какая страна больше?",
+        whichCapital:
+          "Какая столица у этой страны?",
+        whichFlag: "Чей это флаг?",
+        clickCountry: "Нажмите на страну",
+        selectAnswer: "Выберите ответ",
+        people: "чел.",
+        sqKm: "км²",
+        next: "Следующий раунд",
+        timeUp: "Время вышло!",
+        correct: "Правильно!",
+        wrong: "Неправильно!",
+        gameOver: "Игра окончена",
+        totalCorrect: "Верных",
+        totalWrong: "Неверных",
+        bestStreak: "Лучшая серия",
+        totalRounds: "Всего раундов",
+        playAgain: "Играть снова",
+        backToMenu: "В меню",
+        rank: "#",
+        scoreCol: "Счёт",
+        streakCol: "Серия",
+        dateCol: "Дата",
+        modeCol: "Режим",
+        noScores: "Пока нет результатов",
+        confirmClear: "Очистить все результаты?",
+        factPrefix: "Интересный факт: ",
+        vs: "VS",
+        endGame: "Завершить"
+      },
+      en: {
+        title: "Countries: Duel",
+        subtitle: "Who knows the world better?",
+        settings: "Settings",
+        darkTheme: "Dark theme",
+        language: "Русский",
+        soundEffects: "Sound effects",
+        leaderboard: "Leaderboard",
+        clearScores: "Clear scores",
+        gameMode: "Game Mode",
+        population: "Population",
+        populationDesc: "Who has more?",
+        area: "Area",
+        areaDesc: "Who is larger?",
+        capital: "Capitals",
+        capitalDesc: "Name the capital",
+        flag: "Flags",
+        flagDesc: "Guess the country",
+        mixed: "Mixed",
+        mixedDesc: "All combined",
+        difficulty: "Difficulty",
+        easy: "Easy",
+        medium: "Medium",
+        hard: "Hard",
+        timer: "Timer (10 sec)",
+        startGame: "Start Game",
+        loading: "Loading countries...",
+        loadError: "Failed to load data",
+        retry: "Retry",
+        whichMore:
+          "Which has more population?",
+        whichLarger:
+          "Which country is larger?",
+        whichCapital:
+          "What is the capital?",
+        whichFlag: "Whose flag is this?",
+        clickCountry: "Click on a country",
+        selectAnswer: "Select an answer",
+        people: "people",
+        sqKm: "km²",
+        next: "Next round",
+        timeUp: "Time's up!",
+        correct: "Correct!",
+        wrong: "Wrong!",
+        gameOver: "Game Over",
+        totalCorrect: "Correct",
+        totalWrong: "Wrong",
+        bestStreak: "Best streak",
+        totalRounds: "Total rounds",
+        playAgain: "Play again",
+        backToMenu: "Back to menu",
+        rank: "#",
+        scoreCol: "Score",
+        streakCol: "Streak",
+        dateCol: "Date",
+        modeCol: "Mode",
+        noScores: "No scores yet",
+        confirmClear: "Clear all scores?",
+        factPrefix: "Fun fact: ",
+        vs: "VS",
+        endGame: "End game"
+      }
+    };
+
+    // ===============================================
+    // Утилиты
+    // ===============================================
+
+    /**
+     * Экранирование HTML для XSS
+     * @param {string} str - Входная строка
+     * @returns {string} Экранированная строка
+     */
+    function escapeHtml(str) {
+      if (!str) return "";
+      const d = document.createElement("div");
+      d.appendChild(document.createTextNode(str));
+      return d.innerHTML;
+    }
+
+    /**
+     * Получение текста на текущем языке
+     * @param {string} key - Ключ перевода
+     * @returns {string} Переведённый текст
+     */
+    function t(key) {
+      return (i18n[state.lang] || {})[key] || key;
+    }
+
+    /**
+     * Форматирование числа
+     * @param {number} num - Число
+     * @returns {string} Форматированное число
+     */
+    function formatNum(num) {
+      if (num == null) return "\u2014";
+      const loc = state.lang === "ru"
+        ? "ru-RU" : "en-US";
+      return num.toLocaleString(loc);
+    }
+
+    /**
+     * Случайный элемент массива
+     * @param {Array} a - Массив
+     * @returns {*} Случайный элемент
+     */
+    function rnd(a) {
+      return a[Math.floor(Math.random() * a.length)];
+    }
+
+    /**
+     * Перемешивание массива Фишера-Йейтса
+     * @param {Array} arr - Массив
+     * @returns {Array} Перемешанный массив
+     */
+    function shuffle(arr) {
+      const s = [...arr];
+      for (let i = s.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random()*(i+1));
+        [s[i], s[j]] = [s[j], s[i]];
+      }
+      return s;
+    }
+
+    /**
+     * Получение названия страны
+     * @param {Object} c - Объект страны
+     * @returns {string} Название
+     */
+    function getName(c) {
+      if (state.lang === "ru" && c.translations
+          && c.translations.rus) {
+        return c.translations.rus.common
+          || c.name.common;
+      }
+      return c.name.common;
+    }
+
+    /**
+     * Получение столицы страны
+     * @param {Object} c - Объект страны
+     * @returns {string} Столица
+     */
+    function getCapital(c) {
+      if (c.capital && c.capital.length > 0) {
+        return c.capital[0];
+      }
+      return "\u2014";
+    }
+
+    /**
+     * Получение URL SVG-флага
+     * @param {Object} c - Объект страны
+     * @returns {string} URL
+     */
+    function getFlagUrl(c) {
+      if (c.flags) {
+        return c.flags.svg || c.flags.png || "";
+      }
+      return "";
+    }
+
+    /**
+     * Получение эмодзи флага
+     * @param {Object} c - Объект страны
+     * @returns {string} Эмодзи
+     */
+    function getFlagEmoji(c) {
+      return c.flag || "";
+    }
+
+    /**
+     * Получение региона
+     * @param {Object} c - Объект страны
+     * @returns {string} Регион
+     */
+    function getRegion(c) {
+      return c.subregion || c.region || "";
+    }
+
+    /**
+     * Получение языков строкой
+     * @param {Object} c - Объект страны
+     * @returns {string} Языки
+     */
+    function getLangs(c) {
+      if (c.languages) {
+        return Object.values(c.languages).join(", ");
+      }
+      return "";
+    }
+
+    /**
+     * Получение валют строкой
+     * @param {Object} c - Объект страны
+     * @returns {string} Валюты
+     */
+    function getCurr(c) {
+      if (c.currencies) {
+        return Object.values(c.currencies)
+          .map(v => v.name + (v.symbol
+            ? " (" + v.symbol + ")" : ""))
+          .join(", ");
+      }
+      return "";
+    }
+
+    /**
+     * Генерация интересного факта
+     * @param {Object} c - Объект страны
+     * @returns {string} Факт
+     */
+    function genFact(c) {
+      const n = escapeHtml(getName(c));
+      const facts = [];
+      const lg = getLangs(c);
+      const cr = getCurr(c);
+      const tz = c.timezones
+        ? c.timezones.length : 0;
+      const brd = c.borders
+        ? c.borders.length : 0;
+      const side = c.car && c.car.side
+        ? c.car.side : "";
+      const cap = getCapital(c);
+
+      if (state.lang === "ru") {
+        if (lg) facts.push(
+          n + " \u2014 говорят на: "
+          + escapeHtml(lg) + "."
+        );
+        if (cr) facts.push(
+          "Валюта " + n + ": "
+          + escapeHtml(cr) + "."
+        );
+        if (tz > 1) facts.push(
+          n + " охватывает " + tz
+          + " часовых поясов!"
+        );
+        if (brd === 0) facts.push(
+          n + " \u2014 островное государство."
+        );
+        else if (brd > 5) facts.push(
+          n + " граничит с " + brd + " странами!"
+        );
+        if (side === "left") facts.push(
+          "В " + n + " левостороннее движение!"
+        );
+        if (c.population > 1e8) facts.push(
+          n + " \u2014 свыше 100 млн жителей!"
+        );
+        if (c.area > 1e6) facts.push(
+          "Площадь " + n + " более 1 млн км\u00B2!"
+        );
+        if (cap !== "\u2014") facts.push(
+          "Столица " + n + " \u2014 "
+          + escapeHtml(cap) + "."
+        );
+      } else {
+        if (lg) facts.push(
+          "In " + n + ", people speak: "
+          + escapeHtml(lg) + "."
+        );
+        if (cr) facts.push(
+          "Currency of " + n + ": "
+          + escapeHtml(cr) + "."
+        );
+        if (tz > 1) facts.push(
+          n + " spans " + tz + " time zones!"
+        );
+        if (brd === 0) facts.push(
+          n + " is an island nation."
+        );
+        else if (brd > 5) facts.push(
+          n + " borders " + brd + " countries!"
+        );
+        if (side === "left") facts.push(
+          "In " + n + " they drive on the left!"
+        );
+        if (c.population > 1e8) facts.push(
+          n + " has over 100 million people!"
+        );
+        if (c.area > 1e6) facts.push(
+          n + " covers over 1 million km\u00B2!"
+        );
+        if (cap !== "\u2014") facts.push(
+          "Capital of " + n + " is "
+          + escapeHtml(cap) + "."
+        );
+      }
+      if (facts.length === 0) {
+        return t("factPrefix") + n;
+      }
+      return t("factPrefix") + rnd(facts);
+    }
+
+    // ===============================================
+    // Звуковые эффекты (Web Audio API)
+    // ===============================================
+
+    /**
+     * Инициализация аудио-контекста
+     */
+    function initAudio() {
+      if (!state.audioCtx) {
+        try {
+          state.audioCtx = new (
+            window.AudioContext
+            || window.webkitAudioContext
+          )();
+        } catch (e) {
+          console.warn("No Web Audio API");
+        }
+      }
+    }
+
+    /**
+     * Воспроизведение звука верного ответа
+     */
+    function playCorrect() {
+      if (!state.soundEnabled
+          || !state.audioCtx) return;
+      const ctx = state.audioCtx;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.type = "sine";
+      const now = ctx.currentTime;
+      o.frequency.setValueAtTime(523.25, now);
+      o.frequency.setValueAtTime(659.25, now+0.1);
+      o.frequency.setValueAtTime(783.99, now+0.2);
+      g.gain.setValueAtTime(0.3, now);
+      g.gain.exponentialRampToValueAtTime(
+        0.01, now + 0.4
+      );
+      o.start(now);
+      o.stop(now + 0.4);
+    }
+
+    /**
+     * Воспроизведение звука неверного ответа
+     */
+    function playWrong() {
+      if (!state.soundEnabled
+          || !state.audioCtx) return;
+      const ctx = state.audioCtx;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.type = "sawtooth";
+      const now = ctx.currentTime;
+      o.frequency.setValueAtTime(400, now);
+      o.frequency.exponentialRampToValueAtTime(
+        200, now + 0.3
+      );
+      g.gain.setValueAtTime(0.2, now);
+      g.gain.exponentialRampToValueAtTime(
+        0.01, now + 0.4
+      );
+      o.start(now);
+      o.stop(now + 0.4);
+    }
+
+    /**
+     * Воспроизведение тика таймера
+     */
+    function playTick() {
+      if (!state.soundEnabled
+          || !state.audioCtx) return;
+      const ctx = state.audioCtx;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.type = "sine";
+      const now = ctx.currentTime;
+      o.frequency.setValueAtTime(800, now);
+      g.gain.setValueAtTime(0.1, now);
+      g.gain.exponentialRampToValueAtTime(
+        0.01, now + 0.05
+      );
+      o.start(now);
+      o.stop(now + 0.05);
+    }
+
+    /**
+     * Воспроизведение звука конца игры
+     */
+    function playGameOver() {
+      if (!state.soundEnabled
+          || !state.audioCtx) return;
+      const ctx = state.audioCtx;
+      [523.25, 440, 349.23].forEach((f, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.type = "triangle";
+        const t0 = ctx.currentTime + i * 0.2;
+        o.frequency.setValueAtTime(f, t0);
+        g.gain.setValueAtTime(0.25, t0);
+        g.gain.exponentialRampToValueAtTime(
+          0.01, t0 + 0.3
+        );
+        o.start(t0);
+        o.stop(t0 + 0.3);
+      });
+    }
+
+    // ===============================================
+    // Конфетти
+    // ===============================================
+
+    /**
+     * Запуск конфетти
+     * @param {number} count - Количество
+     */
+    function launchConfetti(count) {
+      const box = document.getElementById(
+        "confettiContainer"
+      );
+      const colors = [
+        "#ef4444", "#f97316", "#eab308",
+        "#22c55e", "#3b82f6"
+      ];
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement("div");
+        el.className = "confetti";
+        el.style.left = Math.random()*100 + "%";
+        el.style.backgroundColor =
+          colors[Math.floor(
+            Math.random() * colors.length
+          )];
+        el.style.width =
+          (Math.random()*8+6) + "px";
+        el.style.height =
+          (Math.random()*8+6) + "px";
+        el.style.borderRadius =
+          Math.random() > 0.5 ? "50%" : "2px";
+        el.style.animationDuration =
+          (Math.random()*2+1.5) + "s";
+        el.style.animationDelay =
+          (Math.random()*0.5) + "s";
+        box.appendChild(el);
+        setTimeout(() => {
+          if (el.parentNode) el.remove();
+        }, 4000);
+      }
+    }
+
+    // ===============================================
+    // localStorage
+    // ===============================================
+
+    /**
+     * Сохранить тему
+     * @param {string} v - Тема
+     */
+    function saveTheme(v) {
+      try {
+        localStorage.setItem(
+          "countriesDuel-theme", v
+        );
+      } catch (e) { /* нет доступа */ }
+    }
+
+    /**
+     * Загрузить тему
+     * @returns {string} Тема
+     */
+    function loadTheme() {
+      try {
+        return localStorage.getItem(
+          "countriesDuel-theme"
+        ) || "light";
+      } catch (e) { return "light"; }
+    }
+
+    /**
+     * Сохранить язык
+     * @param {string} v - Язык
+     */
+    function saveLang(v) {
+      try {
+        localStorage.setItem(
+          "countriesDuel-lang", v
+        );
+      } catch (e) { /* нет доступа */ }
+    }
+
+    /**
+     * Загрузить язык
+     * @returns {string} Язык
+     */
+    function loadLang() {
+      try {
+        return localStorage.getItem(
+          "countriesDuel-lang"
+        ) || "ru";
+      } catch (e) { return "ru"; }
+    }
+
+    /**
+     * Сохранить результаты
+     * @param {Array} s - Массив результатов
+     */
+    function saveScores(s) {
+      try {
+        localStorage.setItem(
+          "countriesDuel-scores",
+          JSON.stringify(s)
+        );
+      } catch (e) { /* нет доступа */ }
+    }
+
+    /**
+     * Загрузить результаты
+     * @returns {Array} Массив результатов
+     */
+    function loadScores() {
+      try {
+        const d = localStorage.getItem(
+          "countriesDuel-scores"
+        );
+        if (d) return JSON.parse(d);
+      } catch (e) { /* ошибка парсинга */ }
+      return [];
+    }
+
+    /**
+     * Добавить результат
+     * @param {Object} r - Результат
+     */
+    function addScore(r) {
+      const scores = loadScores();
+      scores.push(r);
+      scores.sort((a, b) => b.correct - a.correct);
+      saveScores(scores.slice(0, 10));
+    }
+
+    // ===============================================
+    // Загрузка данных
+    // ===============================================
+
+    /**
+     * Загрузка всех стран из API
+     * @returns {Promise<Array>} Массив стран
+     */
+    async function fetchCountries() {
+      const url =
+        "https://restcountries.com/v3.1/all";
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        throw new Error("HTTP " + resp.status);
+      }
+      const data = await resp.json();
+      // Фильтрация малых территорий
+      return data.filter(c =>
+        c.population && c.population >= 1000
+        && c.area && c.area >= 1
+        && c.name && c.name.common
+      );
+    }
+
+    // ===============================================
+    // Логика игры
+    // ===============================================
+
+    /**
+     * Подготовка стран по сложности
+     */
+    function prepareCountries() {
+      let cs = [...state.countries];
+      if (state.difficulty === "easy") {
+        cs = cs.filter(c =>
+          c.cca3 && WELL_KNOWN.includes(c.cca3)
+        );
+      }
+      state.filteredCountries = cs;
+    }
+
+    /**
+     * Выбор раунда
+     * @returns {Object|null} Объект раунда
+     */
+    function pickRound() {
+      const cs = state.filteredCountries;
+      if (cs.length < 4) return null;
+
+      const mode = state.gameMode === "mixed"
+        ? rnd(["population","area","capital","flag"])
+        : state.gameMode;
+
+      // === Столицы ===
+      if (mode === "capital") {
+        const wc = cs.filter(c =>
+          c.capital && c.capital.length > 0
+          && c.capital[0] !== ""
+        );
+        if (wc.length < 4) return pickRound();
+        const target = rnd(wc);
+        const others = shuffle(
+          wc.filter(c => c.cca3 !== target.cca3)
+        ).slice(0, 3);
+        const opts = shuffle([
+          ...others.map(c => ({
+            text: getCapital(c),
+            correct: false
+          })),
+          { text: getCapital(target),
+            correct: true }
+        ]);
+        return { mode, target, options: opts };
+      }
+
+      // === Флаги ===
+      if (mode === "flag") {
+        const target = rnd(cs);
+        const others = shuffle(
+          cs.filter(c => c.cca3 !== target.cca3)
+        ).slice(0, 3);
+        const opts = shuffle([
+          ...others.map(c => ({
+            text: getName(c), correct: false
+          })),
+          { text: getName(target), correct: true }
+        ]);
+        return { mode, target, options: opts };
+      }
+
+      // === Дуэль (население / площадь) ===
+      let c1, c2;
+      if (state.difficulty === "hard") {
+        const key = mode === "population"
+          ? "population" : "area";
+        const sorted = [...cs].sort(
+          (a, b) => a[key] - b[key]
+        );
+        const idx = Math.floor(
+          Math.random() * (sorted.length - 5)
+        ) + 2;
+        c1 = sorted[idx];
+        const off = Math.floor(
+          Math.random() * 3
+        ) + 1;
+        c2 = sorted[idx + off]
+          || sorted[idx - off]
+          || sorted[idx + 1];
+      } else {
+        const sh = shuffle(cs);
+        c1 = sh[0];
+        c2 = sh[1];
+      }
+
+      return { mode, country1: c1, country2: c2 };
+    }
+
+    /**
+     * Определение победителя дуэли
+     * @param {Object} r - Объект раунда
+     * @returns {Object} Страна-победитель
+     */
+    function getWinner(r) {
+      const k = r.mode === "population"
+        ? "population" : "area";
+      return r.country1[k] >= r.country2[k]
+        ? r.country1 : r.country2;
+    }
+
+    // ===============================================
+    // Таймер
+    // ===============================================
+
+    /**
+     * Запуск таймера раунда
+     */
+    function startTimer() {
+      if (!state.timerEnabled) return;
+      state.timerRemaining = 10;
+      const bc = document.querySelector(
+        ".timer-bar-container"
+      );
+      const bar = document.querySelector(
+        ".timer-bar"
+      );
+      if (!bc || !bar) return;
+      bc.classList.add("active");
+      bar.style.width = "100%";
+      bar.className = "timer-bar";
+      const t0 = Date.now();
+      const total = 10000;
+
+      state.timerInterval = setInterval(() => {
+        const el = Date.now() - t0;
+        const rem = Math.max(0, total - el);
+        const pct = (rem / total) * 100;
+        bar.style.width = pct + "%";
+        if (pct <= 20) {
+          bar.className = "timer-bar danger";
+        } else if (pct <= 50) {
+          bar.className = "timer-bar warning";
+        }
+        if (rem <= 3000 && rem > 0
+            && Math.floor(rem / 1000)
+            !== Math.floor((rem + 100) / 1000)) {
+          playTick();
+        }
+        if (rem <= 0) {
+          clearInterval(state.timerInterval);
+          state.timerInterval = null;
+          handleTimeUp();
+        }
+      }, 50);
+    }
+
+    /**
+     * Остановка таймера
+     */
+    function stopTimer() {
+      if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+      }
+    }
+
+    /**
+     * Обработка истечения времени
+     */
+    function handleTimeUp() {
+      if (state.isAnswered) return;
+      state.isAnswered = true;
+      playWrong();
+      state.score.wrong++;
+      state.streak = 0;
+      state.totalRounds++;
+      updateStatsUI();
+      const r = state.currentRound;
+      if (r.mode === "population"
+          || r.mode === "area") {
+        revealDuel(null);
+      } else {
+        revealQuiz(null);
+      }
+    }
+
+    // ===============================================
+    // Обновление UI
+    // ===============================================
+
+    /**
+     * Обновление всех data-i18n элементов
+     */
+    function updateI18n() {
+      document.querySelectorAll("[data-i18n]")
+        .forEach(el => {
+          const k = el.getAttribute("data-i18n");
+          if (i18n[state.lang][k]) {
+            el.textContent = i18n[state.lang][k];
+          }
+        });
+    }
+
+    /**
+     * Обновление панели статистики
+     */
+    function updateStatsUI() {
+      const ce = document.getElementById(
+        "correctCount"
+      );
+      const we = document.getElementById(
+        "wrongCount"
+      );
+      const se = document.getElementById(
+        "streakCount"
+      );
+      const be = document.getElementById(
+        "bestStreakCount"
+      );
+      if (ce) ce.textContent = state.score.correct;
+      if (we) we.textContent = state.score.wrong;
+      if (se) {
+        se.textContent = state.streak;
+        if (state.streak > 0) {
+          se.parentElement.classList.add(
+            "streak-pulse"
+          );
+          setTimeout(() => {
+            se.parentElement.classList.remove(
+              "streak-pulse"
+            );
+          }, 400);
+        }
+      }
+      if (be) be.textContent = state.bestStreak;
+    }
+
+    // ===============================================
+    // Рендеринг экранов
+    // ===============================================
+
+    /**
+     * Рендеринг экрана меню
+     */
+    function renderMenu() {
+      state.screen = "menu";
+      const sb = document.getElementById("statsBar");
+      if (sb) sb.classList.add("hidden");
+
+      const mc = document.getElementById(
+        "mainContent"
+      );
+      mc.innerHTML = `
+        <div class="menu-screen">
+          <div class="menu-card">
+            <h2>
+              <i class="fas fa-gamepad"></i>
+              <span data-i18n="gameMode">
+                ${escapeHtml(t("gameMode"))}</span>
+            </h2>
+            <div class="mode-grid">
+              <button class="mode-btn"
+                data-mode="population">
+                <i class="fas fa-users"></i>
+                ${escapeHtml(t("population"))}
+                <span>${escapeHtml(
+                  t("populationDesc"))}</span>
+              </button>
+              <button class="mode-btn"
+                data-mode="area">
+                <i class="fas fa-expand"></i>
+                ${escapeHtml(t("area"))}
+                <span>${escapeHtml(
+                  t("areaDesc"))}</span>
+              </button>
+              <button class="mode-btn"
+                data-mode="capital">
+                <i class="fas fa-city"></i>
+                ${escapeHtml(t("capital"))}
+                <span>${escapeHtml(
+                  t("capitalDesc"))}</span>
+              </button>
+              <button class="mode-btn"
+                data-mode="flag">
+                <i class="fas fa-flag"></i>
+                ${escapeHtml(t("flag"))}
+                <span>${escapeHtml(
+                  t("flagDesc"))}</span>
+              </button>
+              <button class="mode-btn"
+                data-mode="mixed">
+                <i class="fas fa-random"></i>
+                ${escapeHtml(t("mixed"))}
+                <span>${escapeHtml(
+                  t("mixedDesc"))}</span>
+              </button>
+            </div>
+          </div>
+          <div class="menu-card">
+            <h2>
+              <i class="fas fa-signal"></i>
+              <span data-i18n="difficulty">
+                ${escapeHtml(
+                  t("difficulty"))}</span>
+            </h2>
+            <div class="difficulty-row">
+              <button class="diff-btn"
+                data-diff="easy">
+                ${escapeHtml(t("easy"))}
+              </button>
+              <button class="diff-btn"
+                data-diff="medium">
+                ${escapeHtml(t("medium"))}
+              </button>
+              <button class="diff-btn"
+                data-diff="hard">
+                ${escapeHtml(t("hard"))}
+              </button>
+            </div>
+            <div class="timer-option">
+              <label>
+                <i class="fas fa-stopwatch"></i>
+                <span data-i18n="timer">
+                  ${escapeHtml(t("timer"))}
+                </span>
+              </label>
+              <label class="toggle-switch">
+                <input type="checkbox"
+                  id="timerToggle"
+                  ${state.timerEnabled
+                    ? "checked" : ""}>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          <button class="start-btn"
+            id="startGameBtn"
+            ${state.countries.length === 0
+              ? "disabled" : ""}>
+            <i class="fas fa-play"></i>
+            <span data-i18n="startGame">
+              ${escapeHtml(t("startGame"))}
+            </span>
+          </button>
+        </div>`;
+
+      // Обработчики режимов
+      mc.querySelectorAll(".mode-btn")
+        .forEach(b => {
+          b.classList.toggle("active",
+            b.dataset.mode === state.gameMode);
+          b.addEventListener("click", () => {
+            mc.querySelectorAll(".mode-btn")
+              .forEach(x =>
+                x.classList.remove("active"));
+            b.classList.add("active");
+            state.gameMode = b.dataset.mode;
+          });
+        });
+
+      // Обработчики сложности
+      mc.querySelectorAll(".diff-btn")
+        .forEach(b => {
+          b.classList.toggle("active",
+            b.dataset.diff === state.difficulty);
+          b.addEventListener("click", () => {
+            mc.querySelectorAll(".diff-btn")
+              .forEach(x =>
+                x.classList.remove("active"));
+            b.classList.add("active");
+            state.difficulty = b.dataset.diff;
+          });
+        });
+
+      // Таймер
+      const tt = document.getElementById(
+        "timerToggle"
+      );
+      if (tt) tt.addEventListener("change", e => {
+        state.timerEnabled = e.target.checked;
+      });
+
+      // Старт
+      const sb2 = document.getElementById(
+        "startGameBtn"
+      );
+      if (sb2) sb2.addEventListener("click", () => {
+        initAudio();
+        startGame();
+      });
+    }
+
+    /**
+     * Рендеринг загрузки
+     */
+    function renderLoading() {
+      document.getElementById("mainContent")
+        .innerHTML = `
+        <div class="loading-screen">
+          <div class="loading-spinner"></div>
+          <p class="loading-text"
+            data-i18n="loading">
+            ${escapeHtml(t("loading"))}</p>
+        </div>`;
+    }
+
+    /**
+     * Рендеринг ошибки
+     * @param {string} msg - Сообщение
+     */
+    function renderError(msg) {
+      document.getElementById("mainContent")
+        .innerHTML = `
+        <div class="error-screen">
+          <i class="fas fa-exclamation-triangle">
+          </i>
+          <h2 data-i18n="loadError">
+            ${escapeHtml(t("loadError"))}</h2>
+          <p>${escapeHtml(msg)}</p>
+          <button class="retry-btn" id="retryBtn">
+            <i class="fas fa-redo"></i>
+            <span data-i18n="retry">
+              ${escapeHtml(t("retry"))}</span>
+          </button>
+        </div>`;
+      document.getElementById("retryBtn")
+        .addEventListener("click", loadAndStart);
+    }
+
+    /**
+     * HTML карточки страны для дуэли
+     * @param {Object} c - Страна
+     * @param {number} idx - Индекс (0/1)
+     * @returns {string} HTML
+     */
+    function cardHtml(c, idx) {
+      const n = escapeHtml(getName(c));
+      const f = escapeHtml(getFlagUrl(c));
+      const em = getFlagEmoji(c);
+      const rg = escapeHtml(getRegion(c));
+      const fh = f
+        ? `<img class="country-flag" src="${f}"
+            alt="${n}" loading="lazy"
+            onerror="this.style.display='none';
+              this.nextElementSibling
+                .style.display='block'">
+           <div class="flag-emoji"
+             style="display:none">${em}</div>`
+        : `<div class="flag-emoji">${em}</div>`;
+
+      return `
+        <div class="country-card"
+          data-index="${idx}" id="card${idx}">
+          <div class="result-badge"
+            id="badge${idx}"></div>
+          ${fh}
+          <div class="country-name">${n}</div>
+          <div class="country-region">
+            <i class="fas fa-map-marker-alt"></i>
+            ${rg}
+          </div>
+          <div class="country-value"
+            id="value${idx}"></div>
+          <div class="country-value-label"
+            id="vLabel${idx}"></div>
+        </div>`;
+    }
+
+    /**
+     * Рендеринг раунда дуэли
+     * @param {Object} r - Раунд
+     */
+    function renderDuel(r) {
+      state.screen = "game";
+      const sb = document.getElementById("statsBar");
+      if (sb) sb.classList.remove("hidden");
+
+      const q = r.mode === "population"
+        ? t("whichMore") : t("whichLarger");
+
+      document.getElementById("mainContent")
+        .innerHTML = `
+        <div class="game-screen">
+          <div class="round-info">
+            <div class="round-question">
+              ${escapeHtml(q)}</div>
+            <div class="round-hint">
+              ${escapeHtml(t("clickCountry"))}</div>
+          </div>
+          <div class="timer-bar-container">
+            <div class="timer-bar"></div>
+          </div>
+          <div class="duel-container">
+            ${cardHtml(r.country1, 0)}
+            <div class="vs-divider">
+              <span class="vs-text">${t("vs")}
+              </span>
+            </div>
+            ${cardHtml(r.country2, 1)}
+          </div>
+          <div class="fact-card" id="factCard">
+            <i class="fas fa-lightbulb"></i>
+            <div class="fact-text"
+              id="factText"></div>
+          </div>
+          <button class="next-btn" id="nextBtn">
+            <i class="fas fa-arrow-right"></i>
+            ${escapeHtml(t("next"))}
+          </button>
+        </div>`;
+
+      document.getElementById("card0")
+        .addEventListener("click", () => {
+          if (!state.isAnswered) handleDuel(r, 0);
+        });
+      document.getElementById("card1")
+        .addEventListener("click", () => {
+          if (!state.isAnswered) handleDuel(r, 1);
+        });
+      document.getElementById("nextBtn")
+        .addEventListener("click", nextRound);
+
+      startTimer();
+    }
+
+    /**
+     * Рендеринг раунда викторины
+     * @param {Object} r - Раунд
+     */
+    function renderQuiz(r) {
+      state.screen = "game";
+      const sb = document.getElementById("statsBar");
+      if (sb) sb.classList.remove("hidden");
+
+      const q = r.mode === "capital"
+        ? t("whichCapital") : t("whichFlag");
+      const tgt = r.target;
+      const n = escapeHtml(getName(tgt));
+      const f = escapeHtml(getFlagUrl(tgt));
+      const em = getFlagEmoji(tgt);
+      const dn = r.mode === "flag" ? "?" : n;
+      const fh = f
+        ? `<img class="country-flag" src="${f}"
+            alt="${dn}" loading="lazy"
+            onerror="this.style.display='none';
+              this.nextElementSibling
+                .style.display='block'">
+           <div class="flag-emoji"
+             style="display:none">${em}</div>`
+        : `<div class="flag-emoji">${em}</div>`;
+
+      document.getElementById("mainContent")
+        .innerHTML = `
+        <div class="game-screen">
+          <div class="round-info">
+            <div class="round-question">
+              ${escapeHtml(q)}</div>
+            <div class="round-hint">
+              ${escapeHtml(
+                t("selectAnswer"))}</div>
+          </div>
+          <div class="timer-bar-container">
+            <div class="timer-bar"></div>
+          </div>
+          <div class="quiz-center-card">
+            ${fh}
+            <div class="country-name"
+              id="quizName">
+              ${escapeHtml(dn)}</div>
+          </div>
+          <div class="capital-options"
+            id="quizOptions">
+            ${r.options.map((o, i) => `
+              <button class="capital-option-btn"
+                data-index="${i}">
+                ${escapeHtml(o.text)}
+              </button>`).join("")}
+          </div>
+          <div class="fact-card" id="factCard">
+            <i class="fas fa-lightbulb"></i>
+            <div class="fact-text"
+              id="factText"></div>
+          </div>
+          <button class="next-btn" id="nextBtn">
+            <i class="fas fa-arrow-right"></i>
+            ${escapeHtml(t("next"))}
+          </button>
+        </div>`;
+
+      document.querySelectorAll(
+        ".capital-option-btn"
+      ).forEach(b => {
+        b.addEventListener("click", () => {
+          if (!state.isAnswered) {
+            handleQuiz(r,
+              parseInt(b.dataset.index, 10));
+          }
+        });
+      });
+      document.getElementById("nextBtn")
+        .addEventListener("click", nextRound);
+
+      startTimer();
+    }
+
+    // ===============================================
+    // Обработка ответов
+    // ===============================================
+
+    /**
+     * Обработка ответа дуэли
+     * @param {Object} r - Раунд
+     * @param {number} ch - Выбранный индекс
+     */
+    function handleDuel(r, ch) {
+      state.isAnswered = true;
+      stopTimer();
+      const w = getWinner(r);
+      const chosen = ch === 0
+        ? r.country1 : r.country2;
+      const ok = chosen.cca3 === w.cca3;
+
+      if (ok) {
+        state.score.correct++;
+        state.streak++;
+        if (state.streak > state.bestStreak) {
+          state.bestStreak = state.streak;
+        }
+        playCorrect();
+        launchConfetti(
+          state.streak % 5 === 0
+          && state.streak >= 5 ? 40 : 15
+        );
+      } else {
+        state.score.wrong++;
+        state.streak = 0;
+        playWrong();
+      }
+      state.totalRounds++;
+      updateStatsUI();
+      revealDuel(ch);
+    }
+
+    /**
+     * Раскрытие ответа дуэли
+     * @param {number|null} ch - Выбор
+     */
+    function revealDuel(ch) {
+      const r = state.currentRound;
+      const w = getWinner(r);
+      const k = r.mode === "population"
+        ? "population" : "area";
+      const unit = r.mode === "population"
+        ? t("people") : t("sqKm");
+
+      [0, 1].forEach(i => {
+        const c = i === 0
+          ? r.country1 : r.country2;
+        const ve = document.getElementById(
+          "value" + i
+        );
+        const le = document.getElementById(
+          "vLabel" + i
+        );
+        const card = document.getElementById(
+          "card" + i
+        );
+        const badge = document.getElementById(
+          "badge" + i
+        );
+
+        if (ve) {
+          ve.textContent = formatNum(c[k]);
+          setTimeout(() => {
+            ve.classList.add("revealed");
+          }, 100 + i * 200);
+        }
+        if (le) {
+          le.textContent = unit;
+          setTimeout(() => {
+            le.classList.add("revealed");
+          }, 200 + i * 200);
+        }
+
+        card.classList.add("disabled");
+        const isW = c.cca3 === w.cca3;
+
+        setTimeout(() => {
+          if (isW) {
+            card.classList.add("winner");
+            if (ch === i) {
+              badge.className =
+                "result-badge correct-badge show";
+              badge.innerHTML =
+                '<i class="fas fa-check"></i>';
+              card.classList.add("bounce-in");
+            }
+          } else {
+            card.classList.add("wrong");
+            if (ch === i) {
+              badge.className =
+                "result-badge wrong-badge show";
+              badge.innerHTML =
+                '<i class="fas fa-times"></i>';
+              card.classList.add("shake");
+            }
+          }
+        }, 400);
+      });
+
+      // Факт
+      setTimeout(() => {
+        const fc = document.getElementById(
+          "factCard"
+        );
+        const ft = document.getElementById(
+          "factText"
+        );
+        if (fc && ft) {
+          ft.innerHTML = genFact(w);
+          fc.classList.add("show");
+        }
+      }, 800);
+
+      // Кнопка «Далее»
+      setTimeout(() => {
+        const nb = document.getElementById(
+          "nextBtn"
+        );
+        if (nb) nb.classList.add("show");
+      }, 600);
+    }
+
+    /**
+     * Обработка ответа викторины
+     * @param {Object} r - Раунд
+     * @param {number} ci - Индекс варианта
+     */
+    function handleQuiz(r, ci) {
+      state.isAnswered = true;
+      stopTimer();
+      const ok = r.options[ci].correct;
+
+      if (ok) {
+        state.score.correct++;
+        state.streak++;
+        if (state.streak > state.bestStreak) {
+          state.bestStreak = state.streak;
+        }
+        playCorrect();
+        launchConfetti(15);
+      } else {
+        state.score.wrong++;
+        state.streak = 0;
+        playWrong();
+      }
+      state.totalRounds++;
+      updateStatsUI();
+      revealQuiz(ci);
+    }
+
+    /**
+     * Раскрытие ответа викторины
+     * @param {number|null} ci - Выбранный индекс
+     */
+    function revealQuiz(ci) {
+      const r = state.currentRound;
+      document.querySelectorAll(
+        ".capital-option-btn"
+      ).forEach((b, i) => {
+        b.classList.add("disabled");
+        if (r.options[i].correct) {
+          b.classList.add("correct-opt");
+        } else if (i === ci) {
+          b.classList.add("wrong-opt");
+        }
+      });
+
+      // Для флагов — показываем название
+      if (r.mode === "flag") {
+        const ne = document.getElementById(
+          "quizName"
+        );
+        if (ne) {
+          ne.textContent = getName(r.target);
+          ne.classList.add("bounce-in");
+        }
+      }
+
+      setTimeout(() => {
+        const fc = document.getElementById(
+          "factCard"
+        );
+        const ft = document.getElementById(
+          "factText"
+        );
+        if (fc && ft) {
+          ft.innerHTML = genFact(r.target);
+          fc.classList.add("show");
+        }
+      }, 500);
+
+      setTimeout(() => {
+        const nb = document.getElementById(
+          "nextBtn"
+        );
+        if (nb) nb.classList.add("show");
+      }, 400);
+    }
+
+    // ===============================================
+    // Управление игрой
+    // ===============================================
+
+    /**
+     * Запуск новой игры
+     */
+    function startGame() {
+      state.score = { correct: 0, wrong: 0 };
+      state.streak = 0;
+      state.bestStreak = 0;
+      state.totalRounds = 0;
+      state.isAnswered = false;
+      prepareCountries();
+      updateStatsUI();
+      nextRound();
+    }
+
+    /**
+     * Следующий раунд
+     */
+    function nextRound() {
+      stopTimer();
+      state.isAnswered = false;
+
+      const r = pickRound();
+      if (!r) {
+        renderError("Not enough countries");
+        return;
+      }
+      state.currentRound = r;
+
+      if (r.mode === "population"
+          || r.mode === "area") {
+        renderDuel(r);
+      } else {
+        renderQuiz(r);
+      }
+    }
+
+    /**
+     * Рендеринг экрана окончания
+     */
+    function renderGameOver() {
+      stopTimer();
+      state.screen = "gameover";
+      playGameOver();
+
+      const sb = document.getElementById("statsBar");
+      if (sb) sb.classList.add("hidden");
+
+      addScore({
+        correct: state.score.correct,
+        wrong: state.score.wrong,
+        streak: state.bestStreak,
+        rounds: state.totalRounds,
+        mode: state.gameMode,
+        date: new Date().toLocaleDateString(
+          state.lang === "ru" ? "ru-RU" : "en-US"
+        )
+      });
+
+      document.getElementById("mainContent")
+        .innerHTML = `
+        <div class="game-over-screen">
+          <h2 data-i18n="gameOver">
+            ${escapeHtml(t("gameOver"))}</h2>
+          <div class="game-over-stats">
+            <div class="game-over-stat">
+              <div class="go-label"
+                data-i18n="totalCorrect">
+                ${escapeHtml(
+                  t("totalCorrect"))}</div>
+              <div class="go-number"
+                style="color:var(--success-color)">
+                ${state.score.correct}</div>
+            </div>
+            <div class="game-over-stat">
+              <div class="go-label"
+                data-i18n="totalWrong">
+                ${escapeHtml(
+                  t("totalWrong"))}</div>
+              <div class="go-number"
+                style="color:var(--error-color)">
+                ${state.score.wrong}</div>
+            </div>
+            <div class="game-over-stat">
+              <div class="go-label"
+                data-i18n="bestStreak">
+                ${escapeHtml(
+                  t("bestStreak"))}</div>
+              <div class="go-number"
+                style="color:var(--streak-color)">
+                ${state.bestStreak}</div>
+            </div>
+            <div class="game-over-stat">
+              <div class="go-label"
+                data-i18n="totalRounds">
+                ${escapeHtml(
+                  t("totalRounds"))}</div>
+              <div class="go-number">
+                ${state.totalRounds}</div>
+            </div>
+          </div>
+          <div class="game-over-actions">
+            <button class="play-again-btn"
+              id="playAgainBtn">
+              <i class="fas fa-redo"></i>
+              ${escapeHtml(t("playAgain"))}
+            </button>
+            <button class="menu-return-btn"
+              id="menuReturnBtn">
+              <i class="fas fa-home"></i>
+              ${escapeHtml(t("backToMenu"))}
+            </button>
+          </div>
+        </div>`;
+
+      document.getElementById("playAgainBtn")
+        .addEventListener("click", startGame);
+      document.getElementById("menuReturnBtn")
+        .addEventListener("click", renderMenu);
+    }
+
+    // ===============================================
+    // Таблица лидеров
+    // ===============================================
+
+    /**
+     * Рендеринг таблицы лидеров
+     */
+    function renderLeaderboard() {
+      const scores = loadScores();
+      const box = document.getElementById(
+        "leaderboardContent"
+      );
+      if (!box) return;
+
+      if (scores.length === 0) {
+        box.innerHTML = `<p class="no-scores"
+          data-i18n="noScores">
+          ${escapeHtml(t("noScores"))}</p>`;
+        return;
+      }
+
+      let h = `<table class="score-table">
+        <thead><tr>
+          <th>${escapeHtml(t("rank"))}</th>
+          <th>${escapeHtml(t("scoreCol"))}</th>
+          <th>${escapeHtml(t("streakCol"))}</th>
+          <th>${escapeHtml(t("modeCol"))}</th>
+          <th>${escapeHtml(t("dateCol"))}</th>
+        </tr></thead><tbody>`;
+
+      scores.forEach((s, i) => {
+        const ml = s.mode
+          ? escapeHtml(t(s.mode) || s.mode) : "\u2014";
+        h += `<tr>
+          <td class="score-rank">${i + 1}</td>
+          <td>${escapeHtml(String(s.correct||0))}
+            / ${escapeHtml(String(
+              (s.correct||0)+(s.wrong||0)))}</td>
+          <td><i class="fas fa-fire"
+            style="color:var(--streak-color)"></i>
+            ${escapeHtml(
+              String(s.streak||0))}</td>
+          <td>${ml}</td>
+          <td>${escapeHtml(s.date||"\u2014")}</td>
+        </tr>`;
+      });
+
+      h += "</tbody></table>";
+      box.innerHTML = h;
+    }
+
+    // ===============================================
+    // Инициализация
+    // ===============================================
+
+    /**
+     * Применение темы
+     * @param {string} th - "light"/"dark"
+     */
+    function applyTheme(th) {
+      state.theme = th;
+      document.body.classList.toggle(
+        "dark-theme", th === "dark"
+      );
+      saveTheme(th);
+      const tg = document.getElementById(
+        "themeToggle"
+      );
+      if (tg) tg.checked = th === "dark";
+    }
+
+    /**
+     * Применение языка
+     * @param {string} ln - "ru"/"en"
+     */
+    function applyLang(ln) {
+      state.lang = ln;
+      document.documentElement.lang = ln;
+      saveLang(ln);
+      updateI18n();
+      const tg = document.getElementById(
+        "langToggle"
+      );
+      if (tg) tg.checked = ln === "en";
+    }
+
+    /**
+     * Загрузка данных и запуск
+     */
+    async function loadAndStart() {
+      renderLoading();
+      try {
+        state.countries = await fetchCountries();
+        renderMenu();
+      } catch (err) {
+        renderError(err.message || "Unknown error");
+      }
+    }
+
+    /**
+     * Инициализация приложения
+     */
+    function init() {
+      // Загрузка настроек
+      applyTheme(loadTheme());
+      applyLang(loadLang());
+
+      // Настройки — открытие/закрытие
+      const sBtn = document.getElementById(
+        "settingsBtn"
+      );
+      const sMod = document.getElementById(
+        "settingsModal"
+      );
+      sBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        sMod.classList.toggle("active");
+      });
+      document.addEventListener("click", e => {
+        if (!sMod.contains(e.target)
+            && e.target !== sBtn) {
+          sMod.classList.remove("active");
+        }
+      });
+
+      // Тема
+      document.getElementById("themeToggle")
+        .addEventListener("change", e => {
+          applyTheme(
+            e.target.checked ? "dark" : "light"
+          );
+        });
+
+      // Язык
+      document.getElementById("langToggle")
+        .addEventListener("change", e => {
+          applyLang(
+            e.target.checked ? "en" : "ru"
+          );
+          if (state.screen === "menu") {
+            renderMenu();
+          }
+        });
+
+      // Звук
+      document.getElementById("soundToggle")
+        .addEventListener("change", e => {
+          state.soundEnabled = e.target.checked;
+        });
+
+      // Таблица лидеров
+      const lBtn = document.getElementById(
+        "leaderboardBtn"
+      );
+      const lMod = document.getElementById(
+        "leaderboardModal"
+      );
+      const lCls = document.getElementById(
+        "closeLeaderboard"
+      );
+
+      lBtn.addEventListener("click", () => {
+        renderLeaderboard();
+        lMod.classList.add("active");
+      });
+      lCls.addEventListener("click", () => {
+        lMod.classList.remove("active");
+      });
+      lMod.addEventListener("click", e => {
+        if (e.target === lMod) {
+          lMod.classList.remove("active");
+        }
+      });
+
+      // Очистка результатов
+      document.getElementById("clearScoresBtn")
+        .addEventListener("click", () => {
+          if (confirm(t("confirmClear"))) {
+            saveScores([]);
+            renderLeaderboard();
+          }
+        });
+
+      // Горячие клавиши
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape") {
+          sMod.classList.remove("active");
+          lMod.classList.remove("active");
+        }
+        // Q — завершить игру
+        if (e.key === "q"
+            && state.screen === "game") {
+          renderGameOver();
+        }
+      });
+
+      // Загрузка стран из API
+      loadAndStart();
+    }
+
+    // Запуск
+    document.addEventListener(
+      "DOMContentLoaded", init
+    );
+  </script>
+</body>
+</html>

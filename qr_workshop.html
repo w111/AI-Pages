@@ -1,0 +1,3238 @@
+<!DOCTYPE html>
+<!--
+ТЕХНИЧЕСКОЕ ЗАДАНИЕ
+
+Цель: Создать интерактивное приложение "QR Мастерская" для
+генерации, настройки и скачивания QR-кодов различных типов данных.
+
+Функциональные требования:
+1. Генерация QR-кодов для типов данных:
+   - URL/Ссылка
+   - Обычный текст
+   - Email (формат mailto:)
+   - Телефон (формат tel:)
+   - SMS (формат sms:)
+   - WiFi (формат WIFI:S:ssid;T:WPA;P:password;;)
+   - vCard контакт
+   - Календарное событие (формат VEVENT)
+2. Настройки внешнего вида:
+   - Ползунок размера (100x100 до 1000x1000)
+   - Выбор цвета переднего плана
+   - Выбор цвета фона
+   - Уровень коррекции ошибок: L(7%), M(15%), Q(25%), H(30%)
+   - Размер отступа
+3. Предварительный просмотр в реальном времени (с debounce)
+4. Скачивание в формате PNG или SVG
+5. Чтение QR-кода: загрузка изображения для декодирования
+   (POST multipart/form-data или URL-декодирование через API)
+6. История сгенерированных QR-кодов (localStorage, 20 миниатюр)
+7. Массовая генерация: вставить несколько URL, сгенерировать все
+8. Переключение темной/светлой темы
+9. Переключение языка RU/EN
+10. Кнопка возврата на index.html
+11. Адаптивный дизайн
+12. Копирование QR-изображения в буфер обмена
+
+API:
+- Генерация: https://api.qrserver.com/v1/create-qr-code/
+  Параметры: size, data, color, bgcolor, format, margin, ecc
+- Декодирование: https://api.qrserver.com/v1/read-qr-code/
+  POST multipart/form-data (поле file) или GET ?fileurl=
+
+Технические требования:
+1. Самодостаточный HTML с встроенными CSS и JS
+2. Vanilla JavaScript без фреймворков
+3. Font Awesome 6.4.0 для иконок
+4. CSS переменные для темной/светлой темы
+5. Отступы: 2 пробела, двойные кавычки
+6. JSDoc комментарии на функциях
+7. Кнопка "Назад" на index.html
+8. Toggle-switch с классом slider для темы и языка
+9. escapeHtml, response.ok, try/catch localStorage
+10. Drag-and-drop для загрузки изображений в сканере
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+  <title>QR Мастерская | QR Workshop</title>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* === Светлая тема (по умолчанию) === */
+    :root {
+      --bg-color: #f8f7ff;
+      --text-color: #1e1b4b;
+      --card-bg: #ffffff;
+      --border-color: #e0daf5;
+      --primary-color: #8b5cf6;
+      --primary-hover: #7c3aed;
+      --primary-light: rgba(139, 92, 246, 0.1);
+      --primary-glow: rgba(139, 92, 246, 0.25);
+      --secondary-color: #6b7280;
+      --input-bg: #f5f3ff;
+      --input-border: #d4d0e8;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow: 0 4px 16px rgba(139,92,246,0.08);
+      --shadow-lg: 0 8px 32px rgba(139,92,246,0.12);
+      --accent-gradient: linear-gradient(
+        135deg, #8b5cf6 0%, #6d28d9 100%);
+      --success-color: #22c55e;
+      --error-color: #ef4444;
+      --warning-color: #f59e0b;
+      --tab-bg: #ede9fe;
+      --tab-active-bg: var(--accent-gradient);
+      --scrollbar-track: #f0ecff;
+      --scrollbar-thumb: #c4b5fd;
+    }
+
+    /* === Темная тема === */
+    body.dark-theme {
+      --bg-color: #0f0a1e;
+      --text-color: #e8e2f8;
+      --card-bg: #1a1333;
+      --border-color: #2d2552;
+      --primary-color: #a78bfa;
+      --primary-hover: #8b5cf6;
+      --primary-light: rgba(167,139,250,0.12);
+      --primary-glow: rgba(167,139,250,0.25);
+      --secondary-color: #9ca3af;
+      --input-bg: #211a3a;
+      --input-border: #3b3160;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+      --shadow: 0 4px 16px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
+      --accent-gradient: linear-gradient(
+        135deg, #a78bfa 0%, #8b5cf6 100%);
+      --success-color: #4ade80;
+      --error-color: #f87171;
+      --warning-color: #fbbf24;
+      --tab-bg: #251e42;
+      --scrollbar-track: #1a1333;
+      --scrollbar-thumb: #3b3160;
+    }
+
+    /* === Сброс и базовые стили === */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      transition: background-color 0.3s ease,
+        color 0.3s ease;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-color);
+    }
+
+    /* === Контейнер === */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px 40px;
+    }
+
+    /* === Шапка === */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--input-bg);
+      color: var(--text-color);
+      text-decoration: none;
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .back-btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .header-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-title i {
+      font-size: 1.1rem;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* === Переключатель (toggle-switch) === */
+    .settings-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-option label {
+      color: var(--secondary-color);
+      font-size: 0.82rem;
+      white-space: nowrap;
+      cursor: default;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 26px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--input-border);
+      transition: 0.3s;
+      border-radius: 26px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: var(--accent-gradient);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
+    /* === Вкладки разделов === */
+    .section-tabs {
+      display: flex;
+      gap: 4px;
+      margin: 24px 0;
+      background: var(--tab-bg);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .section-tab {
+      flex: 1;
+      padding: 11px 14px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--secondary-color);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-family: inherit;
+    }
+
+    .section-tab.active {
+      background: var(--accent-gradient);
+      color: white;
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+
+    .section-tab:hover:not(.active) {
+      color: var(--primary-color);
+    }
+
+    .section-content {
+      display: none;
+    }
+
+    .section-content.active {
+      display: block;
+    }
+
+    /* === Основная раскладка === */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    /* === Карточки === */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--primary-color);
+    }
+
+    .card-title i { font-size: 1rem; }
+
+    /* === Вкладки типов данных === */
+    .type-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 18px;
+    }
+
+    .type-tab {
+      padding: 7px 13px;
+      border: 1px solid var(--border-color);
+      border-radius: 9px;
+      background: var(--tab-bg);
+      color: var(--secondary-color);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: inherit;
+    }
+
+    .type-tab:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .type-tab.active {
+      background: var(--accent-gradient);
+      color: white;
+      border-color: transparent;
+    }
+
+    .type-tab i { font-size: 0.78rem; }
+
+    /* === Формы ввода === */
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: var(--secondary-color);
+    }
+
+    .input-group input[type="text"],
+    .input-group input[type="url"],
+    .input-group input[type="email"],
+    .input-group input[type="tel"],
+    .input-group input[type="datetime-local"],
+    .input-group textarea,
+    .input-group select {
+      width: 100%;
+      padding: 9px 13px;
+      border: 1px solid var(--input-border);
+      border-radius: 10px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.88rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    .input-group input:focus,
+    .input-group textarea:focus,
+    .input-group select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .input-group textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* === Панели форм (скрытие/показ) === */
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    /* === Панель настроек === */
+    .settings-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 14px;
+      background: var(--input-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .setting-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .setting-item label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--secondary-color);
+    }
+
+    .setting-item .range-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .setting-item input[type="range"] {
+      flex: 1;
+      accent-color: var(--primary-color);
+      height: 6px;
+    }
+
+    .setting-item .range-value {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--primary-color);
+      min-width: 38px;
+      text-align: right;
+    }
+
+    .color-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-input-wrapper input[type="color"] {
+      width: 34px;
+      height: 34px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      padding: 2px;
+      cursor: pointer;
+      background: var(--input-bg);
+    }
+
+    .color-input-wrapper .color-hex {
+      font-size: 0.78rem;
+      color: var(--secondary-color);
+      font-family: monospace;
+    }
+
+    .setting-item select {
+      padding: 7px 10px;
+      border: 1px solid var(--input-border);
+      border-radius: 8px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    .setting-item select:focus {
+      border-color: var(--primary-color);
+    }
+
+    /* === Превью QR-кода === */
+    .preview-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .qr-preview-box {
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--input-bg);
+      border: 2px dashed var(--border-color);
+      border-radius: 16px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+
+    .qr-preview-box.has-image {
+      border-style: solid;
+      border-color: var(--primary-color);
+    }
+
+    .qr-preview-box img {
+      max-width: 90%;
+      max-height: 90%;
+      image-rendering: pixelated;
+    }
+
+    .qr-placeholder {
+      text-align: center;
+      color: var(--secondary-color);
+    }
+
+    .qr-placeholder i {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 8px;
+      color: var(--primary-color);
+      opacity: 0.35;
+    }
+
+    .qr-placeholder span { font-size: 0.88rem; }
+
+    .qr-loading {
+      display: none;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .qr-spinner {
+      width: 38px; height: 38px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* === Кнопки === */
+    .action-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    .btn-secondary {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .btn-success {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .btn-success:hover { opacity: 0.9; }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* === QR Ридер === */
+    .reader-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: 16px;
+      padding: 36px 24px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .reader-zone:hover,
+    .reader-zone.dragover {
+      border-color: var(--primary-color);
+      background: var(--primary-light);
+    }
+
+    .reader-zone i.upload-icon {
+      font-size: 2.8rem;
+      color: var(--primary-color);
+      opacity: 0.55;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .reader-zone p {
+      color: var(--secondary-color);
+      font-size: 0.88rem;
+      margin-bottom: 12px;
+    }
+
+    .reader-zone input[type="file"] {
+      display: none;
+    }
+
+    .reader-result {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      display: none;
+    }
+
+    .reader-result.visible { display: block; }
+
+    .reader-result-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--secondary-color);
+      margin-bottom: 6px;
+    }
+
+    .reader-result-text {
+      font-size: 0.92rem;
+      word-break: break-all;
+      padding: 10px;
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      min-height: 36px;
+    }
+
+    .reader-result-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* === История === */
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fill, minmax(80px, 1fr));
+      gap: 10px;
+    }
+
+    .history-item {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      background: white;
+    }
+
+    .history-item:hover {
+      border-color: var(--primary-color);
+      transform: scale(1.05);
+      box-shadow: var(--shadow);
+    }
+
+    .history-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 4px;
+    }
+
+    .history-item .del-btn {
+      position: absolute;
+      top: 2px; right: 2px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--error-color);
+      color: white;
+      border: none;
+      font-size: 10px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .history-item:hover .del-btn {
+      display: flex;
+    }
+
+    .history-empty {
+      text-align: center;
+      padding: 28px;
+      color: var(--secondary-color);
+      grid-column: 1 / -1;
+    }
+
+    .history-empty i {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      display: block;
+      opacity: 0.35;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .history-header .card-title { margin-bottom: 0; }
+
+    .clear-history-btn {
+      font-size: 0.78rem;
+      color: var(--error-color);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+    }
+
+    .clear-history-btn:hover {
+      text-decoration: underline;
+    }
+
+    /* === Массовая генерация === */
+    .bulk-textarea {
+      width: 100%;
+      min-height: 110px;
+      padding: 11px;
+      border: 1px solid var(--input-border);
+      border-radius: 10px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-family: monospace;
+      font-size: 0.84rem;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .bulk-textarea:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .bulk-hint {
+      font-size: 0.78rem;
+      color: var(--secondary-color);
+      margin: 6px 0 14px;
+    }
+
+    .bulk-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .bulk-results {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fill, minmax(155px, 1fr));
+      gap: 14px;
+    }
+
+    .bulk-item {
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .bulk-item img {
+      width: 100%;
+      max-width: 140px;
+      image-rendering: pixelated;
+      margin-bottom: 6px;
+    }
+
+    .bulk-item-label {
+      font-size: 0.72rem;
+      color: var(--secondary-color);
+      word-break: break-all;
+      max-height: 2.4em;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .bulk-item-actions {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .bulk-item-actions .btn {
+      padding: 5px 9px;
+      font-size: 0.72rem;
+    }
+
+    /* === Уведомления === */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 13px 18px;
+      border-radius: 12px;
+      color: white;
+      font-weight: 500;
+      font-size: 0.88rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      z-index: 10000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      max-width: 380px;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success { background: var(--success-color); }
+    .toast.error { background: var(--error-color); }
+    .toast.info { background: var(--primary-color); }
+
+    /* === Checkbox стиль === */
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: var(--text-color);
+      cursor: pointer;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      accent-color: var(--primary-color);
+      width: 16px;
+      height: 16px;
+    }
+
+    /* === Адаптивный дизайн === */
+    @media (max-width: 900px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+      .settings-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      header {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 10px 14px;
+      }
+      .header-right { gap: 10px; }
+      .header-title { font-size: 1.05rem; }
+      .settings-option label { display: none; }
+      .type-tabs { gap: 4px; }
+      .type-tab {
+        padding: 5px 8px;
+        font-size: 0.76rem;
+      }
+      .type-tab span { display: none; }
+      .card { padding: 14px; }
+      .section-tabs { flex-direction: column; }
+      .section-tab {
+        padding: 9px 12px;
+        font-size: 0.82rem;
+      }
+      .input-row { grid-template-columns: 1fr; }
+      .bulk-results {
+        grid-template-columns: repeat(
+          auto-fill, minmax(120px, 1fr));
+      }
+      .action-buttons { gap: 6px; }
+      .btn {
+        padding: 8px 12px;
+        font-size: 0.82rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- === Шапка === -->
+  <header>
+    <div class="header-left">
+      <a href="index.html" class="back-btn"
+        id="backBtn"
+        title="Назад">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <span class="header-title" id="headerTitle">
+        <i class="fas fa-qrcode"></i>
+        QR Мастерская
+      </span>
+    </div>
+    <div class="header-right">
+      <!-- Тема -->
+      <div class="settings-option">
+        <label id="themeLabelText">Тема</label>
+        <div class="toggle-switch">
+          <input type="checkbox" id="themeToggle">
+          <span class="slider"></span>
+        </div>
+      </div>
+      <!-- Язык -->
+      <div class="settings-option">
+        <label id="langLabelText">RU</label>
+        <div class="toggle-switch">
+          <input type="checkbox" id="langToggle">
+          <span class="slider"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Вкладки разделов -->
+    <div class="section-tabs">
+      <button class="section-tab active"
+        data-section="generator">
+        <i class="fas fa-qrcode"></i>
+        <span data-i18n="tabGenerator">
+          Генератор
+        </span>
+      </button>
+      <button class="section-tab"
+        data-section="reader">
+        <i class="fas fa-camera"></i>
+        <span data-i18n="tabReader">
+          Чтение
+        </span>
+      </button>
+      <button class="section-tab"
+        data-section="bulk">
+        <i class="fas fa-layer-group"></i>
+        <span data-i18n="tabBulk">
+          Массовая
+        </span>
+      </button>
+      <button class="section-tab"
+        data-section="history">
+        <i class="fas fa-clock-rotate-left"></i>
+        <span data-i18n="tabHistory">
+          История
+        </span>
+      </button>
+    </div>
+
+    <!-- ============================== -->
+    <!-- РАЗДЕЛ: ГЕНЕРАТОР QR-КОДОВ     -->
+    <!-- ============================== -->
+    <div class="section-content active"
+      id="sectionGenerator">
+      <div class="main-layout">
+        <!-- Левая панель: ввод данных -->
+        <div class="card">
+          <div class="card-title">
+            <i class="fas fa-keyboard"></i>
+            <span data-i18n="inputTitle">
+              Данные для QR
+            </span>
+          </div>
+
+          <!-- Вкладки типов -->
+          <div class="type-tabs" id="typeTabs">
+            <button class="type-tab active"
+              data-type="url">
+              <i class="fas fa-link"></i>
+              <span>URL</span>
+            </button>
+            <button class="type-tab"
+              data-type="text">
+              <i class="fas fa-font"></i>
+              <span data-i18n="typeText">
+                Текст
+              </span>
+            </button>
+            <button class="type-tab"
+              data-type="email">
+              <i class="fas fa-envelope"></i>
+              <span>Email</span>
+            </button>
+            <button class="type-tab"
+              data-type="phone">
+              <i class="fas fa-phone"></i>
+              <span data-i18n="typePhone">
+                Телефон
+              </span>
+            </button>
+            <button class="type-tab"
+              data-type="sms">
+              <i class="fas fa-comment-sms"></i>
+              <span>SMS</span>
+            </button>
+            <button class="type-tab"
+              data-type="wifi">
+              <i class="fas fa-wifi"></i>
+              <span>WiFi</span>
+            </button>
+            <button class="type-tab"
+              data-type="vcard">
+              <i class="fas fa-address-card"></i>
+              <span>vCard</span>
+            </button>
+            <button class="type-tab"
+              data-type="event">
+              <i class="fas fa-calendar-days"></i>
+              <span data-i18n="typeEvent">
+                Событие
+              </span>
+            </button>
+          </div>
+
+          <!-- Форма: URL -->
+          <div class="form-panel active"
+            id="formUrl">
+            <div class="input-group">
+              <label data-i18n="urlLabel">
+                URL адрес
+              </label>
+              <input type="url" id="inputUrl"
+                placeholder="https://example.com"
+                data-i18n-ph="urlPlaceholder">
+            </div>
+          </div>
+
+          <!-- Форма: Текст -->
+          <div class="form-panel" id="formText">
+            <div class="input-group">
+              <label data-i18n="textLabel">
+                Текст
+              </label>
+              <textarea id="inputText" rows="4"
+                placeholder="Введите текст..."
+                data-i18n-ph="textPlaceholder"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Форма: Email -->
+          <div class="form-panel" id="formEmail">
+            <div class="input-group">
+              <label data-i18n="emailAddrLabel">
+                Email адрес
+              </label>
+              <input type="email"
+                id="inputEmailAddr"
+                placeholder="user@example.com">
+            </div>
+            <div class="input-group">
+              <label data-i18n="emailSubjLabel">
+                Тема письма
+              </label>
+              <input type="text"
+                id="inputEmailSubj"
+                placeholder="Тема"
+                data-i18n-ph="emailSubjPh">
+            </div>
+            <div class="input-group">
+              <label data-i18n="emailBodyLabel">
+                Текст письма
+              </label>
+              <textarea id="inputEmailBody"
+                rows="3"
+                placeholder="Сообщение..."
+                data-i18n-ph="emailBodyPh"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Форма: Телефон -->
+          <div class="form-panel" id="formPhone">
+            <div class="input-group">
+              <label data-i18n="phoneLabel">
+                Номер телефона
+              </label>
+              <input type="tel" id="inputPhone"
+                placeholder="+7 999 123 45 67">
+            </div>
+          </div>
+
+          <!-- Форма: SMS -->
+          <div class="form-panel" id="formSms">
+            <div class="input-group">
+              <label data-i18n="smsPhoneLabel">
+                Номер телефона
+              </label>
+              <input type="tel"
+                id="inputSmsPhone"
+                placeholder="+7 999 123 45 67">
+            </div>
+            <div class="input-group">
+              <label data-i18n="smsBodyLabel">
+                Текст SMS
+              </label>
+              <textarea id="inputSmsBody"
+                rows="3"
+                placeholder="Сообщение..."
+                data-i18n-ph="smsBodyPh"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Форма: WiFi -->
+          <div class="form-panel" id="formWifi">
+            <div class="input-group">
+              <label data-i18n="wifiSsidLabel">
+                Имя сети (SSID)
+              </label>
+              <input type="text"
+                id="inputWifiSsid"
+                placeholder="MyWiFi">
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label data-i18n="wifiPassLabel">
+                  Пароль
+                </label>
+                <input type="text"
+                  id="inputWifiPass"
+                  placeholder="password123">
+              </div>
+              <div class="input-group">
+                <label data-i18n="wifiTypeLabel">
+                  Шифрование
+                </label>
+                <select id="inputWifiType">
+                  <option value="WPA">
+                    WPA/WPA2
+                  </option>
+                  <option value="WEP">WEP</option>
+                  <option value="nopass"
+                    data-i18n="wifiNoPass">
+                    Без пароля
+                  </option>
+                </select>
+              </div>
+            </div>
+            <label class="checkbox-label">
+              <input type="checkbox"
+                id="inputWifiHidden">
+              <span data-i18n="wifiHidden">
+                Скрытая сеть
+              </span>
+            </label>
+          </div>
+
+          <!-- Форма: vCard -->
+          <div class="form-panel" id="formVcard">
+            <div class="input-row">
+              <div class="input-group">
+                <label data-i18n="vcardFirstName">
+                  Имя
+                </label>
+                <input type="text"
+                  id="inputVcardFn"
+                  placeholder="Иван"
+                  data-i18n-ph="vcardFnPh">
+              </div>
+              <div class="input-group">
+                <label data-i18n="vcardLastName">
+                  Фамилия
+                </label>
+                <input type="text"
+                  id="inputVcardLn"
+                  placeholder="Иванов"
+                  data-i18n-ph="vcardLnPh">
+              </div>
+            </div>
+            <div class="input-group">
+              <label data-i18n="vcardOrg">
+                Организация
+              </label>
+              <input type="text"
+                id="inputVcardOrg"
+                placeholder="Компания"
+                data-i18n-ph="vcardOrgPh">
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label data-i18n="vcardPhone">
+                  Телефон
+                </label>
+                <input type="tel"
+                  id="inputVcardPhone"
+                  placeholder="+7 999 123 45 67">
+              </div>
+              <div class="input-group">
+                <label>Email</label>
+                <input type="email"
+                  id="inputVcardEmail"
+                  placeholder="user@example.com">
+              </div>
+            </div>
+            <div class="input-group">
+              <label data-i18n="vcardUrl">
+                Сайт
+              </label>
+              <input type="url"
+                id="inputVcardUrl"
+                placeholder="https://example.com">
+            </div>
+            <div class="input-group">
+              <label data-i18n="vcardAddr">
+                Адрес
+              </label>
+              <input type="text"
+                id="inputVcardAddr"
+                placeholder="г. Москва, ул. Примерная"
+                data-i18n-ph="vcardAddrPh">
+            </div>
+          </div>
+
+          <!-- Форма: Событие -->
+          <div class="form-panel" id="formEvent">
+            <div class="input-group">
+              <label data-i18n="eventTitle">
+                Название события
+              </label>
+              <input type="text"
+                id="inputEventTitle"
+                placeholder="Встреча"
+                data-i18n-ph="eventTitlePh">
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label data-i18n="eventStart">
+                  Начало
+                </label>
+                <input type="datetime-local"
+                  id="inputEventStart">
+              </div>
+              <div class="input-group">
+                <label data-i18n="eventEnd">
+                  Окончание
+                </label>
+                <input type="datetime-local"
+                  id="inputEventEnd">
+              </div>
+            </div>
+            <div class="input-group">
+              <label data-i18n="eventLocation">
+                Место
+              </label>
+              <input type="text"
+                id="inputEventLoc"
+                placeholder="Офис, комната 42"
+                data-i18n-ph="eventLocPh">
+            </div>
+            <div class="input-group">
+              <label data-i18n="eventDesc">
+                Описание
+              </label>
+              <textarea id="inputEventDesc"
+                rows="2"
+                placeholder="Описание события..."
+                data-i18n-ph="eventDescPh"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Настройки QR -->
+          <div class="card-title"
+            style="margin-top:16px">
+            <i class="fas fa-sliders"></i>
+            <span data-i18n="settingsTitle">
+              Настройки
+            </span>
+          </div>
+          <div class="settings-panel">
+            <!-- Размер -->
+            <div class="setting-item">
+              <label data-i18n="settingSize">
+                Размер
+              </label>
+              <div class="range-wrapper">
+                <input type="range" id="sizeSlider"
+                  min="100" max="1000" value="300"
+                  step="50">
+                <span class="range-value"
+                  id="sizeValue">300</span>
+              </div>
+            </div>
+            <!-- Отступ -->
+            <div class="setting-item">
+              <label data-i18n="settingMargin">
+                Отступ
+              </label>
+              <div class="range-wrapper">
+                <input type="range"
+                  id="marginSlider"
+                  min="0" max="50" value="10"
+                  step="1">
+                <span class="range-value"
+                  id="marginValue">10</span>
+              </div>
+            </div>
+            <!-- Цвет QR -->
+            <div class="setting-item">
+              <label data-i18n="settingFgColor">
+                Цвет QR
+              </label>
+              <div class="color-input-wrapper">
+                <input type="color" id="fgColor"
+                  value="#000000">
+                <span class="color-hex"
+                  id="fgHex">#000000</span>
+              </div>
+            </div>
+            <!-- Цвет фона -->
+            <div class="setting-item">
+              <label data-i18n="settingBgColor">
+                Цвет фона
+              </label>
+              <div class="color-input-wrapper">
+                <input type="color" id="bgColor"
+                  value="#FFFFFF">
+                <span class="color-hex"
+                  id="bgHex">#FFFFFF</span>
+              </div>
+            </div>
+            <!-- Коррекция ошибок -->
+            <div class="setting-item">
+              <label data-i18n="settingEcc">
+                Коррекция ошибок
+              </label>
+              <select id="eccSelect">
+                <option value="L">L (7%)</option>
+                <option value="M" selected>
+                  M (15%)
+                </option>
+                <option value="Q">Q (25%)</option>
+                <option value="H">H (30%)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Правая панель: превью и кнопки -->
+        <div class="card preview-section">
+          <div class="card-title">
+            <i class="fas fa-eye"></i>
+            <span data-i18n="previewTitle">
+              Предварительный просмотр
+            </span>
+          </div>
+
+          <div class="qr-preview-box"
+            id="qrPreviewBox">
+            <div class="qr-placeholder"
+              id="qrPlaceholder">
+              <i class="fas fa-qrcode"></i>
+              <span data-i18n="previewPlaceholder">
+                Введите данные для генерации
+              </span>
+            </div>
+            <img id="qrImage"
+              style="display:none"
+              alt="QR Code">
+            <div class="qr-loading" id="qrLoading">
+              <div class="qr-spinner"></div>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <button class="btn btn-primary"
+              id="btnDownloadPng" disabled>
+              <i class="fas fa-download"></i>
+              <span data-i18n="downloadPng">
+                PNG
+              </span>
+            </button>
+            <button class="btn btn-primary"
+              id="btnDownloadSvg" disabled>
+              <i class="fas fa-download"></i>
+              <span data-i18n="downloadSvg">
+                SVG
+              </span>
+            </button>
+            <button class="btn btn-secondary"
+              id="btnCopy" disabled>
+              <i class="fas fa-copy"></i>
+              <span data-i18n="copyBtn">
+                Копировать
+              </span>
+            </button>
+            <button class="btn btn-secondary"
+              id="btnGenerate">
+              <i class="fas fa-rotate"></i>
+              <span data-i18n="generateBtn">
+                Обновить
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- РАЗДЕЛ: ЧТЕНИЕ QR-КОДА         -->
+    <!-- ============================== -->
+    <div class="section-content"
+      id="sectionReader">
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-camera-retro"></i>
+          <span data-i18n="readerTitle">
+            Чтение QR-кода
+          </span>
+        </div>
+
+        <!-- Зона загрузки файла -->
+        <div class="reader-zone" id="readerZone">
+          <i class="fas fa-cloud-arrow-up upload-icon"></i>
+          <p data-i18n="readerDrop">
+            Перетащите изображение сюда или
+            нажмите для выбора файла
+          </p>
+          <button class="btn btn-primary"
+            id="readerSelectBtn">
+            <i class="fas fa-image"></i>
+            <span data-i18n="readerSelect">
+              Выбрать изображение
+            </span>
+          </button>
+          <input type="file" id="readerFileInput"
+            accept="image/*">
+        </div>
+
+        <!-- Чтение по URL -->
+        <div style="margin-top:16px">
+          <div class="input-group">
+            <label data-i18n="readerUrlLabel">
+              Или введите URL изображения
+            </label>
+            <div style="display:flex;gap:8px">
+              <input type="url"
+                id="readerUrlInput"
+                placeholder="https://example.com/qr.png"
+                style="flex:1">
+              <button class="btn btn-primary"
+                id="readerUrlBtn">
+                <i class="fas fa-search"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Результат -->
+        <div class="reader-result"
+          id="readerResult">
+          <div class="reader-result-label"
+            data-i18n="readerResultLabel">
+            Результат декодирования:
+          </div>
+          <div class="reader-result-text"
+            id="readerResultText"></div>
+          <div class="reader-result-actions">
+            <button class="btn btn-secondary"
+              id="readerCopyBtn">
+              <i class="fas fa-copy"></i>
+              <span data-i18n="copyBtn">
+                Копировать
+              </span>
+            </button>
+            <button class="btn btn-primary"
+              id="readerUseBtn">
+              <i class="fas fa-arrow-right"></i>
+              <span data-i18n="readerUse">
+                Использовать
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- РАЗДЕЛ: МАССОВАЯ ГЕНЕРАЦИЯ     -->
+    <!-- ============================== -->
+    <div class="section-content"
+      id="sectionBulk">
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-layer-group"></i>
+          <span data-i18n="bulkTitle">
+            Массовая генерация
+          </span>
+        </div>
+        <div class="input-group">
+          <label data-i18n="bulkLabel">
+            Введите данные (по одному на строку)
+          </label>
+          <textarea class="bulk-textarea"
+            id="bulkInput" rows="6"
+            placeholder="https://example.com&#10;https://google.com&#10;https://github.com"
+          ></textarea>
+          <div class="bulk-hint"
+            data-i18n="bulkHint">
+            Каждая строка станет отдельным QR-кодом
+          </div>
+        </div>
+        <div class="bulk-actions">
+          <button class="btn btn-primary"
+            id="bulkGenerateBtn">
+            <i class="fas fa-wand-magic-sparkles"></i>
+            <span data-i18n="bulkGenerate">
+              Сгенерировать все
+            </span>
+          </button>
+          <button class="btn btn-secondary"
+            id="bulkDownloadAllBtn"
+            style="display:none">
+            <i class="fas fa-file-zipper"></i>
+            <span data-i18n="bulkDownloadAll">
+              Скачать все PNG
+            </span>
+          </button>
+        </div>
+        <div class="bulk-results"
+          id="bulkResults"></div>
+      </div>
+    </div>
+
+    <!-- ============================== -->
+    <!-- РАЗДЕЛ: ИСТОРИЯ                -->
+    <!-- ============================== -->
+    <div class="section-content"
+      id="sectionHistory">
+      <div class="card">
+        <div class="history-header">
+          <div class="card-title">
+            <i class="fas fa-clock-rotate-left"></i>
+            <span data-i18n="historyTitle">
+              История генерации
+            </span>
+          </div>
+          <button class="clear-history-btn"
+            id="clearHistoryBtn"
+            data-i18n="clearHistory">
+            Очистить историю
+          </button>
+        </div>
+        <div class="history-grid"
+          id="historyGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Уведомление (toast) -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    "use strict";
+
+    // ============================================
+    // Константы
+    // ============================================
+    const API_BASE =
+      "https://api.qrserver.com/v1";
+    const STORAGE_THEME = "qrWorkshop-theme";
+    const STORAGE_LANG = "qrWorkshop-lang";
+    const STORAGE_HISTORY = "qrWorkshop-history";
+    const MAX_HISTORY = 20;
+    const DEBOUNCE_MS = 600;
+
+    // ============================================
+    // Словари локализации
+    // ============================================
+    const i18n = {
+      ru: {
+        headerTitle: "QR Мастерская",
+        tabGenerator: "Генератор",
+        tabReader: "Чтение",
+        tabBulk: "Массовая",
+        tabHistory: "История",
+        inputTitle: "Данные для QR",
+        typeText: "Текст",
+        typePhone: "Телефон",
+        typeEvent: "Событие",
+        urlLabel: "URL адрес",
+        urlPlaceholder: "https://example.com",
+        textLabel: "Текст",
+        textPlaceholder: "Введите текст...",
+        emailAddrLabel: "Email адрес",
+        emailSubjLabel: "Тема письма",
+        emailSubjPh: "Тема",
+        emailBodyLabel: "Текст письма",
+        emailBodyPh: "Сообщение...",
+        phoneLabel: "Номер телефона",
+        smsPhoneLabel: "Номер телефона",
+        smsBodyLabel: "Текст SMS",
+        smsBodyPh: "Сообщение...",
+        wifiSsidLabel: "Имя сети (SSID)",
+        wifiPassLabel: "Пароль",
+        wifiTypeLabel: "Шифрование",
+        wifiNoPass: "Без пароля",
+        wifiHidden: "Скрытая сеть",
+        vcardFirstName: "Имя",
+        vcardLastName: "Фамилия",
+        vcardFnPh: "Иван",
+        vcardLnPh: "Иванов",
+        vcardOrg: "Организация",
+        vcardOrgPh: "Компания",
+        vcardPhone: "Телефон",
+        vcardUrl: "Сайт",
+        vcardAddr: "Адрес",
+        vcardAddrPh: "г. Москва, ул. Примерная",
+        eventTitle: "Название события",
+        eventTitlePh: "Встреча",
+        eventStart: "Начало",
+        eventEnd: "Окончание",
+        eventLocation: "Место",
+        eventLocPh: "Офис, комната 42",
+        eventDesc: "Описание",
+        eventDescPh: "Описание события...",
+        settingsTitle: "Настройки",
+        settingSize: "Размер",
+        settingMargin: "Отступ",
+        settingFgColor: "Цвет QR",
+        settingBgColor: "Цвет фона",
+        settingEcc: "Коррекция ошибок",
+        previewTitle:
+          "Предварительный просмотр",
+        previewPlaceholder:
+          "Введите данные для генерации",
+        downloadPng: "PNG",
+        downloadSvg: "SVG",
+        copyBtn: "Копировать",
+        generateBtn: "Обновить",
+        readerTitle: "Чтение QR-кода",
+        readerDrop:
+          "Перетащите изображение сюда " +
+          "или нажмите для выбора файла",
+        readerSelect: "Выбрать изображение",
+        readerUrlLabel:
+          "Или введите URL изображения",
+        readerResultLabel:
+          "Результат декодирования:",
+        readerUse: "Использовать",
+        bulkTitle: "Массовая генерация",
+        bulkLabel:
+          "Введите данные (по одному на строку)",
+        bulkHint:
+          "Каждая строка станет " +
+          "отдельным QR-кодом",
+        bulkGenerate: "Сгенерировать все",
+        bulkDownloadAll: "Скачать все PNG",
+        historyTitle: "История генерации",
+        clearHistory: "Очистить историю",
+        historyEmpty: "История пуста",
+        themeLabelText: "Тема",
+        langLabelText: "RU",
+        toastCopied:
+          "Скопировано в буфер обмена",
+        toastCopyFail: "Не удалось скопировать",
+        toastDownloaded: "Файл скачан",
+        toastGenerated: "QR-код сгенерирован",
+        toastHistoryCleared: "История очищена",
+        toastError:
+          "Ошибка генерации QR-кода",
+        toastNoData:
+          "Введите данные для генерации",
+        toastDecoded:
+          "QR-код успешно прочитан",
+        toastDecodeFail:
+          "Не удалось прочитать QR-код",
+        toastBulkDone: "Генерация завершена"
+      },
+      en: {
+        headerTitle: "QR Workshop",
+        tabGenerator: "Generator",
+        tabReader: "Reader",
+        tabBulk: "Bulk",
+        tabHistory: "History",
+        inputTitle: "QR Data",
+        typeText: "Text",
+        typePhone: "Phone",
+        typeEvent: "Event",
+        urlLabel: "URL address",
+        urlPlaceholder: "https://example.com",
+        textLabel: "Text",
+        textPlaceholder: "Enter text...",
+        emailAddrLabel: "Email address",
+        emailSubjLabel: "Subject",
+        emailSubjPh: "Subject",
+        emailBodyLabel: "Message body",
+        emailBodyPh: "Message...",
+        phoneLabel: "Phone number",
+        smsPhoneLabel: "Phone number",
+        smsBodyLabel: "SMS text",
+        smsBodyPh: "Message...",
+        wifiSsidLabel: "Network name (SSID)",
+        wifiPassLabel: "Password",
+        wifiTypeLabel: "Encryption",
+        wifiNoPass: "No password",
+        wifiHidden: "Hidden network",
+        vcardFirstName: "First name",
+        vcardLastName: "Last name",
+        vcardFnPh: "John",
+        vcardLnPh: "Doe",
+        vcardOrg: "Organization",
+        vcardOrgPh: "Company",
+        vcardPhone: "Phone",
+        vcardUrl: "Website",
+        vcardAddr: "Address",
+        vcardAddrPh: "123 Main St, City",
+        eventTitle: "Event title",
+        eventTitlePh: "Meeting",
+        eventStart: "Start",
+        eventEnd: "End",
+        eventLocation: "Location",
+        eventLocPh: "Office, room 42",
+        eventDesc: "Description",
+        eventDescPh: "Event description...",
+        settingsTitle: "Settings",
+        settingSize: "Size",
+        settingMargin: "Margin",
+        settingFgColor: "QR color",
+        settingBgColor: "Background",
+        settingEcc: "Error correction",
+        previewTitle: "Preview",
+        previewPlaceholder:
+          "Enter data to generate QR code",
+        downloadPng: "PNG",
+        downloadSvg: "SVG",
+        copyBtn: "Copy",
+        generateBtn: "Refresh",
+        readerTitle: "QR Code Reader",
+        readerDrop:
+          "Drag an image here or click " +
+          "to select a file",
+        readerSelect: "Select image",
+        readerUrlLabel:
+          "Or enter image URL",
+        readerResultLabel: "Decoded result:",
+        readerUse: "Use this",
+        bulkTitle: "Bulk Generation",
+        bulkLabel: "Enter data (one per line)",
+        bulkHint:
+          "Each line becomes " +
+          "a separate QR code",
+        bulkGenerate: "Generate all",
+        bulkDownloadAll: "Download all PNG",
+        historyTitle: "Generation History",
+        clearHistory: "Clear history",
+        historyEmpty: "History is empty",
+        themeLabelText: "Theme",
+        langLabelText: "EN",
+        toastCopied: "Copied to clipboard",
+        toastCopyFail: "Failed to copy",
+        toastDownloaded: "File downloaded",
+        toastGenerated: "QR code generated",
+        toastHistoryCleared: "History cleared",
+        toastError: "QR generation error",
+        toastNoData: "Enter data to generate",
+        toastDecoded: "QR code read successfully",
+        toastDecodeFail: "Failed to read QR code",
+        toastBulkDone: "Generation complete"
+      }
+    };
+
+    // ============================================
+    // Состояние приложения
+    // ============================================
+    let currentLang = "ru";
+    let currentType = "url";
+    let debounceTimer = null;
+    let currentQrData = "";
+    let qrHistory = [];
+
+    // ============================================
+    // Утилиты DOM
+    // ============================================
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) =>
+      document.querySelectorAll(s);
+
+    /**
+     * @function escapeHtml
+     * @description Экранирование спецсимволов HTML
+     *   для безопасной вставки в innerHTML
+     * @param {string} text - Исходный текст
+     * @returns {string} Экранированный текст
+     */
+    function escapeHtml(text) {
+      const el = document.createElement("div");
+      el.textContent = text;
+      return el.innerHTML;
+    }
+
+    /**
+     * @function t
+     * @description Получить перевод по ключу
+     * @param {string} key - Ключ локализации
+     * @returns {string} Переведённая строка
+     */
+    function t(key) {
+      const dict = i18n[currentLang];
+      return (dict && dict[key]) || key;
+    }
+
+    /**
+     * @function showToast
+     * @description Показать уведомление внизу экрана
+     * @param {string} message - Текст сообщения
+     * @param {string} type - success / error / info
+     */
+    function showToast(message, type = "info") {
+      const toast = $("#toast");
+      const icons = {
+        success: "fa-circle-check",
+        error: "fa-circle-xmark",
+        info: "fa-circle-info"
+      };
+      const ico = icons[type] || icons.info;
+      toast.innerHTML =
+        "<i class=\"fas " + escapeHtml(ico) +
+        "\"></i> " + escapeHtml(message);
+      toast.className = "toast " + type;
+      // Анимация показа
+      requestAnimationFrame(() => {
+        toast.classList.add("show");
+      });
+      clearTimeout(toast._hideTimer);
+      toast._hideTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 3000);
+    }
+
+    // ============================================
+    // Тема
+    // ============================================
+
+    /**
+     * @function initTheme
+     * @description Загрузить тему из localStorage
+     */
+    function initTheme() {
+      try {
+        const v = localStorage.getItem(
+          STORAGE_THEME
+        );
+        if (v === "dark") {
+          document.body.classList.add("dark-theme");
+          $("#themeToggle").checked = true;
+        }
+      } catch (e) {
+        // localStorage недоступен — игнорируем
+      }
+    }
+
+    /**
+     * @function toggleTheme
+     * @description Переключить тему оформления
+     */
+    function toggleTheme() {
+      const dark = document.body.classList
+        .toggle("dark-theme");
+      try {
+        localStorage.setItem(
+          STORAGE_THEME, dark ? "dark" : "light"
+        );
+      } catch (e) {
+        // игнорируем
+      }
+    }
+
+    // ============================================
+    // Язык
+    // ============================================
+
+    /**
+     * @function applyLanguage
+     * @description Обновить все переводимые элементы
+     *   на странице согласно текущему языку
+     */
+    function applyLanguage() {
+      // Тексты по data-i18n
+      $$("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (i18n[currentLang][key] != null) {
+          el.textContent = i18n[currentLang][key];
+        }
+      });
+      // Плейсхолдеры по data-i18n-ph
+      $$("[data-i18n-ph]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-ph");
+        if (i18n[currentLang][key] != null) {
+          el.placeholder = i18n[currentLang][key];
+        }
+      });
+      // Заголовок шапки
+      const ht = $("#headerTitle");
+      if (ht) {
+        ht.innerHTML =
+          "<i class=\"fas fa-qrcode\"></i> " +
+          escapeHtml(t("headerTitle"));
+      }
+      // Метки переключателей
+      const ll = $("#langLabelText");
+      if (ll) ll.textContent = t("langLabelText");
+      const tl = $("#themeLabelText");
+      if (tl) tl.textContent = t("themeLabelText");
+      // Заголовок страницы
+      document.title = currentLang === "ru"
+        ? "QR Мастерская | QR Workshop"
+        : "QR Workshop | QR Мастерская";
+    }
+
+    /**
+     * @function initLang
+     * @description Загрузить язык из localStorage
+     */
+    function initLang() {
+      try {
+        const v = localStorage.getItem(
+          STORAGE_LANG
+        );
+        if (v === "en") {
+          currentLang = "en";
+          $("#langToggle").checked = true;
+        }
+      } catch (e) {
+        // игнорируем
+      }
+      applyLanguage();
+    }
+
+    /**
+     * @function toggleLang
+     * @description Переключить язык RU <-> EN
+     */
+    function toggleLang() {
+      currentLang =
+        currentLang === "ru" ? "en" : "ru";
+      try {
+        localStorage.setItem(
+          STORAGE_LANG, currentLang
+        );
+      } catch (e) {
+        // игнорируем
+      }
+      applyLanguage();
+    }
+
+    // ============================================
+    // Навигация по разделам
+    // ============================================
+
+    /**
+     * @function switchSection
+     * @description Переключить активный раздел
+     * @param {string} name - generator/reader/bulk/history
+     */
+    function switchSection(name) {
+      // Вкладки
+      $$(".section-tab").forEach((tab) => {
+        tab.classList.toggle(
+          "active",
+          tab.dataset.section === name
+        );
+      });
+      // Контент
+      $$(".section-content").forEach((el) => {
+        el.classList.remove("active");
+      });
+      const id = "section" +
+        name.charAt(0).toUpperCase() +
+        name.slice(1);
+      const target = document.getElementById(id);
+      if (target) target.classList.add("active");
+    }
+
+    /**
+     * @function switchType
+     * @description Переключить тип данных QR
+     * @param {string} type - url/text/email/phone/sms/
+     *   wifi/vcard/event
+     */
+    function switchType(type) {
+      currentType = type;
+      // Вкладки типов
+      $$(".type-tab").forEach((tab) => {
+        tab.classList.toggle(
+          "active",
+          tab.dataset.type === type
+        );
+      });
+      // Формы
+      $$(".form-panel").forEach((p) => {
+        p.classList.remove("active");
+      });
+      const formId = "form" +
+        type.charAt(0).toUpperCase() +
+        type.slice(1);
+      const form = document.getElementById(formId);
+      if (form) form.classList.add("active");
+    }
+
+    // ============================================
+    // Сбор данных для QR
+    // ============================================
+
+    /**
+     * @function getQrData
+     * @description Собрать строку данных для QR-кода
+     *   в зависимости от выбранного типа
+     * @returns {string} Данные для кодирования
+     */
+    function getQrData() {
+      switch (currentType) {
+        case "url":
+          return $("#inputUrl").value.trim();
+
+        case "text":
+          return $("#inputText").value.trim();
+
+        case "email": {
+          const a = $("#inputEmailAddr")
+            .value.trim();
+          if (!a) return "";
+          let m = "mailto:" + a;
+          const s = $("#inputEmailSubj")
+            .value.trim();
+          const b = $("#inputEmailBody")
+            .value.trim();
+          const p = [];
+          if (s) p.push(
+            "subject=" + encodeURIComponent(s)
+          );
+          if (b) p.push(
+            "body=" + encodeURIComponent(b)
+          );
+          if (p.length) m += "?" + p.join("&");
+          return m;
+        }
+
+        case "phone": {
+          const ph = $("#inputPhone")
+            .value.trim();
+          if (!ph) return "";
+          return "tel:" + ph.replace(/\s/g, "");
+        }
+
+        case "sms": {
+          const sp = $("#inputSmsPhone")
+            .value.trim();
+          if (!sp) return "";
+          const sb = $("#inputSmsBody")
+            .value.trim();
+          let s = "sms:" +
+            sp.replace(/\s/g, "");
+          if (sb) {
+            s += "?body=" +
+              encodeURIComponent(sb);
+          }
+          return s;
+        }
+
+        case "wifi": {
+          const ssid = $("#inputWifiSsid")
+            .value.trim();
+          if (!ssid) return "";
+          const wt = $("#inputWifiType").value;
+          const wp = $("#inputWifiPass").value;
+          const wh = $("#inputWifiHidden").checked;
+          // WIFI:S:ssid;T:type;P:pass;H:bool;;
+          let w = "WIFI:S:" + ssid + ";";
+          w += "T:" + wt + ";";
+          if (wt !== "nopass" && wp) {
+            w += "P:" + wp + ";";
+          }
+          if (wh) w += "H:true;";
+          w += ";";
+          return w;
+        }
+
+        case "vcard": {
+          const fn = $("#inputVcardFn")
+            .value.trim();
+          const ln = $("#inputVcardLn")
+            .value.trim();
+          if (!fn && !ln) return "";
+          const org = $("#inputVcardOrg")
+            .value.trim();
+          const ph = $("#inputVcardPhone")
+            .value.trim();
+          const em = $("#inputVcardEmail")
+            .value.trim();
+          const ur = $("#inputVcardUrl")
+            .value.trim();
+          const ad = $("#inputVcardAddr")
+            .value.trim();
+          let v = "BEGIN:VCARD\n";
+          v += "VERSION:3.0\n";
+          v += "N:" + ln + ";" + fn + ";;;\n";
+          v += "FN:" + fn + " " + ln + "\n";
+          if (org) v += "ORG:" + org + "\n";
+          if (ph) {
+            v += "TEL;TYPE=CELL:" + ph + "\n";
+          }
+          if (em) v += "EMAIL:" + em + "\n";
+          if (ur) v += "URL:" + ur + "\n";
+          if (ad) {
+            v += "ADR:;;" + ad + ";;;;\n";
+          }
+          v += "END:VCARD";
+          return v;
+        }
+
+        case "event": {
+          const title = $("#inputEventTitle")
+            .value.trim();
+          if (!title) return "";
+          const ds = $("#inputEventStart").value;
+          const de = $("#inputEventEnd").value;
+          const loc = $("#inputEventLoc")
+            .value.trim();
+          const desc = $("#inputEventDesc")
+            .value.trim();
+          /**
+           * @function fmtDt
+           * @description Форматировать дату
+           *   из datetime-local в VEVENT формат
+           * @param {string} d - datetime-local
+           * @returns {string} yyyyMMddTHHmmss
+           */
+          const fmtDt = (d) => {
+            if (!d) return "";
+            return d.replace(/[-:]/g, "");
+          };
+          let ev = "BEGIN:VEVENT\n";
+          ev += "SUMMARY:" + title + "\n";
+          if (ds) ev += "DTSTART:" +
+            fmtDt(ds) + "\n";
+          if (de) ev += "DTEND:" +
+            fmtDt(de) + "\n";
+          if (loc) ev += "LOCATION:" +
+            loc + "\n";
+          if (desc) ev += "DESCRIPTION:" +
+            desc + "\n";
+          ev += "END:VEVENT";
+          return ev;
+        }
+
+        default:
+          return "";
+      }
+    }
+
+    // ============================================
+    // Генерация QR-кода
+    // ============================================
+
+    /**
+     * @function buildQrUrl
+     * @description Построить URL для API генерации QR
+     * @param {string} data - Данные для кодирования
+     * @param {string} format - png / svg
+     * @param {number|null} sizeOvr - Размер (переопределение)
+     * @returns {string} URL для API
+     */
+    function buildQrUrl(
+      data, format = "png", sizeOvr = null
+    ) {
+      const sz = sizeOvr ||
+        parseInt($("#sizeSlider").value);
+      const mg = parseInt(
+        $("#marginSlider").value
+      );
+      const fg = $("#fgColor").value
+        .replace("#", "");
+      const bg = $("#bgColor").value
+        .replace("#", "");
+      const ecc = $("#eccSelect").value;
+      const p = new URLSearchParams({
+        size: sz + "x" + sz,
+        data: data,
+        color: fg,
+        bgcolor: bg,
+        format: format,
+        margin: String(mg),
+        ecc: ecc
+      });
+      return API_BASE +
+        "/create-qr-code/?" + p.toString();
+    }
+
+    /**
+     * @function generateQr
+     * @description Сгенерировать QR-код и показать
+     *   в блоке превью
+     */
+    async function generateQr() {
+      const data = getQrData();
+      if (!data) {
+        showToast(t("toastNoData"), "error");
+        return;
+      }
+
+      currentQrData = data;
+      const img = $("#qrImage");
+      const ph = $("#qrPlaceholder");
+      const ld = $("#qrLoading");
+      const box = $("#qrPreviewBox");
+
+      // Показываем индикатор загрузки
+      ph.style.display = "none";
+      ld.style.display = "block";
+      img.style.display = "none";
+
+      try {
+        const url = buildQrUrl(data, "png");
+        // Проверяем доступность через fetch
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+        // Устанавливаем src изображения
+        img.src = url;
+        img.onload = () => {
+          ld.style.display = "none";
+          img.style.display = "block";
+          box.classList.add("has-image");
+          // Активируем кнопки
+          $("#btnDownloadPng").disabled = false;
+          $("#btnDownloadSvg").disabled = false;
+          $("#btnCopy").disabled = false;
+          // Добавляем в историю
+          const thumbUrl = buildQrUrl(
+            data, "png", 100
+          );
+          addToHistory(data, thumbUrl);
+          showToast(
+            t("toastGenerated"), "success"
+          );
+        };
+        img.onerror = () => {
+          ld.style.display = "none";
+          ph.style.display = "block";
+          box.classList.remove("has-image");
+          showToast(t("toastError"), "error");
+        };
+      } catch (e) {
+        ld.style.display = "none";
+        ph.style.display = "block";
+        box.classList.remove("has-image");
+        showToast(t("toastError"), "error");
+      }
+    }
+
+    /**
+     * @function scheduleGenerate
+     * @description Запланировать генерацию QR
+     *   с задержкой (debounce)
+     */
+    function scheduleGenerate() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (getQrData()) generateQr();
+      }, DEBOUNCE_MS);
+    }
+
+    /**
+     * @function downloadQr
+     * @description Скачать QR-код в выбранном формате
+     * @param {string} format - png или svg
+     */
+    async function downloadQr(format) {
+      if (!currentQrData) return;
+      try {
+        const url = buildQrUrl(
+          currentQrData, format
+        );
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+        const blob = await resp.blob();
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "qr-code." + format;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        showToast(
+          t("toastDownloaded"), "success"
+        );
+      } catch (e) {
+        showToast(t("toastError"), "error");
+      }
+    }
+
+    /**
+     * @function copyQrToClipboard
+     * @description Скопировать QR-изображение
+     *   в буфер обмена (Clipboard API)
+     */
+    async function copyQrToClipboard() {
+      if (!currentQrData) return;
+      try {
+        const url = buildQrUrl(
+          currentQrData, "png"
+        );
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+        const blob = await resp.blob();
+        // Clipboard API для изображений
+        if (
+          navigator.clipboard &&
+          navigator.clipboard.write
+        ) {
+          const item = new ClipboardItem({
+            "image/png": blob
+          });
+          await navigator.clipboard.write([item]);
+          showToast(
+            t("toastCopied"), "success"
+          );
+        } else {
+          // Фолбэк: копируем URL
+          await navigator.clipboard
+            .writeText(url);
+          showToast(
+            t("toastCopied"), "success"
+          );
+        }
+      } catch (e) {
+        showToast(t("toastCopyFail"), "error");
+      }
+    }
+
+    // ============================================
+    // История генерации
+    // ============================================
+
+    /**
+     * @function loadHistory
+     * @description Загрузить историю из localStorage
+     * @returns {Array} Массив записей истории
+     */
+    function loadHistory() {
+      try {
+        const raw = localStorage.getItem(
+          STORAGE_HISTORY
+        );
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {
+        // Ошибка парсинга — возвращаем пустой
+      }
+      return [];
+    }
+
+    /**
+     * @function saveHistory
+     * @description Сохранить историю в localStorage
+     */
+    function saveHistory() {
+      try {
+        localStorage.setItem(
+          STORAGE_HISTORY,
+          JSON.stringify(qrHistory)
+        );
+      } catch (e) {
+        // localStorage переполнен — игнорируем
+      }
+    }
+
+    /**
+     * @function addToHistory
+     * @description Добавить запись в историю
+     * @param {string} data - Закодированные данные
+     * @param {string} imgUrl - URL миниатюры
+     */
+    function addToHistory(data, imgUrl) {
+      // Удаляем дубликат, если есть
+      const idx = qrHistory.findIndex(
+        (h) => h.data === data
+      );
+      if (idx !== -1) qrHistory.splice(idx, 1);
+      // Добавляем в начало
+      qrHistory.unshift({
+        data: data,
+        imgUrl: imgUrl,
+        ts: Date.now()
+      });
+      // Обрезаем до лимита
+      if (qrHistory.length > MAX_HISTORY) {
+        qrHistory = qrHistory.slice(
+          0, MAX_HISTORY
+        );
+      }
+      saveHistory();
+      renderHistory();
+    }
+
+    /**
+     * @function removeHistoryItem
+     * @description Удалить запись из истории
+     * @param {number} index - Индекс записи
+     */
+    function removeHistoryItem(index) {
+      qrHistory.splice(index, 1);
+      saveHistory();
+      renderHistory();
+    }
+
+    /**
+     * @function clearHistory
+     * @description Очистить всю историю
+     */
+    function clearHistory() {
+      qrHistory = [];
+      saveHistory();
+      renderHistory();
+      showToast(
+        t("toastHistoryCleared"), "info"
+      );
+    }
+
+    /**
+     * @function renderHistory
+     * @description Отрисовать сетку истории
+     */
+    function renderHistory() {
+      const grid = $("#historyGrid");
+      grid.innerHTML = "";
+
+      if (qrHistory.length === 0) {
+        grid.innerHTML =
+          "<div class=\"history-empty\">" +
+          "<i class=\"fas fa-inbox\"></i>" +
+          "<span>" +
+          escapeHtml(t("historyEmpty")) +
+          "</span></div>";
+        return;
+      }
+
+      qrHistory.forEach((item, i) => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.title = item.data.substring(0, 100);
+
+        // Миниатюра
+        const img = document.createElement("img");
+        img.src = item.imgUrl;
+        img.alt = "QR";
+        img.loading = "lazy";
+        div.appendChild(img);
+
+        // Кнопка удаления
+        const del = document.createElement(
+          "button"
+        );
+        del.className = "del-btn";
+        del.innerHTML =
+          "<i class=\"fas fa-times\"></i>";
+        del.addEventListener("click", (e) => {
+          e.stopPropagation();
+          removeHistoryItem(i);
+        });
+        div.appendChild(del);
+
+        // Клик — использовать данные
+        div.addEventListener("click", () => {
+          useHistoryItem(item);
+        });
+
+        grid.appendChild(div);
+      });
+    }
+
+    /**
+     * @function useHistoryItem
+     * @description Использовать данные из истории
+     *   для генерации нового QR-кода
+     * @param {Object} item - Запись из истории
+     */
+    function useHistoryItem(item) {
+      switchSection("generator");
+      switchType("text");
+      $("#inputText").value = item.data;
+      generateQr();
+    }
+
+    // ============================================
+    // Чтение QR-кода
+    // ============================================
+
+    /**
+     * @function readQrFromUrl
+     * @description Прочитать QR с изображения по URL
+     *   через API goqr.me (GET)
+     * @param {string} imageUrl - URL изображения
+     */
+    async function readQrFromUrl(imageUrl) {
+      const result = $("#readerResult");
+      const text = $("#readerResultText");
+
+      try {
+        const apiUrl = API_BASE +
+          "/read-qr-code/?fileurl=" +
+          encodeURIComponent(imageUrl);
+        const resp = await fetch(apiUrl);
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+        const data = await resp.json();
+
+        // Ответ API: [{symbol:[{data,error}]}]
+        if (
+          data && data[0] &&
+          data[0].symbol &&
+          data[0].symbol[0]
+        ) {
+          const sym = data[0].symbol[0];
+          if (sym.error) {
+            throw new Error(sym.error);
+          }
+          text.textContent = sym.data || "";
+          result.classList.add("visible");
+          showToast(
+            t("toastDecoded"), "success"
+          );
+        } else {
+          throw new Error("No data");
+        }
+      } catch (e) {
+        text.textContent = "";
+        result.classList.remove("visible");
+        showToast(
+          t("toastDecodeFail"), "error"
+        );
+      }
+    }
+
+    /**
+     * @function readQrFromFile
+     * @description Прочитать QR из файла:
+     *   конвертируем в blob и отправляем POST
+     *   на API goqr.me
+     * @param {File} file - Файл изображения
+     */
+    async function readQrFromFile(file) {
+      const result = $("#readerResult");
+      const text = $("#readerResultText");
+
+      try {
+        // Создаём FormData с файлом
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+
+        const resp = await fetch(
+          API_BASE + "/read-qr-code/",
+          { method: "POST", body: formData }
+        );
+
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+
+        const data = await resp.json();
+
+        if (
+          data && data[0] &&
+          data[0].symbol &&
+          data[0].symbol[0]
+        ) {
+          const sym = data[0].symbol[0];
+          if (sym.error) {
+            throw new Error(sym.error);
+          }
+          text.textContent = sym.data || "";
+          result.classList.add("visible");
+          showToast(
+            t("toastDecoded"), "success"
+          );
+        } else {
+          throw new Error("No data");
+        }
+      } catch (e) {
+        text.textContent = "";
+        result.classList.remove("visible");
+        showToast(
+          t("toastDecodeFail"), "error"
+        );
+      }
+    }
+
+    /**
+     * @function useReaderResult
+     * @description Использовать результат чтения
+     *   QR-кода: определить тип и заполнить форму
+     */
+    function useReaderResult() {
+      const txt = $("#readerResultText")
+        .textContent.trim();
+      if (!txt) return;
+
+      switchSection("generator");
+
+      // Определяем тип данных автоматически
+      if (
+        txt.startsWith("http://") ||
+        txt.startsWith("https://")
+      ) {
+        switchType("url");
+        $("#inputUrl").value = txt;
+      } else if (txt.startsWith("mailto:")) {
+        switchType("email");
+        const parts = txt.replace("mailto:", "")
+          .split("?");
+        $("#inputEmailAddr").value =
+          parts[0] || "";
+      } else if (txt.startsWith("tel:")) {
+        switchType("phone");
+        $("#inputPhone").value =
+          txt.replace("tel:", "");
+      } else if (txt.startsWith("sms:")) {
+        switchType("sms");
+        const parts = txt.replace("sms:", "")
+          .split("?");
+        $("#inputSmsPhone").value =
+          parts[0] || "";
+      } else if (txt.startsWith("WIFI:")) {
+        switchType("wifi");
+        const sM = txt.match(/S:([^;]*)/);
+        const pM = txt.match(/P:([^;]*)/);
+        const tM = txt.match(/T:([^;]*)/);
+        if (sM) {
+          $("#inputWifiSsid").value = sM[1];
+        }
+        if (pM) {
+          $("#inputWifiPass").value = pM[1];
+        }
+        if (tM) {
+          $("#inputWifiType").value = tM[1];
+        }
+      } else if (txt.startsWith("BEGIN:VCARD")) {
+        switchType("vcard");
+        const fnM = txt.match(/FN:(.+)/);
+        if (fnM) {
+          const ps = fnM[1].trim().split(" ");
+          $("#inputVcardFn").value = ps[0] || "";
+          $("#inputVcardLn").value =
+            ps.slice(1).join(" ") || "";
+        }
+      } else if (
+        txt.startsWith("BEGIN:VEVENT")
+      ) {
+        switchType("event");
+        const sumM = txt.match(/SUMMARY:(.+)/);
+        if (sumM) {
+          $("#inputEventTitle").value =
+            sumM[1].trim();
+        }
+      } else {
+        switchType("text");
+        $("#inputText").value = txt;
+      }
+      generateQr();
+    }
+
+    // ============================================
+    // Массовая генерация
+    // ============================================
+
+    /**
+     * @function generateBulk
+     * @description Сгенерировать QR-коды
+     *   для всех строк из текстового поля
+     */
+    function generateBulk() {
+      const raw = $("#bulkInput").value.trim();
+      if (!raw) {
+        showToast(t("toastNoData"), "error");
+        return;
+      }
+      const lines = raw.split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+      if (!lines.length) {
+        showToast(t("toastNoData"), "error");
+        return;
+      }
+
+      const container = $("#bulkResults");
+      container.innerHTML = "";
+
+      // Настройки из панели
+      const mg = parseInt(
+        $("#marginSlider").value
+      );
+      const fg = $("#fgColor").value
+        .replace("#", "");
+      const bg = $("#bgColor").value
+        .replace("#", "");
+      const ecc = $("#eccSelect").value;
+
+      lines.forEach((line, i) => {
+        // URL для QR среднего размера
+        const params = new URLSearchParams({
+          size: "200x200",
+          data: line,
+          color: fg,
+          bgcolor: bg,
+          format: "png",
+          margin: String(mg),
+          ecc: ecc
+        });
+        const url = API_BASE +
+          "/create-qr-code/?" +
+          params.toString();
+
+        // Элемент результата
+        const div = document.createElement("div");
+        div.className = "bulk-item";
+
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "QR #" + (i + 1);
+        img.loading = "lazy";
+        div.appendChild(img);
+
+        const lbl = document.createElement("div");
+        lbl.className = "bulk-item-label";
+        lbl.textContent = line;
+        div.appendChild(lbl);
+
+        // Кнопки
+        const acts = document.createElement("div");
+        acts.className = "bulk-item-actions";
+
+        const dlBtn = document.createElement(
+          "button"
+        );
+        dlBtn.className = "btn btn-primary";
+        dlBtn.innerHTML =
+          "<i class=\"fas fa-download\"></i>";
+        dlBtn.addEventListener("click", () => {
+          downloadBulkItem(line, i, fg, bg, mg, ecc);
+        });
+        acts.appendChild(dlBtn);
+
+        const cpBtn = document.createElement(
+          "button"
+        );
+        cpBtn.className = "btn btn-secondary";
+        cpBtn.innerHTML =
+          "<i class=\"fas fa-copy\"></i>";
+        cpBtn.addEventListener("click", () => {
+          copyBulkItem(line, fg, bg, mg, ecc);
+        });
+        acts.appendChild(cpBtn);
+
+        div.appendChild(acts);
+        container.appendChild(div);
+
+        // Добавляем в историю миниатюру
+        const tParams = new URLSearchParams({
+          size: "100x100",
+          data: line,
+          color: fg,
+          bgcolor: bg,
+          format: "png",
+          margin: "4",
+          ecc: ecc
+        });
+        addToHistory(
+          line,
+          API_BASE + "/create-qr-code/?" +
+          tParams.toString()
+        );
+      });
+
+      // Показываем "Скачать все"
+      const allBtn = $("#bulkDownloadAllBtn");
+      allBtn.style.display = "inline-flex";
+      allBtn.onclick = () => {
+        downloadAllBulk(lines, fg, bg, mg, ecc);
+      };
+
+      showToast(t("toastBulkDone"), "success");
+    }
+
+    /**
+     * @function downloadBulkItem
+     * @description Скачать один QR из массовой генерации
+     * @param {string} data - Данные QR
+     * @param {number} idx - Индекс элемента
+     * @param {string} fg - Цвет QR (hex без #)
+     * @param {string} bg - Цвет фона (hex без #)
+     * @param {number} mg - Отступ
+     * @param {string} ecc - Уровень коррекции
+     */
+    async function downloadBulkItem(
+      data, idx, fg, bg, mg, ecc
+    ) {
+      try {
+        const p = new URLSearchParams({
+          size: "300x300",
+          data: data,
+          color: fg,
+          bgcolor: bg,
+          format: "png",
+          margin: String(mg),
+          ecc: ecc
+        });
+        const url = API_BASE +
+          "/create-qr-code/?" + p.toString();
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+        const blob = await resp.blob();
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download =
+          "qr-code-" + (idx + 1) + ".png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      } catch (e) {
+        showToast(t("toastError"), "error");
+      }
+    }
+
+    /**
+     * @function copyBulkItem
+     * @description Скопировать QR-изображение
+     *   элемента массовой генерации в буфер
+     * @param {string} data - Данные QR
+     * @param {string} fg - Цвет QR
+     * @param {string} bg - Цвет фона
+     * @param {number} mg - Отступ
+     * @param {string} ecc - Уровень коррекции
+     */
+    async function copyBulkItem(
+      data, fg, bg, mg, ecc
+    ) {
+      try {
+        const p = new URLSearchParams({
+          size: "300x300",
+          data: data,
+          color: fg,
+          bgcolor: bg,
+          format: "png",
+          margin: String(mg),
+          ecc: ecc
+        });
+        const url = API_BASE +
+          "/create-qr-code/?" + p.toString();
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+        const blob = await resp.blob();
+        if (
+          navigator.clipboard &&
+          navigator.clipboard.write
+        ) {
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob })
+          ]);
+          showToast(
+            t("toastCopied"), "success"
+          );
+        } else {
+          await navigator.clipboard
+            .writeText(data);
+          showToast(
+            t("toastCopied"), "success"
+          );
+        }
+      } catch (e) {
+        showToast(t("toastCopyFail"), "error");
+      }
+    }
+
+    /**
+     * @function downloadAllBulk
+     * @description Скачать все QR-коды массовой
+     *   генерации по очереди (без zip-библиотеки)
+     * @param {string[]} lines - Массив данных
+     * @param {string} fg - Цвет QR
+     * @param {string} bg - Цвет фона
+     * @param {number} mg - Отступ
+     * @param {string} ecc - Уровень коррекции
+     */
+    async function downloadAllBulk(
+      lines, fg, bg, mg, ecc
+    ) {
+      for (let i = 0; i < lines.length; i++) {
+        await downloadBulkItem(
+          lines[i], i, fg, bg, mg, ecc
+        );
+        // Пауза между скачиваниями
+        await new Promise((r) =>
+          setTimeout(r, 350)
+        );
+      }
+    }
+
+    // ============================================
+    // Привязка событий
+    // ============================================
+
+    /**
+     * @function setupEvents
+     * @description Настроить все обработчики событий
+     */
+    function setupEvents() {
+      // --- Тема и язык ---
+      $("#themeToggle").addEventListener(
+        "change", toggleTheme
+      );
+      $("#langToggle").addEventListener(
+        "change", toggleLang
+      );
+
+      // --- Вкладки разделов ---
+      $$(".section-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          switchSection(tab.dataset.section);
+        });
+      });
+
+      // --- Вкладки типов данных ---
+      $$(".type-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          switchType(tab.dataset.type);
+        });
+      });
+
+      // --- Все поля ввода: debounce генерация ---
+      const inputIds = [
+        "#inputUrl", "#inputText",
+        "#inputEmailAddr", "#inputEmailSubj",
+        "#inputEmailBody", "#inputPhone",
+        "#inputSmsPhone", "#inputSmsBody",
+        "#inputWifiSsid", "#inputWifiPass",
+        "#inputWifiType", "#inputWifiHidden",
+        "#inputVcardFn", "#inputVcardLn",
+        "#inputVcardOrg", "#inputVcardPhone",
+        "#inputVcardEmail", "#inputVcardUrl",
+        "#inputVcardAddr", "#inputEventTitle",
+        "#inputEventStart", "#inputEventEnd",
+        "#inputEventLoc", "#inputEventDesc"
+      ];
+      inputIds.forEach((sel) => {
+        const el = $(sel);
+        if (!el) return;
+        el.addEventListener(
+          "input", scheduleGenerate
+        );
+        el.addEventListener(
+          "change", scheduleGenerate
+        );
+      });
+
+      // --- Ползунки ---
+      const sizeS = $("#sizeSlider");
+      const sizeV = $("#sizeValue");
+      sizeS.addEventListener("input", () => {
+        sizeV.textContent = sizeS.value;
+        scheduleGenerate();
+      });
+
+      const marginS = $("#marginSlider");
+      const marginV = $("#marginValue");
+      marginS.addEventListener("input", () => {
+        marginV.textContent = marginS.value;
+        scheduleGenerate();
+      });
+
+      // --- Цвета ---
+      const fgC = $("#fgColor");
+      const fgH = $("#fgHex");
+      fgC.addEventListener("input", () => {
+        fgH.textContent = fgC.value;
+        scheduleGenerate();
+      });
+
+      const bgC = $("#bgColor");
+      const bgH = $("#bgHex");
+      bgC.addEventListener("input", () => {
+        bgH.textContent = bgC.value;
+        scheduleGenerate();
+      });
+
+      // --- Коррекция ошибок ---
+      $("#eccSelect").addEventListener(
+        "change", scheduleGenerate
+      );
+
+      // --- Кнопки генератора ---
+      $("#btnGenerate").addEventListener(
+        "click", generateQr
+      );
+      $("#btnDownloadPng").addEventListener(
+        "click", () => downloadQr("png")
+      );
+      $("#btnDownloadSvg").addEventListener(
+        "click", () => downloadQr("svg")
+      );
+      $("#btnCopy").addEventListener(
+        "click", copyQrToClipboard
+      );
+
+      // --- QR Ридер: выбор файла ---
+      const rZone = $("#readerZone");
+      const rFile = $("#readerFileInput");
+
+      $("#readerSelectBtn").addEventListener(
+        "click", (e) => {
+          e.stopPropagation();
+          rFile.click();
+        }
+      );
+      rZone.addEventListener("click", () => {
+        rFile.click();
+      });
+      rFile.addEventListener("change", (e) => {
+        if (e.target.files[0]) {
+          readQrFromFile(e.target.files[0]);
+        }
+      });
+
+      // --- Drag & Drop ---
+      rZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        rZone.classList.add("dragover");
+      });
+      rZone.addEventListener("dragleave", () => {
+        rZone.classList.remove("dragover");
+      });
+      rZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        rZone.classList.remove("dragover");
+        const f = e.dataTransfer.files[0];
+        if (f && f.type.startsWith("image/")) {
+          readQrFromFile(f);
+        }
+      });
+
+      // --- QR Ридер: чтение по URL ---
+      $("#readerUrlBtn").addEventListener(
+        "click", () => {
+          const u = $("#readerUrlInput")
+            .value.trim();
+          if (u) readQrFromUrl(u);
+        }
+      );
+
+      // --- QR Ридер: копировать результат ---
+      $("#readerCopyBtn").addEventListener(
+        "click", async () => {
+          const txt = $("#readerResultText")
+            .textContent;
+          if (!txt) return;
+          try {
+            await navigator.clipboard
+              .writeText(txt);
+            showToast(
+              t("toastCopied"), "success"
+            );
+          } catch (e) {
+            showToast(
+              t("toastCopyFail"), "error"
+            );
+          }
+        }
+      );
+
+      // --- QR Ридер: использовать результат ---
+      $("#readerUseBtn").addEventListener(
+        "click", useReaderResult
+      );
+
+      // --- Массовая генерация ---
+      $("#bulkGenerateBtn").addEventListener(
+        "click", generateBulk
+      );
+
+      // --- История ---
+      $("#clearHistoryBtn").addEventListener(
+        "click", clearHistory
+      );
+    }
+
+    // ============================================
+    // Инициализация
+    // ============================================
+
+    /**
+     * @function init
+     * @description Точка входа: инициализация
+     *   приложения после загрузки DOM
+     */
+    function init() {
+      initTheme();
+      initLang();
+
+      // Загрузка истории
+      qrHistory = loadHistory();
+      renderHistory();
+
+      // Даты по умолчанию для формы события
+      const now = new Date();
+      const pad = (n) =>
+        String(n).padStart(2, "0");
+      const dtNow =
+        now.getFullYear() + "-" +
+        pad(now.getMonth() + 1) + "-" +
+        pad(now.getDate()) + "T" +
+        pad(now.getHours()) + ":" +
+        pad(now.getMinutes());
+      const later = new Date(
+        now.getTime() + 3600000
+      );
+      const dtLater =
+        later.getFullYear() + "-" +
+        pad(later.getMonth() + 1) + "-" +
+        pad(later.getDate()) + "T" +
+        pad(later.getHours()) + ":" +
+        pad(later.getMinutes());
+      const startEl = $("#inputEventStart");
+      const endEl = $("#inputEventEnd");
+      if (startEl) startEl.value = dtNow;
+      if (endEl) endEl.value = dtLater;
+
+      // Привязка обработчиков
+      setupEvents();
+    }
+
+    // Запуск после загрузки DOM
+    document.addEventListener(
+      "DOMContentLoaded", init
+    );
+  </script>
+</body>
+</html>
