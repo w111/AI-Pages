@@ -1,0 +1,1407 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebGPU Code Agent - ИИ-агент для программирования в браузере</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!--
+    Техническое задание:
+    - Полноценный агент для программирования, работающий целиком в браузере
+    - Модель MiniCPM5-2B (2 млрд параметров), четырёхбитные веса ONNX (q4f16, ~1.84 ГБ)
+    - Инференс через Transformers.js на WebGPU в Web Worker (UI не блокируется)
+    - Модель загружается один раз и кэшируется браузером (Cache API)
+    - Агентный цикл: модель вызывает инструменты в XML-формате
+      <function name="..."><param name="...">...</param></function>,
+      результаты возвращаются как tool-сообщения, до 12 шагов на запрос
+    - Инструменты: list_files, read_file, write_file, edit_file, delete_file, run_js
+    - Рабочее пространство: виртуальные файлы в localStorage или реальная папка
+      через File System Access API (Chrome/Edge)
+    - run_js выполняет JavaScript в отдельном Worker с таймаутом 10 с; сеть и модули
+      в нём отключены, но это удобство, а не граница безопасности
+    - Защита от зацикливания: повтор идентичного вызова инструмента не выполняется
+    - Старые результаты инструментов вытесняются из истории под бюджет контекста
+    - Режим размышлений (<think>) включается переключателем
+    - Никаких серверов и API-ключей: данные не покидают браузер
+
+    По мотивам: https://huggingface.co/spaces/victor/MiniCPM5-2B-WebGPU-Pi
+
+    История изменений:
+    2026-09-15: Первоначальная версия
+    2026-09-15: По итогам ревью и живого прогона: корректная обработка Stop и сбоев
+              воркера, пути с переносами строк и кириллицей, защита от зацикливания,
+              отключение сети в песочнице, поддержка асинхронного кода в run_js
+  -->
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary-color: #10a37f;
+        --bg-color: #0a0a0a;
+        --card-bg: #1a1a1a;
+        --panel-bg: #141414;
+        --text-color: #ffffff;
+        --text-secondary: #9ca3af;
+        --border-color: #374151;
+        --user-msg-bg: #3b82f6;
+        --ai-msg-bg: #262626;
+        --tool-bg: #1f2937;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --error-color: #ef4444;
+      }
+
+      body {
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: var(--bg-color);
+        color: var(--text-color);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ---------- Шапка ---------- */
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--card-bg);
+        flex-wrap: wrap;
+      }
+
+      header h1 {
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      header h1 i {
+        color: var(--primary-color);
+      }
+
+      .status-pill {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--tool-bg);
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .status-pill.ready {
+        color: var(--success-color);
+      }
+
+      .status-pill.error {
+        color: var(--error-color);
+      }
+
+      .progress {
+        flex: 1;
+        min-width: 120px;
+        height: 6px;
+        background: var(--tool-bg);
+        border-radius: 3px;
+        overflow: hidden;
+        display: none;
+      }
+
+      .progress.active {
+        display: block;
+      }
+
+      .progress-bar {
+        height: 100%;
+        width: 0;
+        background: var(--primary-color);
+        transition: width 0.2s;
+      }
+
+      .header-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 1px solid var(--border-color);
+        background: var(--tool-bg);
+        color: var(--text-color);
+        padding: 7px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      button:hover:not(:disabled) {
+        border-color: var(--primary-color);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      button.primary {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      button.danger {
+        border-color: var(--error-color);
+        color: var(--error-color);
+      }
+
+      .banner {
+        padding: 10px 16px;
+        background: #3b1d1d;
+        color: #fecaca;
+        border-bottom: 1px solid var(--error-color);
+        display: none;
+      }
+
+      .banner.show {
+        display: block;
+      }
+
+      /* ---------- Основная область ---------- */
+      main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        min-height: 0;
+      }
+
+      .files-panel {
+        border-right: 1px solid var(--border-color);
+        background: var(--panel-bg);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .panel-title {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .panel-title .spacer {
+        flex: 1;
+      }
+
+      .panel-title button {
+        padding: 3px 7px;
+        font-size: 0.75rem;
+      }
+
+      .file-list {
+        overflow-y: auto;
+        max-height: 40%;
+        list-style: none;
+      }
+
+      .file-list li {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+
+      .file-list li:hover {
+        background: var(--tool-bg);
+      }
+
+      .file-list li.active {
+        background: var(--tool-bg);
+        color: var(--primary-color);
+      }
+
+      .editor {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .editor textarea {
+        flex: 1;
+        width: 100%;
+        background: var(--bg-color);
+        color: var(--text-color);
+        border: none;
+        padding: 10px 12px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 0.85rem;
+        resize: none;
+        outline: none;
+        tab-size: 2;
+      }
+
+      .editor-actions {
+        display: flex;
+        gap: 6px;
+        padding: 8px 12px;
+        border-top: 1px solid var(--border-color);
+      }
+
+      /* ---------- Чат ---------- */
+      .chat {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .msg {
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        line-height: 1.5;
+        font-size: 0.92rem;
+        word-break: break-word;
+      }
+
+      .msg.user {
+        align-self: flex-end;
+        background: var(--user-msg-bg);
+      }
+
+      .msg.assistant {
+        align-self: flex-start;
+        background: var(--ai-msg-bg);
+      }
+
+      .msg.system {
+        align-self: center;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+      }
+
+      .msg pre {
+        background: #0d1117;
+        padding: 10px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 8px 0;
+        font-size: 0.82rem;
+      }
+
+      .msg code {
+        font-family: "SFMono-Regular", Consolas, monospace;
+        background: #0d1117;
+        padding: 1px 4px;
+        border-radius: 4px;
+      }
+
+      .msg pre code {
+        padding: 0;
+        background: none;
+      }
+
+      .msg details {
+        margin: 6px 0;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 0.82rem;
+      }
+
+      .msg summary {
+        cursor: pointer;
+        color: var(--text-secondary);
+      }
+
+      .tool-card {
+        align-self: flex-start;
+        max-width: 85%;
+        background: var(--tool-bg);
+        border-left: 3px solid var(--primary-color);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 0.82rem;
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+
+      .tool-card.failed {
+        border-left-color: var(--error-color);
+      }
+
+      .tool-card summary {
+        cursor: pointer;
+      }
+
+      .tool-card pre {
+        margin-top: 6px;
+        white-space: pre-wrap;
+        max-height: 240px;
+        overflow: auto;
+        color: var(--text-secondary);
+      }
+
+      .composer {
+        border-top: 1px solid var(--border-color);
+        padding: 10px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: var(--card-bg);
+      }
+
+      .composer-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .composer textarea {
+        flex: 1;
+        background: var(--bg-color);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-family: inherit;
+        font-size: 0.92rem;
+        resize: none;
+        min-height: 44px;
+        max-height: 160px;
+        outline: none;
+      }
+
+      .composer textarea:focus {
+        border-color: var(--primary-color);
+      }
+
+      .composer-options {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        flex-wrap: wrap;
+      }
+
+      .settings-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .toggle-switch {
+        position: relative;
+        width: 38px;
+        height: 20px;
+        display: inline-block;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        inset: 0;
+        background: var(--border-color);
+        border-radius: 20px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .slider::before {
+        content: "";
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        left: 3px;
+        bottom: 3px;
+        background: #fff;
+        border-radius: 50%;
+        transition: 0.2s;
+      }
+
+      .toggle-switch input:checked + .slider {
+        background: var(--primary-color);
+      }
+
+      .toggle-switch input:checked + .slider::before {
+        transform: translateX(18px);
+      }
+
+      .hints {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .hints button {
+        font-size: 0.78rem;
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+
+      @media (max-width: 800px) {
+        main {
+          grid-template-columns: 1fr;
+          grid-template-rows: 40% 1fr;
+        }
+
+        .files-panel {
+          border-right: none;
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        .msg,
+        .tool-card {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><i class="fas fa-robot"></i> WebGPU Code Agent</h1>
+      <span class="status-pill" id="status"><i class="fas fa-circle"></i> Модель не загружена</span>
+      <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
+      <span class="status-pill" id="tps" title="Скорость генерации"></span>
+      <div class="header-actions">
+        <button id="loadBtn" class="primary"><i class="fas fa-download"></i> Загрузить модель (1.84 ГБ)</button>
+        <button id="openDirBtn" title="Открыть локальную папку (File System Access API)">
+          <i class="fas fa-folder-open"></i> Открыть папку
+        </button>
+        <a href="index.html" style="align-self: center; color: var(--text-secondary); font-size: 0.85rem">
+          <i class="fas fa-arrow-left"></i> На главную
+        </a>
+      </div>
+    </header>
+
+    <div class="banner" id="banner"></div>
+
+    <main>
+      <section class="files-panel" aria-label="Рабочее пространство">
+        <div class="panel-title">
+          <i class="fas fa-folder"></i> <span id="wsName">Виртуальная папка</span>
+          <span class="spacer"></span>
+          <button id="newFileBtn" title="Создать файл"><i class="fas fa-plus"></i></button>
+          <button id="resetWsBtn" title="Сбросить виртуальные файлы к примеру"><i class="fas fa-undo"></i></button>
+        </div>
+        <ul class="file-list" id="fileList"></ul>
+        <div class="editor">
+          <textarea id="editor" placeholder="Выберите файл слева" spellcheck="false"></textarea>
+          <div class="editor-actions">
+            <button id="saveBtn" disabled><i class="fas fa-save"></i> Сохранить</button>
+            <button id="deleteBtn" class="danger" disabled><i class="fas fa-trash"></i> Удалить</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="chat" aria-label="Чат с агентом">
+        <div class="messages" id="messages">
+          <div class="msg system">
+            Агент на модели MiniCPM5-2B работает полностью в браузере через WebGPU. Загрузите модель и
+            попросите его прочитать, изменить или написать код в рабочем пространстве.
+          </div>
+        </div>
+        <div class="composer">
+          <div class="hints" id="hints">
+            <button data-hint="Какая общая выручка в sales.csv?">Выручка из sales.csv</button>
+            <button data-hint="Найди и исправь баг в app.js, затем проверь через run_js">Исправь баг в app.js</button>
+            <button data-hint="Напиши функцию fizzbuzz(n) в файл fizzbuzz.js и протестируй её">
+              Напиши fizzbuzz.js
+            </button>
+          </div>
+          <div class="composer-row">
+            <textarea id="input" rows="1" placeholder="Что сделать в рабочем пространстве?"></textarea>
+            <button id="sendBtn" class="primary" title="Отправить"><i class="fas fa-paper-plane"></i></button>
+            <button id="stopBtn" class="danger" title="Остановить" style="display: none">
+              <i class="fas fa-stop"></i>
+            </button>
+          </div>
+          <div class="composer-options">
+            <div class="settings-option">
+              <label for="thinkSwitch"><i class="fas fa-brain"></i> Режим размышлений</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="thinkSwitch" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <span><i class="fas fa-shield-alt"></i> Данные не покидают браузер</span>
+            <span id="stepInfo"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Код Web Worker с моделью: хранится как текст, чтобы страница оставалась одним файлом -->
+    <script type="text/plain" id="workerSrc">
+      import {
+        AutoTokenizer, AutoModelForCausalLM, TextStreamer, InterruptableStoppingCriteria, env
+      } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
+
+      env.allowLocalModels = false;
+      const MODEL_ID = "Mike0021/MiniCPM5-2B-ONNX";
+      let tokenizer, model;
+      const stopper = new InterruptableStoppingCriteria();
+
+      /** Загружает токенизатор и модель на WebGPU, затем делает прогревочный запуск. */
+      async function load() {
+        const progress_callback = (p) => self.postMessage({ type: "progress", data: p });
+        tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID, { progress_callback });
+        model = await AutoModelForCausalLM.from_pretrained(MODEL_ID, {
+          dtype: "q4f16", device: "webgpu", progress_callback
+        });
+        self.postMessage({ type: "status", text: "Прогрев модели..." });
+        await model.generate({ ...tokenizer("hi"), max_new_tokens: 1 });
+        self.postMessage({ type: "ready" });
+      }
+
+      /** Один вызов модели: рендер chat-template с инструментами и потоковая генерация. */
+      async function generate({ messages, tools, enableThinking }) {
+        stopper.reset();
+        const inputs = tokenizer.apply_chat_template(messages, {
+          tools, add_generation_prompt: true, return_dict: true, enable_thinking: enableThinking
+        });
+        const promptTokens = inputs.input_ids.dims[1];
+        let tokens = 0, start = 0, streamed = "";
+        const streamer = new TextStreamer(tokenizer, {
+          skip_prompt: true,
+          decode_kwargs: { skip_special_tokens: false },
+          token_callback_function: () => { tokens++; if (!start) start = performance.now(); },
+          callback_function: (t) => {
+            streamed += t;
+            const tps = tokens / Math.max((performance.now() - start) / 1000, 0.001);
+            self.postMessage({ type: "token", text: t, tps });
+          }
+        });
+        const output = await model.generate({
+          ...inputs, max_new_tokens: 2048, do_sample: false, streamer, stopping_criteria: stopper
+        });
+        let text = streamed;
+        try {
+          text = tokenizer.batch_decode(output.slice(null, [promptTokens, null]), { skip_special_tokens: false })[0];
+        } catch (e) { /* streamed-текст уже содержит ответ */ }
+        self.postMessage({ type: "done", text, promptTokens, tokens });
+      }
+
+      self.onmessage = async ({ data }) => {
+        try {
+          if (data.type === "load") await load();
+          else if (data.type === "generate") await generate(data);
+          else if (data.type === "stop") stopper.interrupt();
+        } catch (e) {
+          self.postMessage({ type: "error", message: e?.message || String(e) });
+        }
+      };
+    </script>
+
+    <script>
+      "use strict";
+
+      const MAX_STEPS = 12;
+      const MAX_TOOL_OUTPUT = 4000;
+      const STORAGE_KEY = "webgpu_code_agent_files";
+
+      const SEED_FILES = {
+        "README.md":
+          "# Демо-проект\n\nАгент может читать, менять и запускать файлы этой папки.\n" +
+          "Попробуйте: «Какая общая выручка в sales.csv?»\n",
+        "sales.csv":
+          "date,product,qty,price\n2026-01-05,Клавиатура,3,2500\n2026-01-09,Мышь,10,900\n" +
+          "2026-02-11,Монитор,2,18000\n2026-02-20,Кабель,25,300\n",
+        "app.js":
+          "// Считает сумму заказа со скидкой\nfunction total(items, discount) {\n" +
+          "  let sum = 0;\n  for (let i = 0; i <= items.length; i++) {\n" +
+          "    sum += items[i].qty * items[i].price;\n  }\n  return sum * (1 - discount);\n}\n\n" +
+          "console.log(total([{ qty: 2, price: 100 }, { qty: 1, price: 50 }], 0.1));\n",
+      };
+
+      const SYSTEM_PROMPT =
+        "You are a coding agent working inside a browser workspace. " +
+        "Use the tools to inspect and modify files; read a file before editing it. " +
+        "After changing code, verify it with run_js when possible. " +
+        "run_js is a plain browser sandbox: there is no filesystem, no require/import, no Node APIs and no network. " +
+        "To run code or data from a file, read_file it first and paste the source into the code parameter. " +
+        "Never repeat a tool call that already failed - change the approach instead. " +
+        "Keep answers concise and reply in the user's language.";
+
+      const TOOLS = [
+        tool("list_files", "List all files in the workspace.", {}),
+        tool("read_file", "Read the full content of a file.", {
+          path: { type: "string", description: "File path, e.g. src/app.js" },
+        }),
+        tool("write_file", "Create or overwrite a file with the given content.", {
+          path: { type: "string", description: "File path" },
+          content: { type: "string", description: "Full new content of the file" },
+        }),
+        tool("edit_file", "Replace an exact text fragment in a file. old_text must occur exactly once.", {
+          path: { type: "string", description: "File path" },
+          old_text: { type: "string", description: "Exact text to replace" },
+          new_text: { type: "string", description: "Replacement text" },
+        }),
+        tool("delete_file", "Delete a file.", {
+          path: { type: "string", description: "File path" },
+        }),
+        tool(
+          "run_js",
+          "Execute self-contained JavaScript in a sandbox worker and return console output. " +
+            "No filesystem, no require/import, no DOM, no network: inline any data you need.",
+          { code: { type: "string", description: "Self-contained JavaScript source to run" } }
+        ),
+      ];
+
+      /**
+       * @function tool
+       * @description Строит описание инструмента в формате OpenAI function-calling для chat-template
+       * @param {string} name - Имя функции
+       * @param {string} description - Описание
+       * @param {Object} properties - JSON-schema свойств параметров (все обязательные)
+       * @returns {Object} Описание инструмента
+       */
+      function tool(name, description, properties) {
+        return {
+          type: "function",
+          function: {
+            name,
+            description,
+            parameters: { type: "object", properties, required: Object.keys(properties) },
+          },
+        };
+      }
+
+      /* =====================================================================
+       * Рабочее пространство: виртуальные файлы (localStorage) или реальная папка
+       * ===================================================================== */
+      class Workspace {
+        constructor() {
+          this.files = new Map();
+          this.dirHandle = null;
+          this.loadVirtual();
+        }
+
+        /** Загружает виртуальные файлы из localStorage или демо-набор */
+        loadVirtual() {
+          this.dirHandle = null;
+          let saved = null;
+          try {
+            saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          } catch (e) {
+            saved = null;
+          }
+          this.files = new Map(Object.entries(saved || SEED_FILES));
+        }
+
+        /** Сбрасывает виртуальную папку к демо-набору */
+        reset() {
+          localStorage.removeItem(STORAGE_KEY);
+          this.loadVirtual();
+        }
+
+        // ponytail: localStorage ~5 МБ; при переполнении пишем в память и предупреждаем
+        persist() {
+          if (this.dirHandle) return;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(this.files)));
+          } catch (e) {
+            addSystemMessage("Не удалось сохранить файлы в localStorage: " + e.message);
+          }
+        }
+
+        /**
+         * @function openDirectory
+         * @description Открывает реальную папку через File System Access API и читает текстовые файлы
+         * @param {FileSystemDirectoryHandle} handle - Хэндл папки
+         */
+        async openDirectory(handle) {
+          const files = new Map();
+          const skip = new Set([".git", "node_modules", "venv", "__pycache__", "dist"]);
+          const walk = async (dir, prefix) => {
+            for await (const [name, entry] of dir.entries()) {
+              if (files.size >= 300) return;
+              const path = prefix + name;
+              if (entry.kind === "directory") {
+                if (!skip.has(name)) await walk(entry, path + "/");
+              } else {
+                const file = await entry.getFile();
+                if (file.size <= 512 * 1024) files.set(path, await file.text());
+              }
+            }
+          };
+          await walk(handle, "");
+          this.dirHandle = handle;
+          this.files = files;
+        }
+
+        /** Возвращает хэндл файла на диске, создавая промежуточные папки */
+        async fileHandle(path, create) {
+          const parts = path.split("/");
+          let dir = this.dirHandle;
+          for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create });
+          return dir.getFileHandle(parts.at(-1), { create });
+        }
+
+        list() {
+          return [...this.files.keys()].sort();
+        }
+
+        read(path) {
+          if (!this.files.has(path)) throw new Error(`Файл не найден: ${path}`);
+          return this.files.get(path);
+        }
+
+        async write(path, content) {
+          // Чёрный список вместо белого: имена с кириллицей и пробелами допустимы, выход за папку — нет
+          if (!path || path.startsWith("/") || path.includes("\\") || /(^|\/)\.\.(\/|$)/.test(path)) {
+            throw new Error(`Недопустимый путь: ${path}`);
+          }
+          // Диск раньше памяти: при ошибке записи модель не увидит несуществующую правку
+          if (this.dirHandle) {
+            const writable = await (await this.fileHandle(path, true)).createWritable();
+            await writable.write(content);
+            await writable.close();
+          }
+          this.files.set(path, content);
+          this.persist();
+        }
+
+        async remove(path) {
+          this.read(path);
+          this.files.delete(path);
+          if (this.dirHandle) {
+            const parts = path.split("/");
+            let dir = this.dirHandle;
+            for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part);
+            await dir.removeEntry(parts.at(-1));
+          }
+          this.persist();
+        }
+      }
+
+      /* =====================================================================
+       * Инструменты агента
+       * ===================================================================== */
+
+      /**
+       * @function runJs
+       * @description Выполняет JavaScript в отдельном Worker, собирая console.* вывод
+       * @param {string} code - Исходный код
+       * @returns {Promise<string>} Вывод программы
+       */
+      function runJs(code) {
+        const src = `
+          const report = self.postMessage.bind(self);
+          // Код модели не должен ходить в сеть и не должен подделывать собственный результат
+          self.postMessage = self.fetch = self.XMLHttpRequest = self.WebSocket =
+            self.importScripts = self.indexedDB = self.caches = undefined;
+          const logs = [];
+          for (const k of ["log", "info", "warn", "error"]) {
+            console[k] = (...a) => { logs.push(a.map(x => typeof x === "object" ? JSON.stringify(x) : String(x)).join(" ")); };
+          }
+          const finish = (r) => {
+            if (r !== undefined) logs.push("=> " + (typeof r === "object" ? JSON.stringify(r) : String(r)));
+            report(logs.join("\\n"));
+          };
+          try {
+            const r = (0, eval)(${JSON.stringify(code)});
+            // Асинхронный код: ждём промис, иначе его вывод потерялся бы
+            if (r && typeof r.then === "function") r.then(finish, (e) => { logs.push("Error: " + e); finish(); });
+            else finish(r);
+          } catch (e) {
+            logs.push("Error: " + (e && e.stack || e));
+            if (/require|import|\bfs\b|module/.test(String(e))) {
+              logs.push("Подсказка: в песочнице нет файловой системы и модулей. Вставьте данные и код прямо в параметр code.");
+            }
+            finish();
+          }`;
+        const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+        const worker = new Worker(url);
+        URL.revokeObjectURL(url);
+        return new Promise((resolve) => {
+          const timer = setTimeout(() => {
+            worker.terminate();
+            resolve("Error: превышен лимит времени 10 с");
+          }, 10000);
+          worker.onmessage = (e) => {
+            clearTimeout(timer);
+            worker.terminate();
+            resolve(e.data || "(нет вывода)");
+          };
+          worker.onerror = (e) => {
+            clearTimeout(timer);
+            worker.terminate();
+            resolve("Error: " + e.message);
+          };
+        });
+      }
+
+      /**
+       * @function executeTool
+       * @description Выполняет вызов инструмента и возвращает текстовый результат
+       * @param {{name: string, arguments: Object}} call - Вызов инструмента
+       * @returns {Promise<{ok: boolean, output: string}>} Результат
+       */
+      async function executeTool(call) {
+        const a = call.arguments;
+        // Модель часто форматирует XML с переносами строк: путь чистим, содержимое трогать нельзя
+        const path = String(a.path ?? "").trim();
+        try {
+          let output;
+          switch (call.name) {
+            case "list_files":
+              output = workspace.list().join("\n") || "(пусто)";
+              break;
+            case "read_file":
+              output = workspace.read(path);
+              break;
+            case "write_file":
+              await workspace.write(path, a.content ?? "");
+              output = `Записано ${path} (${(a.content ?? "").length} символов)`;
+              break;
+            case "edit_file": {
+              const text = workspace.read(path);
+              const count = a.old_text ? text.split(a.old_text).length - 1 : 0;
+              if (count !== 1) throw new Error(`old_text найден ${count} раз(а), ожидался ровно один`);
+              await workspace.write(path, text.replace(a.old_text, () => a.new_text ?? ""));
+              output = `Изменён ${path}`;
+              break;
+            }
+            case "delete_file":
+              await workspace.remove(path);
+              output = `Удалён ${path}`;
+              break;
+            case "run_js":
+              output = await runJs(a.code ?? "");
+              break;
+            default:
+              throw new Error(`Неизвестный инструмент: ${call.name}`);
+          }
+          if (output.length > MAX_TOOL_OUTPUT) output = output.slice(0, MAX_TOOL_OUTPUT) + "\n...(обрезано)";
+          return { ok: true, output };
+        } catch (e) {
+          return { ok: false, output: "Error: " + e.message };
+        }
+      }
+
+      /* =====================================================================
+       * Разбор ответа модели
+       * ===================================================================== */
+
+      /**
+       * @function unwrapCdata
+       * @description Снимает CDATA-обёртку со значения параметра
+       * @param {string} value - Сырое значение
+       * @returns {string} Чистое значение
+       */
+      function unwrapCdata(value) {
+        const v = value.trim();
+        if (!v.startsWith("<![CDATA[")) return value;
+        return v
+          .replace(/^<!\[CDATA\[/, "")
+          .replace(/\]\]>$/, "")
+          .replaceAll("]]]]><![CDATA[>", "]]>");
+      }
+
+      /**
+       * @function parseAssistant
+       * @description Разделяет сырой вывод модели на размышления, текст и вызовы инструментов
+       * @param {string} raw - Вывод модели
+       * @returns {{thinking: string, content: string, calls: Array<{name: string, arguments: Object}>}}
+       */
+      function parseAssistant(raw) {
+        let text = raw.replace(/<\|im_end\|>|<\/s>/g, "");
+        let thinking = "";
+        const think = text.match(/<think>([\s\S]*?)<\/think>/);
+        if (think) {
+          thinking = think[1].trim();
+          text = text.replace(think[0], "");
+        }
+        const calls = [];
+        const fnRe = /<function name="([^"]+)">([\s\S]*?)<\/function>/g;
+        let m;
+        while ((m = fnRe.exec(text))) {
+          const args = {};
+          const paramRe = /<param name="([^"]+)">([\s\S]*?)<\/param>/g;
+          let p;
+          while ((p = paramRe.exec(m[2]))) args[p[1]] = unwrapCdata(p[2]);
+          calls.push({ name: m[1], arguments: args });
+        }
+        const content = text.replace(fnRe, "").trim();
+        return { thinking, content, calls };
+      }
+
+      /* =====================================================================
+       * Модель в Web Worker
+       * ===================================================================== */
+      let worker = null;
+      let modelReady = false;
+      let pendingGenerate = null;
+
+      /** Создаёт воркер из встроенного исходника и подписывается на его сообщения */
+      function createWorker() {
+        const src = document.getElementById("workerSrc").textContent;
+        worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })), {
+          type: "module",
+        });
+        const fileProgress = new Map();
+        worker.onmessage = ({ data }) => {
+          switch (data.type) {
+            case "progress":
+              if (data.data.status === "progress") {
+                fileProgress.set(data.data.file, [data.data.loaded, data.data.total]);
+                let loaded = 0;
+                let total = 0;
+                for (const [l, t] of fileProgress.values()) {
+                  loaded += l;
+                  total += t;
+                }
+                const pct = total ? (loaded / total) * 100 : 0;
+                els.progressBar.style.width = pct.toFixed(1) + "%";
+                setStatus(`Загрузка ${(loaded / 1e9).toFixed(2)} / ${(total / 1e9).toFixed(2)} ГБ`, "");
+              }
+              break;
+            case "status":
+              setStatus(data.text, "");
+              break;
+            case "ready":
+              modelReady = true;
+              els.progress.classList.remove("active");
+              setStatus("MiniCPM5-2B готова (WebGPU)", "ready");
+              els.loadBtn.style.display = "none";
+              els.sendBtn.disabled = false;
+              break;
+            case "token":
+              pendingGenerate?.onToken(data.text);
+              els.tps.textContent = `${data.tps.toFixed(1)} ток/с`;
+              break;
+            case "done":
+              pendingGenerate?.resolve(data);
+              pendingGenerate = null;
+              break;
+            case "error":
+              els.progress.classList.remove("active");
+              if (pendingGenerate) {
+                pendingGenerate.reject(new Error(data.message));
+                pendingGenerate = null;
+              } else {
+                setStatus("Ошибка загрузки: " + data.message, "error");
+                els.loadBtn.disabled = false;
+              }
+              break;
+          }
+        };
+        worker.onerror = (e) => {
+          // Фатальный сбой воркера: без этого промис generate() зависает навсегда и UI блокируется
+          setStatus("Ошибка воркера: " + e.message, "error");
+          els.progress.classList.remove("active");
+          pendingGenerate?.reject(new Error(e.message || "воркер остановлен"));
+          pendingGenerate = null;
+          worker = null;
+          modelReady = false;
+          els.loadBtn.style.display = "";
+          els.loadBtn.disabled = false;
+        };
+      }
+
+      /**
+       * @function generate
+       * @description Просит воркер сгенерировать ответ на историю сообщений
+       * @param {Array} messages - История чата
+       * @param {Function} onToken - Колбэк для потоковых токенов
+       * @returns {Promise<{text: string, promptTokens: number, tokens: number}>}
+       */
+      function generate(messages, onToken) {
+        return new Promise((resolve, reject) => {
+          pendingGenerate = { resolve, reject, onToken };
+          worker.postMessage({
+            type: "generate",
+            messages,
+            tools: TOOLS,
+            enableThinking: els.thinkSwitch.checked,
+          });
+        });
+      }
+
+      /* =====================================================================
+       * Агентный цикл
+       * ===================================================================== */
+      const history = [];
+      const TRIMMED = "(старый результат вытеснен из контекста)";
+      let running = false;
+      let lastCall = "";
+
+      /**
+       * @function trimHistory
+       * @description Заменяет содержимое старых tool-сообщений заглушкой, чтобы промпт влезал в контекст
+       */
+      function trimHistory() {
+        // ponytail: грубая оценка по символам (~4 на токен), точный подсчёт потребовал бы токенизатора в UI
+        let budget = 20000;
+        for (let i = history.length - 1; i >= 0; i--) {
+          budget -= history[i].content.length;
+          if (budget < 0 && history[i].role === "tool" && history[i].content !== TRIMMED) {
+            history[i].content = TRIMMED;
+          }
+        }
+      }
+
+      /**
+       * @function runAgent
+       * @description Выполняет запрос пользователя: генерация → инструменты → повтор до MAX_STEPS
+       * @param {string} userText - Запрос пользователя
+       */
+      async function runAgent(userText) {
+        running = true;
+        els.sendBtn.style.display = "none";
+        els.stopBtn.style.display = "";
+        history.push({ role: "user", content: userText });
+        addMessage("user", userText);
+
+        try {
+          for (let step = 1; step <= MAX_STEPS && running; step++) {
+            els.stepInfo.textContent = `Шаг ${step}/${MAX_STEPS}`;
+            const system = {
+              role: "system",
+              content: SYSTEM_PROMPT + "\n\nWorkspace files:\n" + (workspace.list().join("\n") || "(empty)"),
+            };
+            const bubble = addMessage("assistant", "");
+            let streamed = "";
+            let frame = 0;
+            const result = await generate([system, ...history], (t) => {
+              streamed += t;
+              // Перерисовка не чаще кадра: парсинг всего накопленного текста на каждый токен тормозит
+              frame =
+                frame ||
+                requestAnimationFrame(() => {
+                  frame = 0;
+                  bubble.innerHTML = renderAssistant(parseAssistant(streamed), true);
+                  scrollDown();
+                });
+            });
+            cancelAnimationFrame(frame);
+            const parsed = parseAssistant(result.text);
+            bubble.innerHTML = renderAssistant(parsed, false);
+            if (!parsed.content && !parsed.thinking) bubble.remove();
+
+            // Stop нажат во время генерации: инструменты этого шага выполнять нельзя
+            if (!running) {
+              if (parsed.content) history.push({ role: "assistant", content: parsed.content });
+              addSystemMessage("Остановлено пользователем.");
+              break;
+            }
+            if (!parsed.calls.length) {
+              if (!parsed.content) {
+                addSystemMessage(
+                  result.text.includes("<function")
+                    ? "Вызов инструмента не разобран: ответ модели оборвался."
+                    : "Модель вернула пустой ответ."
+                );
+                break;
+              }
+              history.push({ role: "assistant", content: parsed.content });
+              break;
+            }
+            history.push({ role: "assistant", content: parsed.content, tool_calls: parsed.calls });
+            for (const call of parsed.calls) {
+              if (!running) break;
+              const signature = JSON.stringify(call);
+              const repeated = signature === lastCall;
+              lastCall = signature;
+              const res = repeated
+                ? { ok: false, output: "Error: этот вызов уже выполнялся с тем же результатом. Смените подход." }
+                : await executeTool(call);
+              history.push({ role: "tool", content: res.output });
+              addToolCard(call, res);
+              renderFiles();
+            }
+            trimHistory();
+            if (step === MAX_STEPS) addSystemMessage("Достигнут лимит шагов агента.");
+          }
+        } catch (e) {
+          addSystemMessage("Ошибка генерации: " + e.message);
+        } finally {
+          running = false;
+          els.stepInfo.textContent = "";
+          els.tps.textContent = "";
+          els.sendBtn.style.display = "";
+          els.stopBtn.style.display = "none";
+        }
+      }
+
+      /* =====================================================================
+       * UI
+       * ===================================================================== */
+      const els = {};
+      for (const id of [
+        "status", "progress", "progressBar", "tps", "loadBtn", "openDirBtn", "banner", "wsName",
+        "newFileBtn", "resetWsBtn", "fileList", "editor", "saveBtn", "deleteBtn", "messages",
+        "input", "sendBtn", "stopBtn", "thinkSwitch", "stepInfo", "hints",
+      ]) {
+        els[id] = document.getElementById(id);
+      }
+
+      const workspace = new Workspace();
+      let currentFile = null;
+      let loadedContent = "";
+
+      function setStatus(text, cls) {
+        els.status.className = "status-pill " + cls;
+        els.status.innerHTML = `<i class="fas fa-circle"></i> ${escapeHtml(text)}`;
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      /** Минимальный markdown: блоки кода, inline-код, переводы строк */
+      function renderMarkdown(text) {
+        let html = escapeHtml(text);
+        html = html.replace(/```[\w-]*\n?([\s\S]*?)```/g, (_, code) => `<pre><code>${code}</code></pre>`);
+        html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+        return html.replaceAll("\n", "<br>");
+      }
+
+      function renderAssistant(parsed, streaming) {
+        let html = "";
+        if (parsed.thinking) {
+          html += `<details${streaming ? " open" : ""}><summary><i class="fas fa-brain"></i> Размышления</summary>${renderMarkdown(parsed.thinking)}</details>`;
+        }
+        html += renderMarkdown(parsed.content);
+        if (streaming && !parsed.calls.length) html += ' <i class="fas fa-ellipsis-h"></i>';
+        return html;
+      }
+
+      function addMessage(role, text) {
+        const div = document.createElement("div");
+        div.className = "msg " + role;
+        div.innerHTML = renderMarkdown(text);
+        els.messages.appendChild(div);
+        scrollDown();
+        return div;
+      }
+
+      function addSystemMessage(text) {
+        addMessage("system", text);
+      }
+
+      function addToolCard(call, res) {
+        const div = document.createElement("details");
+        div.className = "tool-card" + (res.ok ? "" : " failed");
+        const argSummary = Object.entries(call.arguments)
+          .map(([k, v]) => `${k}=${JSON.stringify(String(v).slice(0, 40))}`)
+          .join(", ");
+        div.innerHTML =
+          `<summary><i class="fas fa-wrench"></i> ${escapeHtml(call.name)}(${escapeHtml(argSummary)})</summary>` +
+          `<pre>${escapeHtml(res.output)}</pre>`;
+        els.messages.appendChild(div);
+        scrollDown();
+      }
+
+      function scrollDown() {
+        els.messages.scrollTop = els.messages.scrollHeight;
+      }
+
+      function renderFiles() {
+        els.fileList.innerHTML = "";
+        for (const path of workspace.list()) {
+          const li = document.createElement("li");
+          li.innerHTML = `<i class="fas fa-file-code"></i> ${escapeHtml(path)}`;
+          li.dataset.path = path;
+          if (path === currentFile) li.classList.add("active");
+          li.onclick = () => openFile(path);
+          els.fileList.appendChild(li);
+        }
+        if (currentFile && !workspace.files.has(currentFile)) openFile(null);
+        // Правки агента подхватываем, но несохранённый текст пользователя не затираем
+        else if (currentFile && els.editor.value === loadedContent) setEditor(workspace.read(currentFile));
+      }
+
+      /** Кладёт текст в редактор и запоминает его как сохранённое состояние */
+      function setEditor(text) {
+        loadedContent = text;
+        els.editor.value = text;
+      }
+
+      function openFile(path) {
+        currentFile = path;
+        setEditor(path ? workspace.read(path) : "");
+        els.saveBtn.disabled = els.deleteBtn.disabled = !path;
+        renderFiles();
+      }
+
+      async function sendMessage() {
+        const text = els.input.value.trim();
+        if (!text || running || !modelReady) return;
+        els.input.value = "";
+        await runAgent(text);
+      }
+
+      /* ---------- Обработчики ---------- */
+      els.loadBtn.onclick = () => {
+        els.loadBtn.disabled = true;
+        els.progress.classList.add("active");
+        setStatus("Загрузка модели...", "");
+        if (!worker) createWorker();
+        worker.postMessage({ type: "load" });
+      };
+
+      els.sendBtn.onclick = sendMessage;
+      els.input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      els.stopBtn.onclick = () => {
+        running = false;
+        worker?.postMessage({ type: "stop" });
+      };
+
+      els.hints.addEventListener("click", (e) => {
+        const hint = e.target.closest("[data-hint]");
+        if (hint) {
+          els.input.value = hint.dataset.hint;
+          els.input.focus();
+        }
+      });
+
+      els.newFileBtn.onclick = async () => {
+        const name = prompt("Имя файла:", "new.js")?.trim();
+        if (!name) return;
+        if (workspace.files.has(name)) {
+          openFile(name);
+          return;
+        }
+        try {
+          await workspace.write(name, "");
+          openFile(name);
+        } catch (e) {
+          addSystemMessage(e.message);
+        }
+      };
+
+      els.saveBtn.onclick = async () => {
+        if (!currentFile) return;
+        const text = els.editor.value;
+        try {
+          await workspace.write(currentFile, text);
+          loadedContent = text;
+        } catch (e) {
+          addSystemMessage("Не удалось сохранить: " + e.message);
+        }
+      };
+      els.editor.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+          e.preventDefault();
+          els.saveBtn.click();
+        }
+      });
+
+      els.deleteBtn.onclick = async () => {
+        if (!currentFile || !confirm(`Удалить ${currentFile}?`)) return;
+        try {
+          await workspace.remove(currentFile);
+          openFile(null);
+        } catch (e) {
+          addSystemMessage("Не удалось удалить: " + e.message);
+        }
+      };
+
+      els.resetWsBtn.onclick = () => {
+        const question = workspace.dirHandle
+          ? "Закрыть локальную папку и вернуться к демо-набору? Файлы на диске останутся нетронутыми."
+          : "Вернуть виртуальную папку к демо-набору?";
+        if (confirm(question)) {
+          workspace.reset();
+          els.wsName.textContent = "Виртуальная папка";
+          openFile(null);
+        }
+      };
+
+      if (!window.showDirectoryPicker) {
+        els.openDirBtn.disabled = true;
+        els.openDirBtn.title = "File System Access API недоступен в этом браузере";
+      }
+      els.openDirBtn.onclick = async () => {
+        try {
+          const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+          await workspace.openDirectory(handle);
+          els.wsName.textContent = handle.name;
+          openFile(null);
+          addSystemMessage(`Открыта папка «${handle.name}»: ${workspace.list().length} файлов. Изменения пишутся на диск.`);
+        } catch (e) {
+          if (e.name !== "AbortError") addSystemMessage("Не удалось открыть папку: " + e.message);
+        }
+      };
+
+      /* ---------- Проверка WebGPU ---------- */
+      (async () => {
+        els.sendBtn.disabled = true;
+        const adapter = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
+        if (!adapter) {
+          els.banner.textContent =
+            "WebGPU недоступен. Нужен Chrome/Edge 113+ или Safari 26+ с включённым WebGPU. Файлы можно редактировать вручную.";
+          els.banner.classList.add("show");
+          els.loadBtn.disabled = true;
+        } else if (!adapter.features.has("shader-f16")) {
+          // Веса q4f16 без shader-f16 падают на прогреве уже после 1.84 ГБ загрузки — блокируем заранее
+          els.banner.textContent =
+            "GPU не поддерживает shader-f16, а веса q4f16 без него не запускаются. Загрузка модели отключена; файлы можно редактировать вручную.";
+          els.banner.classList.add("show");
+          els.loadBtn.disabled = true;
+        }
+      })();
+
+      renderFiles();
+
+      // Хук для тестов: чистые функции без модели
+      window.agentDebug = { parseAssistant, executeTool, workspace };
+    </script>
+  </body>
+</html>

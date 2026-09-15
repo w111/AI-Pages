@@ -32,6 +32,7 @@
 
 - **`python_editor.html`** (152KB) - Python среда с Pyodide
 - **`webllm-chat.html`** (48KB) - Локальный LLM интерфейс
+- **`webgpu_code_agent.html`** (44KB) - Агент для программирования на MiniCPM5-2B (Transformers.js + WebGPU)
 - **`web-stable-diffusion.html`** (65KB) - ИИ генерация изображений
 
 #### 🎮 Игры
@@ -408,7 +409,7 @@ AI Pages использует **архитектуру микро-фронтен
 | **React 18**     | unpkg.com            | cdn.jsdelivr.net     | ❌ Размер 160KB   |
 | **Chart.js**     | cdn.jsdelivr.net     | cdnjs.cloudflare.com | ✅ Возможен 180KB |
 | **Font Awesome** | cdnjs.cloudflare.com | cdn.jsdelivr.net     | ✅ Icons subset   |
-| **Pyodide**      | cdn.jsdelivr.net     | pyodide.org    | ❌ Размер 350MB   |
+| **Pyodide**      | cdn.jsdelivr.net     | pyodide.org          | ❌ Размер 350MB   |
 
 **Реализация fallback:**
 
