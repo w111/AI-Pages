@@ -28,8 +28,8 @@
 14. Адаптивный дизайн
 15. Анимированные переходы между раундами
 
-API: REST Countries v3.1 (бесплатный, без авторизации)
-https://restcountries.com/v3.1/all
+API: REST Countries v5 (требуется личный API-ключ)
+https://api.restcountries.com/countries/v5
 
 Технические требования:
 1. Самодостаточный HTML (встроенные CSS и JS)
@@ -1607,7 +1607,7 @@ https://restcountries.com/v3.1/all
           n + " охватывает " + tz
           + " часовых поясов!"
         );
-        if (brd === 0) facts.push(
+        if (Array.isArray(c.borders) && brd === 0) facts.push(
           n + " \u2014 островное государство."
         );
         else if (brd > 5) facts.push(
@@ -1638,7 +1638,7 @@ https://restcountries.com/v3.1/all
         if (tz > 1) facts.push(
           n + " spans " + tz + " time zones!"
         );
-        if (brd === 0) facts.push(
+        if (Array.isArray(c.borders) && brd === 0) facts.push(
           n + " is an island nation."
         );
         else if (brd > 5) facts.push(
@@ -1919,19 +1919,116 @@ https://restcountries.com/v3.1/all
      * @returns {Promise<Array>} Массив стран
      */
     async function fetchCountries() {
-      const url =
-        "https://restcountries.com/v3.1/all";
-      const resp = await fetch(url);
-      if (!resp.ok) {
-        throw new Error("HTTP " + resp.status);
+      const countries = [];
+      const seen = new Set();
+      let offset = 0;
+      while (true) {
+        const url = new URL("https://api.restcountries.com/countries/v5");
+        url.searchParams.set("limit", "100");
+        url.searchParams.set("offset", String(offset));
+        url.searchParams.set("response_fields",
+          "names,codes,capitals,flag,population,area,region,subregion,languages,currencies,timezones,borders,cars");
+        const resp = await fetch(url, {
+          headers: { Authorization: "Bearer " + countriesApiKey },
+          signal: AbortSignal.timeout(20000),
+          redirect: "error"
+        });
+        if (!resp.ok) {
+          if (resp.status === 401 || resp.status === 403) countriesApiKey = "";
+          throw new Error(apiMessage("HTTP " + resp.status));
+        }
+        const payload = await resp.json();
+        const data = payload?.data;
+        if (data?._demo) {
+          countriesApiKey = "";
+          throw new Error(apiMessage("demo"));
+        }
+        if (!Array.isArray(data?.objects) || !Number.isInteger(data.meta?.total)
+            || data.meta.total < 0) {
+          throw new Error(apiMessage("format"));
+        }
+        for (const c of data.objects) {
+          if (!c?.codes?.alpha_3 || seen.has(c.codes.alpha_3)) {
+            throw new Error(apiMessage("format"));
+          }
+          seen.add(c.codes.alpha_3);
+          countries.push(normalizeCountry(c));
+        }
+        offset += data.objects.length;
+        if (offset >= data.meta.total) break;
+        if (!data.objects.length) throw new Error(apiMessage("format"));
       }
-      const data = await resp.json();
-      // Фильтрация малых территорий
-      return data.filter(c =>
-        c.population && c.population >= 1000
-        && c.area && c.area >= 1
-        && c.name && c.name.common
+      const playable = countries.filter(c =>
+        Number.isFinite(c.population) && c.population >= 1000
+        && Number.isFinite(c.area) && c.area >= 1
+        && typeof c.name.common === "string" && c.name.common
       );
+      if (playable.length < 4) throw new Error(apiMessage("empty"));
+      return playable;
+    }
+
+    /** Преобразование v5 в модель игры, общую для всех режимов. */
+    function normalizeCountry(c) {
+      return {
+        name: { common: c.names?.common },
+        translations: c.names?.translations,
+        cca3: c.codes.alpha_3,
+        population: c.population,
+        area: c.area?.kilometers,
+        capital: (c.capitals || []).map(capital => capital.name).filter(Boolean),
+        flags: { svg: c.flag?.url_svg, png: c.flag?.url_png },
+        flag: c.flag?.emoji || "",
+        region: c.region,
+        subregion: c.subregion,
+        languages: (c.languages || []).map(language => language.name),
+        currencies: c.currencies || [],
+        timezones: c.timezones || [],
+        borders: c.borders,
+        car: { side: c.cars?.driving_side }
+      };
+    }
+
+    // Личный ключ живёт только в памяти текущей страницы.
+    let countriesApiKey = "";
+
+    /** Сообщения загрузки API без вывода ключа или внешнего тела ответа. */
+    function apiMessage(code) {
+      const ru = state.lang === "ru";
+      if (code === "demo") return ru
+        ? "Демонстрационный ключ возвращает одну страну. Нужен личный ключ."
+        : "The demo key returns one country. Please use your own key.";
+      if (code === "empty") return ru
+        ? "Недостаточно стран для игры." : "Not enough countries to play.";
+      if (code === "format") return ru
+        ? "Некорректный ответ REST Countries." : "Invalid REST Countries response.";
+      if (code === "HTTP 401" || code === "HTTP 403") return ru
+        ? "Ключ отклонён или доступ ограничен. Нажмите «Повторить» и проверьте ключ."
+        : "Key rejected or access restricted. Retry and check your key.";
+      if (code === "HTTP 429") return ru
+        ? "Лимит запросов. Подождите и повторите попытку."
+        : "Request limit reached. Wait before retrying.";
+      return code;
+    }
+
+    /** Ввод ключа пользователем без записи в URL или хранилище браузера. */
+    function renderApiKeyForm() {
+      const ru = state.lang === "ru";
+      document.getElementById("mainContent").innerHTML = `
+        <form id="apiKeyForm" class="error-screen">
+          <h2>${ru ? "Подключение данных стран" : "Connect country data"}</h2>
+          <p>${ru ? "Введите личный ключ REST Countries. Он действует только до перезагрузки страницы."
+            : "Enter your REST Countries key. It is kept only until you reload this page."}</p>
+          <p><a href="https://restcountries.com/sign-up" target="_blank" rel="noopener noreferrer">
+            ${ru ? "Получить ключ" : "Get an API key"}</a></p>
+          <label for="countriesApiKey">${ru ? "Ключ API" : "API key"}</label>
+          <input id="countriesApiKey" type="password" autocomplete="off" required>
+          <button class="retry-btn" type="submit">${ru ? "Загрузить страны" : "Load countries"}</button>
+        </form>`;
+      document.getElementById("apiKeyForm").addEventListener("submit", event => {
+        event.preventDefault();
+        countriesApiKey = document.getElementById("countriesApiKey").value.trim();
+        if (countriesApiKey) loadAndStart();
+      });
     }
 
     // ===============================================
@@ -2953,6 +3050,10 @@ https://restcountries.com/v3.1/all
      * Загрузка данных и запуск
      */
     async function loadAndStart() {
+      if (!countriesApiKey) {
+        renderApiKeyForm();
+        return;
+      }
       renderLoading();
       try {
         state.countries = await fetchCountries();

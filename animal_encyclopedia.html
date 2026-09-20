@@ -18,14 +18,14 @@
 10. Адаптивный дизайн
 
 API:
-- Zoo Animals: zoo-animal-api.herokuapp.com/animals/rand
+- Wikipedia: {lang}.wikipedia.org/api/rest_v1/page/summary/{title}
 - Dog Facts: dogapi.dog/api/v2/facts
 - Cat Facts: catfact.ninja/fact
 - HTTP Cat: http.cat/{code}
 - HTTP Dog: http.dog/{code}.jpg
 - RandomDog: random.dog/woof.json
 - RandomFox: randomfox.ca/floof/
-- Shibe.Online: shibe.online/api/shibes?count=1
+- Dog CEO: dog.ceo/api/breed/shiba/images/random
 
 Технические требования:
 1. Vanilla JavaScript, без фреймворков
@@ -442,6 +442,11 @@ API:
       box-shadow: 0 8px 32px var(--shadow);
     }
 
+    .animal-of-day:has(.animal-of-day-image[hidden]) { grid-template-columns: 1fr; }
+
+    .animal-summary { line-height: 1.7; margin: 1rem 0; }
+    .animal-source a { color: var(--primary); }
+
     .animal-of-day-image {
       position: relative;
       min-height: 350px;
@@ -449,6 +454,8 @@ API:
     }
 
     .animal-of-day-image img {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -740,7 +747,7 @@ API:
       color: var(--text-muted);
     }
 
-    .error-state i {
+    .error-state > i {
       font-size: 2.5rem;
       color: var(--error);
       margin-bottom: 1rem;
@@ -1370,13 +1377,13 @@ API:
           <i class="fas fa-exclamation-triangle">
           </i>
           <p>${t("errorLoad")}</p>
-          <button class="btn btn-outline"
-            onclick="(${retryFn.toString()})()">
+          <button class="btn btn-outline" type="button">
             <i class="fas fa-sync-alt"></i>
             ${t("retry")}
           </button>
         </div>
       `;
+      container.querySelector("button").addEventListener("click", retryFn);
     }
 
     // ====== Животное дня ======
@@ -1385,7 +1392,22 @@ API:
      * @function loadAnimalOfDay
      * @description Загрузить случайное животное
      */
+    const animalArticles = [
+      { en: "Red_panda", ru: "Малая_панда" },
+      { en: "Tiger", ru: "Тигр" },
+      { en: "Giraffe", ru: "Жираф" },
+      { en: "Polar_bear", ru: "Белый_медведь" },
+      { en: "Koala", ru: "Коала" },
+      { en: "Cheetah", ru: "Гепард" },
+      { en: "Emperor_penguin", ru: "Императорский_пингвин" },
+      { en: "Red_fox", ru: "Обыкновенная_лисица" }
+    ];
+    let lastAnimalArticle = null;
+    let animalRequestId = 0;
+
     async function loadAnimalOfDay() {
+      const requestId = ++animalRequestId;
+      const language = currentLang === "en" ? "en" : "ru";
       // Показываем skeleton
       animalOfDayContent.innerHTML = `
         <div class="animal-of-day">
@@ -1408,18 +1430,26 @@ API:
       btnNewAnimal.disabled = true;
 
       try {
+        const choices = animalArticles.filter(article => article !== lastAnimalArticle);
+        const article = choices[Math.floor(Math.random() * choices.length)];
         const res = await fetchWithTimeout(
-          "https://zoo-animal-api.herokuapp.com" +
-          "/animals/rand"
+          `https://${language}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(article[language])}`
         );
         const data = await res.json();
-        renderAnimalOfDay(data);
+        if (typeof data.title !== "string" || typeof data.extract !== "string"
+            || !data.extract || data.type === "disambiguation") {
+          throw new Error("Invalid animal summary");
+        }
+        // Фото показываем только вместе с автором и лицензией Commons.
+        data.imageCredit = await fetchImageCredit(data.originalimage?.source);
+        if (requestId !== animalRequestId) return;
+        renderAnimalOfDay(data, language);
+        lastAnimalArticle = article;
       } catch (err) {
-        renderError(
-          animalOfDayContent, loadAnimalOfDay
-        );
+        if (requestId !== animalRequestId) return;
+        renderError(animalOfDayContent, loadAnimalOfDay);
       } finally {
-        btnNewAnimal.disabled = false;
+        if (requestId === animalRequestId) btnNewAnimal.disabled = false;
       }
     }
 
@@ -1428,63 +1458,71 @@ API:
      * @description Отрисовка карточки животного
      * @param {Object} animal - Данные животного
      */
-    function renderAnimalOfDay(animal) {
-      const imgUrl = animal.image_link ||
-        "https://http.cat/404";
+    async function fetchImageCredit(originalUrl) {
+      if (typeof originalUrl !== "string") return null;
+      try {
+        const imageUrl = new URL(originalUrl);
+        if (!["https://upload.wikimedia.org", "https://thumb.wikimedia.org"].includes(imageUrl.origin)) return null;
+        const parts = imageUrl.pathname.split("/");
+        const filename = imageUrl.pathname.includes("/thumb/") ? parts.at(-2) : parts.at(-1);
+        const title = "File:" + decodeURIComponent(filename);
+        const url = new URL("https://commons.wikimedia.org/w/api.php");
+        url.search = new URLSearchParams({ action: "query", format: "json", origin: "*",
+          prop: "imageinfo", iiprop: "extmetadata|url", titles: title });
+        const response = await fetchWithTimeout(url.href);
+        const result = await response.json();
+        const info = Object.values(result.query?.pages || {})[0]?.imageinfo?.[0];
+        const meta = info?.extmetadata;
+        if (!meta?.Artist?.value || !meta?.LicenseShortName?.value || !info.descriptionurl
+            || new URL(info.descriptionurl).origin !== "https://commons.wikimedia.org") return null;
+        const artist = new DOMParser().parseFromString(meta.Artist.value, "text/html").body.textContent;
+        return { artist, license: meta.LicenseShortName.value, url: info.descriptionurl };
+      } catch { return null; }
+    }
+
+    function renderAnimalOfDay(animal, language) {
+      // Текст API помещаем в DOM как текст, а не исполняемую разметку.
       animalOfDayContent.innerHTML = `
         <div class="animal-of-day fade-in">
-          <div class="animal-of-day-image">
-            <img src="${imgUrl}"
-              alt="${animal.name}"
-              onerror="this.src=
-                'https://http.cat/404'">
-          </div>
+          <div class="animal-of-day-image"></div>
           <div class="animal-of-day-info">
-            <h3>${animal.name}</h3>
-            <p class="latin-name">
-              ${animal.latin_name || ""}
-            </p>
-            <div class="animal-detail">
-              <i class="fas fa-paw"></i>
-              <strong>${t("type")}:</strong>
-              ${animal.animal_type || "—"}
-            </div>
-            <div class="animal-detail">
-              <i class="fas fa-map-marker-alt"></i>
-              <strong>${t("habitat")}:</strong>
-              ${animal.habitat || "—"}
-            </div>
-            <div class="animal-detail">
-              <i class="fas fa-utensils"></i>
-              <strong>${t("diet")}:</strong>
-              ${animal.diet || "—"}
-            </div>
-            <div class="animal-detail">
-              <i class="fas fa-heartbeat"></i>
-              <strong>${t("lifespan")}:</strong>
-              ${animal.lifespan
-                ? animal.lifespan + " years"
-                : "—"}
-            </div>
-            <div class="animal-detail">
-              <i class="fas fa-weight-hanging"></i>
-              <strong>${t("weight")}:</strong>
-              ${animal.weight_min && animal.weight_max
-                ? animal.weight_min + " – " +
-                  animal.weight_max + " lbs"
-                : "—"}
-            </div>
-            <div class="animal-detail">
-              <i class="fas fa-ruler"></i>
-              <strong>${t("length")}:</strong>
-              ${animal.length_min && animal.length_max
-                ? animal.length_min + " – " +
-                  animal.length_max + " ft"
-                : "—"}
-            </div>
+            <h3></h3>
+            <p class="animal-summary"></p>
+            <p class="animal-source"></p>
           </div>
-        </div>
-      `;
+        </div>`;
+      animalOfDayContent.querySelector("h3").textContent = animal.title;
+      animalOfDayContent.querySelector(".animal-summary").textContent = animal.extract;
+      const source = document.createElement("a");
+      source.href = `https://${language}.wikipedia.org/wiki/${encodeURIComponent(animal.title)}`;
+      source.target = "_blank";
+      source.rel = "noopener noreferrer";
+      source.textContent = `${t("source")}: Wikipedia`;
+      const credit = animalOfDayContent.querySelector(".animal-source");
+      credit.append(source, " · ");
+      const license = document.createElement("a");
+      license.href = "https://creativecommons.org/licenses/by-sa/4.0/";
+      license.textContent = "CC BY-SA 4.0";
+      credit.append(license);
+      const imageContainer = animalOfDayContent.querySelector(".animal-of-day-image");
+      const imageUrl = animal.thumbnail?.source;
+      if (animal.imageCredit && typeof imageUrl === "string"
+          && /^https:\/\/(upload|thumb)\.wikimedia\.org\//.test(imageUrl)) {
+        const image = document.createElement("img");
+        image.src = imageUrl;
+        image.alt = animal.title;
+        image.addEventListener("error", () => { imageContainer.hidden = true; }, { once: true });
+        imageContainer.append(image);
+        const imageCredit = document.createElement("a");
+        const creditUrl = new URL(animal.imageCredit.url);
+        if (creditUrl.origin === "https://commons.wikimedia.org") {
+          imageCredit.href = creditUrl.href;
+          imageCredit.textContent = `${animal.imageCredit.artist} · ${animal.imageCredit.license}`;
+          credit.append(document.createElement("br"), imageCredit);
+        }
+      } else {
+        imageContainer.hidden = true;
+      }
     }
 
     // ====== Факты о собаках ======
@@ -1697,11 +1735,11 @@ API:
 
         // 1 шиба-ину
         fetchWithTimeout(
-          "https://shibe.online/api/shibes?count=1"
+          "https://dog.ceo/api/breed/shiba/images/random"
         ).then(r => r.json()).then(d => {
-          if (d && d[0]) {
+          if (d.status === "success" && typeof d.message === "string") {
             items.push({
-              url: d[0], type: "shibe"
+              url: d.message, type: "shibe"
             });
           }
         }).catch(e => console.warn("Gallery fetch:", e.message))
@@ -1822,9 +1860,11 @@ API:
       // Обработчики языка
       langRuBtn.addEventListener("click", () => {
         applyLang("ru");
+        loadAnimalOfDay();
       });
       langEnBtn.addEventListener("click", () => {
         applyLang("en");
+        loadAnimalOfDay();
       });
 
       // Навигация

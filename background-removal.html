@@ -631,7 +631,7 @@
     <div class="status-bar">
       <div class="status-info">
         <i class="fas fa-circle status-icon loading" id="statusIcon"></i>
-        <span class="status-text" id="statusText">Загрузка AI модели...</span>
+        <span class="status-text" id="statusText" role="status">Загрузка AI модели...</span>
       </div>
     </div>
 
@@ -641,11 +641,15 @@
         <i class="fas fa-brain"></i>
         Загрузка AI модели
       </h3>
-      <p>Это может занять несколько минут при первом запуске. Модель кэшируется в браузере.</p>
+      <p>BRIA RMBG-1.4 · Обработка изображения локально в браузере.</p>
+      <p id="deviceText">Проверка доступного устройства…</p>
+      <p>Первый запуск включает скачивание модели и подготовку вычислений, это может занять несколько минут. Лимит ожидания — 5 минут. Фотография не отправляется на сервер.</p>
       <div class="progress-bar">
         <div class="progress-fill" id="progressFill" style="width: 0%"></div>
       </div>
-      <p class="progress-text" id="progressText">Инициализация...</p>
+      <p class="progress-text" id="progressText" role="status">Инициализация...</p>
+      <button class="action-btn btn-secondary" id="cancelLoadBtn">Отменить</button>
+      <button class="action-btn btn-primary hidden" id="retryLoadBtn">Повторить загрузку</button>
     </div>
 
     <!-- Editor Layout -->
@@ -774,16 +778,74 @@
   <!-- Processing Overlay -->
   <div class="processing-overlay hidden" id="processingOverlay">
     <div class="spinner"></div>
-    <p id="processingText">Обработка изображения...</p>
+    <p>BRIA RMBG-1.4 · Локальная обработка · анализ 1024 × 1024</p>
+    <p>Время зависит от устройства и размера изображения. Лимит ожидания — 2 минуты.</p>
+    <p id="processingText" role="status">Обработка изображения...</p>
+    <button class="action-btn btn-secondary" id="cancelProcessBtn">Отменить обработку</button>
   </div>
 
   <!-- Scripts -->
   <script type="module">
-    import { AutoModel, AutoProcessor, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
-
-    // Конфигурация Transformers.js
-    env.allowLocalModels = false;
-    env.useBrowserCache = true;
+    // Изолируем скачивание и инференс, чтобы отмена действительно освобождала worker.
+    async function backgroundWorker() {
+      let model, processor, RawImage;
+      const stage = text => self.postMessage({ type: "stage", text });
+      self.onmessage = async ({ data }) => {
+        try {
+          if (data.type === "load") {
+            stage("Загрузка библиотеки вычислений");
+            const lib = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2");
+            RawImage = lib.RawImage;
+            lib.env.allowLocalModels = false;
+            lib.env.useBrowserCache = true;
+            lib.env.backends.onnx.wasm.numThreads = 1;
+            let device = "wasm";
+            if (self.navigator.gpu) {
+              try { if (await self.navigator.gpu.requestAdapter()) device = "webgpu"; }
+              catch (_) { /* WASM доступен без GPU. */ }
+            }
+            const progress_callback = p => {
+              if (p.status === "progress") self.postMessage({
+                type: "progress", file: p.file, loaded: p.loaded, total: p.total
+              });
+              if (p.status === "done") stage("Подготовка вычислений после скачивания файлов");
+            };
+            const load = async backend => {
+              self.postMessage({ type: "device", device: backend });
+              return lib.AutoModel.from_pretrained("briaai/RMBG-1.4", {
+                config: { model_type: "custom" }, device: backend, dtype: "fp32",
+                progress_callback
+              });
+            };
+            try { model = await load(device); }
+            catch (error) {
+              if (device !== "webgpu") throw error;
+              stage("Не удалось запустить WebGPU. Подготовка CPU / WASM");
+              model = await load("wasm");
+            }
+            stage("Подготовка обработки изображения");
+            processor = await lib.AutoProcessor.from_pretrained("briaai/RMBG-1.4");
+            self.postMessage({ type: "ready" });
+          } else if (data.type === "process") {
+            stage("Чтение изображения");
+            const image = await RawImage.fromURL(data.url);
+            stage("Подготовка изображения 1024 × 1024");
+            const { pixel_values } = await processor(image);
+            stage("Удаление фона: анализ изображения моделью RMBG-1.4");
+            const { output } = await model({ input: pixel_values });
+            if (!output || output.dims.length !== 4 || output.dims[1] !== 1) {
+              throw new Error("Модель вернула неподдерживаемый формат маски");
+            }
+            stage("Создание маски исходного размера");
+            const mask = await RawImage.fromTensor(output[0].mul(255).to("uint8"))
+              .resize(image.width, image.height);
+            self.postMessage({ type: "result", mask: mask.data }, [mask.data.buffer]);
+          }
+        } catch (error) {
+          self.postMessage({ type: "error", message: error.message || String(error) });
+        }
+      };
+    }
 
     /**
      * @class BackgroundRemover
@@ -857,6 +919,9 @@
         this.dropZone.addEventListener('drop', (e) => this.handleDrop(e));
         this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
 
+        document.getElementById("cancelLoadBtn").addEventListener("click", () => this.cancelPending?.());
+        document.getElementById("cancelProcessBtn").addEventListener("click", () => this.cancelPending?.());
+        document.getElementById("retryLoadBtn").addEventListener("click", () => this.loadModel());
         // Buttons
         this.processBtn.addEventListener('click', () => this.processImage());
         this.clearBtn.addEventListener('click', () => this.clearImage());
@@ -902,49 +967,103 @@
        * @description Загрузка AI модели для сегментации
        */
       async loadModel() {
+        if (this.busy) return;
+        this.modelLoading.classList.remove("hidden");
+        document.getElementById("retryLoadBtn").classList.add("hidden");
+        document.getElementById("cancelLoadBtn").classList.remove("hidden");
+        this.progressFill.style.width = "0%";
+        this.updateStatus("loading", "BRIA RMBG-1.4 · Подготовка локальной модели");
         try {
-          this.updateStatus('loading', 'Загрузка AI модели...');
-
-          const modelId = 'briaai/RMBG-1.4';
-
-          // Загружаем модель и процессор с прогрессом
-          this.model = await AutoModel.from_pretrained(modelId, {
-            device: 'webgpu',
-            progress_callback: (progress) => {
-              if (progress.status === 'progress') {
-                const percent = Math.round((progress.loaded / progress.total) * 100);
-                this.progressFill.style.width = `${percent}%`;
-                this.progressText.textContent = `Загрузка модели: ${percent}%`;
-              } else if (progress.status === 'done') {
-                this.progressText.textContent = 'Загрузка завершена';
-              }
-            }
-          }).catch(async () => {
-            // Fallback на WASM если WebGPU недоступен
-            console.log('WebGPU недоступен, используем WASM');
-            return await AutoModel.from_pretrained(modelId, {
-              progress_callback: (progress) => {
-                if (progress.status === 'progress') {
-                  const percent = Math.round((progress.loaded / progress.total) * 100);
-                  this.progressFill.style.width = `${percent}%`;
-                  this.progressText.textContent = `Загрузка модели: ${percent}%`;
-                }
-              }
-            });
-          });
-
-          this.processor = await AutoProcessor.from_pretrained(modelId);
-
+          if (this.worker) this.worker.terminate();
+          const url = URL.createObjectURL(new Blob([
+            "(" + backgroundWorker.toString() + ")()"
+          ], { type: "text/javascript" }));
+          try { this.worker = new Worker(url, { type: "module" }); }
+          finally { URL.revokeObjectURL(url); }
+          await this.runWorker({ type: "load" }, 300000);
           this.isModelLoaded = true;
-          this.modelLoading.classList.add('hidden');
-          this.editorLayout.classList.remove('hidden');
-          this.updateStatus('ready', 'Модель загружена. Выберите изображение.');
-
+          this.modelLoading.classList.add("hidden");
+          this.editorLayout.classList.remove("hidden");
+          this.processBtn.disabled = !this.originalImage;
+          this.updateStatus("ready", "BRIA RMBG-1.4 · " + this.deviceLabel + " · Выберите изображение");
         } catch (error) {
-          console.error('Ошибка загрузки модели:', error);
-          this.updateStatus('error', `Ошибка загрузки: ${error.message}`);
-          this.progressText.textContent = `Ошибка: ${error.message}`;
+          this.handleWorkerFailure(error);
         }
+      }
+
+      /** Выполняет одну операцию worker с честным таймером и конечным сроком ожидания. */
+      runWorker(message, timeout) {
+        this.busy = true;
+        this.phase = "Запуск";
+        const started = performance.now();
+        const downloads = new Map();
+        const render = () => {
+          const text = this.phase + " · Прошло " + Math.floor((performance.now() - started) / 1000) + " с";
+          this.progressText.textContent = text;
+          this.processingText.textContent = text;
+        };
+        render();
+        return new Promise((resolve, reject) => {
+          const interval = setInterval(render, 500);
+          const timer = setTimeout(() => {
+            this.worker.terminate();
+            finish(new Error("Превышено время ожидания. Можно повторить запуск."));
+          }, timeout);
+          const finish = (error, result) => {
+            clearInterval(interval);
+            clearTimeout(timer);
+            this.busy = false;
+            this.cancelPending = null;
+            this.worker.onmessage = null;
+            this.worker.onerror = null;
+            if (error) reject(error); else resolve(result);
+          };
+          this.cancelPending = () => {
+            this.worker.terminate();
+            finish(new DOMException("Операция отменена", "AbortError"));
+          };
+          this.worker.onerror = event => finish(new Error(event.message || "Не удалось запустить вычисления"));
+          this.worker.onmessage = ({ data }) => {
+            if (data.type === "stage") this.phase = data.text;
+            if (data.type === "device") {
+              this.deviceLabel = data.device === "webgpu" ? "GPU / WebGPU" : "CPU / WASM";
+              document.getElementById("deviceText").textContent = "Устройство: " + this.deviceLabel;
+            }
+            if (data.type === "progress") {
+              const mb = n => (n / 1048576).toFixed(1) + " МБ";
+              const loaded = Number.isFinite(data.loaded) ? data.loaded : 0;
+              const total = Number.isFinite(data.total) && data.total > 0 ? data.total : 0;
+              if (!downloads.has(data.file)) downloads.set(data.file, { at: performance.now(), loaded });
+              const first = downloads.get(data.file);
+              const seconds = (performance.now() - first.at) / 1000;
+              const rate = seconds >= 1 ? (loaded - first.loaded) / seconds : 0;
+              const eta = total > loaded && rate > 0
+                ? " · Осталось примерно " + Math.ceil((total - loaded) / rate) + " с для этого файла" : "";
+              this.phase = "Скачивание " + (data.file || "файла модели") + ": " + mb(loaded)
+                + (total ? " / " + mb(total) : " (размер неизвестен)") + eta;
+              this.progressFill.style.width = total ? Math.min(100, loaded / total * 100) + "%" : "0%";
+            }
+            render();
+            if (data.type === "ready" || data.type === "result") finish(null, data);
+            if (data.type === "error") finish(new Error(data.message));
+          };
+          this.worker.postMessage(message);
+        });
+      }
+
+      /** После ошибки или отмены не используем частично подготовленную сессию. */
+      handleWorkerFailure(error) {
+        if (this.worker) this.worker.terminate();
+        this.isModelLoaded = false;
+        this.processBtn.disabled = true;
+        this.hideProcessing();
+        this.modelLoading.classList.remove("hidden");
+        document.getElementById("cancelLoadBtn").classList.add("hidden");
+        document.getElementById("retryLoadBtn").classList.remove("hidden");
+        const text = error.name === "AbortError" ? "Операция отменена. Можно повторить загрузку модели."
+          : "Ошибка: " + error.message;
+        this.progressText.textContent = text;
+        this.updateStatus(error.name === "AbortError" ? "ready" : "error", text);
       }
 
       /**
@@ -1000,6 +1119,7 @@
        * @param {File} file - Файл изображения
        */
       loadImage(file) {
+        if (this.busy) return;
         const reader = new FileReader();
         reader.onload = (e) => {
           const img = new Image();
@@ -1008,7 +1128,7 @@
             this.originalImageEl.src = e.target.result;
             this.dropZone.classList.add('hidden');
             this.originalPreview.classList.remove('hidden');
-            this.processBtn.disabled = false;
+            this.processBtn.disabled = !this.isModelLoaded;
             this.updateStatus('ready', 'Изображение загружено. Нажмите "Удалить фон".');
 
             // Очистка предыдущего результата
@@ -1025,6 +1145,7 @@
        * @description Очистка изображения
        */
       clearImage() {
+        if (this.busy) return;
         this.originalImage = null;
         this.processedMask = null;
         this.originalImageEl.src = '';
@@ -1035,7 +1156,7 @@
         this.copyBtn.disabled = true;
         this.fileInput.value = '';
         this.clearCanvas();
-        this.updateStatus('ready', 'Модель загружена. Выберите изображение.');
+        this.updateStatus('ready', this.isModelLoaded ? 'Модель загружена. Выберите изображение.' : 'Для обработки загрузите модель повторно.');
       }
 
       /**
@@ -1053,86 +1174,24 @@
        * @description Обработка изображения - удаление фона
        */
       async processImage() {
-        if (!this.originalImage || !this.isModelLoaded) return;
-
+        if (!this.originalImage || !this.isModelLoaded || this.busy) return;
         try {
-          this.showProcessing('Анализ изображения...');
-
-          // Загрузка изображения для модели
-          const image = await RawImage.fromURL(this.originalImageEl.src);
-
-          this.showProcessing('Сегментация...');
-
-          // Препроцессинг
-          const { pixel_values } = await this.processor(image);
-
-          this.showProcessing('Применение AI модели...');
-
-          // Запуск модели
-          const { output } = await this.model({ input: pixel_values });
-
-          this.showProcessing('Создание маски...');
-
-          // Получение маски
-          const maskData = output[0].tolist();
-
-          // Интерполяция маски до размера оригинала
-          this.processedMask = this.interpolateMask(
-            maskData,
-            this.originalImage.width,
-            this.originalImage.height
-          );
-
-          // Обновление результата
+          this.showProcessing("Подготовка изображения...");
+          const result = await this.runWorker({
+            type: "process", url: this.originalImageEl.src
+          }, 120000);
+          if (result.mask.length !== this.originalImage.width * this.originalImage.height) {
+            throw new Error("Размер маски не соответствует изображению");
+          }
+          this.processedMask = Float32Array.from(result.mask, value => value / 255);
           this.updateResult();
-
           this.downloadBtn.disabled = false;
           this.copyBtn.disabled = false;
           this.hideProcessing();
-          this.updateStatus('ready', 'Фон удален! Выберите новый фон или скачайте результат.');
-
+          this.updateStatus("ready", "BRIA RMBG-1.4 · " + this.deviceLabel + " · Фон удалён локально");
         } catch (error) {
-          console.error('Ошибка обработки:', error);
-          this.hideProcessing();
-          this.updateStatus('error', `Ошибка обработки: ${error.message}`);
+          this.handleWorkerFailure(error);
         }
-      }
-
-      /**
-       * @method interpolateMask
-       * @description Интерполяция маски до нужного размера
-       * @param {Array} mask - Маска от модели
-       * @param {number} width - Целевая ширина
-       * @param {number} height - Целевая высота
-       * @returns {Float32Array} Интерполированная маска
-       */
-      interpolateMask(mask, width, height) {
-        const inputHeight = mask.length;
-        const inputWidth = mask[0].length;
-        const output = new Float32Array(width * height);
-
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            // Билинейная интерполяция
-            const srcX = (x / width) * inputWidth;
-            const srcY = (y / height) * inputHeight;
-
-            const x0 = Math.floor(srcX);
-            const x1 = Math.min(x0 + 1, inputWidth - 1);
-            const y0 = Math.floor(srcY);
-            const y1 = Math.min(y0 + 1, inputHeight - 1);
-
-            const xLerp = srcX - x0;
-            const yLerp = srcY - y0;
-
-            const top = mask[y0][x0] * (1 - xLerp) + mask[y0][x1] * xLerp;
-            const bottom = mask[y1][x0] * (1 - xLerp) + mask[y1][x1] * xLerp;
-
-            output[y * width + x] = top * (1 - yLerp) + bottom * yLerp;
-          }
-        }
-
-        return output;
       }
 
       /**
