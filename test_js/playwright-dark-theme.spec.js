@@ -1,59 +1,34 @@
 import { test, expect } from '@playwright/test';
 
-test('Переключение в тёмную тему', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
-  await page.getByTitle('Настройки').click();
-  await page.locator('.settings-modal.show').waitFor({ state: 'visible' });
-
-  // Ожидание видимости label перед кликом
-  const themeLabel = page.locator('label[for="themeSwitch"]');
-  await themeLabel.waitFor({ state: 'visible' });
-  await themeLabel.click();
-
-  await expect(page.locator('body')).toHaveClass(/dark-theme/);
-
-  // Проверить, что переключатель активен
-  const themeSwitch = page.locator('#themeSwitch');
-  await expect(themeSwitch).toBeChecked();
-
-  // Проверить localStorage
-  const themeValue = await page.evaluate(() => localStorage.getItem('theme'));
-  expect(themeValue).toBe('dark');
-
-  // (Опционально) Проверить цвет фона или текста
-  const bgColor = await page.evaluate(
-    () => getComputedStyle(document.body).backgroundColor
+test('Тёмная тема по умолчанию, переключение и восстановление светлой темы', async ({
+  page,
+}) => {
+  // Проверка темы ждёт DOM приложения, а не загрузку всех удалённых preview.
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#themeToggle')).not.toBeChecked();
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(8, 12, 22)');
+  await page.locator('label[title="Переключить тему"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('#themeToggle')).toBeChecked();
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    'rgb(250, 250, 250)'
   );
-  expect(bgColor).not.toBe('rgb(248, 250, 252)'); // не светлая тема
-
-  // Перезагрузить страницу и проверить, что тема сохранилась
-  await page.reload();
-  await expect(page.locator('body')).toHaveClass(/dark-theme/);
-
-  // Отключить тёмную тему через клик по метке
-  await page.getByTitle('Настройки').click();
-  await page.locator('.settings-modal.show').waitFor({ state: 'visible' });
-  await themeLabel.waitFor({ state: 'visible' });
-  await themeLabel.click();
-  await expect(page.locator('body')).not.toHaveClass(/dark-theme/);
-
-  // Проверить localStorage
-  const themeValue2 = await page.evaluate(() => localStorage.getItem('theme'));
-  expect(themeValue2).toBe('light');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#themeToggle')).toBeChecked();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.locator('label[title="Переключить тему"]').click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme');
+  expect(await page.evaluate(() => localStorage.getItem('theme'))).toBe('dark');
 });
 
-test('Проверка цвета карточек в тёмной теме', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
-  await page.getByTitle('Настройки').click();
-  await page.locator('.settings-modal.show').waitFor({ state: 'visible' });
-  const themeLabel = page.locator('label[for="themeSwitch"]');
-  await themeLabel.waitFor({ state: 'visible' });
-  await themeLabel.click();
-
-  // Проверить цвет фона первой карточки
-  const cardBg = await page.evaluate(
-    () => getComputedStyle(document.querySelector('.example-card')).backgroundColor
-  );
-  // Цвет должен быть не белым (например, rgb(30, 41, 59) для тёмной темы)
-  expect(cardBg).not.toBe('rgb(255, 255, 255)');
+test('Фон карточки меняется вместе с темой', async ({ page }) => {
+  // Проверка темы ждёт DOM приложения, а не загрузку всех удалённых preview.
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+  const card = page.locator('.tool-card').first();
+  const dark = await card.evaluate(el => getComputedStyle(el).backgroundColor);
+  await page.locator('label[title="Переключить тему"]').click();
+  await expect
+    .poll(async () => card.evaluate(el => getComputedStyle(el).backgroundColor))
+    .not.toBe(dark);
 });

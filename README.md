@@ -82,7 +82,7 @@ open http://localhost:8000
 - **Тестирование:** Playwright, pytest
 - **CI/CD:** GitHub Actions
 - **Хостинг:** GitHub Pages
-- **Free API** https://github.com/public-apis/public-apis
+- **Free API** <https://github.com/public-apis/public-apis>
 
 ## 📚 Документация
 

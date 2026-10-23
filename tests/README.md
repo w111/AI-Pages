@@ -1,180 +1,38 @@
-# Структура тестов AI Pages
+# Проверки AI Pages
 
-## 📁 **Текущая организация**
+`npm test` выполняет unit-тесты audit-политики, Python Playwright, затем JS Playwright; HTTP-сервер запускают
+фикстуры/конфигурация. Сборки у статического сайта нет.
 
-```
-tests/
-├── conftest.py                 # Глобальная конфигурация pytest
-├── test_index_page_async.py    # Тесты главной страницы
-├── test_template.py            # Шаблон для новых тестов (не запускается)
-├── pages/                      # Page Object Model
-│   └── main_page.py           # Page Object главной страницы
-└── __pycache__/               # Кэш Python (игнорируется)
-```
+- `tests/test_index_page_async.py`: текущий каталог — поиск, язык, тема, вид, localStorage, клавиатура, переход в
+  приложение, breakpoints и отсутствие горизонтального скролла.
+- `tests/pages/main_page.py`: локаторы действующего HTML каталога.
+- `tests/conftest.py`: браузер и сервер на свободном порту.
+- `tests/template_example.py`: шаблон для копирования, не исполняемый набор (имя вне test\_\*.py).
+- `test_js/*.spec.js`: дополнительные E2E каталога, конвертера, рекомендателя и WebGPU-агента.
+- `test_js/fixtures/tvmaze-shows.json`: ответ публичного TVMaze API page=0 от 23.10.2026 (12 записей). Мокируется
+  HTTP-граница TVMaze; код загрузчика/рендеринга/фильтров/оценок/рекомендаций выполняется настоящий.
 
-## 🎯 **Рекомендуемая структура для роста проекта**
+Каталог больше не содержит settings-modal и отдельной кнопки «Открыть»; не копируйте старые локаторы. Тема/язык/вид
+доступны напрямую, ссылка находится на превью карточки.
 
-Для лучшей организации при добавлении новых тестов:
+## Запуск
 
-```
-tests/
-├── conftest.py                 # Общая конфигурация
-├── pytest.ini                 # Настройки pytest (в корне проекта)
-│
-├── unit/                       # Юнит-тесты (если появятся)
-│   └── test_utils.py
-│
-├── integration/                # Интеграционные тесты
-│   ├── test_index_page.py     # Текущий test_index_page_async.py
-│   ├── test_tetris_page.py    # Тесты страницы Tetris
-│   ├── test_python_editor.py  # Тесты Python Editor
-│   └── test_games.py          # Тесты игровых страниц
-│
-├── e2e/                        # End-to-End тесты
-│   ├── test_user_journey.py   # Полные пользовательские сценарии
-│   └── test_cross_page_flows.py
-│
-├── performance/                # Тесты производительности
-│   ├── test_load_times.py
-│   └── test_memory_usage.py
-│
-├── accessibility/              # Тесты доступности (A11y)
-│   ├── test_keyboard_nav.py
-│   ├── test_screen_readers.py
-│   └── test_color_contrast.py
-│
-├── pages/                      # Page Object Model
-│   ├── __init__.py
-│   ├── base_page.py           # Базовый класс для всех страниц
-│   ├── main_page.py           # Главная страница
-│   ├── tetris_page.py         # Страница Tetris
-│   ├── python_editor_page.py  # Python Editor
-│   └── games/                 # Page Objects игр
-│       ├── __init__.py
-│       ├── arcanoid_page.py
-│       └── snake_page.py
-│
-├── fixtures/                   # Переиспользуемые фикстуры
-│   ├── __init__.py
-│   ├── browser_fixtures.py
-│   ├── data_fixtures.py
-│   └── auth_fixtures.py
-│
-├── helpers/                    # Вспомогательные утилиты
-│   ├── __init__.py
-│   ├── test_data.py
-│   ├── assertions.py
-│   └── screenshots.py
-│
-├── data/                       # Тестовые данные
-│   ├── test_users.json
-│   └── expected_results/
-│
-└── templates/                  # Шаблоны тестов
-    ├── test_template.py        # Общий шаблон
-    ├── page_template.py        # Шаблон Page Object
-    └── performance_template.py # Шаблон performance теста
+Используйте Node из `.nvmrc`, зависимости Python из requirements.txt и установите обе версии браузеров:
+
+```sh
+nvm use
+npm ci
+python -m pip install -r requirements.txt yamllint
+npx playwright install chromium webkit
+python -m playwright install chromium
 ```
 
-## 📋 **Соглашения по именованию**
+Полные проверки запускаются в фоне через `~/.claude/scripts/mac3-heavy-gate.sh`:
 
-### Файлы тестов:
-
-- `test_*.py` - обычные тесты
-- `*_test.py` - альтернативный формат
-- Используйте описательные имена: `test_search_functionality.py`
-
-### Функции тестов:
-
-- `test_*` - обязательный префикс
-- Описательные имена: `test_search_returns_results_for_valid_query`
-
-### Классы тестов:
-
-- `Test*` - префикс для группировки
-- `TestSearchFunctionality`, `TestUserAuthentication`
-
-### Page Objects:
-
-- `*Page` - суффикс
-- `MainPage`, `TetrisPage`, `PythonEditorPage`
-
-## 🏃 **Команды запуска**
-
-### По категориям:
-
-```bash
-# Все тесты
-pytest tests/ -v
-
-# Интеграционные тесты
-pytest tests/integration/ -v
-
-# Тесты производительности
-pytest tests/performance/ -v
-
-# Тесты доступности
-pytest tests/accessibility/ -v
-
-# Конкретная страница
-pytest tests/integration/test_index_page.py -v
+```sh
+~/.claude/scripts/mac3-heavy-gate.sh npm run lint
+~/.claude/scripts/mac3-heavy-gate.sh npm test
 ```
 
-### По маркерам:
-
-```bash
-# Быстрые тесты
-pytest -m "not slow" -v
-
-# Тесты конкретного браузера
-pytest -m "chromium" -v
-
-# Smoke тесты
-pytest -m "smoke" -v
-```
-
-## 🔧 **Миграция текущих тестов**
-
-Для перехода к новой структуре:
-
-1. **Создать папки:**
-
-   ```bash
-   mkdir -p tests/{integration,e2e,performance,accessibility,fixtures,helpers,data,templates}
-   ```
-
-2. **Переместить существующие тесты:**
-
-   ```bash
-   mv tests/test_index_page_async.py tests/integration/test_index_page.py
-   mv tests/test_template.py tests/templates/
-   ```
-
-3. **Создать базовые файлы:**
-   ```bash
-   touch tests/{integration,pages,fixtures,helpers}/__init__.py
-   ```
-
-## 🎯 **Приоритеты развития**
-
-### Краткосрочно (следующие тесты):
-
-1. **Не меняем структуру** - добавляем тесты в корень `tests/`
-2. **Создаем новые Page Objects** для других страниц
-3. **Расширяем покрытие** главной страницы
-
-### Долгосрочно (при росте):
-
-1. **Мигрируем** к категорийной структуре
-2. **Добавляем** специализированные тесты
-3. **Создаем** общие утилиты и хелперы
-
-## 📚 **Полезные ресурсы**
-
-- [Pytest Best Practices](https://docs.pytest.org/en/stable/explanation/goodpractices.html)
-- [Page Object Model](https://playwright.dev/python/docs/pom)
-- [Pytest Fixtures](https://docs.pytest.org/en/stable/explanation/fixtures.html)
-
----
-
-**Правило:** Следуйте принципу "не сломай что работает" - текущая структура хорошая, улучшайте постепенно! 🎯
+CI использует `playwright-ci.config.js` и `pytest-ci.ini`; Node/Python Playwright закрепляют разные браузерные сборки.
+Сценарии проверяют видимый результат и сохраняемое состояние; fixture внешнего API не подтверждает его live-доступность.

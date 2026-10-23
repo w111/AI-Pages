@@ -1,0 +1,13 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://127.0.0.1:5500/index.html"],
+      "numberOfRuns": 3,
+      "settings": { "chromeFlags": "--no-sandbox" }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci/reports"
+    }
+  }
+}

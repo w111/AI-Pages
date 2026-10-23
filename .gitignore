@@ -46,3 +46,5 @@ playwright-report-ci/
 
 # Validation scripts
 validate_*.py
+# Локальные Lighthouse audit reports
+.lighthouseci/

@@ -24,7 +24,7 @@
 - **Главный вход**: `index.html` (97KB, 1792 строки) - Центральный навигационный узел
 - **Основные приложения**: 25+ самодостаточных HTML файлов
 - **Тестовая инфраструктура**: `test_js/` (Playwright E2E), `tests/` (Python валидация)
-- **CI/CD**: `.github/workflows/ci-cd.yml`
+- **CI/CD**: `.github/workflows/static.yml`, `.github/workflows/quality-checks.yml`
 
 ### Категории приложений
 
@@ -313,22 +313,33 @@ document.getElementById('themeSwitch').addEventListener('change', () => {
 
 ### CI/CD Pipeline
 
-**Workflow:** Push → Linting → Testing → Security → Performance → Deploy
+Сборки нет: корневые HTML-файлы публикуются как статический сайт.
 
-**Этапы:**
+- `.github/workflows/static.yml` — `Deploy static content to Pages`, push в `main` или ручной запуск; checkout v7,
+  configure-pages v6, upload-pages-artifact v3, deploy-pages v4; GitHub-hosted `ubuntu-latest`.
+- `.github/workflows/quality-checks.yml` — проверки PR, push в `main`, расписание и ручной запуск.
+  Checkout/setup-node/setup-python/upload-artifact обновлены до v7. Runtime Actions — Node 24 (runner ≥2.327.1); Node
+  проекта — 24.19.0, `npm ci`.
+- `.github/workflows/claude.yml` — обработчик комментариев и ревью, checkout v7.
 
-1. **Linting**: ESLint, flake8, HTMLHint, Stylelint, Prettier
-2. **Testing**: Python Playwright (основной), JavaScript Playwright (legacy)
-3. **Quality Gates**: Accessibility WCAG 2.1, Security scan, Performance <200KB
-4. **Deployment**: GitHub Pages автодеплой после прохождения всех проверок
+Quality Checks был `disabled_inactivity`; 23.10.2026 включён через `gh workflow enable`. Защита `main` требует пять
+успешных checks: `🔍 Code Quality`, `🧪 Cross-Browser Tests (chromium)`, `📢 Quality Report`, `🔒 Security Scan`,
+`🚨 Lighthouse Audit`. Оркестратор удалил устаревшее нематричное требование; имя тестового job закреплено явно, чтобы
+дополнительное поле матрицы не меняло required context. Python Playwright и npm Playwright используют разные версии
+браузеров — CI устанавливает обе.
 
-**Команды:**
+Каталог проверяется по действующим `.tool-card`, `#searchInput`, `#themeToggle`, `#langEn/#langRu` и
+`#listViewBtn/#gridViewBtn`; модального окна настроек и отдельной кнопки «Открыть» у карточки больше нет. Python и JS
+проверяют поиск, язык/тему/вид и их сохранение, навигацию по превью и адаптивность; JS дополнительно измеряет контраст.
+Рекомендатор загружает сериалы TVMaze. Его E2E использует сохранённый ответ API на HTTP-границе, а реальный загрузчик,
+фильтры, оценки и генератор рекомендаций выполняются в браузере.
 
-- `npm run lint` - все проверки качества
-- `python -m pytest tests/` - E2E тесты
-- `npx playwright test` - legacy JS тесты
+Security Scan запускает unit-тесты и `npm run audit:security`: threshold high/critical сохранён, единственное исключение
+— отозванный GHSA-vfj7-8cjw-p6xm по решению владельца от 23.10.2026, со сроком пересмотра/истечения 22.11.2026 UTC.
+Любые другие advisory high/critical, ошибки npm и неполный отчёт блокируют job. Правило и тесты —
+`scripts/audit-policy.mjs`, `tests/audit-policy.test.mjs`; подробности и основание — в аудите ниже.
 
-**Блокирующие ошибки:** Синтаксис, accessibility, падение E2E тестов
+Результаты аудита обновлений и порядок проверки/отката: [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
 
 #### Локальная среда разработки
 
@@ -360,11 +371,7 @@ npm install             # Автоматически настраивает pre-
 git commit -m "fix"     # ← Автоматическая проверка перед коммитом
 ```
 
-**Принудительный коммит (не рекомендуется):**
-
-```bash
-git commit --no-verify -m "emergency commit"
-```
+Хуки обязательны: при ошибке исправить причину и повторить коммит без обхода проверок.
 
 ---
 

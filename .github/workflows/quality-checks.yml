@@ -25,23 +25,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "18"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
 
       - name: 📦 Install dependencies
         run: |
-          npm install
+          npm ci
           pip install -r requirements.txt
           pip install flake8 autopep8 yamllint
 
@@ -57,7 +57,7 @@ jobs:
   # ЭТАП 2: КРОССБРАУЗЕРНОЕ ТЕСТИРОВАНИЕ
   # ========================
   test:
-    name: 🧪 Cross-Browser Tests
+    name: 🧪 Cross-Browser Tests (${{ matrix.browser }})
     runs-on: ubuntu-latest
     needs: lint
     strategy:
@@ -70,27 +70,29 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "18"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
 
       - name: 📦 Install dependencies
         run: |
-          npm install
+          npm ci
           pip install -r requirements.txt
 
       - name: 🎭 Install Playwright browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: |
+          npx playwright install --with-deps ${{ matrix.browser }}
+          python -m playwright install --with-deps ${{ matrix.browser }}
 
       - name: 🚀 Start development server
         run: |
@@ -110,7 +112,7 @@ jobs:
           tests/test_index_page_async.py -v
 
       - name: 📊 Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-results-${{ matrix.browser }}
@@ -129,16 +131,16 @@ jobs:
     needs: lint
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "18"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: 📦 Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: 🚀 Start development server
         run: |
@@ -147,15 +149,14 @@ jobs:
 
       - name: 🚨 Run Lighthouse CI
         run: |
-          npm install -g @lhci/cli
-          lhci autorun || echo "Lighthouse warnings detected"
+          npx --yes --package=@lhci/cli@0.15.1 lhci autorun
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
           LHCI_BUILD_CONTEXT__COMMIT_TIME: >
             ${{ github.event.head_commit.timestamp }}
 
       - name: 📊 Upload Lighthouse results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lighthouse-results
@@ -171,19 +172,19 @@ jobs:
     needs: lint
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "18"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: 📦 Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: 🔍 Audit npm packages
-        run: npm audit --audit-level=high
+        run: npm run test:audit && npm run audit:security
 
       - name: 🔒 CodeQL Analysis
         uses: github/codeql-action/init@v3
@@ -203,7 +204,7 @@ jobs:
     if: always()
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 📊 Generate quality report
         run: |
@@ -225,4 +226,5 @@ jobs:
           else
             echo "❌ **Some quality checks failed. Review above.**" >> \
               $GITHUB_STEP_SUMMARY
+            exit 1
           fi
