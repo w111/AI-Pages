@@ -62,3 +62,28 @@ merge SHA.
 изменение обычным revert PR. Не использовать admin/force-push и не отключать required checks. Dependabot PR закрывать со
 ссылкой на заменяющий PR только после его принятия; при блокере оставить их открытыми и явно сообщить недоставленное
 состояние.
+
+## Результаты проверки подготовленной ветки
+
+- `npm ci` на Node 24.19.0: exit 0. Audit: 25 уязвимостей (20 high), до обновления — 35 (26 high). Это dev-зависимости;
+  автоматический audit fix с расширением scope не выполнялся.
+- `npm run lint`: exit 1, те же 2 ошибки data-converter, 163 warnings вместо исходных 156. Последующие этапы lint не
+  выполнялись из-за `&&`; полный lint не считается успешным.
+- Stylelint 17 + standard 40: валидный CSS принят без warnings; дублирующий селектор отклонён правилом
+  `no-duplicate-selectors`. Serve 14.2.6 запущен на свободном порту, index.html отдаётся с HTTP 200.
+- Полный `npm test` сначала завершился 32 setup errors из-за отсутствующих браузеров. После установки закреплённых
+  Chromium/WebKit повторный Python-прогон остановлен после 3 failures за 75.81 s: старые локаторы `.example-card` и
+  `get_by_title("Настройки")` отсутствуют в текущем HTML. Отдельно запущенный полный JS-прогон также выявил устаревшие
+  `.settings-icon` и `#cardSearch` и был остановлен. Оба прерванных прогона — UNAVAILABLE, не PASS; все 490 JS-тестов не
+  проверены.
+- [Quality Checks run](https://github.com/w111/AI-Pages/actions/runs/39960024555): checkout v7, setup-node v7,
+  setup-python v7 и установка зависимостей успешны; Code Quality failure на тех же двух ошибках. Cross-Browser Tests,
+  Lighthouse и Security пропущены из-за needs: lint; Quality Report success только публикует summary и не доказывает
+  успех остальных jobs.
+- Независимое read-only ревью подготовленного diff: code findings отсутствуют; итог UNAVAILABLE из-за
+  незавершённых/красных обязательных проверок. Допуск к merge не получен.
+- [Заменяющий PR #108](https://github.com/w111/AI-Pages/pull/108). Исходные #97–#106 остаются открытыми; принятие всех
+  обновлений предложено, но merge и закрытие PR не выполнены из-за gates.
+- Последний проверенный Pages в main — [run 37683051934](https://github.com/w111/AI-Pages/actions/runs/37683051934),
+  success для `71c1d3fc4c1b07db4e9bdebc99139be94f3f3b39`; сайт отвечает HTTP 200. Это прежняя версия. Проверка деплоя
+  обновлённых Actions ещё не выполнена, merge SHA отсутствует.

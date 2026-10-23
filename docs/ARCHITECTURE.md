@@ -324,8 +324,9 @@ document.getElementById('themeSwitch').addEventListener('change', () => {
 
 Quality Checks был `disabled_inactivity`; 23.10.2026 включён через `gh workflow enable`. Защита `main` требует
 `🔍 Code Quality`, `🧪 Cross-Browser Tests`, `🧪 Cross-Browser Tests (chromium)`, `📢 Quality Report`,
-`🔒 Security Scan`, `🚨 Lighthouse Audit`. Workflow с матрицей создаёт только имя с `(chromium)`; отдельное обязательное
-имя `🧪 Cross-Browser Tests` отсутствует. Защита не ослабляется: обычный merge блокируется до устранения несоответствия.
+`🔒 Security Scan`, `🚨 Lighthouse Audit`. При выполнении матрицы успешный job получает имя с `(chromium)`; нематричное
+имя появляется при skip и не удовлетворяет требованию success. Защита не ослабляется: обычный merge блокируется до
+устранения несоответствия.
 
 Результаты аудита обновлений и порядок проверки/отката: [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
 
