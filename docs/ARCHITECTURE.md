@@ -24,7 +24,7 @@
 - **Главный вход**: `index.html` (97KB, 1792 строки) - Центральный навигационный узел
 - **Основные приложения**: 25+ самодостаточных HTML файлов
 - **Тестовая инфраструктура**: `test_js/` (Playwright E2E), `tests/` (Python валидация)
-- **CI/CD**: `.github/workflows/ci-cd.yml`
+- **CI/CD**: `.github/workflows/static.yml`, `.github/workflows/quality-checks.yml`
 
 ### Категории приложений
 
@@ -313,22 +313,21 @@ document.getElementById('themeSwitch').addEventListener('change', () => {
 
 ### CI/CD Pipeline
 
-**Workflow:** Push → Linting → Testing → Security → Performance → Deploy
+Сборки нет: корневые HTML-файлы публикуются как статический сайт.
 
-**Этапы:**
+- `.github/workflows/static.yml` — `Deploy static content to Pages`, push в `main` или ручной запуск; checkout v7,
+  configure-pages v6, upload-pages-artifact v3, deploy-pages v4; GitHub-hosted `ubuntu-latest`.
+- `.github/workflows/quality-checks.yml` — проверки PR, push в `main`, расписание и ручной запуск.
+  Checkout/setup-node/setup-python/upload-artifact обновлены до v7. Runtime Actions — Node 24 (runner ≥2.327.1); Node
+  проекта — 24.19.0, `npm ci`.
+- `.github/workflows/claude.yml` — обработчик комментариев и ревью, checkout v7.
 
-1. **Linting**: ESLint, flake8, HTMLHint, Stylelint, Prettier
-2. **Testing**: Python Playwright (основной), JavaScript Playwright (legacy)
-3. **Quality Gates**: Accessibility WCAG 2.1, Security scan, Performance <200KB
-4. **Deployment**: GitHub Pages автодеплой после прохождения всех проверок
+Quality Checks был `disabled_inactivity`; 23.10.2026 включён через `gh workflow enable`. Защита `main` требует
+`🔍 Code Quality`, `🧪 Cross-Browser Tests`, `🧪 Cross-Browser Tests (chromium)`, `📢 Quality Report`,
+`🔒 Security Scan`, `🚨 Lighthouse Audit`. Workflow с матрицей создаёт только имя с `(chromium)`; отдельное обязательное
+имя `🧪 Cross-Browser Tests` отсутствует. Защита не ослабляется: обычный merge блокируется до устранения несоответствия.
 
-**Команды:**
-
-- `npm run lint` - все проверки качества
-- `python -m pytest tests/` - E2E тесты
-- `npx playwright test` - legacy JS тесты
-
-**Блокирующие ошибки:** Синтаксис, accessibility, падение E2E тестов
+Результаты аудита обновлений и порядок проверки/отката: [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
 
 #### Локальная среда разработки
 
@@ -360,11 +359,7 @@ npm install             # Автоматически настраивает pre-
 git commit -m "fix"     # ← Автоматическая проверка перед коммитом
 ```
 
-**Принудительный коммит (не рекомендуется):**
-
-```bash
-git commit --no-verify -m "emergency commit"
-```
+Хуки обязательны: при ошибке исправить причину и повторить коммит без обхода проверок.
 
 ---
 

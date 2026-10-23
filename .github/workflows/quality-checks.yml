@@ -25,23 +25,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "18"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
 
       - name: 📦 Install dependencies
         run: |
-          npm install
+          npm ci
           pip install -r requirements.txt
           pip install flake8 autopep8 yamllint
 
@@ -70,23 +70,23 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "18"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
 
       - name: 📦 Install dependencies
         run: |
-          npm install
+          npm ci
           pip install -r requirements.txt
 
       - name: 🎭 Install Playwright browsers
@@ -110,7 +110,7 @@ jobs:
           tests/test_index_page_async.py -v
 
       - name: 📊 Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-results-${{ matrix.browser }}
@@ -129,16 +129,16 @@ jobs:
     needs: lint
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "18"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: 📦 Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: 🚀 Start development server
         run: |
@@ -155,7 +155,7 @@ jobs:
             ${{ github.event.head_commit.timestamp }}
 
       - name: 📊 Upload Lighthouse results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lighthouse-results
@@ -171,16 +171,16 @@ jobs:
     needs: lint
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "18"
+          node-version: "24.19.0"
           cache: "npm"
 
       - name: 📦 Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: 🔍 Audit npm packages
         run: npm audit --audit-level=high
@@ -203,7 +203,7 @@ jobs:
     if: always()
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 📊 Generate quality report
         run: |
