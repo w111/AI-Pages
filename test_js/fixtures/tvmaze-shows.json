@@ -1,0 +1,322 @@
+[
+  {
+    "id": 1,
+    "name": "Under the Dome",
+    "genres": ["Drama", "Science-Fiction", "Thriller"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 2,
+      "name": "CBS",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://www.cbs.com/"
+    },
+    "webChannel": null,
+    "premiered": "2013-06-24",
+    "rating": {
+      "average": 6.6
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/610/1525272.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/610/1525272.jpg"
+    }
+  },
+  {
+    "id": 2,
+    "name": "Person of Interest",
+    "genres": ["Action", "Crime", "Science-Fiction"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 2,
+      "name": "CBS",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://www.cbs.com/"
+    },
+    "webChannel": null,
+    "premiered": "2011-09-22",
+    "rating": {
+      "average": 8.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/163/407679.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/163/407679.jpg"
+    }
+  },
+  {
+    "id": 3,
+    "name": "Bitten",
+    "genres": ["Drama", "Horror", "Romance"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 7,
+      "name": "CTV Sci-Fi Channel",
+      "country": {
+        "name": "Canada",
+        "code": "CA",
+        "timezone": "America/Toronto"
+      },
+      "officialSite": "https://www.ctv.ca/sci-fi"
+    },
+    "webChannel": null,
+    "premiered": "2014-01-11",
+    "rating": {
+      "average": 7.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/0/15.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/0/15.jpg"
+    }
+  },
+  {
+    "id": 4,
+    "name": "Arrow",
+    "genres": ["Drama", "Action", "Science-Fiction"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 5,
+      "name": "The CW",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://www.cwtv.com/"
+    },
+    "webChannel": null,
+    "premiered": "2012-10-10",
+    "rating": {
+      "average": 7.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/143/358967.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/143/358967.jpg"
+    }
+  },
+  {
+    "id": 5,
+    "name": "True Detective",
+    "genres": ["Drama", "Crime", "Thriller"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Running",
+    "network": {
+      "id": 8,
+      "name": "HBO",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://www.hbo.com/"
+    },
+    "webChannel": null,
+    "premiered": "2014-01-12",
+    "rating": {
+      "average": 8.1
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/490/1226764.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/490/1226764.jpg"
+    }
+  },
+  {
+    "id": 6,
+    "name": "The 100",
+    "genres": ["Action", "Adventure", "Science-Fiction"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 5,
+      "name": "The CW",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://www.cwtv.com/"
+    },
+    "webChannel": null,
+    "premiered": "2014-03-19",
+    "rating": {
+      "average": 7.7
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/477/1194981.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/477/1194981.jpg"
+    }
+  },
+  {
+    "id": 7,
+    "name": "Homeland",
+    "genres": ["Drama", "Thriller", "Espionage"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 9,
+      "name": "Paramount+ with Showtime",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://www.sho.com/"
+    },
+    "webChannel": null,
+    "premiered": "2011-10-02",
+    "rating": {
+      "average": 8.2
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/498/1245275.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/498/1245275.jpg"
+    }
+  },
+  {
+    "id": 8,
+    "name": "Glee",
+    "genres": ["Drama", "Music", "Romance"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Running",
+    "network": null,
+    "webChannel": {
+      "id": 287,
+      "name": "Disney+",
+      "country": null,
+      "officialSite": "https://www.disneyplus.com/"
+    },
+    "premiered": "2009-05-19",
+    "rating": {
+      "average": 6.6
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/0/73.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/0/73.jpg"
+    }
+  },
+  {
+    "id": 9,
+    "name": "Revenge",
+    "genres": ["Drama", "Thriller", "Mystery"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 3,
+      "name": "ABC",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://abc.com/"
+    },
+    "webChannel": null,
+    "premiered": "2011-09-21",
+    "rating": {
+      "average": 7.8
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/82/206879.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/82/206879.jpg"
+    }
+  },
+  {
+    "id": 10,
+    "name": "Grimm",
+    "genres": ["Drama", "Crime", "Supernatural"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 1,
+      "name": "NBC",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://www.nbc.com/"
+    },
+    "webChannel": null,
+    "premiered": "2011-10-28",
+    "rating": {
+      "average": 8.4
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/69/174906.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/69/174906.jpg"
+    }
+  },
+  {
+    "id": 11,
+    "name": "Gotham",
+    "genres": ["Drama", "Action", "Crime"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 4,
+      "name": "FOX",
+      "country": {
+        "name": "United States",
+        "code": "US",
+        "timezone": "America/New_York"
+      },
+      "officialSite": "https://www.fox.com/"
+    },
+    "webChannel": null,
+    "premiered": "2014-09-22",
+    "rating": {
+      "average": 7.7
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/189/474715.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/189/474715.jpg"
+    }
+  },
+  {
+    "id": 12,
+    "name": "Lost Girl",
+    "genres": ["Drama", "Fantasy", "Horror"],
+    "type": "Scripted",
+    "language": "English",
+    "status": "Ended",
+    "network": {
+      "id": 6,
+      "name": "Showcase",
+      "country": {
+        "name": "Canada",
+        "code": "CA",
+        "timezone": "America/Toronto"
+      },
+      "officialSite": null
+    },
+    "webChannel": null,
+    "premiered": "2010-09-12",
+    "rating": {
+      "average": 7.9
+    },
+    "image": {
+      "medium": "https://static.tvmaze.com/uploads/images/medium_portrait/0/137.jpg",
+      "original": "https://static.tvmaze.com/uploads/images/original_untouched/0/137.jpg"
+    }
+  }
+]

@@ -322,11 +322,22 @@ document.getElementById('themeSwitch').addEventListener('change', () => {
   проекта — 24.19.0, `npm ci`.
 - `.github/workflows/claude.yml` — обработчик комментариев и ревью, checkout v7.
 
-Quality Checks был `disabled_inactivity`; 23.10.2026 включён через `gh workflow enable`. Защита `main` требует
-`🔍 Code Quality`, `🧪 Cross-Browser Tests`, `🧪 Cross-Browser Tests (chromium)`, `📢 Quality Report`,
-`🔒 Security Scan`, `🚨 Lighthouse Audit`. При выполнении матрицы успешный job получает имя с `(chromium)`; нематричное
-имя появляется при skip и не удовлетворяет требованию success. Защита не ослабляется: обычный merge блокируется до
-устранения несоответствия.
+Quality Checks был `disabled_inactivity`; 23.10.2026 включён через `gh workflow enable`. Защита `main` требует пять
+успешных checks: `🔍 Code Quality`, `🧪 Cross-Browser Tests (chromium)`, `📢 Quality Report`, `🔒 Security Scan`,
+`🚨 Lighthouse Audit`. Оркестратор удалил устаревшее нематричное требование; имя тестового job закреплено явно, чтобы
+дополнительное поле матрицы не меняло required context. Python Playwright и npm Playwright используют разные версии
+браузеров — CI устанавливает обе.
+
+Каталог проверяется по действующим `.tool-card`, `#searchInput`, `#themeToggle`, `#langEn/#langRu` и
+`#listViewBtn/#gridViewBtn`; модального окна настроек и отдельной кнопки «Открыть» у карточки больше нет. Python и JS
+проверяют поиск, язык/тему/вид и их сохранение, навигацию по превью и адаптивность; JS дополнительно измеряет контраст.
+Рекомендатор загружает сериалы TVMaze. Его E2E использует сохранённый ответ API на HTTP-границе, а реальный загрузчик,
+фильтры, оценки и генератор рекомендаций выполняются в браузере.
+
+Security Scan запускает unit-тесты и `npm run audit:security`: threshold high/critical сохранён, единственное исключение
+— отозванный GHSA-vfj7-8cjw-p6xm по решению владельца от 23.10.2026, со сроком пересмотра/истечения 22.11.2026 UTC.
+Любые другие advisory high/critical, ошибки npm и неполный отчёт блокируют job. Правило и тесты —
+`scripts/audit-policy.mjs`, `tests/audit-policy.test.mjs`; подробности и основание — в аудите ниже.
 
 Результаты аудита обновлений и порядок проверки/отката: [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
 

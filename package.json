@@ -5,7 +5,7 @@
   "description": "AI Pages: Коллекция интерактивных HTML-примеров",
   "main": "index.html",
   "scripts": {
-    "test": "npm run test:python && npm run test:js",
+    "test": "npm run test:audit && npm run test:python && npm run test:js",
     "test:python": "python3 -m pytest tests/ -v",
     "test:python:parallel": "python3 -m pytest -c pytest-parallel.ini tests/test_index_page_async.py -v",
     "test:python:ci": "python3 -m pytest -c pytest-ci.ini tests/test_index_page_async.py -v",
@@ -29,7 +29,7 @@
     "install:browsers": "playwright install",
     "serve": "python3 -m http.server 5500",
     "lint:py": "venv/bin/python -m flake8 tests/ --select=E,W --statistics || python3 -m flake8 tests/ --select=E,W --statistics",
-    "lint:js": "eslint test_js/ playwright*.config.js",
+    "lint:js": "eslint test_js/ playwright*.config.js scripts/*.mjs tests/*.test.mjs",
     "lint:js:ci": "find . -name 'playwright*.config.js' -o -path './test_js/*.js' | xargs eslint",
     "lint:js:all": "find . -name 'playwright*.config.js' -exec eslint {} \\; && eslint test_js/",
     "lint:py:full": "venv/bin/python -m flake8 tests/ validate_docs_diagrams.py || python3 -m flake8 tests/ validate_docs_diagrams.py",
@@ -55,13 +55,11 @@
     "check:duplication": "echo '🔍 Проверка дублирования кода (требует установки jscpd)' && npx jscpd test_js/ playwright*.config.js --threshold 5 --min-lines 5 || echo '⚠️ Установите jscpd: npm install -g jscpd'",
     "test:coverage": "echo '📊 Покрытие тестами (placeholder - требует настройки coverage инструмента)'",
     "prepare": "husky",
-    "pre-commit": "lint-staged"
+    "pre-commit": "lint-staged",
+    "test:audit": "node --test tests/audit-policy.test.mjs",
+    "audit:security": "node scripts/audit-dependencies.mjs"
   },
   "lint-staged": {
-    "*.js": [
-      "eslint --fix",
-      "prettier --write"
-    ],
     "*.{html,css,json,md,yml,yaml}": [
       "prettier --write"
     ],
@@ -74,6 +72,10 @@
     ".github/workflows/*.yml": [
       "yamllint",
       "prettier --write"
+    ],
+    "*.{js,mjs}": [
+      "eslint --fix",
+      "prettier --write"
     ]
   },
   "devDependencies": {
@@ -84,7 +86,7 @@
     "htmlhint": "^1.6.3",
     "husky": "^9.1.7",
     "lint-staged": "17.5.1",
-    "markdownlint-cli": "^0.45.0",
+    "markdownlint-cli": "0.49.1",
     "playwright": "^1.40.0",
     "prettier": "^3.6.2",
     "serve": "14.2.6",
@@ -114,5 +116,12 @@
   "engines": {
     "node": ">=22.22.1",
     "git": ">=2.32.0"
+  },
+  "overrides": {
+    "serve": {
+      "compression": "1.8.2"
+    },
+    "js-yaml@^4.0.0": "4.3.2",
+    "js-yaml@^5.0.0": "5.5.0"
   }
 }

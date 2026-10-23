@@ -2,9 +2,9 @@
 
 ## Область и состояние
 
-Аудит PR Dependabot #97–#106. Приложения и тестовые assertions не изменяются. Сборки нет; основной checkout не
-изменяется. Обновления подготовлены совместно, но не считаются доставленными до обычного merge и успешного Pages на
-merge SHA.
+Аудит PR Dependabot #97–#106. Тесты мигрированы на текущий HTML по явному поручению владельца. Сборки нет; основной
+checkout не изменяется. Обновления подготовлены совместно, но не считаются доставленными до обычного merge и успешного
+Pages на merge SHA.
 
 Разработка: `nvm use` (24.19.0), Git ≥2.32.0, `npm ci`. Минимум Node для lint-staged 17 — 22.22.1; конфигурация хранится
 в package.json, поэтому новый optional YAML parser ему не требуется. Хук запускает настоящий lint-staged.
@@ -55,7 +55,8 @@ merge SHA.
 
 Полные команды запускать в фоне через `~/.claude/scripts/mac3-heavy-gate.sh`: `npm ci`, `npm run lint`, `npm test`;
 сборки нет. Перед обновлением `npm ci` успешен; `npm run lint` падает с двумя исходными ошибками: max-lines-per-function
-и playwright/prefer-web-first-assertions в тесте data-converter. Не менять тесты или правила ради зелёного статуса.
+и playwright/prefer-web-first-assertions в тесте data-converter. Правила линта не ослаблены; ошибки исправлены переносом
+тестов из длинного describe и web-first assertion.
 
 После обычного merge с `--match-head-commit` проверить workflow Pages на merge SHA, статус deployment и HTTP 200 на
 <https://w111.github.io/AI-Pages/>. При отказе изучить failed step и исправить отдельным проверенным PR либо откатить
@@ -63,27 +64,68 @@ merge SHA.
 ссылкой на заменяющий PR только после его принятия; при блокере оставить их открытыми и явно сообщить недоставленное
 состояние.
 
-## Результаты проверки подготовленной ветки
+## Ремонт исходного CI и тестов
 
-- `npm ci` на Node 24.19.0: exit 0. Audit: 25 уязвимостей (20 high), до обновления — 35 (26 high). Это dev-зависимости;
-  автоматический audit fix с расширением scope не выполнялся.
-- `npm run lint`: exit 1, те же 2 ошибки data-converter, 163 warnings вместо исходных 156. Последующие этапы lint не
-  выполнялись из-за `&&`; полный lint не считается успешным.
-- Stylelint 17 + standard 40: валидный CSS принят без warnings; дублирующий селектор отклонён правилом
-  `no-duplicate-selectors`. Serve 14.2.6 запущен на свободном порту, index.html отдаётся с HTTP 200.
-- Полный `npm test` сначала завершился 32 setup errors из-за отсутствующих браузеров. После установки закреплённых
-  Chromium/WebKit повторный Python-прогон остановлен после 3 failures за 75.81 s: старые локаторы `.example-card` и
-  `get_by_title("Настройки")` отсутствуют в текущем HTML. Отдельно запущенный полный JS-прогон также выявил устаревшие
-  `.settings-icon` и `#cardSearch` и был остановлен. Оба прерванных прогона — UNAVAILABLE, не PASS; все 490 JS-тестов не
-  проверены.
-- [Quality Checks run](https://github.com/w111/AI-Pages/actions/runs/39960024555): checkout v7, setup-node v7,
-  setup-python v7 и установка зависимостей успешны; Code Quality failure на тех же двух ошибках. Cross-Browser Tests,
-  Lighthouse и Security пропущены из-за needs: lint; Quality Report success только публикует summary и не доказывает
-  успех остальных jobs.
-- Независимое read-only ревью подготовленного diff: code findings отсутствуют; итог UNAVAILABLE из-за
-  незавершённых/красных обязательных проверок. Допуск к merge не получен.
-- [Заменяющий PR #108](https://github.com/w111/AI-Pages/pull/108). Исходные #97–#106 остаются открытыми; принятие всех
-  обновлений предложено, но merge и закрытие PR не выполнены из-за gates.
-- Последний проверенный Pages в main — [run 37683051934](https://github.com/w111/AI-Pages/actions/runs/37683051934),
-  success для `71c1d3fc4c1b07db4e9bdebc99139be94f3f3b39`; сайт отвечает HTTP 200. Это прежняя версия. Проверка деплоя
-  обновлённых Actions ещё не выполнена, merge SHA отсутствует.
+По поручению владельца исходные проверки обновлены под текущий HTML; правила линта и assertions не отключаются. Старое
+окно настроек каталога, Escape закрытия, dialog ARIA и отдельная кнопка «Открыть» удалены из тестов: этих
+функций/элементов больше нет. Навигация проверяется по настоящей ссылке превью, настройки — через видимую панель;
+сравнение темы учитывает тёмную тему по умолчанию. Контраст измеряется как относительная яркость WCAG AA ≥4.5, вместо
+сравнения со старой палитрой. На широком экране CSS задаёт карточку ровно 400px; проверка границы исправлена на ≤400.
+Планшетный JS-сценарий использует 800px: WebKit отнимает 8px scrollbar от CSS viewport, поэтому window.innerWidth=768
+там соответствует media width=760 и одной колонке. Проверка двух колонок сохранена при доступной ширине ≥768; Python
+проверяет точные breakpoints в Chromium. WebKit на macOS использует Alt+Tab для полной клавиатурной навигации; clipboard
+permissions выдаются только Chromium (WebKit не поддерживает этот Playwright permission), копирование проверяется в
+обоих движках. Число JS-воркеров ограничено двумя, чтобы не перегружать Python HTTP-сервер десятками тысяч preview
+requests.
+
+Файл `tests/test_template.py` был инструкционным шаблоном с отсутствующими фикстурами, но pytest собирал его как
+реальные тесты. Он сохранён как `tests/template_example.py`, который не соответствует `python_files = test_*.py`;
+реальные сценарии не исключаются.
+
+Рекомендатор теперь работает с сериалами TVMaze, а не старым каталогом фильмов. `test_js/fixtures/tvmaze-shows.json` —
+первые 12 сериалов публичного TVMaze API page=0, сохранены 23.10.2026 с полями, используемыми приложением. E2E подменяет
+только ответ TVMaze, сохраняет реальную загрузку/дедупликацию и UI; проверяет 12 карточек, поиск по названию, фильтр
+жанра, оценки/restore и 7 рекомендаций после оценки 5 сериалов. Это не доказательство доступности внешнего API; сам
+endpoint отдельно проверен HTTP-запросом.
+
+Обнаруженные после JS-линта HTML-ошибки исправлены без изменения логики: 3 пустых src удалены из динамических
+изображений art_gallery/recipe_book, 32 строки HTML webllm-chat переведены с tab на space, форматирование docs/INDEX и
+Playwright config исправлено.
+
+Security Scan включает и dev-граф: доступные транзитивные исправления применены без --force. markdownlint-cli обновлён
+до 0.49.1: Node 20 больше не поддерживается (у нас Node 24), добавлено правило MD060, обновлены парсеры и glob. Bare URL
+в README оформлен ссылкой; правила markdownlint сохранены. Через scoped overrides serve получает compression 1.8.2,
+ветки js-yaml 4 и 5 — соответственно 4.3.2 и 5.5.0; major API не подменяются.
+
+Первоисточники дополнительных обновлений:
+[markdownlint-cli releases](https://github.com/igorshubovych/markdownlint-cli/releases),
+[compression changelog](https://github.com/expressjs/compression/blob/master/HISTORY.md),
+[js-yaml changelog](https://github.com/nodeca/js-yaml/blob/master/CHANGELOG.md). Advisory
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) отозван GitHub 23.10.2026 как практически
+неэксплуатируемый, но npm audit пока возвращает его для braces 3.0.3; исправленной версии braces нет. Audit не
+отключается.
+
+Локальные и remote результаты финального head публикуются в PR: [PR #108](https://github.com/w111/AI-Pages/pull/108).
+Merge допустим только при положительном независимом ревью и do merge-check. После него обязательны успешный Pages на
+merge SHA и HTTP 200 с содержимым новой версии.
+
+## Проверенный локальный результат продолжения
+
+- Полный прогон каталога Python: 19 passed.
+- Полный JS: 420 passed на семи проектах (Chromium/WebKit, mobile/tablet/desktop).
+- Audit-политика: 22 unit-теста; настоящий npm audit принят только с одним точным отозванным GHSA.
+- Линт и форматирование проверяются штатными командами, включая новые security scripts и mjs-тесты.
+- Скрипт запуска `npm test` включает audit → Python → JS; CI дополнительно проверяет audit в Security Scan.
+- Обновлённый runtime и согласованный lockfile проверены `npm ci`; сборки у сайта нет.
+
+Окончательные CI/review/merge/deploy evidence публикуются в PR #108; эти локальные результаты не подменяют remote
+required checks и проверку production на merge SHA.
+
+Lighthouse healthcheck ранее проходил, но autorun не находил staticDistDir и падал; workflow скрывал ошибку через
+`|| echo`. Теперь `.lighthouserc.json` задаёт URL каталога, 3 запуска и локальное сохранение отчётов; CLI закреплён на
+0.15.1. Отсутствие Chrome, ошибка сбора или сохранения блокирует job; новые пороги scores не вводятся (аудит
+информационный). Quality Report возвращает failure, если любой этап неуспешен, вместо одного зелёного summary.
+
+В повторном полном прогоне единственный отказ Mobile Safari произошёл до assertions: `goto` ожидал load всех удалённых
+preview и превысил navigation timeout. Проверки темы теперь ждут DOMContentLoaded и затем реальное состояние
+CSS/checkbox, а не посторонние изображения. Assertions и их таймауты сохранены; это не условное пропускание теста.

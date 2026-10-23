@@ -1,58 +1,72 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
+
+const shows = JSON.parse(
+  readFileSync(new URL('./fixtures/tvmaze-shows.json', import.meta.url))
+);
+
+// Настоящий UI и загрузчик TVMaze; только HTTP-граница имеет фиксированный ответ.
+test.beforeEach(async ({ page }) => {
+  await page.route('https://api.tvmaze.com/shows?page=*', async route => {
+    const number = Number(new URL(route.request().url()).searchParams.get('page'));
+    await route.fulfill({
+      status: number <= 1 ? 200 : 404,
+      json: number <= 1 ? shows : [],
+    });
+  });
+  await page.goto('/movie-recommender.html');
+  await expect(page.locator('.movie-card')).toHaveCount(12);
+});
 
 /**
- * Тесты для Movie Recommender - системы рекомендаций фильмов
+ * Тесты для Рекомендатор сериалов — системы рекомендаций сериалов
  */
 
-test.describe('Movie Recommender - Загрузка страницы', () => {
-  test.beforeEach(async ({ page, baseURL }) => {
-    await page.goto(`${baseURL}/movie-recommender.html`);
-  });
-
+test.describe('Рекомендатор сериалов — Загрузка страницы', () => {
   test('Страница загружается корректно', async ({ page }) => {
-    await expect(page.locator('.logo-text')).toContainText('Рекомендатор фильмов');
+    await expect(page.locator('.logo-text')).toContainText('Рекомендатор сериалов');
     await expect(page.locator('.progress-section')).toBeVisible();
     await expect(page.locator('.tabs')).toBeVisible();
     await expect(page.locator('#moviesGrid')).toBeVisible();
   });
 
-  test('Отображаются карточки фильмов', async ({ page }) => {
+  test('Отображаются карточки сериалов', async ({ page }) => {
     await expect(page.locator('.movie-card').first()).toBeVisible();
-    const cardsCount = await page.locator('.movie-card').count();
-    expect(cardsCount).toBeGreaterThan(10);
+    const cardsCount = page.locator('.movie-card');
+    await expect(cardsCount).toHaveCount(12);
   });
 });
 
-test.describe('Movie Recommender - Поиск и фильтры', () => {
-  test.beforeEach(async ({ page, baseURL }) => {
-    await page.goto(`${baseURL}/movie-recommender.html`);
-  });
-
-  test('Поиск фильмов работает', async ({ page }) => {
-    await page.locator('#searchInput').fill('Matrix');
+test.describe('Рекомендатор сериалов — Поиск и фильтры', () => {
+  test('Поиск сериалов работает', async ({ page }) => {
+    await page.locator('#searchInput').fill('Under the Dome');
     await expect(page.locator('.movie-card')).toHaveCount(1);
-    await expect(page.locator('.movie-title').first()).toContainText('Матрица');
+    await expect(page.locator('.movie-title').first()).toHaveText('Under the Dome');
   });
 
   test('Фильтр по жанрам работает', async ({ page }) => {
-    await page.locator('.genre-btn', { hasText: 'Комедия' }).click();
-    await expect(page.locator('.genre-btn.active')).toContainText('Комедия');
-    const count = await page.locator('.movie-card').count();
-    expect(count).toBeGreaterThan(0);
-    expect(count).toBeLessThan(150);
+    await page.locator('.genre-btn', { hasText: 'Ужасы' }).click();
+    await expect(page.locator('.genre-btn.active')).toContainText('Ужасы');
+    await expect(page.locator('.movie-card')).toHaveCount(2);
+    expect(
+      await page
+        .locator('.movie-card')
+        .evaluateAll(cards =>
+          cards.map(card => Number(card.dataset.id)).sort((a, b) => a - b)
+        )
+    ).toEqual([3, 12]);
+    await page.locator('.genre-btn[data-genre=""]').click();
+    await expect(page.locator('.movie-card')).toHaveCount(12);
   });
 });
 
-test.describe('Movie Recommender - Оценки', () => {
-  test.beforeEach(async ({ page, baseURL }) => {
-    await page.goto(`${baseURL}/movie-recommender.html`);
-  });
-
-  test('Оценка фильма работает', async ({ page }) => {
+test.describe('Рекомендатор сериалов — Оценки', () => {
+  test('Оценка сериала работает', async ({ page }) => {
     const firstCard = page.locator('.movie-card').first();
     await firstCard.locator('.star').nth(3).click();
-    const activeStars = await firstCard.locator('.star.active').count();
-    expect(activeStars).toBe(4);
+    const activeStars = firstCard.locator('.star.active');
+    await expect(activeStars).toHaveCount(4);
     await expect(page.locator('#ratedCount')).toContainText('1');
   });
 
@@ -68,15 +82,14 @@ test.describe('Movie Recommender - Оценки', () => {
     await page.locator('.movie-card').first().locator('.star').nth(4).click();
     const ratings = await page.evaluate(() => localStorage.getItem('movieRatings'));
     expect(ratings).toBeTruthy();
-    expect(JSON.parse(ratings)).toBeTruthy();
+    const id = await page.locator('.movie-card').first().getAttribute('data-id');
+    expect(JSON.parse(ratings)[id]).toBe(5);
+    await page.reload();
+    await expect(page.locator('#ratedCount')).toHaveText('1');
   });
 });
 
-test.describe('Movie Recommender - Интерфейс', () => {
-  test.beforeEach(async ({ page, baseURL }) => {
-    await page.goto(`${baseURL}/movie-recommender.html`);
-  });
-
+test.describe('Рекомендатор сериалов — Интерфейс', () => {
   test('Переключение вкладок работает', async ({ page }) => {
     await page.locator('.tab-btn', { hasText: 'Рекомендации' }).click();
     await expect(page.locator('#recommendationsTab')).toBeVisible();
@@ -99,23 +112,19 @@ test.describe('Movie Recommender - Интерфейс', () => {
   test('Переключение языка работает', async ({ page }) => {
     await expect(page.locator('.logo-text')).toContainText('Рекомендатор');
     await page.locator('#langBtn').click();
-    await expect(page.locator('.logo-text')).toContainText('Movie Recommender');
+    await expect(page.locator('.logo-text')).toContainText('Show Recommender');
   });
 });
 
-test.describe('Movie Recommender - Рекомендации', () => {
-  test.beforeEach(async ({ page, baseURL }) => {
-    await page.goto(`${baseURL}/movie-recommender.html`);
-  });
-
-  test('Рекомендации генерируются после оценки 5+ фильмов', async ({ page }) => {
+test.describe('Рекомендатор сериалов — Рекомендации', () => {
+  test('Рекомендации генерируются после оценки 5+ сериалов', async ({ page }) => {
     const cards = page.locator('.movie-card');
     for (let i = 0; i < 5; i++) {
       await cards.nth(i).locator('.star').nth(4).click();
     }
     await page.locator('.tab-btn', { hasText: 'Рекомендации' }).click();
     await page.locator('#getRecsBtn').click();
-    await expect(page.locator('.recommendation-card').first()).toBeVisible();
+    await expect(page.locator('.recommendation-card')).toHaveCount(7);
     await expect(page.locator('.similarity-value').first()).toBeVisible();
   });
 

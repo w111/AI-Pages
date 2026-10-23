@@ -1,176 +1,71 @@
 import { test, expect } from '@playwright/test';
 
-// Базовая клавиатурная навигация
-test('Фокусировка по Tab доходит до настроек', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
-  // Проверяем что можем добраться до settings через Tab
-  await page.keyboard.press('Tab'); // Переходим от поиска к settings
-  const settingsIcon = page.locator('.settings-icon');
-  await expect(settingsIcon).toBeFocused();
-});
-
-// Проверка видимых индикаторов фокуса
-test('Видимые индикаторы фокуса для интерактивных элементов', async ({
+test('Панель языка доступна последовательной навигацией Tab', async ({
   page,
-  baseURL,
+  browserName,
 }) => {
-  await page.goto(`${baseURL}/index.html`);
-
-  // Фокус на поисковом поле
-  await page.locator('#cardSearch').focus();
-  const searchFocusStyle = await page
-    .locator('#cardSearch')
-    .evaluate(el => getComputedStyle(el).outline);
-  expect(searchFocusStyle).not.toBe('none');
-
-  // Фокус на кнопке настроек
-  await page.locator('.settings-icon').focus();
-  const settingsFocusStyle = await page
-    .locator('.settings-icon')
-    .evaluate(el => getComputedStyle(el).outline);
-  expect(settingsFocusStyle).not.toBe('none');
+  const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+  await page.goto('/index.html');
+  await page.locator('#themeToggle').focus();
+  await page.keyboard.press(tab);
+  await expect(page.locator('#langRu')).toBeFocused();
+  await page.keyboard.press(tab);
+  await expect(page.locator('#langEn')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.hero-tagline')).toContainText('Turn ideas');
 });
 
-// Проверка контрастности цветов
-test('Достаточная контрастность текста в светлой теме', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
+for (const theme of ['dark', 'light']) {
+  test(`Контраст основного текста WCAG AA: ${theme}`, async ({ page }) => {
+    await page.addInitScript(value => localStorage.setItem('theme', value), theme);
+    await page.goto('/index.html');
+    const ratio = await page.locator('body').evaluate(el => {
+      const luminance = color =>
+        color
+          .match(/[\d.]+/g)
+          .slice(0, 3)
+          .map(Number)
+          .map(v => v / 255)
+          .map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+          .reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i], 0);
+      const style = getComputedStyle(el);
+      const a = luminance(style.color);
+      const b = luminance(style.backgroundColor);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    });
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+}
 
-  // Проверяем контрастность основного текста
-  const textColor = await page
-    .locator('body')
-    .evaluate(el => getComputedStyle(el).color);
-  const backgroundColor = await page
-    .locator('body')
-    .evaluate(el => getComputedStyle(el).backgroundColor);
-
-  // rgb(15, 23, 42) на rgb(248, 250, 252) должен иметь достаточный контраст
-  expect(textColor).toBe('rgb(15, 23, 42)');
-  expect(backgroundColor).toBe('rgb(248, 250, 252)');
+test('Заголовки и основной landmark описывают непустой каталог', async ({ page }) => {
+  await page.goto('/index.html');
+  await expect(page.locator('h1')).toHaveText('AI Pages');
+  await expect(page.locator('main')).toHaveCount(1);
+  await expect(page.locator('.category-title')).toHaveCount(5);
+  await expect(page.locator('.tool-card h3').first()).toHaveText(
+    'Python Editor (Pyodide)'
+  );
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
 });
 
-test('Достаточная контрастность текста в темной теме', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
-
-  // Переключаем на темную тему
-  await page.locator('.settings-icon').click();
-  await page.locator('label[for="themeSwitch"]').click();
-
-  const textColor = await page
-    .locator('body')
-    .evaluate(el => getComputedStyle(el).color);
-  const backgroundColor = await page
-    .locator('body')
-    .evaluate(el => getComputedStyle(el).backgroundColor);
-
-  // В темной теме должны быть контрастные цвета
-  expect(textColor).not.toBe(backgroundColor);
-});
-
-// Проверка ARIA-атрибутов
-test('Корректные ARIA-атрибуты для интерактивных элементов', async ({
-  page,
-  baseURL,
-}) => {
-  await page.goto(`${baseURL}/index.html`);
-
-  // Проверяем ARIA-атрибуты поисковой формы
-  const searchInput = page.locator('#cardSearch');
-  await expect(searchInput).toHaveAttribute('aria-label');
-
-  // Проверяем ARIA-атрибуты кнопки настроек
-  const settingsButton = page.locator('.settings-icon');
-  await expect(settingsButton).toHaveAttribute('title');
-
-  // Проверяем ARIA-атрибуты модального окна
-  await settingsButton.click();
-  const modal = page.locator('#settingsModal');
-  await expect(modal).toHaveAttribute('role', 'dialog');
-  await expect(modal).toHaveAttribute('aria-labelledby');
-});
-
-// Проверка семантической HTML разметки
-test('Правильная семантическая структура заголовков', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
-
-  // Должен быть один H1 заголовок
-  const h1Count = await page.locator('h1').count();
-  expect(h1Count).toBe(1);
-
-  // Проверяем иерархию заголовков
-  const h1Text = await page.locator('h1').textContent();
-  expect(h1Text).toContain('AI Pages');
-
-  // Проверяем, что есть H2 заголовки для категорий
-  const h2Count = await page.locator('h2').count();
-  expect(h2Count).toBeGreaterThan(0);
-
-  // Проверяем H3 заголовки карточек
-  const h3Count = await page.locator('h3').count();
-  expect(h3Count).toBeGreaterThan(0);
-});
-
-// Проверка alt-текста для изображений
-test('Описательные alt-атрибуты для изображений', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
-
-  // Проверяем все изображения на наличие alt-атрибутов
-  const images = await page.locator('img').all();
-  for (const image of images) {
-    const altText = image;
-    expect(altText).toBeDefined();
-    await expect(altText).not.toHaveAttribute('alt', '');
+test('Изображения карточек имеют описательные alt', async ({ page }) => {
+  await page.goto('/index.html');
+  await expect(page.locator('.tool-card').first()).toBeVisible();
+  const images = page.locator('.tool-card img');
+  expect(await images.count()).toBeGreaterThan(40);
+  for (const image of await images.all()) {
+    await expect(image).toHaveAttribute('alt', /\S/);
   }
 });
 
-// Проверка клавиатурных сокращений
-test('Поддержка стандартных клавиатурных сокращений', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
-
-  // Escape должен закрывать модальные окна
-  await page.locator('.settings-icon').click();
-  await page.locator('#settingsModal').waitFor({ state: 'visible' });
-
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#settingsModal')).toBeHidden();
-});
-
-// Проверка доступности для screen readers
-test('Структура документа подходит для screen readers', async ({ page, baseURL }) => {
-  await page.goto(`${baseURL}/index.html`);
-
-  // Проверяем наличие landmarks
-  const main = page.locator('main, [role="main"]');
-  await expect(main).toHaveCount(1);
-
-  const nav = page.locator('nav, [role="navigation"]');
-  await expect(nav).toHaveCount(1);
-
-  // Проверяем lang атрибут
-  const htmlLang = await page.locator('html').getAttribute('lang');
-  expect(htmlLang).toBeDefined();
-  expect(['ru', 'en']).toContain(htmlLang);
-});
-
-// Проверка управления с клавиатуры
-test('Полная навигация только с клавиатуры', async ({ page, baseURL }) => {
-  // Увеличенный timeout для медленных устройств
-  await page.goto(`${baseURL}/index.html`, { timeout: 15000 });
-
-  // Ждем полной загрузки страницы
-  await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-
-  // Проверяем что можем сфокусироваться на основные элементы
-  const searchInput = page.locator('#cardSearch');
-  await searchInput.focus();
-  await expect(searchInput).toBeFocused();
-
-  const settingsButton = page.locator('.settings-icon');
-  await settingsButton.focus();
-  await expect(settingsButton).toBeFocused();
-
-  // Проверяем наличие интерактивных элементов карточек
-  const cardButtons = page.locator('.view-btn');
-  await expect(cardButtons.first()).toBeVisible();
-  await cardButtons.first().focus();
-  await expect(cardButtons.first()).toBeFocused();
+test('Поиск и открытие приложения работают с клавиатуры', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.locator('#searchInput').focus();
+  await expect(page.locator('#searchInput')).toBeFocused();
+  await page.keyboard.type('Арканоид');
+  await expect(page.locator('.tool-card')).toHaveCount(1);
+  await page.locator('.tool-preview-link').focus();
+  await expect(page.locator('.tool-preview-link')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/arcanoid_o3.html$/);
 });

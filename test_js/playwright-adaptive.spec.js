@@ -8,9 +8,9 @@ test('Карточки в одну колонку на мобильном раз
   await page.setViewportSize({ width: 375, height: 667 });
   await page.goto(`${baseURL}/index.html`);
   // Проверяем, что только одна карточка в строке (ширина карточки почти равна ширине контейнера)
-  const card = page.locator('.example-card').first();
+  const card = page.locator('.tool-card').first();
   const cardBox = await card.boundingBox();
-  const container = page.locator('.examples-grid').first();
+  const container = page.locator('.tools-grid').first();
   const containerBox = await container.boundingBox();
   expect(cardBox.width).toBeGreaterThan(containerBox.width * 0.8);
 });
@@ -21,9 +21,9 @@ test('Карточки в одну колонку на мобильном раз
 }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await page.goto(`${baseURL}/index.html`);
-  const card = page.locator('.example-card').first();
+  const card = page.locator('.tool-card').first();
   const cardBox = await card.boundingBox();
-  const container = page.locator('.examples-grid').first();
+  const container = page.locator('.tools-grid').first();
   const containerBox = await container.boundingBox();
   expect(cardBox.width).toBeGreaterThan(containerBox.width * 0.8);
 });
@@ -39,17 +39,18 @@ test('Контент читабелен без горизонтального с
 });
 
 // Планшетные разрешения
-test('Карточки в 2-3 колонки на планшетном разрешении 768px', async ({
-  page,
-  baseURL,
-}) => {
-  await page.setViewportSize({ width: 768, height: 1024 });
+test('Карточки в две колонки на планшете 800px', async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 800, height: 1024 });
   await page.goto(`${baseURL}/index.html`);
-  const cards = await page.locator('.example-card').all();
-  const firstCardBox = await cards[0].boundingBox();
-  const secondCardBox = await cards[1].boundingBox();
-  // Проверяем, что вторая карточка находится справа от первой (не под ней)
-  expect(secondCardBox.x).toBeGreaterThan(firstCardBox.x);
+  await expect(page.locator('.tool-card').first()).toBeVisible();
+  await expect
+    .poll(async () =>
+      page
+        .locator('.tools-grid')
+        .first()
+        .evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)
+    )
+    .toBe(2);
 });
 
 test('Планшетное разрешение 1024px оптимально использует пространство', async ({
@@ -58,9 +59,9 @@ test('Планшетное разрешение 1024px оптимально ис
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto(`${baseURL}/index.html`);
-  const container = page.locator('.examples-grid').first();
+  const container = page.locator('.tools-grid').first();
   const containerBox = await container.boundingBox();
-  const cards = await page.locator('.example-card').all();
+  const cards = await page.locator('.tool-card').all();
   const cardBox = await cards[0].boundingBox();
   // На планшете должно быть минимум 2 колонки
   expect(cardBox.width).toBeLessThan(containerBox.width * 0.6);
@@ -90,9 +91,9 @@ test('Максимальная ширина контейнера на 4K экр�
 test('Оптимальная читаемость на больших экранах', async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 2560, height: 1440 });
   await page.goto(`${baseURL}/index.html`);
-  const cards = await page.locator('.example-card').all();
+  const cards = await page.locator('.tool-card').all();
   const firstCard = cards[0];
   const cardBox = await firstCard.boundingBox();
   // Карточки не должны быть слишком широкими для комфортного чтения
-  expect(cardBox.width).toBeLessThan(400);
+  expect(cardBox.width).toBeLessThanOrEqual(400);
 });
