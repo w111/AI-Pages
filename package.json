@@ -90,7 +90,7 @@
     "playwright": "^1.40.0",
     "prettier": "^3.6.2",
     "serve": "14.2.6",
-    "stylelint": "17.15.0",
+    "stylelint": "17.16.0",
     "stylelint-config-standard": "40.0.0",
     "yaml-lint": "^1.7.0"
   },
