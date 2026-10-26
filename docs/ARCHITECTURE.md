@@ -316,7 +316,7 @@ document.getElementById('themeSwitch').addEventListener('change', () => {
 Сборки нет: корневые HTML-файлы публикуются как статический сайт.
 
 - `.github/workflows/static.yml` — `Deploy static content to Pages`, push в `main` или ручной запуск; checkout v7,
-  configure-pages v6, upload-pages-artifact v3, deploy-pages v4; GitHub-hosted `ubuntu-latest`.
+  configure-pages v6, upload-pages-artifact v5, deploy-pages v5; GitHub-hosted `ubuntu-latest`.
 - `.github/workflows/quality-checks.yml` — проверки PR, push в `main`, расписание и ручной запуск.
   Checkout/setup-node/setup-python/upload-artifact обновлены до v7. Runtime Actions — Node 24 (runner ≥2.327.1); Node
   проекта — 24.19.0, `npm ci`.
