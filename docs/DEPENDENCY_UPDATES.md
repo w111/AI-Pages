@@ -129,3 +129,37 @@ Lighthouse healthcheck ранее проходил, но autorun не наход
 В повторном полном прогоне единственный отказ Mobile Safari произошёл до assertions: `goto` ожидал load всех удалённых
 preview и превысил navigation timeout. Проверки темы теперь ждут DOMContentLoaded и затем реальное состояние
 CSS/checkbox, а не посторонние изображения. Assertions и их таймауты сохранены; это не условное пропускание теста.
+
+## Обновление 26.10.2026 — Dependabot #109–#113
+
+Все пять обновлений объединяются в один PR по прецеденту #108; audit-исключение GHSA-vfj7-8cjw-p6xm и пересмотр
+22.11.2026 сохранены без изменений.
+
+| PR   | Обновление                               | Решение и совместимость                                                                                 |
+| ---- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| #113 | deploy-pages 4 → 5                       | Включить: runtime Node 24, GitHub-hosted ubuntu-latest поддерживается; permissions и inputs прежние.    |
+| #112 | upload-pages-artifact 3 → 5              | Включить: v4 исключает dotfiles; v5 добавляет include-hidden-files и использует upload-artifact v7.     |
+| #111 | eslint-plugin-playwright 2.12.0 → 2.12.1 | Включить: исправление JSON schema contains → enum; recommended rules сохранены.                         |
+| #110 | lint-staged 17.5.1 → 17.6.0              | Включить: logger для функций, исправления параллельных задач и worktree patch; конфигурация совместима. |
+| #109 | Stylelint 17.15.0 → 17.16.0              | Включить: исправления layout-mappings; standard 40 и JSON config сохранены.                             |
+
+В inventory tracked dotfiles только конфигурация разработки/CI; `.well-known`, `.nojekyll` и другие обязательные скрытые
+ресурсы сайта отсутствуют. `include-hidden-files` оставлен false; `.git` и `.github` исключены самим action. Артефакт
+по-прежнему содержит корневые HTML, screenshots и docs, имя github-pages и path `.` сохранены.
+
+lint-staged 17.6 добавляет в индекс все tracked-файлы, изменённые задачами, даже вне исходного набора staged. Наши
+команды получают список путей от lint-staged; функций с широким `prettier --write .` нет. Перед коммитом проверять
+полный diff и отсутствие посторонних изменений; при смешанных правках использовать `--hide-unstaged`. Проверка
+настоящего Husky-хука обязательна. Node проекта остаётся 24.19.0.
+
+Первоисточники: [deploy-pages v5](https://github.com/actions/deploy-pages/releases/tag/v5.0.0),
+[upload-pages-artifact v4](https://github.com/actions/upload-pages-artifact/releases/tag/v4.0.0),
+[upload-pages-artifact v5](https://github.com/actions/upload-pages-artifact/releases/tag/v5.0.0),
+[lint-staged 17.6](https://github.com/lint-staged/lint-staged/releases/tag/v17.6.0),
+[Stylelint 17.16](https://github.com/stylelint/stylelint/releases/tag/17.16.0),
+[Playwright plugin 2.12.1](https://github.com/mskelton/eslint-plugin-playwright/releases/tag/v2.12.1).
+
+Runbook доставки прежний: тяжёлые проверки через mac3-heavy-gate, lint/format/npm test и audit; сборки нет. Затем пять
+required checks, независимое ревью финального SHA, do merge-check и обычный merge с `--match-head-commit`. После
+успешного Pages на merge SHA проверить HTTP 200 и совпадение опубликованных package.json и этого журнала с Git; только
+затем закрыть #109–#113 со ссылкой на общий PR.
