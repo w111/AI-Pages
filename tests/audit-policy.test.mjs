@@ -122,3 +122,38 @@ for (const r of [
     assert.throws(() => parseAuditResult(r));
   });
 }
+
+test('Цикл npm с настоящим moderate не блокирует', () => {
+  const r = report({
+    minimatch: node(
+      [advisory('https://example.test/moderate', 'moderate')],
+      'moderate'
+    ),
+    eslint: node(['eslint-utils', 'minimatch'], 'moderate'),
+    'eslint-utils': node(['eslint'], 'moderate'),
+  });
+  const verdict = evaluateAudit(parseAuditResult(result(r)), before);
+  assert.equal(verdict.blocked.length, 0);
+});
+
+test('High за циклом блокирует', () => {
+  const url = 'https://example.test/high';
+  const r = report({
+    minimatch: node([advisory(url, 'high')]),
+    eslint: node(['eslint-utils', 'minimatch']),
+    'eslint-utils': node(['eslint']),
+  });
+  const verdict = evaluateAudit(parseAuditResult(result(r)), before);
+  assert.deepEqual(
+    verdict.blocked.map(a => a.url),
+    [url]
+  );
+});
+
+test('Цикл без единого advisory блокирует', () => {
+  const r = report({ a: node(['b'], 'moderate'), b: node(['a'], 'moderate') });
+  assert.throws(
+    () => evaluateAudit(parseAuditResult(result(r)), before),
+    /циклическая/
+  );
+});
