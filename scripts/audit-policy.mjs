@@ -72,23 +72,23 @@ function validateCounters(report) {
  * @description Раскрыть цепь meta-vulnerabilities до advisory, без пакетных ignore.
  * @param {string} name Имя записи audit.
  * @param {object} graph Карта vulnerabilities.
- * @param {Set<string>} trail Предки, для обнаружения циклов/повреждённого отчёта.
+ * @param {Set<string>} seen Уже пройденные записи: npm законно отдаёт циклы (eslint ↔ eslint-utils).
  * @returns {object[]} Корневые advisory; неизвестные связи блокируют проверку.
  */
-function rootAdvisories(name, graph, trail = new Set()) {
+function rootAdvisories(name, graph, seen) {
+  if (seen.has(name)) return [];
+  seen.add(name);
   const node = graph[name];
   if (
     !node ||
-    trail.has(name) ||
     !severities.includes(node.severity) ||
     !Array.isArray(node.via) ||
     node.via.length === 0
   ) {
     throw new Error(`Неполная/циклическая цепь audit: ${name}`);
   }
-  const next = new Set([...trail, name]);
   return node.via.flatMap(via => {
-    if (typeof via === 'string') return rootAdvisories(via, graph, next);
+    if (typeof via === 'string') return rootAdvisories(via, graph, seen);
     if (!via || typeof via.url !== 'string' || !severities.includes(via.severity)) {
       throw new Error(`Неизвестный advisory: ${name}`);
     }
@@ -127,7 +127,10 @@ export function evaluateAudit(report, now = new Date()) {
  */
 function auditRoots(report) {
   return Object.entries(report.vulnerabilities).flatMap(([name, node]) => {
-    const roots = rootAdvisories(name, report.vulnerabilities);
+    const roots = rootAdvisories(name, report.vulnerabilities, new Set());
+    if (roots.length === 0) {
+      throw new Error(`Неполная/циклическая цепь audit: ${name}`);
+    }
     if (blocking(node.severity) && !roots.some(root => blocking(root.severity))) {
       throw new Error(`Необъяснённая severity audit: ${name}`);
     }
