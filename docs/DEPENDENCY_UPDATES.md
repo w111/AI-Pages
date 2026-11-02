@@ -175,3 +175,48 @@ required checks, независимое ревью финального SHA, do 
 владельца. Откат: revert merge-коммита. #116 (markdownlint-cli 0.50.0) не включён: markdownlint 0.42.0 жёстко закрепляет
 re2js 2.8.6 с high GHSA-gg6h-894w-4m9c (исправлено в 2.8.7); ждём релиз с новой версией. Оставшиеся moderate/low —
 dev-зависимости, порог проверки их не блокирует.
+
+## Решение по Dependabot #116 — 03.11.2026
+
+Выбран markdownlint-cli 0.50.0 → markdownlint 0.42.0 со scoped override `markdownlint@0.42.0: { re2js: "2.8.7" }`. Это
+заменяет ожидание релиза из записи 02.11. Польза обновления — защита регулярных выражений от ReDoS, исправления
+MD011/MD018/MD020/MD043/MD051/MD055/MD060 и поддержка диагностики front matter. Код сайта, правила Markdown и
+audit-политика не меняются.
+
+На 03.11 npm registry публикует latest CLI 0.50.0, markdownlint 0.42.0 и re2js 2.9.1. У markdownlint всё ещё точная
+зависимость re2js 2.8.6: `npm update re2js` её не исправляет. Upstream
+[PR #2338](https://github.com/DavidAnson/markdownlint/pull/2338) предлагал 2.8.8, но закрыт Dependabot без merge; это не
+исправленный релиз. Проверены registry (`npm view <package> version dependencies --json`) и upstream main.
+
+[GHSA-gg6h-894w-4m9c](https://github.com/advisories/GHSA-gg6h-894w-4m9c) имеет severity high, затрагивает re2js ≥2.2.0
+<2.8.7; первая исправленная версия — 2.8.7. [Релиз 2.8.7](https://github.com/le0pard/re2js/releases/tag/2.8.7)
+исправляет квадратичный поиск с LOOKBEHINDS. Закреплён минимальный исправленный patch, без новых изменений DFA из 2.8.8
+и последующих minor. [Релиз CLI 0.50.0](https://github.com/igorshubovych/markdownlint-cli/releases/tag/v0.50.0)
+описывает пользу обновления.
+
+Проверка на базе main с исправлением audit-графа (#118, `57577dd`): CLI 0.50.0 без override реально блокируется по этому
+high (exit 1). С override настоящий `audit:security` сообщает 0 других high/critical (exit 0),
+`npm ls markdownlint-cli markdownlint re2js` подтверждает 0.50.0 / 0.42.0 / 2.8.7 без уязвимой копии. Чистый `npm ci` и
+настоящий `npm run lint:md` проверяют установленный граф и все Markdown проекта. Дополнительный smoke через
+`markdownlint/sync`: ошибочный Markdown вызывает MD011/MD013/MD039, корректный — 0 ошибок; front matter исключается из
+проверки. Это все три правила, напрямую импортирующие re2js, и путь компиляции front matter. Порог high/critical и
+существующие исключения не изменены; audit unit-тесты — 25/25.
+
+### Runbook сопровождения override
+
+1. На следующем обновлении CLI проверить registry и точную зависимость re2js у выбранного markdownlint. Если upstream
+   использует ≥2.8.7, удалить scoped override в том же PR; не переносить pin на новую версию вслепую. Пересмотреть не
+   позднее 22.11.2026, даже если Dependabot не открыл PR.
+2. После изменения выполнить `npm ci`, `npm ls markdownlint-cli markdownlint re2js`, `npm run lint:md`,
+   `npm run test:audit`, `npm run audit:security`, полный lint/format и `npm test`. Тяжёлые команды запускать в фоне
+   через `~/.claude/scripts/mac3-heavy-gate.sh`, максимум два слота на машине.
+3. Проверить, что нет re2js <2.8.7 и audit реально проходит. При несовместимости сохранить 0.49.1 либо откатить это
+   обновление обычным revert PR; не добавлять исключение GHSA и не понижать severity-порог.
+4. Цена сопровождения — один временный pin, проверка следующего upstream-релиза и повторный lint/audit. Перед merge
+   обязательны пять Quality checks, независимое ревью финального head, `do merge-check`; merge обычный с
+   `--match-head-commit`, без admin и force-push.
+5. После merge дождаться успешного Pages на merge SHA, проверить HTTP 200 и совпадение опубликованных package.json и
+   журнала с Git. Только после этого закрыть #116 со ссылкой на заменяющий PR; удалить чистый рабочий worktree через
+   `git worktree remove` без `--force`.
+
+Финальные CI/review/head/merge/Pages receipts публикуются в заменяющем PR и итоговом отчёте задачи.
