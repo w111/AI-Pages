@@ -247,3 +247,15 @@ PR #121 отдельно обновляет `@eslint/js` 9.32.0 → 10.0.1. ESLi
 Проверка #120–#122 на исправленной базе main возможна после мёржа PR с runner владельцем. Если Dependabot не обновит
 ветки автоматически, запросить `@dependabot rebase`, затем дождаться всех пяти required checks на новых head. До этого
 старые красные runs не считать проверкой исправленной базы. Dependabot PR и исправление автоматически не мёржить.
+
+## 09.11.2026 — приёмка runner и очереди Dependabot
+
+Владелец разрешил мёрж #123 и последовательно зелёных #120–#122. Исправление runner принято в
+[#123](https://github.com/w111/AI-Pages/pull/123), merge `a1c1342c55b5046c4a9c9087a6f8960b8c6426d2`. Перед мёржем:
+независимое ревью PASS, пять required checks и CodeQL success на точном head; CI — 60 JS и 19 Python тестов, обе
+установки браузеров успешны на Ubuntu 24.04. Штатный `do merge-check` выполнен, мёрж — squash с `--match-head-commit`,
+без обхода проверок.
+
+После мёржа #123 на main успешно завершились
+[Quality Checks 42700912990](https://github.com/w111/AI-Pages/actions/runs/42700912990) и
+[Pages 42700912722](https://github.com/w111/AI-Pages/actions/runs/42700912722) на том же merge SHA.
