@@ -220,3 +220,30 @@ high (exit 1). С override настоящий `audit:security` сообщает 
    `git worktree remove` без `--force`.
 
 Финальные CI/review/head/merge/Pages receipts публикуются в заменяющем PR и итоговом отчёте задачи.
+
+## 09.11.2026 — образ runner для Playwright
+
+В PR #120–#122 Cross-Browser Tests падает до тестов, Quality Report — вслед за ним. В
+[run 42591094687](https://github.com/w111/AI-Pages/actions/runs/42591094687) runner — Ubuntu 26.04.1; установка Chromium
+завершается `Playwright does not support chromium on ubuntu26.04-x64`. `npx playwright` фактически запускает 1.57.0 из
+`@playwright/test`, даже в #122 с прямой зависимостью `playwright` 1.65.0. На main используется та же 1.57.0, поэтому
+отказ не ограничен Dependabot.
+
+Минимальное исправление: только job `test` закреплён на `ubuntu-24.04`, поддерживаемом npm Playwright 1.57 и Python
+Playwright 1.54. Обе установки браузеров, JS/Python тесты, матрица и required checks сохранены. Обновление ОС требует
+отдельной проверки обеих версий; версия runner больше не меняется вслед за `ubuntu-latest`.
+
+PR #121 отдельно обновляет `@eslint/js` 9.32.0 → 10.0.1. ESLint уже 10.14.0, Node в CI — 24.19.0, что удовлетворяет
+новым engines и peer `eslint: ^10.0.0`. Используется flat config `js.configs.recommended`; v10 добавляет
+`no-unassigned-vars`, `no-useless-assignment`, `preserve-caught-error`. Проверка Code Quality на head
+`e9ef370af6fe1d199259061b1e185a23ed75f019` успешна: новых ошибок эти правила в текущей области линтинга не дали. Это
+подтверждает совместимость линтера, но не заменяет браузерный CI после исправления runner.
+
+Источники: Chromium для Ubuntu 24.04 в
+[Playwright 1.57](https://github.com/microsoft/playwright/blob/v1.57.0/packages/playwright-core/src/server/registry/index.ts)
+и [1.54](https://github.com/microsoft/playwright/blob/v1.54.0/packages/playwright-core/src/server/registry/index.ts),
+[миграция ESLint 10](https://eslint.org/docs/latest/use/migrate-to-10.0.0).
+
+Проверка #120–#122 на исправленной базе main возможна после мёржа PR с runner владельцем. Если Dependabot не обновит
+ветки автоматически, запросить `@dependabot rebase`, затем дождаться всех пяти required checks на новых head. До этого
+старые красные runs не считать проверкой исправленной базы. Dependabot PR и исправление автоматически не мёржить.

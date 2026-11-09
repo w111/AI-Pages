@@ -58,7 +58,8 @@ jobs:
   # ========================
   test:
     name: 🧪 Cross-Browser Tests (${{ matrix.browser }})
-    runs-on: ubuntu-latest
+    # Обе версии Playwright (npm и Python) поддерживают Ubuntu 24.04.
+    runs-on: ubuntu-24.04
     needs: lint
     strategy:
       fail-fast: false
