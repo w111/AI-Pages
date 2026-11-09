@@ -326,7 +326,9 @@ Quality Checks был `disabled_inactivity`; 23.10.2026 включён чере�
 успешных checks: `🔍 Code Quality`, `🧪 Cross-Browser Tests (chromium)`, `📢 Quality Report`, `🔒 Security Scan`,
 `🚨 Lighthouse Audit`. Оркестратор удалил устаревшее нематричное требование; имя тестового job закреплено явно, чтобы
 дополнительное поле матрицы не меняло required context. Python Playwright и npm Playwright используют разные версии
-браузеров — CI устанавливает обе.
+браузеров — CI устанавливает обе. Тестовый job закреплён на `ubuntu-24.04`: переход `ubuntu-latest` на 26.04 ломает
+установку Chromium в используемых версиях Playwright. Остальные jobs сохраняют `ubuntu-latest`; матрица, required checks
+и обе установки браузеров остаются прежними.
 
 Каталог проверяется по действующим `.tool-card`, `#searchInput`, `#themeToggle`, `#langEn/#langRu` и
 `#listViewBtn/#gridViewBtn`; модального окна настроек и отдельной кнопки «Открыть» у карточки больше нет. Python и JS
