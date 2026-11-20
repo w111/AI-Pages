@@ -26,6 +26,7 @@
 12. Физическое взаимодействие с поверхностью (пол) с эффектом отскока
 13. Увеличенный размер шариков для лучшей видимости и взаимодействия
 14. Однотонный черный фон для контрастного отображения объектов
+15. Без WebGL — явное сообщение «WebGL required», контролы скрыты
 -->
 <html lang="en">
   <head>
@@ -75,6 +76,21 @@
       input[type='range'] {
         width: 100px;
       }
+      #webglRequired {
+        max-width: 480px;
+        margin: 20vh auto 0;
+        padding: 20px;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        border: 1px solid #f44336;
+        border-radius: 8px;
+      }
+      #webglRequired[hidden],
+      #controls[hidden],
+      #info[hidden] {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -115,9 +131,35 @@
         <span id="connectionDensityValue">100</span>%
       </div>
     </div>
+    <div id="webglRequired" role="alert" hidden>
+      <h2>WebGL required</h2>
+      <p>
+        Your browser or device cannot create a WebGL context, so the 3D simulation cannot
+        run. Enable hardware acceleration in the browser settings or open the page in
+        another browser.
+      </p>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script>
+      /**
+       * @function hasWebGL
+       * @description Проверяет, может ли браузер создать WebGL-контекст
+       * @returns {boolean} true, если WebGL доступен
+       */
+      function hasWebGL() {
+        const canvas = document.createElement('canvas');
+        return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+      }
+
+      // Без WebGL сцена не создаётся: показываем сообщение и прячем неработающие контролы
+      if (!hasWebGL()) {
+        document.getElementById('info').hidden = true;
+        document.getElementById('controls').hidden = true;
+        document.getElementById('webglRequired').hidden = false;
+        throw new Error('WebGL недоступен: симуляция не запущена');
+      }
+
       // Initialize Three.js scene
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(

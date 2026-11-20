@@ -35,6 +35,8 @@ CORE FEATURES:
    - Stream URL input with placeholder
    - File upload interface
    - Loading indicators and error handling
+   - Without WebGL: a persistent "WebGL is not available" message (not an audio error),
+     Start button disabled
 
 5. Browser Compatibility:
    - Modern browsers with Web Audio API support
@@ -752,6 +754,30 @@ LAST UPDATED: 2025
         });
       });
 
+      /**
+       * @function hasWebGL
+       * @description Проверяет, может ли браузер создать WebGL-контекст
+       * @returns {boolean} true, если WebGL доступен
+       */
+      function hasWebGL() {
+        const canvas = document.createElement('canvas');
+        return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+      }
+
+      // 3D-визуализаторы создаются после старта аудио, и без WebGL их сбой выглядел
+      // как ошибка аудиопотока. Проверяем заранее и не даём запустить визуализацию.
+      if (!hasWebGL()) {
+        const webglError = document.createElement('div');
+        webglError.id = 'webglError';
+        webglError.className = 'error-message';
+        webglError.setAttribute('role', 'alert');
+        webglError.textContent =
+          'WebGL is not available in this browser, so the 3D visualizers cannot run. ' +
+          'This is not an audio problem: enable hardware acceleration or try another browser.';
+        document.querySelector('.controls').appendChild(webglError);
+        document.getElementById('startVisualization').disabled = true;
+      }
+
       // Global audio context and analyzer for reuse
       let globalAudioContext = null;
       let globalAnalyser = null;
@@ -916,7 +942,9 @@ LAST UPDATED: 2025
       }
 
       function clearErrorMessages() {
-        document.querySelectorAll('.error-message').forEach(msg => msg.remove());
+        document
+          .querySelectorAll('.error-message:not(#webglError)')
+          .forEach(msg => msg.remove());
       }
 
       // Track if visualizers are already set up

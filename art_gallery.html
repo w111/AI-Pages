@@ -27,9 +27,12 @@ API:
   Изображения:
   https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg
 - Metropolitan Museum of Art:
-  https://collectionapi.metmuseum.org/public/collection/v1/
-  Поиск: /search?q=sunflowers
-  Объект: /objects/{id}
+  https://collectionapi.metmuseum.org/public/collection/
+  Поиск: v1.1/search?q=sunflowers (v1/search отвечает 410;
+  пагинации нет — objectIDs нарезаются на клиенте)
+  Объект: v1/objects/{id}
+- Ошибка одного музея не скрывает карточки другого:
+  над сеткой — сообщение, какой источник не ответил
 
 Технические требования:
 1. Самодостаточный HTML файл (встроенные CSS и JS)
@@ -582,6 +585,25 @@ API:
       color: var(--text-light);
     }
 
+    /* Ошибки источников */
+    .source-errors {
+      display: none;
+      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #d9534f;
+      background: rgba(217, 83, 79, 0.1);
+      color: var(--text-color);
+    }
+
+    .source-errors.active {
+      display: block;
+    }
+
+    .source-errors p + p {
+      margin-top: 0.25rem;
+    }
+
     /* Scroll loader */
     .scroll-loader {
       text-align: center;
@@ -1087,6 +1109,10 @@ API:
       <p data-i18n="loading">Загрузка произведений...</p>
     </div>
 
+    <!-- Source Errors -->
+    <div class="source-errors" id="sourceErrors"
+         role="alert"></div>
+
     <!-- Gallery Grid -->
     <div class="masonry-grid" id="galleryGrid"></div>
 
@@ -1184,6 +1210,9 @@ API:
         loading: "Загрузка произведений...",
         notFound: "Произведения не найдены",
         tryAgain: "Попробуйте изменить параметры поиска",
+        loadFailed: "Не удалось загрузить произведения",
+        loadFailedHint: "Музеи не ответили. Попробуйте позже",
+        sourceError: "не удалось загрузить данные",
         artworkOfDay: "Произведение дня",
         viewOnSite: "Смотреть на сайте музея",
         poweredBy: "Работает на",
@@ -1215,6 +1244,9 @@ API:
         loading: "Loading artworks...",
         notFound: "No artworks found",
         tryAgain: "Try changing your search parameters",
+        loadFailed: "Failed to load artworks",
+        loadFailedHint: "The museums did not respond. Try again later",
+        sourceError: "failed to load data",
         artworkOfDay: "Artwork of the Day",
         viewOnSite: "View on museum website",
         poweredBy: "Powered by",
@@ -1250,6 +1282,8 @@ API:
       metPage: 0,
       metObjectIds: [],
       isLoading: false,
+      // Номер поиска: ответы прежних поисков отбрасываются
+      searchId: 0,
       hasMoreAic: true,
       hasMoreMet: true,
       allArtworks: []
@@ -1262,6 +1296,9 @@ API:
     const AIC_IIIF = "https://www.artic.edu/iiif/2";
     const MET_BASE =
       "https://collectionapi.metmuseum.org/public/collection/v1";
+    // v1/search снят (410); объекты по-прежнему в v1/objects
+    const MET_SEARCH =
+      "https://collectionapi.metmuseum.org/public/collection/v1.1/search";
 
     /**
      * @function t
@@ -1411,7 +1448,7 @@ API:
     async function fetchMetSearch(query) {
       const searchQuery = query || "painting";
       const url =
-        `${MET_BASE}/search?hasImages=true&q=${encodeURIComponent(searchQuery)}`;
+        `${MET_SEARCH}?hasImages=true&q=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(
@@ -1557,12 +1594,26 @@ API:
     }
 
     /**
+     * @function escapeHtml
+     * @description Экранирует строку из API перед вставкой в HTML
+     * @param {*} value - Значение (null/undefined → пустая строка)
+     * @returns {string} Безопасная строка
+     */
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;",
+        '"': "&quot;", "'": "&#39;"
+      })[ch]);
+    }
+
+    /**
      * @function renderCard
      * @description Создаёт HTML карточки произведения
      * @param {Object} artwork - Нормализованное произведение
      * @returns {string} HTML карточки
      */
     function renderCard(artwork) {
+      const esc = escapeHtml;
       const badgeClass =
         artwork.source === "aic"
           ? "badge-aic" : "badge-met";
@@ -1571,8 +1622,8 @@ API:
 
       const imageHtml = artwork.hasImage
         ? `<img class="artwork-image"
-               src="${artwork.thumbUrl}"
-               alt="${artwork.title}"
+               src="${esc(artwork.thumbUrl)}"
+               alt="${esc(artwork.title)}"
                loading="lazy"
                onerror="this.parentElement.innerHTML='<div class=\\'artwork-placeholder\\'><i class=\\'fas fa-image\\'></i></div>'">`
         : `<div class="artwork-placeholder">
@@ -1581,7 +1632,7 @@ API:
 
       return `
         <article class="artwork-card"
-                 data-id="${artwork.id}">
+                 data-id="${esc(artwork.id)}">
           <div class="artwork-image-wrapper">
             ${imageHtml}
             <span class="artwork-museum-badge ${badgeClass}">
@@ -1590,14 +1641,14 @@ API:
           </div>
           <div class="artwork-info">
             <h3 class="artwork-title">
-              ${artwork.title}
+              ${esc(artwork.title)}
             </h3>
             <p class="artwork-artist">
-              ${artwork.artist}
+              ${esc(artwork.artist)}
             </p>
             ${artwork.date
               ? `<p class="artwork-date">
-                   ${artwork.date}
+                   ${esc(artwork.date)}
                  </p>`
               : ""}
           </div>
@@ -1663,6 +1714,7 @@ API:
       const style =
         document.getElementById("styleFilter").value;
 
+      const searchId = ++state.searchId;
       state.currentQuery = query;
       state.currentMuseum = museum;
       state.currentStyle = style;
@@ -1674,6 +1726,7 @@ API:
       state.allArtworks = [];
 
       showLoading(true);
+      showSourceErrors([], false);
       document.getElementById("emptyState")
         .classList.remove("active");
 
@@ -1683,19 +1736,113 @@ API:
         console.error("Ошибка поиска:", error);
         renderArtworks([], false);
       }
-      showLoading(false);
+      // Индикатор принадлежит последнему поиску
+      if (searchId === state.searchId) showLoading(false);
+    }
+
+    /**
+     * @function showSourceErrors
+     * @description Показывает, какие музеи не ответили, и
+     *   переключает пустой стейт на «ошибку загрузки»
+     * @param {Array<{museum: string, message: string}>} errors
+     *   - Ошибки источников
+     * @param {boolean} allFailed - Упали все выбранные источники
+     * @returns {void}
+     */
+    function showSourceErrors(errors, allFailed) {
+      const box =
+        document.getElementById("sourceErrors");
+      box.replaceChildren(...errors.map(e => {
+        const line = document.createElement("p");
+        line.textContent =
+          `${e.museum}: ${t("sourceError")} (${e.message})`;
+        return line;
+      }));
+      box.classList.toggle("active", errors.length > 0);
+
+      const [title, hint] = document.querySelectorAll(
+        "#emptyState [data-i18n]"
+      );
+      title.dataset.i18n =
+        allFailed ? "loadFailed" : "notFound";
+      hint.dataset.i18n =
+        allFailed ? "loadFailedHint" : "tryAgain";
+      title.textContent = t(title.dataset.i18n);
+      hint.textContent = t(hint.dataset.i18n);
+    }
+
+    /**
+     * @function loadAicBatch
+     * @description Загружает следующую страницу AIC; номер
+     *   страницы растёт только после успешного ответа
+     * @param {string} searchTerm - Поисковый запрос
+     * @param {string} style - Стиль для фильтрации
+     * @param {number} searchId - Номер поиска, начавшего загрузку
+     * @returns {Promise<Array>} Нормализованные произведения
+     */
+    async function loadAicBatch(searchTerm, style, searchId) {
+      const aicData = await fetchAicArtworks(
+        searchTerm, state.aicPage
+      );
+      if (searchId !== state.searchId) return [];
+      const aicItems = aicData.data || [];
+      if (aicItems.length === 0) {
+        state.hasMoreAic = false;
+        return [];
+      }
+      state.aicPage++;
+      return aicItems
+        .map(item => normalizeAicArtwork(item))
+        .filter(a => a.hasImage)
+        .filter(a => matchesStyleFilter(a, style));
+    }
+
+    /**
+     * @function loadMetBatch
+     * @description Загружает следующий срез objectIDs Met;
+     *   v1.1/search не пагинирует, поэтому срез — на клиенте
+     * @param {string} searchTerm - Поисковый запрос
+     * @param {string} style - Стиль для фильтрации
+     * @param {number} searchId - Номер поиска, начавшего загрузку
+     * @returns {Promise<Array>} Нормализованные произведения
+     */
+    async function loadMetBatch(searchTerm, style, searchId) {
+      if (state.metObjectIds.length === 0) {
+        const ids = await fetchMetSearch(searchTerm);
+        if (searchId !== state.searchId) return [];
+        state.metObjectIds = ids;
+        state.metPage = 0;
+      }
+      if (state.metPage >= state.metObjectIds.length) {
+        state.hasMoreMet = false;
+        return [];
+      }
+      const batchSize = 10;
+      const metItems = await fetchMetBatch(
+        state.metObjectIds, state.metPage, batchSize
+      );
+      if (searchId !== state.searchId) return [];
+      state.metPage += batchSize;
+      return metItems
+        .map(item => normalizeMetArtwork(item))
+        .filter(a => a.hasImage)
+        .filter(a => matchesStyleFilter(a, style));
     }
 
     /**
      * @function loadNextBatch
-     * @description Загружает следующий пакет произведений
+     * @description Загружает следующий пакет произведений;
+     *   музеи грузятся независимо — ошибка одного не скрывает
+     *   карточки другого. Новый поиск (append=false) стартует
+     *   всегда; ответ устаревшего поиска отбрасывается
      * @param {boolean} append - Добавить к существующим
+     * @returns {Promise<void>}
      */
     async function loadNextBatch(append) {
-      if (state.isLoading) return;
+      if (append && state.isLoading) return;
       state.isLoading = true;
+      const searchId = state.searchId;
 
-      const results = [];
       const museum = state.currentMuseum;
       const query = state.currentQuery;
       const style = state.currentStyle;
@@ -1703,57 +1850,45 @@ API:
         ? (query ? `${query} ${style}` : style)
         : (query || "painting");
 
-      try {
-        // Загрузка из AIC
-        if ((museum === "all" || museum === "aic") &&
-            state.hasMoreAic) {
-          const aicData = await fetchAicArtworks(
-            searchTerm, state.aicPage
-          );
-          const aicItems =
-            aicData.data || [];
-          if (aicItems.length === 0) {
-            state.hasMoreAic = false;
-          } else {
-            const normalized = aicItems
-              .map(item => normalizeAicArtwork(item))
-              .filter(a => a.hasImage)
-              .filter(a =>
-                matchesStyleFilter(a, style)
-              );
-            results.push(...normalized);
-            state.aicPage++;
-          }
-        }
+      const sources = [];
+      if ((museum === "all" || museum === "aic") &&
+          state.hasMoreAic) {
+        sources.push({
+          museum: "Art Institute of Chicago",
+          load: loadAicBatch
+        });
+      }
+      if ((museum === "all" || museum === "met") &&
+          state.hasMoreMet) {
+        sources.push({
+          museum: "Metropolitan Museum of Art",
+          load: loadMetBatch
+        });
+      }
 
-        // Загрузка из Met
-        if ((museum === "all" || museum === "met") &&
-            state.hasMoreMet) {
-          if (state.metObjectIds.length === 0) {
-            state.metObjectIds =
-              await fetchMetSearch(searchTerm);
-            state.metPage = 0;
-          }
-          if (state.metPage >=
-              state.metObjectIds.length) {
-            state.hasMoreMet = false;
+      try {
+        const settled = await Promise.allSettled(
+          sources.map(s =>
+            s.load(searchTerm, style, searchId)
+          )
+        );
+        if (searchId !== state.searchId) return;
+        const results = [];
+        const errors = [];
+        settled.forEach((r, i) => {
+          if (r.status === "fulfilled") {
+            results.push(...r.value);
           } else {
-            const batchSize = 10;
-            const metItems = await fetchMetBatch(
-              state.metObjectIds,
-              state.metPage,
-              batchSize
+            console.error(
+              `Ошибка источника ${sources[i].museum}:`,
+              r.reason
             );
-            const normalized = metItems
-              .map(item => normalizeMetArtwork(item))
-              .filter(a => a.hasImage)
-              .filter(a =>
-                matchesStyleFilter(a, style)
-              );
-            results.push(...normalized);
-            state.metPage += batchSize;
+            errors.push({
+              museum: sources[i].museum,
+              message: r.reason?.message || String(r.reason)
+            });
           }
-        }
+        });
 
         // Перемешивание результатов из разных музеев
         if (museum === "all" && results.length > 1) {
@@ -1765,14 +1900,21 @@ API:
           }
         }
 
+        showSourceErrors(
+          errors,
+          errors.length > 0 &&
+            errors.length === sources.length
+        );
         renderArtworks(results, append);
       } catch (error) {
         console.error(
           "Ошибка загрузки пакета:", error
         );
+      } finally {
+        if (searchId === state.searchId) {
+          state.isLoading = false;
+        }
       }
-
-      state.isLoading = false;
     }
 
     /**
@@ -1825,10 +1967,11 @@ API:
           artwork.museumName;
 
         // Очистка HTML-тегов из описания
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML =
-          artwork.description || t("noDescription");
-        desc.textContent = tempDiv.textContent;
+        desc.textContent = new DOMParser()
+          .parseFromString(
+            artwork.description || t("noDescription"),
+            "text/html"
+          ).body.textContent;
 
         container.classList.add("active");
 
@@ -2039,7 +2182,7 @@ API:
             ${d.label}
           </div>
           <div class="modal-detail-value">
-            ${d.value}
+            ${escapeHtml(d.value)}
           </div>
         </div>
       `).join("");
@@ -2048,9 +2191,12 @@ API:
       const descContainer =
         document.getElementById("modalDescription");
       if (artwork.description) {
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = artwork.description;
-        const cleanText = tempDiv.textContent;
+        // DOMParser не исполняет скрипты и не грузит картинки из разметки API
+        const cleanText = escapeHtml(
+          new DOMParser()
+            .parseFromString(artwork.description, "text/html")
+            .body.textContent
+        );
         descContainer.innerHTML = `
           <h3>
             <i class="fas fa-info-circle"></i>
@@ -2115,6 +2261,7 @@ API:
      * @description Загружает начальный контент
      */
     async function loadInitialContent() {
+      const searchId = state.searchId;
       showLoading(true);
       try {
         await loadNextBatch(false);
@@ -2124,7 +2271,8 @@ API:
         );
         renderArtworks([], false);
       }
-      showLoading(false);
+      // Пока шла загрузка, мог начаться поиск
+      if (searchId === state.searchId) showLoading(false);
     }
 
     // Инициализация

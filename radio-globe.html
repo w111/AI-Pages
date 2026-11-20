@@ -24,6 +24,7 @@
 9. Темная и светлая тема
 10. Многоязычность (русский/английский)
 11. Адаптивный дизайн
+12. Без WebGL — сообщение «Требуется WebGL», загрузка остановлена, контролы скрыты
 -->
 <html lang="ru">
 <head>
@@ -356,6 +357,7 @@
       transform: translate(-50%, -50%);
       text-align: center;
       z-index: 1001;
+      width: min(480px, 90vw);
     }
 
     .spinner {
@@ -538,7 +540,8 @@
         infoTitle: "Как использовать",
         infoText: "• Вращайте глобус мышью<br>• Увеличивайте колесиком<br>• Кликайте на маркеры для прослушивания радио<br>• Используйте панель справа для поиска станций",
         noStations: "Станции не найдены",
-        loading: "Загрузка..."
+        loading: "Загрузка...",
+        webglRequired: "Требуется WebGL: браузер не может создать WebGL-контекст, поэтому 3D-глобус не запустится. Включите аппаратное ускорение в настройках браузера или откройте страницу в другом браузере."
       },
       en: {
         appTitle: "Radio Globe",
@@ -549,7 +552,8 @@
         infoTitle: "How to use",
         infoText: "• Rotate globe with mouse<br>• Zoom with mouse wheel<br>• Click markers to listen to radio<br>• Use right panel to search stations",
         noStations: "No stations found",
-        loading: "Loading..."
+        loading: "Loading...",
+        webglRequired: "WebGL required: the browser cannot create a WebGL context, so the 3D globe cannot start. Enable hardware acceleration in the browser settings or open the page in another browser."
       }
     };
 
@@ -1215,9 +1219,39 @@
       renderer.render(scene, camera);
     }
 
+    /**
+     * @function hasWebGL
+     * @description Проверяет, может ли браузер создать WebGL-контекст
+     * @returns {boolean} true, если WebGL доступен
+     */
+    function hasWebGL() {
+      const canvas = document.createElement("canvas");
+      return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+    }
+
+    /**
+     * @function showWebGLRequired
+     * @description Останавливает загрузку: убирает спиннер, показывает причину и скрывает
+     *   панели, обработчики которых без WebGL не подключаются
+     * @returns {void}
+     */
+    function showWebGLRequired() {
+      document.querySelector("#loading .spinner").style.display = "none";
+      const text = document.getElementById("loading-text");
+      text.textContent = t("webglRequired");
+      text.setAttribute("role", "alert");
+      ["top-bar", "info-panel", "stations-panel", "player-panel"].forEach(id => {
+        document.getElementById(id).style.display = "none";
+      });
+    }
+
     // Запуск приложения
     window.addEventListener("DOMContentLoaded", () => {
       updateLanguage();
+      if (!hasWebGL()) {
+        showWebGLRequired();
+        return;
+      }
       init();
     });
   </script>

@@ -30,6 +30,9 @@
     2025-12-12: Добавлена история чатов с хранением в localStorage
               Интерфейс переделан в стиле ChatGPT
               Настройки модели скрыты в выдвижную панель
+    2026-11-20: Тексты о приватности и бейдж в шапке отражают состояние сетевых
+              инструментов: модель локальна, но включённые инструменты обращаются
+              к внешним API; исправлено переключение инструментов кликом
   -->
 
     <style>
@@ -1203,6 +1206,20 @@
         background: var(--success-color);
       }
 
+      .privacy-badge {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 12px;
+        background: rgba(16, 163, 127, 0.2);
+        color: var(--success-color);
+        white-space: nowrap;
+      }
+
+      .privacy-badge.network {
+        background: rgba(245, 158, 11, 0.2);
+        color: var(--warning-color);
+      }
+
       .chat-header-right {
         display: flex;
         align-items: center;
@@ -1727,7 +1744,8 @@
             </div>
             <div class="tools-info">
               <i class="fas fa-info-circle"></i>
-              ИИ автоматически вызывает инструменты для получения актуальных данных
+              ИИ автоматически вызывает инструменты для получения актуальных данных;
+              запросы по включённым инструментам уходят во внешние сервисы
             </div>
         </div>
       </div>
@@ -1830,6 +1848,7 @@
               <span class="model-name" id="headerModelName">WebLLM Chat</span>
               <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: var(--text-secondary);"></i>
             </div>
+            <span class="privacy-badge" id="privacyBadge" role="status"></span>
           </div>
           <div class="chat-header-right">
             <button class="chat-header-btn" id="clearCurrentChatBtn" title="Очистить чат">
@@ -1844,10 +1863,10 @@
             <h3>Добро пожаловать в WebLLM Chat!</h3>
             <p>Выберите модель и начните общение с ИИ прямо в браузере</p>
             <p style="font-size: 0.9rem; margin-top: 10px">
-              🔒 Полная конфиденциальность - все вычисления локально<br />
-              ⚡ Без API-ключей и интернета после загрузки модели<br />
+              🧠 Модель работает локально в браузере, без серверов и API-ключей<br />
               🚀 Использует ваш GPU для быстрых ответов
             </p>
+            <p style="font-size: 0.9rem; margin-top: 10px" id="privacyToolsNote"></p>
             <p style="font-size: 0.85rem; margin-top: 15px; color: var(--primary-color)">
               🔧 <strong>Tool Calling:</strong> Спросите о погоде, курсах валют,<br />
               криптовалютах, музыке или спорте!
@@ -1938,8 +1957,10 @@
             Llama-3.1-8B (~4.3GB), DeepSeek-R1-7B (~4.0GB), Phi-3.5-Mini (~2.2GB)
           </p>
           <p>
-            <strong>Приватность:</strong> Все вычисления происходят локально, данные не
-            передаются на внешние серверы
+            <strong>Приватность:</strong> Модель работает локально, переписка не уходит на
+            серверы. Исключение — сетевые инструменты (Wikipedia, погода, курсы, поиск и
+            др.): если они включены, запросы по ним отправляются во внешние сервисы.
+            Выключите инструменты, чтобы после загрузки страницы и модели работать офлайн
           </p>
         </div>
 
@@ -4447,6 +4468,37 @@
           }
         });
 
+        /**
+         * @function updatePrivacyNotice
+         * @description Приводит текст о приватности и бейдж в шапке к фактическому
+         *   состоянию сетевых инструментов из toolManager.enabledTools
+         * @returns {void}
+         */
+        function updatePrivacyNotice() {
+          const enabledNames = [...document.querySelectorAll('.tool-item')]
+            .filter(item => window.toolManager.enabledTools[item.dataset.tool])
+            .map(item => item.querySelector('.tool-name').textContent.trim());
+          const note = document.getElementById('privacyToolsNote');
+          const badge = document.getElementById('privacyBadge');
+          const online = enabledNames.length > 0;
+
+          badge.classList.toggle('network', online);
+          if (online) {
+            badge.textContent = `🌐 Сеть: ${enabledNames.length} инстр.`;
+            badge.title = 'Включённые инструменты отправляют запросы во внешние сервисы';
+            note.textContent =
+              `🌐 Включены сетевые инструменты (${enabledNames.join(', ')}): ` +
+              'запросы по ним уходят во внешние сервисы. Выключите их в настройках ' +
+              'модели, чтобы данные чата не покидали устройство.';
+          } else {
+            badge.textContent = '🔒 Локально';
+            badge.title = 'Сетевые инструменты выключены';
+            note.textContent =
+              '🔒 Сетевые инструменты выключены: данные чата не покидают устройство, ' +
+              'после загрузки страницы и модели интернет не нужен.';
+          }
+        }
+
         // Обработчики для переключения инструментов
         const toolItems = document.querySelectorAll('.tool-item');
         toolItems.forEach(item => {
@@ -4462,20 +4514,19 @@
             window.toolManager.enabledTools[toolName] = isEnabled;
           }
 
-          // Обработчик клика
-          item.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'INPUT') {
-              checkbox.checked = !checkbox.checked;
-            }
-
+          // Клик по label сам переключает чекбокс; слушаем change, иначе ручное
+          // переключение в click и активация label отменяли друг друга
+          checkbox.addEventListener('change', () => {
             const isEnabled = checkbox.checked;
             item.classList.toggle('active', isEnabled);
             window.toolManager.enabledTools[toolName] = isEnabled;
             localStorage.setItem(`tool_${toolName}`, isEnabled);
+            updatePrivacyNotice();
 
             console.log(`Инструмент ${toolName}: ${isEnabled ? 'включен' : 'выключен'}`);
           });
         });
+        updatePrivacyNotice();
 
         // ==== Инициализация WebLLMChat ====
         window.webLLMChat = new WebLLMChat();

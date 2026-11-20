@@ -23,9 +23,11 @@
    - Размер отступа
 3. Предварительный просмотр в реальном времени (с debounce)
 4. Скачивание в формате PNG или SVG
-5. Чтение QR-кода: загрузка изображения для декодирования
-   (POST multipart/form-data или URL-декодирование через API)
-6. История сгенерированных QR-кодов (localStorage, 20 миниатюр)
+5. Чтение QR-кода: загрузка изображения и декодирование
+   локально в браузере (canvas + jsQR); файл никуда не отправляется
+6. История сгенерированных QR-кодов (localStorage, 20 миниатюр);
+   пароли Wi-Fi в историю не попадают (поле P: удаляется),
+   старые записи с паролями вычищаются при загрузке
 7. Массовая генерация: вставить несколько URL, сгенерировать все
 8. Переключение темной/светлой темы
 9. Переключение языка RU/EN
@@ -33,11 +35,12 @@
 11. Адаптивный дизайн
 12. Копирование QR-изображения в буфер обмена
 
-API:
-- Генерация: https://api.qrserver.com/v1/create-qr-code/
-  Параметры: size, data, color, bgcolor, format, margin, ecc
-- Декодирование: https://api.qrserver.com/v1/read-qr-code/
-  POST multipart/form-data (поле file) или GET ?fileurl=
+Приватность: данные пользователя не уходят во внешние сервисы.
+- Генерация (превью, PNG, SVG, массовая): qrcode-generator 1.4.4
+  (CDN cdnjs), рисование на canvas / SVG в браузере
+- Декодирование: jsQR 1.4.0 (CDN jsDelivr) по пикселям canvas
+- Чтение по URL: картинка скачивается браузером напрямую
+  с указанного адреса (нужен CORS), без посредников
 
 Технические требования:
 1. Самодостаточный HTML с встроенными CSS и JS
@@ -59,6 +62,16 @@ API:
   <title>QR Мастерская | QR Workshop</title>
   <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Генерация QR локально в браузере -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"
+    integrity="sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1"
+    crossorigin="anonymous"></script>
+  <!-- Декодирование QR локально в браузере -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+    integrity="sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx"
+    crossorigin="anonymous"></script>
   <style>
     /* === Светлая тема (по умолчанию) === */
     :root {
@@ -1644,8 +1657,6 @@ API:
     // ============================================
     // Константы
     // ============================================
-    const API_BASE =
-      "https://api.qrserver.com/v1";
     const STORAGE_THEME = "qrWorkshop-theme";
     const STORAGE_LANG = "qrWorkshop-lang";
     const STORAGE_HISTORY = "qrWorkshop-history";
@@ -2091,6 +2102,52 @@ API:
     // ============================================
 
     /**
+     * @function wifiEscape
+     * @description Экранировать спецсимволы \ ; , : "
+     *   в поле Wi-Fi payload (формат ZXing)
+     * @param {string} s - Значение поля
+     * @returns {string} Экранированное значение
+     */
+    function wifiEscape(s) {
+      return s.replace(/([\\;,:"])/g, "\\$1");
+    }
+
+    /**
+     * @function wifiField
+     * @description Достать поле из Wi-Fi payload
+     *   с учётом экранирования
+     * @param {string} payload - Строка WIFI:...;;
+     * @param {string} key - S / T / P / H
+     * @returns {string|null} Значение или null
+     */
+    function wifiField(payload, key) {
+      const m = payload.match(new RegExp(
+        "(?:^WIFI:|;)" + key + ":((?:\\\\.|[^;\\\\])*)"
+      ));
+      return m ? m[1].replace(/\\(.)/g, "$1") : null;
+    }
+
+    /**
+     * @function sanitizeHistoryData
+     * @description Убрать пароль из Wi-Fi payload перед
+     *   записью в историю: Wi-Fi пересобирается только
+     *   из S, T, H, остальные данные не меняются
+     * @param {string} data - Данные QR
+     * @returns {string} Данные без пароля
+     */
+    function sanitizeHistoryData(data) {
+      if (!data.startsWith("WIFI:")) return data;
+      const ssid = wifiField(data, "S") || "";
+      const type = wifiField(data, "T");
+      let w = "WIFI:S:" + wifiEscape(ssid) + ";";
+      if (type) w += "T:" + wifiEscape(type) + ";";
+      if (wifiField(data, "H") === "true") {
+        w += "H:true;";
+      }
+      return w + ";";
+    }
+
+    /**
      * @function getQrData
      * @description Собрать строку данных для QR-кода
      *   в зависимости от выбранного типа
@@ -2154,10 +2211,10 @@ API:
           const wp = $("#inputWifiPass").value;
           const wh = $("#inputWifiHidden").checked;
           // WIFI:S:ssid;T:type;P:pass;H:bool;;
-          let w = "WIFI:S:" + ssid + ";";
+          let w = "WIFI:S:" + wifiEscape(ssid) + ";";
           w += "T:" + wt + ";";
           if (wt !== "nopass" && wp) {
-            w += "P:" + wp + ";";
+            w += "P:" + wifiEscape(wp) + ";";
           }
           if (wh) w += "H:true;";
           w += ";";
@@ -2238,49 +2295,188 @@ API:
     }
 
     // ============================================
-    // Генерация QR-кода
+    // Генерация QR-кода (локально, qrcode-generator)
     // ============================================
 
     /**
-     * @function buildQrUrl
-     * @description Построить URL для API генерации QR
-     * @param {string} data - Данные для кодирования
-     * @param {string} format - png / svg
-     * @param {number|null} sizeOvr - Размер (переопределение)
-     * @returns {string} URL для API
+     * @function getSettings
+     * @description Прочитать настройки внешнего вида
+     *   из панели настроек
+     * @returns {{size:number, margin:number,
+     *   fg:string, bg:string, ecc:string}} Настройки
      */
-    function buildQrUrl(
-      data, format = "png", sizeOvr = null
-    ) {
-      const sz = sizeOvr ||
-        parseInt($("#sizeSlider").value);
-      const mg = parseInt(
-        $("#marginSlider").value
+    function getSettings() {
+      return {
+        size: parseInt($("#sizeSlider").value),
+        margin: parseInt($("#marginSlider").value),
+        fg: $("#fgColor").value,
+        bg: $("#bgColor").value,
+        ecc: $("#eccSelect").value
+      };
+    }
+
+    /**
+     * @function buildQrModel
+     * @description Построить матрицу QR в браузере
+     *   (UTF-8, минимальная подходящая версия)
+     * @param {string} data - Данные для кодирования
+     * @param {string} ecc - L / M / Q / H
+     * @returns {Object} Модель qrcode-generator
+     */
+    function buildQrModel(data, ecc) {
+      qrcode.stringToBytes =
+        qrcode.stringToBytesFuncs["UTF-8"];
+      const qr = qrcode(0, ecc);
+      qr.addData(data, "Byte");
+      qr.make();
+      return qr;
+    }
+
+    /**
+     * @function qrLayout
+     * @description Рассчитать размер модуля и смещение,
+     *   чтобы QR с отступом (px) уместился в size
+     * @param {number} count - Модулей по стороне
+     * @param {number} size - Сторона изображения, px
+     * @param {number} margin - Отступ, px
+     * @returns {{cell:number, offset:number,
+     *   side:number}} Геометрия
+     */
+    function qrLayout(count, size, margin) {
+      const cell = Math.max(1, Math.floor(
+        (size - 2 * margin) / count
+      ));
+      const side = Math.max(
+        size, cell * count + 2 * margin
       );
-      const fg = $("#fgColor").value
-        .replace("#", "");
-      const bg = $("#bgColor").value
-        .replace("#", "");
-      const ecc = $("#eccSelect").value;
-      const p = new URLSearchParams({
-        size: sz + "x" + sz,
-        data: data,
-        color: fg,
-        bgcolor: bg,
-        format: format,
-        margin: String(mg),
-        ecc: ecc
+      const offset = Math.floor(
+        (side - cell * count) / 2
+      );
+      return { cell, offset, side };
+    }
+
+    /**
+     * @function renderQrCanvas
+     * @description Нарисовать QR-код на canvas
+     * @param {string} data - Данные для кодирования
+     * @param {Object} opts - Настройки (getSettings)
+     * @returns {HTMLCanvasElement} Готовый canvas
+     */
+    function renderQrCanvas(data, opts) {
+      const qr = buildQrModel(data, opts.ecc);
+      const n = qr.getModuleCount();
+      const g = qrLayout(n, opts.size, opts.margin);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = g.side;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = opts.bg;
+      ctx.fillRect(0, 0, g.side, g.side);
+      ctx.fillStyle = opts.fg;
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (qr.isDark(r, c)) {
+            ctx.fillRect(
+              g.offset + c * g.cell,
+              g.offset + r * g.cell,
+              g.cell, g.cell
+            );
+          }
+        }
+      }
+      return canvas;
+    }
+
+    /**
+     * @function renderQrSvg
+     * @description Построить SVG-разметку QR-кода
+     * @param {string} data - Данные для кодирования
+     * @param {Object} opts - Настройки (getSettings)
+     * @returns {string} SVG-документ
+     */
+    function renderQrSvg(data, opts) {
+      const qr = buildQrModel(data, opts.ecc);
+      const n = qr.getModuleCount();
+      const g = qrLayout(n, opts.size, opts.margin);
+      let path = "";
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (qr.isDark(r, c)) {
+            path += "M" + (g.offset + c * g.cell) +
+              " " + (g.offset + r * g.cell) +
+              "h" + g.cell + "v" + g.cell +
+              "h-" + g.cell + "z";
+          }
+        }
+      }
+      return "<svg xmlns=\"http://www.w3.org/2000/svg\"" +
+        " width=\"" + g.side + "\" height=\"" +
+        g.side + "\" viewBox=\"0 0 " + g.side +
+        " " + g.side + "\" shape-rendering=" +
+        "\"crispEdges\"><rect width=\"100%\"" +
+        " height=\"100%\" fill=\"" + opts.bg +
+        "\"/><path fill=\"" + opts.fg + "\" d=\"" +
+        path + "\"/></svg>";
+    }
+
+    /**
+     * @function canvasToBlob
+     * @description Получить PNG-blob из canvas
+     * @param {HTMLCanvasElement} canvas - Холст
+     * @returns {Promise<Blob>} PNG-изображение
+     */
+    function canvasToBlob(canvas) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error("toBlob"));
+        }, "image/png");
       });
-      return API_BASE +
-        "/create-qr-code/?" + p.toString();
+    }
+
+    /**
+     * @function saveBlob
+     * @description Скачать blob как файл
+     * @param {Blob} blob - Содержимое
+     * @param {string} name - Имя файла
+     */
+    function saveBlob(blob, name) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 0);
+    }
+
+    /**
+     * @function copyPngToClipboard
+     * @description Скопировать PNG в буфер обмена,
+     *   без Clipboard API — скопировать текст данных
+     * @param {Blob} blob - PNG-изображение
+     * @param {string} data - Данные QR (фолбэк)
+     */
+    async function copyPngToClipboard(blob, data) {
+      if (
+        navigator.clipboard &&
+        navigator.clipboard.write &&
+        window.ClipboardItem
+      ) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob })
+        ]);
+      } else {
+        await navigator.clipboard.writeText(data);
+      }
+      showToast(t("toastCopied"), "success");
     }
 
     /**
      * @function generateQr
-     * @description Сгенерировать QR-код и показать
-     *   в блоке превью
+     * @description Сгенерировать QR-код в браузере
+     *   и показать в блоке превью
      */
-    async function generateQr() {
+    function generateQr() {
       const data = getQrData();
       if (!data) {
         showToast(t("toastNoData"), "error");
@@ -2292,50 +2488,31 @@ API:
       const ph = $("#qrPlaceholder");
       const ld = $("#qrLoading");
       const box = $("#qrPreviewBox");
-
-      // Показываем индикатор загрузки
-      ph.style.display = "none";
-      ld.style.display = "block";
-      img.style.display = "none";
+      ld.style.display = "none";
 
       try {
-        const url = buildQrUrl(data, "png");
-        // Проверяем доступность через fetch
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status);
-        }
-        // Устанавливаем src изображения
-        img.src = url;
-        img.onload = () => {
-          ld.style.display = "none";
-          img.style.display = "block";
-          box.classList.add("has-image");
-          // Активируем кнопки
-          $("#btnDownloadPng").disabled = false;
-          $("#btnDownloadSvg").disabled = false;
-          $("#btnCopy").disabled = false;
-          // Добавляем в историю
-          const thumbUrl = buildQrUrl(
-            data, "png", 100
-          );
-          addToHistory(data, thumbUrl);
-          showToast(
-            t("toastGenerated"), "success"
-          );
-        };
-        img.onerror = () => {
-          ld.style.display = "none";
-          ph.style.display = "block";
-          box.classList.remove("has-image");
-          showToast(t("toastError"), "error");
-        };
+        img.src = renderQrCanvas(data, getSettings())
+          .toDataURL("image/png");
       } catch (e) {
-        ld.style.display = "none";
+        // Слишком длинные данные для QR
+        currentQrData = "";
+        img.style.display = "none";
         ph.style.display = "block";
         box.classList.remove("has-image");
+        $("#btnDownloadPng").disabled = true;
+        $("#btnDownloadSvg").disabled = true;
+        $("#btnCopy").disabled = true;
         showToast(t("toastError"), "error");
+        return;
       }
+      ph.style.display = "none";
+      img.style.display = "block";
+      box.classList.add("has-image");
+      $("#btnDownloadPng").disabled = false;
+      $("#btnDownloadSvg").disabled = false;
+      $("#btnCopy").disabled = false;
+      addToHistory(data);
+      showToast(t("toastGenerated"), "success");
     }
 
     /**
@@ -2358,21 +2535,16 @@ API:
     async function downloadQr(format) {
       if (!currentQrData) return;
       try {
-        const url = buildQrUrl(
-          currentQrData, format
-        );
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status);
-        }
-        const blob = await resp.blob();
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "qr-code." + format;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
+        const opts = getSettings();
+        const blob = format === "svg"
+          ? new Blob(
+            [renderQrSvg(currentQrData, opts)],
+            { type: "image/svg+xml" }
+          )
+          : await canvasToBlob(
+            renderQrCanvas(currentQrData, opts)
+          );
+        saveBlob(blob, "qr-code." + format);
         showToast(
           t("toastDownloaded"), "success"
         );
@@ -2389,34 +2561,10 @@ API:
     async function copyQrToClipboard() {
       if (!currentQrData) return;
       try {
-        const url = buildQrUrl(
-          currentQrData, "png"
+        const blob = await canvasToBlob(
+          renderQrCanvas(currentQrData, getSettings())
         );
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status);
-        }
-        const blob = await resp.blob();
-        // Clipboard API для изображений
-        if (
-          navigator.clipboard &&
-          navigator.clipboard.write
-        ) {
-          const item = new ClipboardItem({
-            "image/png": blob
-          });
-          await navigator.clipboard.write([item]);
-          showToast(
-            t("toastCopied"), "success"
-          );
-        } else {
-          // Фолбэк: копируем URL
-          await navigator.clipboard
-            .writeText(url);
-          showToast(
-            t("toastCopied"), "success"
-          );
-        }
+        await copyPngToClipboard(blob, currentQrData);
       } catch (e) {
         showToast(t("toastCopyFail"), "error");
       }
@@ -2429,6 +2577,9 @@ API:
     /**
      * @function loadHistory
      * @description Загрузить историю из localStorage
+     *   и вычистить старые записи: пароли Wi-Fi
+     *   и URL миниатюр внешнего сервиса (в них
+     *   тоже были данные QR) удаляются
      * @returns {Array} Массив записей истории
      */
     function loadHistory() {
@@ -2438,7 +2589,15 @@ API:
         );
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) return parsed;
+          if (Array.isArray(parsed)) {
+            return parsed
+              .filter((h) => h &&
+                typeof h.data === "string")
+              .map((h) => ({
+                data: sanitizeHistoryData(h.data),
+                ts: h.ts
+              }));
+          }
         }
       } catch (e) {
         // Ошибка парсинга — возвращаем пустой
@@ -2464,10 +2623,11 @@ API:
     /**
      * @function addToHistory
      * @description Добавить запись в историю
+     *   (пароль Wi-Fi не сохраняется)
      * @param {string} data - Закодированные данные
-     * @param {string} imgUrl - URL миниатюры
      */
-    function addToHistory(data, imgUrl) {
+    function addToHistory(data) {
+      data = sanitizeHistoryData(data);
       // Удаляем дубликат, если есть
       const idx = qrHistory.findIndex(
         (h) => h.data === data
@@ -2476,7 +2636,6 @@ API:
       // Добавляем в начало
       qrHistory.unshift({
         data: data,
-        imgUrl: imgUrl,
         ts: Date.now()
       });
       // Обрезаем до лимита
@@ -2536,11 +2695,16 @@ API:
         div.className = "history-item";
         div.title = item.data.substring(0, 100);
 
-        // Миниатюра
+        // Миниатюра рисуется локально
         const img = document.createElement("img");
-        img.src = item.imgUrl;
+        try {
+          img.src = renderQrCanvas(item.data, {
+            ...getSettings(), size: 100, margin: 4
+          }).toDataURL("image/png");
+        } catch (e) {
+          // Данные не помещаются в QR — без картинки
+        }
         img.alt = "QR";
-        img.loading = "lazy";
         div.appendChild(img);
 
         // Кнопка удаления
@@ -2579,107 +2743,81 @@ API:
     }
 
     // ============================================
-    // Чтение QR-кода
+    // Чтение QR-кода (локально, jsQR)
     // ============================================
 
     /**
-     * @function readQrFromUrl
-     * @description Прочитать QR с изображения по URL
-     *   через API qrserver.com (GET)
-     * @param {string} imageUrl - URL изображения
+     * @function decodeQrBlob
+     * @description Распознать QR на изображении
+     *   в браузере: canvas → пиксели → jsQR
+     * @param {Blob} blob - Изображение
+     * @returns {Promise<string>} Текст из QR
      */
-    async function readQrFromUrl(imageUrl) {
+    async function decodeQrBlob(blob) {
+      const bmp = await createImageBitmap(blob);
+      const canvas = document.createElement("canvas");
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bmp, 0, 0);
+      bmp.close();
+      const px = ctx.getImageData(
+        0, 0, canvas.width, canvas.height
+      );
+      const code = jsQR(
+        px.data, px.width, px.height
+      );
+      if (!code) throw new Error("No QR");
+      return code.data;
+    }
+
+    /**
+     * @function showReaderResult
+     * @description Распознать blob и показать
+     *   результат или ошибку
+     * @param {Promise<Blob>} blobPromise - Изображение
+     */
+    async function showReaderResult(blobPromise) {
       const result = $("#readerResult");
       const text = $("#readerResultText");
-
       try {
-        const apiUrl = API_BASE +
-          "/read-qr-code/?fileurl=" +
-          encodeURIComponent(imageUrl);
-        const resp = await fetch(apiUrl);
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status);
-        }
-        const data = await resp.json();
-
-        // Ответ API: [{symbol:[{data,error}]}]
-        if (
-          data && data[0] &&
-          data[0].symbol &&
-          data[0].symbol[0]
-        ) {
-          const sym = data[0].symbol[0];
-          if (sym.error) {
-            throw new Error(sym.error);
-          }
-          text.textContent = sym.data || "";
-          result.classList.add("visible");
-          showToast(
-            t("toastDecoded"), "success"
-          );
-        } else {
-          throw new Error("No data");
-        }
+        text.textContent =
+          await decodeQrBlob(await blobPromise);
+        result.classList.add("visible");
+        showToast(t("toastDecoded"), "success");
       } catch (e) {
         text.textContent = "";
         result.classList.remove("visible");
-        showToast(
-          t("toastDecodeFail"), "error"
-        );
+        showToast(t("toastDecodeFail"), "error");
       }
     }
 
     /**
+     * @function readQrFromUrl
+     * @description Прочитать QR с изображения по URL:
+     *   браузер скачивает картинку напрямую
+     *   (нужен CORS) и распознаёт локально
+     * @param {string} imageUrl - URL изображения
+     */
+    function readQrFromUrl(imageUrl) {
+      showReaderResult(
+        fetch(imageUrl).then((resp) => {
+          if (!resp.ok) {
+            throw new Error("HTTP " + resp.status);
+          }
+          return resp.blob();
+        })
+      );
+    }
+
+    /**
      * @function readQrFromFile
-     * @description Прочитать QR из файла:
-     *   конвертируем в blob и отправляем POST
-     *   на API qrserver.com
+     * @description Прочитать QR из файла локально:
+     *   файл никуда не отправляется
      * @param {File} file - Файл изображения
      */
-    async function readQrFromFile(file) {
-      const result = $("#readerResult");
-      const text = $("#readerResultText");
-
-      try {
-        // Создаём FormData с файлом
-        const formData = new FormData();
-        formData.append("file", file, file.name);
-
-        const resp = await fetch(
-          API_BASE + "/read-qr-code/",
-          { method: "POST", body: formData }
-        );
-
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status);
-        }
-
-        const data = await resp.json();
-
-        if (
-          data && data[0] &&
-          data[0].symbol &&
-          data[0].symbol[0]
-        ) {
-          const sym = data[0].symbol[0];
-          if (sym.error) {
-            throw new Error(sym.error);
-          }
-          text.textContent = sym.data || "";
-          result.classList.add("visible");
-          showToast(
-            t("toastDecoded"), "success"
-          );
-        } else {
-          throw new Error("No data");
-        }
-      } catch (e) {
-        text.textContent = "";
-        result.classList.remove("visible");
-        showToast(
-          t("toastDecodeFail"), "error"
-        );
-      }
+    function readQrFromFile(file) {
+      showReaderResult(Promise.resolve(file));
     }
 
     /**
@@ -2719,17 +2857,17 @@ API:
           parts[0] || "";
       } else if (txt.startsWith("WIFI:")) {
         switchType("wifi");
-        const sM = txt.match(/S:([^;]*)/);
-        const pM = txt.match(/P:([^;]*)/);
-        const tM = txt.match(/T:([^;]*)/);
-        if (sM) {
-          $("#inputWifiSsid").value = sM[1];
+        const ws = wifiField(txt, "S");
+        const wp = wifiField(txt, "P");
+        const wt = wifiField(txt, "T");
+        if (ws !== null) {
+          $("#inputWifiSsid").value = ws;
         }
-        if (pM) {
-          $("#inputWifiPass").value = pM[1];
+        if (wp !== null) {
+          $("#inputWifiPass").value = wp;
         }
-        if (tM) {
-          $("#inputWifiType").value = tM[1];
+        if (wt !== null) {
+          $("#inputWifiType").value = wt;
         }
       } else if (txt.startsWith("BEGIN:VCARD")) {
         switchType("vcard");
@@ -2782,39 +2920,29 @@ API:
       const container = $("#bulkResults");
       container.innerHTML = "";
 
-      // Настройки из панели
-      const mg = parseInt(
-        $("#marginSlider").value
-      );
-      const fg = $("#fgColor").value
-        .replace("#", "");
-      const bg = $("#bgColor").value
-        .replace("#", "");
-      const ecc = $("#eccSelect").value;
+      // Настройки из панели (размер — фиксированный)
+      const opts = getSettings();
+      let failed = 0;
 
       lines.forEach((line, i) => {
-        // URL для QR среднего размера
-        const params = new URLSearchParams({
-          size: "200x200",
-          data: line,
-          color: fg,
-          bgcolor: bg,
-          format: "png",
-          margin: String(mg),
-          ecc: ecc
-        });
-        const url = API_BASE +
-          "/create-qr-code/?" +
-          params.toString();
+        let src;
+        try {
+          src = renderQrCanvas(line, {
+            ...opts, size: 200
+          }).toDataURL("image/png");
+        } catch (e) {
+          // Строка не помещается в QR
+          failed++;
+          return;
+        }
 
         // Элемент результата
         const div = document.createElement("div");
         div.className = "bulk-item";
 
         const img = document.createElement("img");
-        img.src = url;
+        img.src = src;
         img.alt = "QR #" + (i + 1);
-        img.loading = "lazy";
         div.appendChild(img);
 
         const lbl = document.createElement("div");
@@ -2833,7 +2961,7 @@ API:
         dlBtn.innerHTML =
           "<i class=\"fas fa-download\"></i>";
         dlBtn.addEventListener("click", () => {
-          downloadBulkItem(line, i, fg, bg, mg, ecc);
+          downloadBulkItem(line, i, opts);
         });
         acts.appendChild(dlBtn);
 
@@ -2844,38 +2972,28 @@ API:
         cpBtn.innerHTML =
           "<i class=\"fas fa-copy\"></i>";
         cpBtn.addEventListener("click", () => {
-          copyBulkItem(line, fg, bg, mg, ecc);
+          copyBulkItem(line, opts);
         });
         acts.appendChild(cpBtn);
 
         div.appendChild(acts);
         container.appendChild(div);
 
-        // Добавляем в историю миниатюру
-        const tParams = new URLSearchParams({
-          size: "100x100",
-          data: line,
-          color: fg,
-          bgcolor: bg,
-          format: "png",
-          margin: "4",
-          ecc: ecc
-        });
-        addToHistory(
-          line,
-          API_BASE + "/create-qr-code/?" +
-          tParams.toString()
-        );
+        addToHistory(line);
       });
 
       // Показываем "Скачать все"
       const allBtn = $("#bulkDownloadAllBtn");
       allBtn.style.display = "inline-flex";
       allBtn.onclick = () => {
-        downloadAllBulk(lines, fg, bg, mg, ecc);
+        downloadAllBulk(lines, opts);
       };
 
-      showToast(t("toastBulkDone"), "success");
+      if (failed) {
+        showToast(t("toastError"), "error");
+      } else {
+        showToast(t("toastBulkDone"), "success");
+      }
     }
 
     /**
@@ -2883,39 +3001,14 @@ API:
      * @description Скачать один QR из массовой генерации
      * @param {string} data - Данные QR
      * @param {number} idx - Индекс элемента
-     * @param {string} fg - Цвет QR (hex без #)
-     * @param {string} bg - Цвет фона (hex без #)
-     * @param {number} mg - Отступ
-     * @param {string} ecc - Уровень коррекции
+     * @param {Object} opts - Настройки (getSettings)
      */
-    async function downloadBulkItem(
-      data, idx, fg, bg, mg, ecc
-    ) {
+    async function downloadBulkItem(data, idx, opts) {
       try {
-        const p = new URLSearchParams({
-          size: "300x300",
-          data: data,
-          color: fg,
-          bgcolor: bg,
-          format: "png",
-          margin: String(mg),
-          ecc: ecc
-        });
-        const url = API_BASE +
-          "/create-qr-code/?" + p.toString();
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status);
-        }
-        const blob = await resp.blob();
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download =
-          "qr-code-" + (idx + 1) + ".png";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
+        const blob = await canvasToBlob(
+          renderQrCanvas(data, { ...opts, size: 300 })
+        );
+        saveBlob(blob, "qr-code-" + (idx + 1) + ".png");
       } catch (e) {
         showToast(t("toastError"), "error");
       }
@@ -2926,48 +3019,14 @@ API:
      * @description Скопировать QR-изображение
      *   элемента массовой генерации в буфер
      * @param {string} data - Данные QR
-     * @param {string} fg - Цвет QR
-     * @param {string} bg - Цвет фона
-     * @param {number} mg - Отступ
-     * @param {string} ecc - Уровень коррекции
+     * @param {Object} opts - Настройки (getSettings)
      */
-    async function copyBulkItem(
-      data, fg, bg, mg, ecc
-    ) {
+    async function copyBulkItem(data, opts) {
       try {
-        const p = new URLSearchParams({
-          size: "300x300",
-          data: data,
-          color: fg,
-          bgcolor: bg,
-          format: "png",
-          margin: String(mg),
-          ecc: ecc
-        });
-        const url = API_BASE +
-          "/create-qr-code/?" + p.toString();
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          throw new Error("HTTP " + resp.status);
-        }
-        const blob = await resp.blob();
-        if (
-          navigator.clipboard &&
-          navigator.clipboard.write
-        ) {
-          await navigator.clipboard.write([
-            new ClipboardItem({ "image/png": blob })
-          ]);
-          showToast(
-            t("toastCopied"), "success"
-          );
-        } else {
-          await navigator.clipboard
-            .writeText(data);
-          showToast(
-            t("toastCopied"), "success"
-          );
-        }
+        const blob = await canvasToBlob(
+          renderQrCanvas(data, { ...opts, size: 300 })
+        );
+        await copyPngToClipboard(blob, data);
       } catch (e) {
         showToast(t("toastCopyFail"), "error");
       }
@@ -2978,18 +3037,11 @@ API:
      * @description Скачать все QR-коды массовой
      *   генерации по очереди (без zip-библиотеки)
      * @param {string[]} lines - Массив данных
-     * @param {string} fg - Цвет QR
-     * @param {string} bg - Цвет фона
-     * @param {number} mg - Отступ
-     * @param {string} ecc - Уровень коррекции
+     * @param {Object} opts - Настройки (getSettings)
      */
-    async function downloadAllBulk(
-      lines, fg, bg, mg, ecc
-    ) {
+    async function downloadAllBulk(lines, opts) {
       for (let i = 0; i < lines.length; i++) {
-        await downloadBulkItem(
-          lines[i], i, fg, bg, mg, ecc
-        );
+        await downloadBulkItem(lines[i], i, opts);
         // Пауза между скачиваниями
         await new Promise((r) =>
           setTimeout(r, 350)
@@ -3197,8 +3249,9 @@ API:
       initTheme();
       initLang();
 
-      // Загрузка истории
+      // Загрузка истории (с очисткой паролей)
       qrHistory = loadHistory();
+      saveHistory();
       renderHistory();
 
       // Даты по умолчанию для формы события

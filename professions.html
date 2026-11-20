@@ -1482,13 +1482,11 @@
             }
 
             // Загружаем вакансии
-            const response = await fetch(`https://api.hh.ru/vacancies?${params}`, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-              }
-            });
+            const response = await fetch(`https://api.hh.ru/vacancies?${params}`);
             if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+              const httpError = new Error(`HTTP error! status: ${response.status}`);
+              httpError.status = response.status;
+              throw httpError;
             }
             const data = await response.json();
 
@@ -1514,10 +1512,20 @@
           } catch (error) {
             chartContainer.style.display = 'none'; // Скрываем график
             console.error('Ошибка при загрузке вакансий:', error);
-            container.innerHTML = `
+            // 403 — hh.ru закрыл анонимный доступ к /vacancies (справочники при этом открыты), повтор не поможет
+            container.innerHTML = error.status === 403
+              ? `
+                        <div class="error-message">
+                            <h3>hh.ru ограничил доступ к вакансиям</h3>
+                            <p>API hh.ru отклонил запрос (HTTP 403 forbidden), повтор не поможет.
+                               Откройте вакансии на сайте: <a href="${document.getElementById('searchAllLink').href}" target="_blank" rel="noopener">hh.ru</a></p>
+                        </div>
+                    `
+              : `
                         <div class="error-message">
                             <h3>Произошла ошибка при загрузке вакансий</h3>
-                            <p>Пожалуйста, попробуйте позже или выберите другую профессию</p>
+                            <p>${error.status ? `Сервер hh.ru ответил HTTP ${error.status}.` : 'Нет связи с api.hh.ru.'}
+                               Попробуйте позже или выберите другую профессию</p>
                             <button onclick="loadVacancies('${professionId}')" class="retry-button">
                                 Попробовать снова
                             </button>
@@ -1527,6 +1535,9 @@
             preloader.style.display = 'none';
           }
         };
+
+        // Кнопка «Попробовать снова» вызывает loadVacancies из inline onclick — нужна глобальная ссылка
+        window.loadVacancies = loadVacancies;
 
         // Добавляем функцию фильтрации вакансий
         const filterVacancies = vacancies => {

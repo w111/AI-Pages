@@ -1166,6 +1166,7 @@
         <div class="error-state" id="errorState" style="display: none;">
           <i class="fas fa-exclamation-triangle"></i>
           <p data-i18n="errorMessage">Произошла ошибка при загрузке данных</p>
+          <p id="errorReason"></p>
           <button class="retry-btn" id="retryBtn">
             <i class="fas fa-redo"></i> <span data-i18n="retry">Повторить</span>
           </button>
@@ -1222,6 +1223,8 @@
         startSearchDesc: "Введите название артиста, альбома или трека для поиска",
         loading: "Загрузка...",
         errorMessage: "Произошла ошибка при загрузке данных",
+        errorBusy: "MusicBrainz перегружен (HTTP 503), повторите через несколько секунд",
+        errorNetwork: "Нет связи с MusicBrainz",
         retry: "Повторить",
         back: "Назад",
         results: "Результаты",
@@ -1289,6 +1292,8 @@
         startSearchDesc: "Enter artist, album or track name to search",
         loading: "Loading...",
         errorMessage: "Error loading data",
+        errorBusy: "MusicBrainz is overloaded (HTTP 503), retry in a few seconds",
+        errorNetwork: "Cannot reach MusicBrainz",
         retry: "Retry",
         back: "Back",
         results: "Results",
@@ -1359,7 +1364,6 @@
      * MusicBrainz API URL
      */
     const API_BASE = "https://musicbrainz.org/ws/2";
-    const USER_AGENT = "MusicSearchApp/1.0 (https://example.com)";
 
     /**
      * TheAudioDB API URL (бесплатный ключ: 2)
@@ -1480,18 +1484,24 @@
     /**
      * Выполнение запроса к API
      * @param {string} endpoint - URL endpoint
+     * @param {boolean} [isRetry=false] - Повторный запрос после 503
      * @returns {Promise<Object>} - Данные ответа
      */
-    async function fetchAPI(endpoint) {
+    async function fetchAPI(endpoint, isRetry = false) {
       await waitForRateLimit();
 
       const url = `${API_BASE}${endpoint}`;
+      // Только CORS-safelisted заголовки: свой User-Agent вызывал preflight OPTIONS —
+      // лишний запрос под глобальный лимит MusicBrainz; 503 на OPTIONS браузер видит как CORS-ошибку
       const response = await fetch(url, {
-        headers: {
-          "Accept": "application/json",
-          "User-Agent": USER_AGENT
-        }
+        headers: { "Accept": "application/json" }
       });
+
+      // 503 — глобальный rate limit MusicBrainz (Retry-After: 1), один повтор обычно проходит
+      if (response.status === 503 && !isRetry) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        return fetchAPI(endpoint, true);
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1567,6 +1577,10 @@
       try {
         const encodedQuery = encodeURIComponent(query);
         const endpoint = `/${entity}?query=${encodedQuery}&limit=${state.pageSize}&offset=${offset}&fmt=json`;
+        // Запоминаем параметры до запроса, чтобы «Повторить» работал и после неудачного первого поиска
+        state.currentPage = Math.floor(offset / state.pageSize) + 1;
+        state.query = query;
+        state.currentEntity = entity;
         const data = await fetchAPI(endpoint);
 
         // Определяем ключ для результатов
@@ -1575,14 +1589,11 @@
 
         state.results = data[resultsKey] || [];
         state.totalResults = data.count || 0;
-        state.currentPage = Math.floor(offset / state.pageSize) + 1;
-        state.query = query;
-        state.currentEntity = entity;
 
         displayResults();
       } catch (error) {
         console.error("Search error:", error);
-        showError();
+        showError(error);
       }
     }
 
@@ -1597,9 +1608,15 @@
     }
 
     /**
-     * Показать ошибку
+     * Показать ошибку с причиной сбоя
+     * @param {Error} [error] - Ошибка запроса
      */
-    function showError() {
+    function showError(error) {
+      const t = translations[state.lang];
+      const status = error?.message.match(/status: (\d+)/)?.[1];
+      document.getElementById("errorReason").textContent = status === "503"
+        ? t.errorBusy
+        : status ? `MusicBrainz: HTTP ${status}` : t.errorNetwork;
       document.getElementById("emptyState").style.display = "none";
       document.getElementById("loadingState").style.display = "none";
       document.getElementById("resultsContainer").style.display = "none";
@@ -1883,7 +1900,7 @@
         }
       } catch (error) {
         console.error("Detail load error:", error);
-        showError();
+        showError(error);
       }
     }
 
