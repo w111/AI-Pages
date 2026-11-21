@@ -11,18 +11,12 @@
    - Отображение заголовка, описания и информации об авторских правах
    - Поддержка видео (YouTube)
 
-2. Mars Rover Photos:
-   - Выбор марсохода (Curiosity, Opportunity, Spirit)
-   - Выбор камеры
-   - Выбор Sol (марсианский день) или земной даты
-   - Галерея фотографий с пагинацией
-
-3. NASA Image Search:
+2. NASA Image Search:
    - Поиск изображений по ключевым словам
    - Фильтрация по типу медиа
    - Галерея результатов
 
-4. Пользовательский интерфейс:
+3. Пользовательский интерфейс:
    - Темная/светлая тема
    - Адаптивный дизайн
    - Модальное окно для просмотра изображений
@@ -288,45 +282,6 @@
         border-top: 1px solid var(--border-color);
         color: var(--text-secondary);
         font-size: 0.85rem;
-      }
-
-      /* Mars Rover Section */
-      .rover-controls {
-        background: var(--card-bg);
-        border-radius: 16px;
-        padding: 25px;
-        margin-bottom: 25px;
-        box-shadow: var(--shadow);
-      }
-
-      .controls-row {
-        display: flex;
-        gap: 20px;
-        flex-wrap: wrap;
-        margin-bottom: 20px;
-      }
-
-      .control-group {
-        flex: 1;
-        min-width: 200px;
-      }
-
-      .control-group label {
-        display: block;
-        color: var(--text-secondary);
-        margin-bottom: 8px;
-        font-size: 0.9rem;
-      }
-
-      .control-group select,
-      .control-group input {
-        width: 100%;
-        background: var(--input-bg);
-        border: 1px solid var(--input-border);
-        color: var(--text-color);
-        padding: 12px 15px;
-        border-radius: 8px;
-        font-size: 1rem;
       }
 
       .search-btn {
@@ -621,10 +576,6 @@
           justify-content: center;
         }
 
-        .control-group {
-          min-width: 100%;
-        }
-
         .search-input {
           min-width: 100%;
         }
@@ -720,9 +671,6 @@
         <button class="tab-btn active" data-tab="apod">
           <i class="fas fa-image"></i> Фото дня
         </button>
-        <button class="tab-btn" data-tab="mars">
-          <i class="fas fa-planet-ringed"></i> Марсоходы
-        </button>
         <button class="tab-btn" data-tab="search">
           <i class="fas fa-search"></i> Поиск NASA
         </button>
@@ -745,66 +693,6 @@
               <p>Загрузка астрономического фото дня...</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Mars Rover Tab -->
-      <div class="tab-content" id="mars">
-        <div class="rover-controls">
-          <div class="controls-row">
-            <div class="control-group">
-              <label for="roverSelect">Марсоход</label>
-              <select id="roverSelect">
-                <option value="curiosity">Curiosity</option>
-                <option value="opportunity">Opportunity</option>
-                <option value="spirit">Spirit</option>
-                <option value="perseverance">Perseverance</option>
-              </select>
-            </div>
-            <div class="control-group">
-              <label for="cameraSelect">Камера</label>
-              <select id="cameraSelect">
-                <option value="">Все камеры</option>
-                <option value="FHAZ">Front Hazard Avoidance</option>
-                <option value="RHAZ">Rear Hazard Avoidance</option>
-                <option value="MAST">Mast Camera</option>
-                <option value="CHEMCAM">Chemistry and Camera</option>
-                <option value="MAHLI">Mars Hand Lens Imager</option>
-                <option value="MARDI">Mars Descent Imager</option>
-                <option value="NAVCAM">Navigation Camera</option>
-                <option value="PANCAM">Panoramic Camera</option>
-                <option value="MINITES">Mini-TES (Miniature Thermal Emission Spectrometer)</option>
-              </select>
-            </div>
-            <div class="control-group">
-              <label for="solInput">Sol (Марсианский день)</label>
-              <input type="number" id="solInput" value="1000" min="0" />
-            </div>
-          </div>
-          <div class="controls-row">
-            <div class="control-group">
-              <label for="earthDate">Или выберите земную дату</label>
-              <input type="date" id="earthDate" />
-            </div>
-            <button class="search-btn" id="loadRoverPhotos">
-              <i class="fas fa-camera"></i> Загрузить фотографии
-            </button>
-            <button class="random-btn" id="latestRoverPhotos">
-              <i class="fas fa-clock"></i> Последние фото
-            </button>
-          </div>
-        </div>
-
-        <div id="roverStats" class="stats-bar" style="display: none;">
-          <span id="roverInfo"></span>
-          <span id="photoCount"></span>
-        </div>
-
-        <div class="gallery" id="roverGallery"></div>
-        <div class="pagination" id="roverPagination" style="display: none;">
-          <button id="prevPage"><i class="fas fa-chevron-left"></i> Назад</button>
-          <span id="pageInfo">Страница 1</span>
-          <button id="nextPage">Вперед <i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
 
@@ -867,14 +755,11 @@
       }
 
       // Constants
-      const PHOTOS_PER_PAGE = 12;
       const SEARCH_RESULTS_PER_PAGE = 100;
       const API_TIMEOUT = 10000;
       const MAX_RETRIES = 2;
 
       // State
-      let currentRoverPage = 1;
-      let roverPhotos = [];
       let currentSearchPage = 1;
       let searchResults = [];
       let totalSearchResults = 0;
@@ -886,7 +771,6 @@
         initTheme();
         initTabs();
         initAPOD();
-        initMarsRover();
         initNASASearch();
         initModal();
       }
@@ -1038,188 +922,6 @@
             );
           });
         }
-      }
-
-      /**
-       * Инициализация Mars Rover
-       */
-      function initMarsRover() {
-        document.getElementById("loadRoverPhotos").addEventListener("click", loadRoverPhotos);
-        document.getElementById("latestRoverPhotos").addEventListener("click", loadLatestRoverPhotos);
-        document.getElementById("prevPage").addEventListener("click", () => {
-          if (currentRoverPage > 1) {
-            currentRoverPage--;
-            displayRoverPhotos();
-          }
-        });
-        document.getElementById("nextPage").addEventListener("click", () => {
-          const totalPages = Math.ceil(roverPhotos.length / PHOTOS_PER_PAGE);
-          if (currentRoverPage < totalPages) {
-            currentRoverPage++;
-            displayRoverPhotos();
-          }
-        });
-      }
-
-      /**
-       * Загрузка фотографий марсохода
-       */
-      async function loadRoverPhotos() {
-        const rover = document.getElementById("roverSelect").value;
-        const camera = document.getElementById("cameraSelect").value;
-        const sol = document.getElementById("solInput").value;
-        const earthDate = document.getElementById("earthDate").value;
-
-        const gallery = document.getElementById("roverGallery");
-        showLoading(gallery, `Загрузка фотографий с марсохода ${rover.charAt(0).toUpperCase() + rover.slice(1)}...`);
-
-        try {
-          let url = `${NASA_API_BASE}/mars-photos/api/v1/rovers/${rover}/photos?api_key=${NASA_API_KEY}`;
-
-          if (earthDate) {
-            url += `&earth_date=${earthDate}`;
-          } else {
-            url += `&sol=${sol}`;
-          }
-
-          if (camera) {
-            url += `&camera=${camera}`;
-          }
-
-          const response = await fetchWithTimeout(url);
-          const data = await response.json();
-          roverPhotos = data.photos;
-          currentRoverPage = 1;
-
-          if (roverPhotos.length > 0) {
-            const roverInfo = roverPhotos[0].rover;
-            document.getElementById("roverInfo").innerHTML = `
-              <i class="fas fa-robot"></i> ${escapeHtml(roverInfo.name)} |
-              Статус: ${escapeHtml(roverInfo.status)} |
-              Посадка: ${formatDate(roverInfo.landing_date)}
-            `;
-            document.getElementById("photoCount").textContent = `Найдено фотографий: ${roverPhotos.length}`;
-            document.getElementById("roverStats").style.display = "flex";
-          }
-
-          displayRoverPhotos();
-        } catch (error) {
-          showError(gallery, error.message);
-        }
-      }
-
-      /**
-       * Загрузка последних фотографий марсохода
-       */
-      async function loadLatestRoverPhotos() {
-        const rover = document.getElementById("roverSelect").value;
-        const gallery = document.getElementById("roverGallery");
-
-        showLoading(gallery, `Загрузка последних фотографий с марсохода ${rover.charAt(0).toUpperCase() + rover.slice(1)}...`);
-
-        try {
-          const response = await fetchWithTimeout(
-            `${NASA_API_BASE}/mars-photos/api/v1/rovers/${rover}/latest_photos?api_key=${NASA_API_KEY}`
-          );
-          const data = await response.json();
-          roverPhotos = data.latest_photos;
-          currentRoverPage = 1;
-
-          if (roverPhotos.length > 0) {
-            const roverInfo = roverPhotos[0].rover;
-            document.getElementById("roverInfo").innerHTML = `
-              <i class="fas fa-robot"></i> ${escapeHtml(roverInfo.name)} |
-              Статус: ${escapeHtml(roverInfo.status)} |
-              Последнее фото: ${formatDate(roverPhotos[0].earth_date)}
-            `;
-            document.getElementById("photoCount").textContent = `Найдено фотографий: ${roverPhotos.length}`;
-            document.getElementById("roverStats").style.display = "flex";
-          }
-
-          displayRoverPhotos();
-        } catch (error) {
-          showError(gallery, error.message);
-        }
-      }
-
-      /**
-       * Отображение фотографий марсохода
-       */
-      function displayRoverPhotos() {
-        const gallery = document.getElementById("roverGallery");
-        const pagination = document.getElementById("roverPagination");
-        const pageInfo = document.getElementById("pageInfo");
-        const prevBtn = document.getElementById("prevPage");
-        const nextBtn = document.getElementById("nextPage");
-
-        if (roverPhotos.length === 0) {
-          gallery.innerHTML = `
-            <div class="no-results" style="grid-column: 1 / -1;">
-              <i class="fas fa-image"></i>
-              <h3>Фотографии не найдены</h3>
-              <p>Попробуйте изменить параметры поиска</p>
-            </div>
-          `;
-          pagination.style.display = "none";
-          return;
-        }
-
-        const photosPerPage = PHOTOS_PER_PAGE;
-        const totalPages = Math.ceil(roverPhotos.length / photosPerPage);
-        const startIndex = (currentRoverPage - 1) * photosPerPage;
-        const endIndex = startIndex + photosPerPage;
-        const pagePhotos = roverPhotos.slice(startIndex, endIndex);
-
-        // Clear gallery
-        gallery.innerHTML = "";
-        pagePhotos.forEach(photo => {
-          const div = document.createElement('div');
-          div.className = 'gallery-item';
-          div.tabIndex = 0;
-          div.setAttribute('role', 'button');
-          div.setAttribute('aria-label', `Открыть фотографию ${photo.camera.full_name} от Sol ${photo.sol}`);
-          
-          const openPhoto = () => {
-            openModal(
-              photo.img_src,
-              `Sol ${photo.sol} - ${photo.camera.full_name}`,
-              `Земная дата: ${formatDate(photo.earth_date)}`
-            );
-          };
-          
-          div.addEventListener('click', openPhoto);
-          div.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              openPhoto();
-            }
-          });
-
-          const img = document.createElement('img');
-          img.src = photo.img_src;
-          img.alt = "Фотография Марса от " + photo.camera.full_name;
-          img.loading = "lazy";
-          div.appendChild(img);
-
-          const infoDiv = document.createElement('div');
-          infoDiv.className = 'gallery-item-info';
-
-          const h4 = document.createElement('h4');
-          h4.textContent = photo.camera.full_name;
-          infoDiv.appendChild(h4);
-
-          const p = document.createElement('p');
-          p.textContent = `Sol ${photo.sol} | ${formatDate(photo.earth_date)}`;
-          infoDiv.appendChild(p);
-
-          div.appendChild(infoDiv);
-          gallery.appendChild(div);
-        });
-
-        pagination.style.display = "flex";
-        pageInfo.textContent = `Страница ${currentRoverPage} из ${totalPages}`;
-        prevBtn.disabled = currentRoverPage === 1;
-        nextBtn.disabled = currentRoverPage === totalPages;
       }
 
       /**

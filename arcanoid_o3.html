@@ -269,30 +269,10 @@
         }
       }
     </style>
-    <!-- Обновляем аудио элементы с прямыми ссылками на звуки -->
-    <audio
-      id="paddleHit"
-      src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"
-      preload="auto"
-    ></audio>
-    <audio
-      id="brickHit"
-      src="https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3"
-      preload="auto"
-    ></audio>
-    <audio
-      id="wallHit"
-      src="https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3"
-      preload="auto"
-    ></audio>
-    <audio
-      id="gameOver"
-      src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3"
-      preload="auto"
-    ></audio>
+    <!-- Звуковые эффекты синтезируются через Web Audio API, внешних файлов нет -->
     <audio
       id="backgroundMusic"
-      src="http://stream.srg-ssr.ch/m/rsj/aacp_96"
+      src="https://stream.srg-ssr.ch/m/rsj/aacp_96"
       preload="none"
       loop
     ></audio>
@@ -355,11 +335,13 @@
       let paddleMaxSpeed = 5; // Уменьшил максимальную скорость с 7 до 5
       let paddleFriction = 0.98; // Увеличил трение для ещё более плавного торможения
 
-      // Звуковые эффекты
-      const paddleHitSound = document.getElementById('paddleHit');
-      const brickHitSound = document.getElementById('brickHit');
-      const wallHitSound = document.getElementById('wallHit');
-      const gameOverSound = document.getElementById('gameOver');
+      // Звуковые эффекты: параметры тона для синтеза (частота от from к to за dur секунд)
+      const paddleHitSound = { type: 'square', from: 440, to: 330, dur: 0.08 };
+      const brickHitSound = { type: 'triangle', from: 880, to: 660, dur: 0.06 };
+      const wallHitSound = { type: 'sine', from: 260, to: 220, dur: 0.05 };
+      const gameOverSound = { type: 'sawtooth', from: 400, to: 80, dur: 0.8 };
+      // AudioContext создаётся при первом жесте пользователя (требование автовоспроизведения)
+      let audioCtx = null;
       const backgroundMusic = document.getElementById('backgroundMusic');
 
       // Добавим переменную для автоматического режима
@@ -388,59 +370,42 @@
       // Добавим переменную для состояния фоновой музыки
       let isMusicEnabled = false;
 
-      // Функция для воспроизведения звуков с учетом состояния звука
+      /**
+       * Воспроизводит звуковой эффект
+       * @function playSound
+       * @description Синтезирует короткий тон осциллятором Web Audio API с затуханием громкости
+       * @param {{type: OscillatorType, from: number, to: number, dur: number}} sound - Параметры тона
+       * @param {number} [volume=1.0] - Громкость от 0 до 1
+       * @returns {void}
+       */
       function playSound(sound, volume = 1.0) {
-        if (sound && isSoundEnabled) {
-          try {
-            // Создаем новый аудио элемент вместо клонирования
-            const audio = new Audio(sound.src);
-            audio.volume = volume;
-            audio.play().catch(e => {
-              console.log('Ошибка воспроизведения звука:', e);
-              // Пробуем воспроизвести оригинальный звук
-              sound.volume = volume;
-              sound.currentTime = 0;
-              sound
-                .play()
-                .catch(err => console.log('Не удалось воспроизвести звук:', err));
-            });
-          } catch (e) {
-            console.log('Ошибка при создании звука:', e);
-          }
-        }
+        if (!sound || !isSoundEnabled || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = sound.type;
+        osc.frequency.setValueAtTime(sound.from, now);
+        osc.frequency.exponentialRampToValueAtTime(sound.to, now + sound.dur);
+        gain.gain.setValueAtTime(0.2 * volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + sound.dur);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + sound.dur);
       }
 
-      // Функция для разблокировки звуков
+      /**
+       * Разблокирует звук
+       * @function unlockAudio
+       * @description Создаёт или возобновляет AudioContext; вызывается по жесту пользователя
+       * @returns {void}
+       */
       function unlockAudio() {
-        console.log('Разблокировка звуков...');
-
-        // Создаем и воспроизводим тихий звук для разблокировки аудио контекста
-        const silentSound = new Audio(
-          'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'
-        );
-        silentSound
-          .play()
-          .catch(e => console.log('Не удалось разблокировать аудио:', e));
-
-        // Пробуем воспроизвести все звуки с нулевой громкостью
-        const sounds = [paddleHitSound, brickHitSound, wallHitSound, gameOverSound];
-        sounds.forEach(sound => {
-          if (sound) {
-            const originalVolume = sound.volume;
-            sound.volume = 0;
-            sound
-              .play()
-              .then(() => {
-                sound.pause();
-                sound.currentTime = 0;
-                sound.volume = originalVolume;
-                console.log(`Звук ${sound.id} инициализирован`);
-              })
-              .catch(e =>
-                console.log(`Не удалось инициализировать звук ${sound.id}:`, e)
-              );
-          }
-        });
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(e => console.log('Не удалось разблокировать аудио:', e));
+        }
       }
 
       // Функция для обновления отображения статистики
@@ -550,9 +515,6 @@
 
         // Обновляем статистику
         updateStats();
-
-        // Разблокируем звуки
-        unlockAudio();
       }
 
       // Функция для пересчета размеров и позиций блоков
@@ -1057,12 +1019,9 @@
 
       // Инициализация звуков при загрузке страницы
       window.addEventListener('load', () => {
-        // Добавляем обработчики для разблокировки звуков
-        document.addEventListener('click', unlockAudio, { once: true });
-        document.addEventListener('keydown', unlockAudio, { once: true });
-
-        // Пробуем разблокировать звуки автоматически
-        setTimeout(unlockAudio, 1000);
+        // Звук разблокируется только жестом пользователя; повторный вызов безопасен
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('keydown', unlockAudio);
 
         console.log('Страница загружена, звуки готовы к инициализации');
       });

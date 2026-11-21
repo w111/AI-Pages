@@ -875,7 +875,11 @@
           // Формируем URL с ограничением по области
           const url = `${CONFIG.API_URL}?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
 
-          const response = await fetch(url);
+          // Помечаем сбой самого запроса, чтобы не путать его с ошибками обработки данных
+          const response = await fetch(url).catch(fetchError => {
+            fetchError.isNetwork = true;
+            throw fetchError;
+          });
 
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -892,10 +896,28 @@
           }
         } catch (error) {
           console.error("Ошибка загрузки данных:", error);
-          showNotification("Ошибка загрузки: " + error.message, "error");
+          showNotification(describeFetchError(error), "error");
         } finally {
           showLoading(false);
         }
+      }
+
+      /**
+       * @function describeFetchError
+       * @description Понятная причина сбоя загрузки данных OpenSky
+       * @param {Error} error - Ошибка fetch или HTTP-ошибка
+       * @returns {string} Текст для уведомления
+       */
+      function describeFetchError(error) {
+        // Сбой fetch — запрос не дошёл: OpenSky разрешает CORS только своему домену
+        // (Access-Control-Allow-Origin: https://opensky-network.org) либо сеть недоступна
+        if (error.isNetwork) {
+          return "OpenSky Network недоступен: сервер блокирует запросы с этого сайта (CORS) или нет сети";
+        }
+        if (String(error.message).startsWith("HTTP 429")) {
+          return "Исчерпан лимит запросов OpenSky Network (HTTP 429), попробуйте позже";
+        }
+        return "Ошибка загрузки данных OpenSky Network: " + error.message;
       }
 
       /**
@@ -1206,6 +1228,9 @@
         document.getElementById("loadingOverlay").classList.toggle("visible", show);
       }
 
+      /** Таймер автоскрытия уведомления */
+      let notificationTimer = null;
+
       /**
        * @function showNotification
        * @description Показ уведомления
@@ -1221,9 +1246,13 @@
 
         notification.classList.add("visible");
 
-        setTimeout(() => {
-          notification.classList.remove("visible");
-        }, 3000);
+        // Ошибку не прячем по таймеру — она висит до следующего уведомления
+        clearTimeout(notificationTimer);
+        if (type !== "error") {
+          notificationTimer = setTimeout(() => {
+            notification.classList.remove("visible");
+          }, 3000);
+        }
       }
 
       /**

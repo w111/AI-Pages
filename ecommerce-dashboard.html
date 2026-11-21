@@ -339,6 +339,11 @@
       color: var(--primary-color);
     }
 
+    .chart-note {
+      font-size: 0.75rem;
+      color: var(--secondary-color);
+    }
+
     .chart-tabs {
       display: flex;
       gap: 5px;
@@ -629,7 +634,7 @@
         <div class="kpi-value" id="kpiRevenue">0 ₽</div>
         <div class="kpi-change positive" id="kpiRevenueChange">
           <i class="fas fa-arrow-up"></i>
-          <span>+12.5% vs прошлый период</span>
+          <span>+12.5% vs прошлый период (демо, без фильтров)</span>
         </div>
       </div>
 
@@ -643,7 +648,7 @@
         <div class="kpi-value" id="kpiOrders">0</div>
         <div class="kpi-change positive" id="kpiOrdersChange">
           <i class="fas fa-arrow-up"></i>
-          <span>+8.3% vs прошлый период</span>
+          <span>+8.3% vs прошлый период (демо, без фильтров)</span>
         </div>
       </div>
 
@@ -657,7 +662,7 @@
         <div class="kpi-value" id="kpiAvgCheck">0 ₽</div>
         <div class="kpi-change positive" id="kpiAvgCheckChange">
           <i class="fas fa-arrow-up"></i>
-          <span>+3.8% vs прошлый период</span>
+          <span>+3.8% vs прошлый период (демо, без фильтров)</span>
         </div>
       </div>
 
@@ -671,7 +676,7 @@
         <div class="kpi-value" id="kpiConversion">0%</div>
         <div class="kpi-change negative" id="kpiConversionChange">
           <i class="fas fa-arrow-down"></i>
-          <span>-0.5% vs прошлый период</span>
+          <span>-0.5% vs прошлый период (демо, без фильтров)</span>
         </div>
       </div>
     </div>
@@ -702,6 +707,7 @@
             <i class="fas fa-trophy"></i>
             Топ товаров
           </h3>
+          <span class="chart-note">Общие демонстрационные данные, фильтр дат не применяется</span>
         </div>
         <div class="chart-container">
           <canvas id="topProductsChart"></canvas>
@@ -753,6 +759,7 @@
           <i class="fas fa-list"></i>
           Последние заказы
         </h3>
+        <span class="chart-note">Общие демонстрационные данные, фильтр дат не применяется</span>
       </div>
       <table class="data-table">
         <thead>
@@ -802,29 +809,23 @@
           sales: 198000, quantity: 132, trend: 18.9 }
       ],
 
-      // Данные воронки
-      funnel: [
-        { stage: "Посетители", value: 50000, color: "#6366f1" },
-        { stage: "Просмотр товара", value: 25000, color: "#8b5cf6" },
-        { stage: "Добавление в корзину", value: 8000, color: "#a855f7" },
-        { stage: "Оформление заказа", value: 3500, color: "#d946ef" },
-        { stage: "Покупка", value: 2500, color: "#ec4899" }
+      // Этапы воронки: значения считаются из отфильтрованных дней (поле key записи дня)
+      funnelStages: [
+        { stage: "Посетители", key: "visitors", color: "#6366f1" },
+        { stage: "Просмотр товара", key: "views", color: "#8b5cf6" },
+        { stage: "Добавление в корзину", key: "carts", color: "#a855f7" },
+        { stage: "Оформление заказа", key: "checkouts", color: "#d946ef" },
+        { stage: "Покупка", key: "orders", color: "#ec4899" }
       ],
 
-      // Категории
+      // Категории: выручка считается из отфильтрованных дней
       categories: [
-        { name: "Электроника", value: 2608000, color: "#6366f1" },
-        { name: "Одежда", value: 654000, color: "#ec4899" },
-        { name: "Дом и сад", value: 345000, color: "#22c55e" },
-        { name: "Спорт", value: 289000, color: "#f59e0b" },
-        { name: "Красота", value: 234000, color: "#a855f7" }
-      ],
-
-      // Заказы по часам
-      hourly: Array.from({ length: 24 }, (_, i) => ({
-        hour: i,
-        orders: Math.floor(Math.random() * 100 + (i >= 9 && i <= 21 ? 50 : 10))
-      }))
+        { id: "electronics", name: "Электроника", color: "#6366f1" },
+        { id: "clothing", name: "Одежда", color: "#ec4899" },
+        { id: "home", name: "Дом и сад", color: "#22c55e" },
+        { id: "sports", name: "Спорт", color: "#f59e0b" },
+        { id: "beauty", name: "Красота", color: "#a855f7" }
+      ]
     };
 
     /**
@@ -851,10 +852,28 @@
         const revenue = Math.floor(baseRevenue * weekendMultiplier * trendMultiplier);
         const orders = Math.floor(revenue / (2000 + Math.random() * 1000));
 
+        // Воронка дня: конверсия в покупку 3,5–6,5%, промежуточные этапы — от посетителей
+        const visitors = Math.floor(orders / (0.035 + Math.random() * 0.03));
+        const views = Math.floor(visitors * (0.45 + Math.random() * 0.1));
+        const carts = Math.floor(views * (0.28 + Math.random() * 0.08));
+        const checkouts = Math.max(orders, Math.floor(carts * (0.4 + Math.random() * 0.1)));
+
+        // Заказы дня по часам: днём (9–21) вес выше, остаток от округления — в последний час
+        const weights = Array.from({ length: 24 }, (_, h) =>
+          Math.random() + (h >= 9 && h <= 21 ? 1.5 : 0.2));
+        const weightSum = weights.reduce((a, b) => a + b, 0);
+        const hourly = weights.map(w => Math.floor(orders * w / weightSum));
+        hourly[23] += orders - hourly.reduce((a, b) => a + b, 0);
+
         data.push({
           date: date.toISOString().split("T")[0],
           revenue,
           orders,
+          visitors,
+          views,
+          carts,
+          checkouts,
+          hourly,
           category: categories[Math.floor(Math.random() * categories.length)]
         });
       }
@@ -1007,12 +1026,19 @@
         ? salesData.products
         : salesData.products.filter(p => p.category === category);
 
+      const sumBy = (items, key) => items.reduce((sum, d) => sum + d[key], 0);
+
       return {
         daily: filteredDaily,
         products: filteredProducts,
-        funnel: salesData.funnel,
-        categories: salesData.categories,
-        hourly: salesData.hourly
+        funnel: salesData.funnelStages.map(s => ({ ...s, value: sumBy(filteredDaily, s.key) })),
+        categories: salesData.categories
+          .map(c => ({ ...c, value: sumBy(filteredDaily.filter(d => d.category === c.id), "revenue") }))
+          .filter(c => c.value > 0),
+        hourly: Array.from({ length: 24 }, (_, hour) => ({
+          hour,
+          orders: filteredDaily.reduce((sum, d) => sum + d.hourly[hour], 0)
+        }))
       };
     }
 
@@ -1081,7 +1107,8 @@
       const totalRevenue = data.daily.reduce((sum, d) => sum + d.revenue, 0);
       const totalOrders = data.daily.reduce((sum, d) => sum + d.orders, 0);
       const avgCheck = totalOrders > 0 ? Math.floor(totalRevenue / totalOrders) : 0;
-      const conversion = 5.2; // Демо значение
+      const totalVisitors = data.daily.reduce((sum, d) => sum + d.visitors, 0);
+      const conversion = totalVisitors > 0 ? totalOrders / totalVisitors * 100 : 0;
 
       // Анимация значений
       animateValue(document.getElementById("kpiRevenue"), 0, totalRevenue, 1000, " ₽");
@@ -1440,6 +1467,12 @@
 
       // Очистка предыдущей воронки
       container.innerHTML = "";
+
+      // Нет данных за выбранный период — пустая воронка вместо деления на ноль
+      if (data.funnel[0].value === 0) {
+        container.textContent = "Нет данных за выбранный период";
+        return;
+      }
 
       const width = container.clientWidth;
       const height = 300;

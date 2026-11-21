@@ -3,7 +3,8 @@
 Техническое задание: Астрономический гид
 
 Функциональность:
-1. Автоопределение местоположения (Geolocation API + IP fallback)
+1. Автоопределение местоположения (Geolocation API; при отказе — ручной ввод,
+   данные показываются для Москвы по умолчанию)
 2. Ввод города/координат вручную
 3. Визуальное отображение рассвета и заката (анимированная дуга)
 4. Текущая фаза луны (математический расчёт)
@@ -20,7 +21,6 @@
 API:
 - Sunrise/Sunset: api.sunrise-sunset.org
 - Open-Meteo: api.open-meteo.com
-- IP Geolocation: ipapi.co/json/
 
 Стек: Vanilla JavaScript, CSS переменные, Canvas, SVG
 Без внешних фреймворков. Font Awesome для иконок.
@@ -873,7 +873,7 @@ API:
         dayShort: ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],
         locationNotFound: "Место не найдено",
         geoError:
-          "Не удалось определить местоположение",
+          "Не удалось определить местоположение — введите город или координаты",
         hrs: "ч",
         min: "мин"
       },
@@ -922,7 +922,7 @@ API:
           "Mon","Tue","Wed","Thu","Fri","Sat","Sun"
         ],
         locationNotFound: "Location not found",
-        geoError: "Could not detect location",
+        geoError: "Could not detect location — enter a city or coordinates",
         hrs: "h",
         min: "min"
       }
@@ -1151,45 +1151,24 @@ API:
             reverseGeocode(currentLat, currentLng);
             fetchAllData();
           },
-          function() {
-            ipFallback();
-          },
+          geoFallback,
           { timeout: 5000 }
         );
       } else {
-        ipFallback();
+        geoFallback();
       }
     }
 
     /**
-     * @function ipFallback
-     * @description Фолбэк через IP-геолокацию
+     * @function geoFallback
+     * @description Геолокация недоступна или запрещена: просим ввести место
+     *   вручную и показываем данные для места по умолчанию (Москва)
+     * @returns {void}
      */
-    function ipFallback() {
-      fetch("https://ipapi.co/json/")
-        .then(function(r) {
-          if (!r.ok) throw new Error("IP API: " + r.status);
-          return r.json();
-        })
-        .then(function(data) {
-          if (!data.latitude || !data.longitude) {
-            throw new Error("Invalid IP geo data");
-          }
-          currentLat = data.latitude;
-          currentLng = data.longitude;
-          currentLocationName =
-            data.city || "Unknown";
-          updateLocationDisplay(
-            currentLocationName
-            + ` (${currentLat.toFixed(2)},`
-            + ` ${currentLng.toFixed(2)})`
-          );
-          fetchAllData();
-        })
-        .catch(function() {
-          updateLocationDisplay(t("geoError"));
-          fetchAllData();
-        });
+    function geoFallback() {
+      updateLocationDisplay(t("geoError"));
+      document.getElementById("locationInput").focus();
+      fetchAllData();
     }
 
     /**

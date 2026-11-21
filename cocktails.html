@@ -838,7 +838,7 @@
         notFound: "Коктейли не найдены",
         tryAgain: "Попробуйте изменить параметры поиска",
         ingredients: "Ингредиенты",
-        instructions: "Рецепт",
+        instructions: "Рецепт (на английском)",
         poweredBy: "Работает на"
       },
       en: {
@@ -1114,10 +1114,8 @@
         document.getElementById("ingredientsList").innerHTML = ingredientsHtml;
 
         // Инструкции
-        const instructions = currentLang === "ru" && cocktail.strInstructionsDE
-          ? cocktail.strInstructionsDE
-          : cocktail.strInstructions;
-        document.getElementById("instructions").textContent = instructions || "";
+        // В TheCocktailDB нет русских инструкций: для обоих языков берём английскую (strInstructions)
+        document.getElementById("instructions").textContent = cocktail.strInstructions || "";
 
       } catch (error) {
         console.error("Ошибка загрузки деталей коктейля:", error);

@@ -11,12 +11,13 @@
   - RAG-поиск по локальным файлам (PDF, Markdown, TXT)
   - Эмбеддинги через Transformers.js (all-MiniLM-L6-v2)
   - Векторный индекс в IndexedDB
-  - WebGPU/WebNN для ускорения инференса
+  - Инференс на WASM (Transformers.js 2.x); бейдж показывает фактический бэкенд, а не наличие WebGPU
   - Полностью клиентская реализация без серверов
   - Ответы с цитатами из исходных документов
 
   История изменений:
   2025-12-23: Первоначальная версия RAG Browser Search
+  2026-11-20: Бейдж бэкенда отражает фактический запуск модели (WASM), а не navigator.gpu
   -->
 
   <style>
@@ -684,17 +685,6 @@
       indicator.classList.add('loading');
 
       try {
-        // Определяем доступный backend
-        if (navigator.gpu) {
-          state.backend = 'webgpu';
-          techType.textContent = 'WebGPU';
-          techBadge.classList.add('webgpu');
-        } else {
-          state.backend = 'wasm';
-          techType.textContent = 'WASM';
-          techBadge.classList.add('wasm');
-        }
-
         statusText.textContent = 'Загрузка модели эмбеддингов...';
 
         // Создаем пайплайн для эмбеддингов
@@ -712,6 +702,13 @@
           }
         );
 
+        // Бейдж показывает бэкенд, на котором модель реально запущена, а не наличие
+        // navigator.gpu: Transformers.js 2.x в браузере исполняет ONNX только на WASM
+        // (WebGPU в нём не поддерживается), поэтому после успешной загрузки — всегда WASM.
+        state.backend = 'wasm';
+        techType.textContent = 'WASM';
+        techBadge.classList.add('wasm');
+
         state.modelReady = true;
         indicator.classList.remove('loading');
         indicator.classList.add('ready');
@@ -726,6 +723,7 @@
         console.error('Ошибка инициализации модели:', error);
         indicator.classList.remove('loading');
         statusText.textContent = 'Ошибка загрузки модели';
+        techType.textContent = 'Не запущена';
         indicator.style.background = 'var(--error-color)';
       }
     }

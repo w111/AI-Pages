@@ -50,8 +50,6 @@
 ### **Web Apps**
 
 - **React News** - агрегатор новостей
-- **Professions** - каталог профессий с поиском
-- **Precipitation Map** - визуализация погоды (OpenLayers)
 
 ### **3D Graphics**
 

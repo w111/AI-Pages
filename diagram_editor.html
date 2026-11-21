@@ -551,7 +551,7 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
   "use strict";
@@ -925,7 +925,8 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
         editorPh:"Введите код диаграммы...", historyEmpty:"История пуста",
         copiedSvg:"SVG скопирован в буфер!", errorEmpty:"Введите код диаграммы",
         errorFetch:"Ошибка рендеринга: ", downloadError:"Нет диаграммы для скачивания",
-        svgDl:"SVG скачан", pngDl:"PNG скачан", loading:"Рендеринг..."
+        svgDl:"SVG скачан", pngDl:"PNG скачан", loading:"Рендеринг...",
+        formatWarning:"Код сохранён, но, вероятно, написан для другого формата — рендер может завершиться ошибкой"
       },
       en: {
         title:"Diagram Editor", toolbarType:"Type:", btnTemplates:"Templates",
@@ -939,7 +940,8 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
         editorPh:"Enter diagram code...", historyEmpty:"History is empty",
         copiedSvg:"SVG copied to clipboard!", errorEmpty:"Enter diagram code",
         errorFetch:"Render error: ", downloadError:"No diagram to download",
-        svgDl:"SVG downloaded", pngDl:"PNG downloaded", loading:"Rendering..."
+        svgDl:"SVG downloaded", pngDl:"PNG downloaded", loading:"Rendering...",
+        formatWarning:"Code kept, but it is probably written for another format — rendering may fail"
       }
     };
 
@@ -1396,6 +1398,43 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
       closeTemplateModal(); renderDiagram();
     }
 
+    /**
+     * @function changeDiagramType
+     * @description Меняет тип диаграммы. Пустой текст или нетронутый шаблон прежнего типа
+     *   заменяется демопримером нового типа; пользовательский текст сохраняется
+     *   с предупреждением о вероятной несовместимости формата.
+     * @param {string} newType - Новый тип диаграммы
+     * @returns {void}
+     */
+    function changeDiagramType(newType) {
+      var oldType = state.diagramType;
+      var code = els.editorTextarea.value.trim();
+      state.diagramType = newType;
+      updateSyntaxHints();
+      if (newType === oldType || !code) {
+        if (!code) setDemoCode(newType);
+        return;
+      }
+      var isDemo = TEMPLATES.some(function(tpl) {
+        return tpl.type === oldType && tpl.code.trim() === code;
+      });
+      if (isDemo) setDemoCode(newType);
+      else showToast(I18N[state.lang].formatWarning, "error");
+    }
+
+    /**
+     * @function setDemoCode
+     * @description Подставляет в редактор первый шаблон указанного типа
+     * @param {string} type - Тип диаграммы
+     * @returns {void}
+     */
+    function setDemoCode(type) {
+      var tpl = TEMPLATES.find(function(x) { return x.type === type; });
+      if (!tpl) return;
+      els.editorTextarea.value = tpl.code;
+      updateLineNumbers();
+    }
+
     // === Нижняя панель ===
     /**
      * @function switchBottomTab
@@ -1462,8 +1501,7 @@ CSS переменные, escapeHtml, try/catch, response.ok, JSDoc.
 
       // Тип диаграммы
       els.diagramType.addEventListener("change", function() {
-        state.diagramType = els.diagramType.value;
-        updateSyntaxHints();
+        changeDiagramType(els.diagramType.value);
       });
 
       // Авто-рендер при вводе с debounce
