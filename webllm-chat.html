@@ -22,7 +22,6 @@
       * ExchangeRate API - курсы валют
       * CoinGecko API - криптовалюты
       * MusicBrainz API - музыка и артисты
-      * TheSportsDB API - спорт и команды
 
     История изменений:
     2025-01-26: Первоначальная версия WebLLM Chat
@@ -33,6 +32,9 @@
     2026-11-20: Тексты о приватности и бейдж в шапке отражают состояние сетевых
               инструментов: модель локальна, но включённые инструменты обращаются
               к внешним API; исправлено переключение инструментов кликом
+    2026-11-21: Удалены неработающие источники: инструмент «Спорт» (TheSportsDB,
+              ключ 3 отключён), поиск arXiv (CORS), CoinCap в «Крипто»
+              (домен не резолвится; остались CoinGecko и Coinbase)
   -->
 
     <style>
@@ -1717,14 +1719,6 @@
               <span class="tool-name">Музыка</span>
               <span class="tool-check"></span>
             </label>
-              <label class="tool-item active" data-tool="sports">
-                <input type="checkbox" checked>
-                <span class="tool-icon" style="background: #e74c3c; color: white;">
-                  <i class="fas fa-futbol"></i>
-                </span>
-                <span class="tool-name">Спорт</span>
-                <span class="tool-check"></span>
-              </label>
               <label class="tool-item active" data-tool="websearch">
                 <input type="checkbox" checked>
                 <span class="tool-icon" style="background: #2d9cdb; color: white;">
@@ -1869,7 +1863,7 @@
             <p style="font-size: 0.9rem; margin-top: 10px" id="privacyToolsNote"></p>
             <p style="font-size: 0.85rem; margin-top: 15px; color: var(--primary-color)">
               🔧 <strong>Tool Calling:</strong> Спросите о погоде, курсах валют,<br />
-              криптовалютах, музыке или спорте!
+              криптовалютах или музыке!
             </p>
           </div>
 
@@ -2031,7 +2025,7 @@
 
       /**
        * ToolManager - Менеджер инструментов для WebLLM Chat
-       * Поддерживает Wikipedia, Weather, Currency, Crypto, Music, Sports API
+       * Поддерживает Wikipedia, Weather, Currency, Crypto, Music, WebSearch, Open URL
        */
 	      class ToolManager {
 	        constructor() {
@@ -2041,7 +2035,6 @@
 	            currency: true,
 	            crypto: true,
 	            music: true,
-	            sports: true,
 	            websearch: true,
 	            openurl: true
 	          };
@@ -2086,16 +2079,9 @@
                 type: 'Тип поиска: artist, album, track (по умолчанию artist)'
               }
             },
-	            sports: {
-	              name: 'search_sports',
-	              description: 'Поиск спортивной информации. Используй для команд, лиг, соревнований.',
-	              parameters: {
-	                query: 'Название команды или лиги'
-	              }
-	            },
 	            websearch: {
 	              name: 'web_search',
-	              description: 'Поиск по открытым источникам без прокси (Wikipedia, arXiv, OpenAlex, StackOverflow, GitHub, Hacker News). Возвращает список ссылок и краткие сниппеты.',
+	              description: 'Поиск по открытым источникам без прокси (Wikipedia, OpenAlex, StackOverflow, GitHub, Hacker News). Возвращает список ссылок и краткие сниппеты.',
 	              parameters: {
 	                query: 'Поисковый запрос',
 	                limit: 'Сколько результатов вернуть (опционально, по умолчанию 8)'
@@ -2307,8 +2293,6 @@
 		              return await this.getCryptoPrice(params.coin);
 		            case 'search_music':
 		              return await this.searchMusic(params.query, params.type);
-		            case 'search_sports':
-		              return await this.searchSports(params.query);
 		            case 'web_search':
 		              return await this.webSearch(params.query, params.limit);
 		            case 'open_url':
@@ -2464,7 +2448,7 @@
 	        }
 
 	        /**
-	         * Crypto API (CoinGecko)
+	         * Crypto API (CoinGecko, запасной — Coinbase)
 	         */
 	        async getCryptoPrice(coin = 'bitcoin') {
 	          const fetchJson = async (url, timeoutMs = 12000) => {
@@ -2482,35 +2466,7 @@
 	          const coinQuery = String(coin || '').toLowerCase().trim();
 	          const normalized = coinQuery.replace(/\s+/g, '-');
 	
-	          // 1) CoinCap (часто работает, но у некоторых может блокироваться расширениями/политиками)
-	          try {
-	            const url = `https://api.coincap.io/v2/assets?search=${encodeURIComponent(normalized)}`;
-	            const { ok, json } = await fetchJson(url);
-	            const assets = Array.isArray(json?.data) ? json.data : [];
-	            if (ok && assets.length > 0) {
-	              const asset = assets[0];
-	              const priceUsd = Number(asset.priceUsd);
-	              const change24h = Number(asset.changePercent24Hr);
-	              const marketCapUsd = Number(asset.marketCapUsd);
-	
-	              return {
-	                source: 'CoinCap',
-	                name: asset.name,
-	                symbol: String(asset.symbol || '').toUpperCase(),
-	                price_usd: Number.isFinite(priceUsd)
-	                  ? `$${priceUsd.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
-	                  : 'N/A',
-	                change_24h: Number.isFinite(change24h) ? `${change24h.toFixed(2)}%` : 'N/A',
-	                market_cap: Number.isFinite(marketCapUsd) ? `$${(marketCapUsd / 1e9).toFixed(2)}B` : 'N/A',
-	                rank: asset.rank ? `#${asset.rank}` : 'N/A',
-	                id: asset.id
-	              };
-	            }
-	          } catch (_) {
-	            // continue to fallbacks
-	          }
-	
-	          // 2) CoinGecko (simple price) — часто CORS OK
+	          // 1) CoinGecko (simple price) — часто CORS OK
 	          try {
 	            const searchUrl = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(coinQuery)}`;
 	            const search = await fetchJson(searchUrl);
@@ -2540,7 +2496,7 @@
 	            // continue
 	          }
 	
-	          // 3) Coinbase spot price (пары для популярных монет)
+	          // 2) Coinbase spot price (пары для популярных монет)
 	          try {
 	            const symbolMap = {
 	              bitcoin: 'BTC',
@@ -2633,53 +2589,6 @@
 	          }
 	        }
 
-        /**
-         * Sports API (TheSportsDB)
-         */
-	        async searchSports(query) {
-	          try {
-            const url = `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(query)}`;
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (!data.teams || data.teams.length === 0) {
-              // Попробуем поиск лиг
-              const leagueUrl = `https://www.thesportsdb.com/api/v1/json/3/search_all_leagues.php?s=${encodeURIComponent(query)}`;
-              const leagueResp = await fetch(leagueUrl);
-              const leagueData = await leagueResp.json();
-
-              if (leagueData.countrys && leagueData.countrys.length > 0) {
-                return {
-                  source: 'TheSportsDB',
-                  type: 'leagues',
-                  results: leagueData.countrys.slice(0, 3).map(l => ({
-                    name: l.strLeague,
-                    sport: l.strSport,
-                    country: l.strCountry
-                  }))
-                };
-              }
-
-              return { error: `По запросу "${query}" ничего не найдено` };
-            }
-
-            return {
-              source: 'TheSportsDB',
-              type: 'teams',
-              results: data.teams.slice(0, 3).map(team => ({
-                name: team.strTeam,
-                sport: team.strSport,
-                league: team.strLeague,
-                country: team.strCountry,
-                stadium: team.strStadium,
-                founded: team.intFormedYear
-              }))
-            };
-	          } catch (error) {
-	            return { error: `Ошибка Sports API: ${error.message}` };
-	          }
-	        }
-	
 	        /**
 	         * Web Search (без прокси): агрегирует поиск по открытым источникам
 	         */
@@ -2695,18 +2604,6 @@
 	              const resp = await fetch(url, { ...options, signal: controller.signal });
 	              const json = await resp.json();
 	              return { ok: resp.ok, status: resp.status, json };
-	            } finally {
-	              clearTimeout(t);
-	            }
-	          };
-	
-	          const fetchText = async (url, timeoutMs = 12000, options = {}) => {
-	            const controller = new AbortController();
-	            const t = setTimeout(() => controller.abort(), timeoutMs);
-	            try {
-	              const resp = await fetch(url, { ...options, signal: controller.signal });
-	              const text = await resp.text();
-	              return { ok: resp.ok, status: resp.status, text };
 	            } finally {
 	              clearTimeout(t);
 	            }
@@ -2750,30 +2647,6 @@
 	            });
 	          } catch (e) {
 	            errors.push(`OpenAlex: ${e.message || e}`);
-	          }
-	
-	          // arXiv
-	          try {
-	            const aq = q.replace(/\s+/g, '+');
-	            const url = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(aq)}&start=0&max_results=5`;
-	            const r = await fetchText(url);
-	            if (r.ok) {
-	              const xml = new DOMParser().parseFromString(r.text, 'text/xml');
-	              const entries = Array.from(xml.getElementsByTagName('entry')).slice(0, 5);
-	              entries.forEach(entry => {
-	                const title = entry.getElementsByTagName('title')[0]?.textContent?.trim() || 'Untitled';
-	                const summary = entry.getElementsByTagName('summary')[0]?.textContent?.trim() || '';
-	                const id = entry.getElementsByTagName('id')[0]?.textContent?.trim() || '';
-	                results.push({
-	                  source: 'arXiv',
-	                  title,
-	                  url: id,
-	                  snippet: summary.slice(0, 220)
-	                });
-	              });
-	            }
-	          } catch (e) {
-	            errors.push(`arXiv: ${e.message || e}`);
 	          }
 	
 	          // StackOverflow
@@ -2921,25 +2794,6 @@
 	              year: w.publication_year || null,
 	              text: (w.abstract_inverted_index ? 'Abstract available (inverted index).' : 'No abstract available.'),
 	              primary_location: w.primary_location?.landing_page_url || null
-	            };
-	          }
-	
-	          // arXiv: abs link -> export API by id
-	          if (/arxiv\.org$/i.test(parsed.hostname) && parsed.pathname.startsWith('/abs/')) {
-	            const arxivId = parsed.pathname.replace('/abs/', '').trim();
-	            const api = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(arxivId)}`;
-	            const r = await fetchText(api);
-	            if (!r.ok) return { error: `arXiv недоступен (${r.status})`, url: target };
-	            const xml = new DOMParser().parseFromString(r.text, 'text/xml');
-	            const entry = xml.getElementsByTagName('entry')[0];
-	            if (!entry) return { error: 'arXiv: запись не найдена', url: target };
-	            const title = entry.getElementsByTagName('title')[0]?.textContent?.trim() || 'Untitled';
-	            const summary = entry.getElementsByTagName('summary')[0]?.textContent?.trim() || '';
-	            return {
-	              source: 'arXiv',
-	              url: target,
-	              title,
-	              text: summary.slice(0, limit)
 	            };
 	          }
 	
@@ -3973,10 +3827,6 @@
             toolToUse = 'search_music';
             const queryMatch = userMessage.match(/(?:о|about|про)\s+([^?]+)/i);
             toolParams = { query: queryMatch ? queryMatch[1].trim() : 'Queen', type: 'artist' };
-          } else if (lowerMessage.includes('команд') || lowerMessage.includes('team') || lowerMessage.includes('футбол') || lowerMessage.includes('спорт')) {
-            toolToUse = 'search_sports';
-            const teamMatch = userMessage.match(/(?:о|about|про)\s+([^?]+)/i);
-            toolParams = { query: teamMatch ? teamMatch[1].trim() : 'Barcelona' };
           } else if (lowerMessage.includes('что такое') || lowerMessage.includes('кто такой') || lowerMessage.includes('расскажи о') || lowerMessage.includes('wiki')) {
             toolToUse = 'wikipedia_search';
             const wikiMatch = userMessage.match(/(?:что такое|кто такой|расскажи о|о|wiki)\s+([^?]+)/i);
@@ -4021,7 +3871,7 @@
               'В демо-режиме вы можете протестировать инструменты: спросите "какая погода в Москве?" или "курс биткоина".',
               'WebLLM позволяет запускать ИИ локально. Попробуйте: "что такое квантовый компьютер?" или "расскажи о группе Queen".',
               'Демо-режим показывает работу API инструментов. Для полного ИИ-общения загрузите модель!',
-              'Попробуйте вопросы о погоде, валютах, криптовалютах, музыке или спорте - я покажу реальные данные из API!',
+              'Попробуйте вопросы о погоде, валютах, криптовалютах или музыке - я покажу реальные данные из API!',
             ];
 
             const response = demoResponses[Math.floor(Math.random() * demoResponses.length)];
@@ -4038,8 +3888,7 @@
             'get_weather': 'weather',
             'get_currency_rate': 'currency',
             'get_crypto_price': 'crypto',
-            'search_music': 'music',
-            'search_sports': 'sports'
+            'search_music': 'music'
           };
           return mapping[toolName] || toolName;
         }

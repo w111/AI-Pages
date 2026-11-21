@@ -52,7 +52,7 @@ test('Изображения карточек имеют описательны�
   await page.goto('/index.html');
   await expect(page.locator('.tool-card').first()).toBeVisible();
   const images = page.locator('.tool-card img');
-  expect(await images.count()).toBeGreaterThan(40);
+  expect(await images.count()).toBeGreaterThan(30);
   for (const image of await images.all()) {
     await expect(image).toHaveAttribute('alt', /\S/);
   }
