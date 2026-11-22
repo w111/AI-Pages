@@ -336,11 +336,11 @@ Quality Checks был `disabled_inactivity`; 23.10.2026 включён чере�
 Рекомендатор загружает сериалы TVMaze. Его E2E использует сохранённый ответ API на HTTP-границе, а реальный загрузчик,
 фильтры, оценки и генератор рекомендаций выполняются в браузере.
 
-Security Scan запускает unit-тесты и `npm run audit:security`: threshold high/critical сохранён, единственное исключение
-— отозванный GHSA-vfj7-8cjw-p6xm по решению владельца от 23.10.2026, со сроком пересмотра/истечения 22.11.2026 UTC.
-Любые другие advisory high/critical, ошибки npm, неполный отчёт и запись без достижимого advisory блокируют job;
-законные циклы графа npm не блокируют. Правило и тесты — `scripts/audit-policy.mjs`, `tests/audit-policy.test.mjs`;
-подробности и основание — в аудите ниже.
+Security Scan запускает unit-тесты и `npm run audit:security`: threshold high/critical сохранён, действующих исключений
+нет. Исключение для отозванного GHSA-vfj7-8cjw-p6xm (решение владельца от 23.10.2026) истекло 22.11.2026 UTC и не
+продлено: npm audit этот advisory больше не возвращает. Любые advisory high/critical, ошибки npm, неполный отчёт и
+запись без достижимого advisory блокируют job; законные циклы графа npm не блокируют. Правило и тесты —
+`scripts/audit-policy.mjs`, `tests/audit-policy.test.mjs`; подробности и основание — в аудите ниже.
 
 Результаты аудита обновлений и порядок проверки/отката: [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
 
@@ -541,3 +541,4 @@ AI-Pages/
 | 2025-01-15 | 2.0    | Консолидация с Brownfield анализом                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | BMad Master          |
 | 2026-11-20 | 2.1    | Исправления по ручному QA в Chrome: QR Workshop генерирует и читает QR в браузере (qrcode-generator, jsQR), Wi‑Fi пароли не хранятся в истории; галерея — Met `/v1.1/search`, музеи независимы, видимые ошибки источников; дашборд — воронка/категории/часы/конверсия от фильтров; редактор диаграмм не подставляет чужой синтаксис при смене типа; WebLLM/RAG — честные индикаторы приватности и бэкенда; 3D Balls, Radio Globe, MP3 Visualizer — сообщение «нужен WebGL»; professions, music-search, aircraft — понятные ошибки API (hh.ru 403, MusicBrainz 503, OpenSky CORS); cocktails — английская инструкция вместо немецкой; каталог — EN-перевод карточек | AI-агент             |
 | 2026-11-21 | 2.2    | Чистка внешних API: из каталога убраны professions (hh.ru 403), multi_compiler (Piston 401), precipitation_map (нет ключа OWM); TheSportsDB и TheAudioDB — ключ `123`; NASA Explorer без раздела Mars Rover; WebLLM без инструмента «Спорт», CoinCap и arXiv; astronomy_guide без IP-геолокации; radio-globe — 55 проверенных станций вместо 65; react_news без Reddit и lifehacker-ru; арканоид — звуки через Web Audio; macOS/Windows — обои Picsum                                                                                                                                                                                                              | AI-агент             |
+| 2026-11-22 | 2.3    | Зависимости: снят временный override re2js (markdownlint 0.42.2 → re2js 2.9.1, CLI 0.50.0 без изменений); исключение braces GHSA-vfj7-8cjw-p6xm не продлено — см. docs/DEPENDENCY_UPDATES.md                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | AI-агент             |
