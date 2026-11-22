@@ -259,3 +259,20 @@ PR #121 отдельно обновляет `@eslint/js` 9.32.0 → 10.0.1. ESLi
 После мёржа #123 на main успешно завершились
 [Quality Checks 42700912990](https://github.com/w111/AI-Pages/actions/runs/42700912990) и
 [Pages 42700912722](https://github.com/w111/AI-Pages/actions/runs/42700912722) на том же merge SHA.
+
+## 22.11.2026 — снятие override re2js и срок исключения braces
+
+Пересмотр по runbook от 03.11. Версия CLI не меняется: `markdownlint-cli@0.50.0` требует `markdownlint ~0.42.0`, а
+[markdownlint 0.42.2](https://github.com/DavidAnson/markdownlint/blob/v0.42.2/package.json) зависит от re2js 2.9.1
+(≥2.8.7, вне GHSA-gg6h-894w-4m9c). Scoped override `markdownlint@0.42.0: { re2js: "2.8.7" }` удалён; в lockfile
+обновлена только цепочка markdownlint 0.42.0 → 0.42.2 и re2js 2.8.7 → 2.9.1, остальные зависимости markdownlint те же.
+Registry проверен через `npm view markdownlint-cli@0.50.0 dependencies.markdownlint` и
+`npm view markdownlint@0.42.2 dependencies.re2js`.
+
+Проверки: чистый `npm ci`; `npm ls markdownlint-cli markdownlint re2js` — 0.50.0 / 0.42.2 / 2.9.1 без других копий;
+`npm run lint:md`, `npm run test:audit` (25/25) и `npm run audit:security` проходят (exit 0). `npm audit` — 0
+high/critical, 4 moderate и 3 low в dev-зависимостях; braces и re2js в отчёте нет.
+
+Исключение GHSA-vfj7-8cjw-p6xm в `scripts/audit-policy.mjs` не продлевается: срок `reviewAt` истёк 22.11.2026, а npm
+audit и [Security Scan на main](https://github.com/w111/AI-Pages/actions/runs/44845757401/job/136665076482) отозванный
+advisory больше не возвращают. Если он появится снова, high блокирует проверку.
