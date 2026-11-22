@@ -336,11 +336,11 @@ Quality Checks был `disabled_inactivity`; 23.10.2026 включён чере�
 Рекомендатор загружает сериалы TVMaze. Его E2E использует сохранённый ответ API на HTTP-границе, а реальный загрузчик,
 фильтры, оценки и генератор рекомендаций выполняются в браузере.
 
-Security Scan запускает unit-тесты и `npm run audit:security`: threshold high/critical сохранён, единственное исключение
-— отозванный GHSA-vfj7-8cjw-p6xm по решению владельца от 23.10.2026, со сроком пересмотра/истечения 22.11.2026 UTC.
-Любые другие advisory high/critical, ошибки npm, неполный отчёт и запись без достижимого advisory блокируют job;
-законные циклы графа npm не блокируют. Правило и тесты — `scripts/audit-policy.mjs`, `tests/audit-policy.test.mjs`;
-подробности и основание — в аудите ниже.
+Security Scan запускает unit-тесты и `npm run audit:security`: threshold high/critical сохранён, действующих исключений
+нет. Исключение для отозванного GHSA-vfj7-8cjw-p6xm (решение владельца от 23.10.2026) истекло 22.11.2026 UTC и не
+продлено: npm audit этот advisory больше не возвращает. Любые advisory high/critical, ошибки npm, неполный отчёт и
+запись без достижимого advisory блокируют job; законные циклы графа npm не блокируют. Правило и тесты —
+`scripts/audit-policy.mjs`, `tests/audit-policy.test.mjs`; подробности и основание — в аудите ниже.
 
 Результаты аудита обновлений и порядок проверки/отката: [DEPENDENCY_UPDATES.md](DEPENDENCY_UPDATES.md).
 
